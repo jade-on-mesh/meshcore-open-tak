@@ -11,9 +11,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Free runner disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /opt/hostedtoolcache/CodeQL || true
-          df -h /
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          android: false
+          tool-cache: false
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: false
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
