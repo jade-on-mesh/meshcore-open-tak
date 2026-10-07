@@ -759,7 +759,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                                 ? null
                                 : context
                                       .read<VoxVoiceService>()
-                                      ?.contactByName(message.senderName),
+                                      .contactByName(message.senderName),
                           )
                         else if (poi != null)
                           _buildPoiMessage(

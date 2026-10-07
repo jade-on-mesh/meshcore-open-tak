@@ -26,6 +26,7 @@ jobs:
           cache: true
       - name: Collect diagnostics
         run: |
+          set +e
           mkdir -p /tmp/r
           git log -1 --format='%H %s' > /tmp/r/commit.txt
           flutter --version > /tmp/r/flutter-version.txt 2>&1 || true
