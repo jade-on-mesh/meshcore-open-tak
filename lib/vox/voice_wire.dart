@@ -271,9 +271,11 @@ class VoxVoiceFetchRequest {
   Uint8List encode() {
     final missing = missingIndices == null
         ? const <int>[]
-        : (missingIndices!.where((v) => v >= 0 && v < voxMaxPackets).toSet()
-                .toList()
-              ..sort());
+        : (missingIndices!
+              .where((v) => v >= 0 && v < voxMaxPackets)
+              .toSet()
+              .toList()
+            ..sort());
     // Keep the request inside one raw packet.
     final capped = missing.length > 150 ? missing.sublist(0, 150) : missing;
     final out = Uint8List(minLength + capped.length);
@@ -326,8 +328,8 @@ Duration voxEstimateAirtime({
   if (totalPackets <= 0 || spreadingFactor <= 0 || bandwidthKhz <= 0) {
     return Duration.zero;
   }
-  final payload = 2 + pathLength + VoxVoicePacket.headerLength +
-      codecBytesPerPacket;
+  final payload =
+      2 + pathLength + VoxVoicePacket.headerLength + codecBytesPerPacket;
   final tSym = pow(2, spreadingFactor) / (bandwidthKhz * 1000); // seconds
   final de = (spreadingFactor >= 11 && bandwidthKhz <= 125) ? 1 : 0;
   final cr = (codingRate.clamp(5, 8)) - 4;
@@ -335,7 +337,5 @@ Duration voxEstimateAirtime({
   final den = 4 * (spreadingFactor - 2 * de);
   final nPayload = 8 + max(((num1 / den).ceil()) * (cr + 4), 0);
   final perPacket = (8 + 4.25 + nPayload) * tSym;
-  return Duration(
-    microseconds: (perPacket * totalPackets * 1e6).round(),
-  );
+  return Duration(microseconds: (perPacket * totalPackets * 1e6).round());
 }

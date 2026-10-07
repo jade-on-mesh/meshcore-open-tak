@@ -153,9 +153,11 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
     final secs = _pcm == null
         ? 0
         : (_pcm!.length / VoxVoiceMode.sampleRateHz).ceil();
-    final packets = (secs * voxDefaultVoiceMode.bytesPerSecond /
-            voxDefaultVoiceMode.bytesPerPacket)
-        .ceil();
+    final packets =
+        (secs *
+                voxDefaultVoiceMode.bytesPerSecond /
+                voxDefaultVoiceMode.bytesPerPacket)
+            .ceil();
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),

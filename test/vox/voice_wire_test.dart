@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meshcore_open/vox/voice_wire.dart';
 
 Uint8List _hex(String h) => Uint8List.fromList([
-  for (var i = 0; i < h.length; i += 2) int.parse(h.substring(i, i + 2), radix: 16),
+  for (var i = 0; i < h.length; i += 2)
+    int.parse(h.substring(i, i + 2), radix: 16),
 ]);
 
 String _toHex(List<int> b) =>
@@ -76,7 +77,11 @@ void main() {
         requesterKey6: 'a1b2c3d4e5f6',
         missingIndices: [4, 2, 1, 2],
       );
-      expect(_toHex(req.encode()), '72deadbeef01a1b2c3d4e5f6030102' '04');
+      expect(
+        _toHex(req.encode()),
+        '72deadbeef01a1b2c3d4e5f6030102'
+        '04',
+      );
     });
 
     test('send-all request has flags 0 and count 0', () {

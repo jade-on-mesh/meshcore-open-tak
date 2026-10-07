@@ -19,8 +19,9 @@ class VoxClipStore {
   Future<void> save(String sessionId, Uint8List codecBytes) async {
     if (!_validId(sessionId)) return;
     final dir = await _ensureDir();
-    await File('${dir.path}${Platform.pathSeparator}$sessionId.c2')
-        .writeAsBytes(codecBytes, flush: true);
+    await File(
+      '${dir.path}${Platform.pathSeparator}$sessionId.c2',
+    ).writeAsBytes(codecBytes, flush: true);
   }
 
   Future<Uint8List?> load(String sessionId) async {

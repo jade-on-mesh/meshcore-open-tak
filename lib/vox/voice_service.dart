@@ -29,7 +29,12 @@ class VoxClipState {
   final int total;
   final String? message;
 
-  const VoxClipState(this.status, {this.received = 0, this.total = 0, this.message});
+  const VoxClipState(
+    this.status, {
+    this.received = 0,
+    this.total = 0,
+    this.message,
+  });
 
   double get progress => total == 0 ? 0 : received / total;
 }
@@ -424,9 +429,7 @@ class VoxVoiceService extends ChangeNotifier {
       codingRate: cr ?? 5,
     );
     // One packet of airtime plus room for one relay hop, minimum 400 ms.
-    return Duration(
-      milliseconds: max(400, air.inMilliseconds * 2 + 150),
-    );
+    return Duration(milliseconds: max(400, air.inMilliseconds * 2 + 150));
   }
 
   @override

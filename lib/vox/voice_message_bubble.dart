@@ -146,7 +146,8 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
         : Icons.download_for_offline_outlined;
 
     final String subtitle = switch (st.status) {
-      VoxClipStatus.complete => '${env.durationSeconds}s · Codec2 ${env.mode.label}',
+      VoxClipStatus.complete =>
+        '${env.durationSeconds}s · Codec2 ${env.mode.label}',
       VoxClipStatus.remote =>
         widget.isOutgoing
             ? '${env.durationSeconds}s · waiting for listeners'

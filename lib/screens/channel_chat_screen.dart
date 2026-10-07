@@ -757,9 +757,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                             textColor: textColor,
                             sender: isOutgoing
                                 ? null
-                                : context
-                                      .read<VoxVoiceService>()
-                                      .contactByName(message.senderName),
+                                : context.read<VoxVoiceService>().contactByName(
+                                    message.senderName,
+                                  ),
                           )
                         else if (poi != null)
                           _buildPoiMessage(
