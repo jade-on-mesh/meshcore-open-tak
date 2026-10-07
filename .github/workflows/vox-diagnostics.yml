@@ -50,3 +50,57 @@ jobs:
           git add -A
           git commit -qm "Diagnostics for ${GITHUB_SHA}"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" ci-reports
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Build APK
+        run: |
+          set +e
+          mkdir -p /tmp/r
+          git log -1 --format='%H %s' > /tmp/r/commit.txt
+          flutter pub get > /tmp/r/pub-get.txt 2>&1
+          flutter build apk --release --no-pub -v > /tmp/r/build-android-verbose.txt 2>&1; echo "exit=$?" >> /tmp/r/build-android-verbose.txt
+          grep -nE "error|Error|FAILED|What went wrong|CMake|codec2" /tmp/r/build-android-verbose.txt | tail -200 > /tmp/r/build-android.txt
+          tail -40 /tmp/r/build-android-verbose.txt >> /tmp/r/build-android.txt
+          find build -name "libcodec2.so" > /tmp/r/libcodec2-found.txt 2>&1
+          ls -la build/app/outputs/flutter-apk/ >> /tmp/r/libcodec2-found.txt 2>&1
+      - name: Publish
+        if: always()
+        run: |
+          cd /tmp/r && git init -q -b ci-reports-android && git config user.name vox-ci && git config user.email vox-ci@users.noreply.github.com
+          git add -A && git commit -qm "Android diagnostics for ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" ci-reports-android
+
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Build iOS
+        run: |
+          set +e
+          mkdir -p /tmp/r
+          git log -1 --format='%H %s' > /tmp/r/commit.txt
+          flutter pub get > /tmp/r/pub-get.txt 2>&1
+          flutter build ios --release --no-codesign --no-pub > /tmp/r/build-ios-full.txt 2>&1; echo "exit=$?" >> /tmp/r/build-ios-full.txt
+          grep -nE "error|Error|warning: .*codec2|pod|Pod" /tmp/r/build-ios-full.txt | tail -200 > /tmp/r/build-ios.txt
+          tail -60 /tmp/r/build-ios-full.txt >> /tmp/r/build-ios.txt
+      - name: Publish
+        if: always()
+        run: |
+          cd /tmp/r && git init -q -b ci-reports-ios && git config user.name vox-ci && git config user.email vox-ci@users.noreply.github.com
+          git add -A && git commit -qm "iOS diagnostics for ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" ci-reports-ios
