@@ -1,3 +1,7 @@
+# MeshCore Open VOX: only the Codec2 speech codec. The FreeDV modems and LDPC
+# tables in third_party/codec2/src are not needed for voice messages and are
+# very slow to compile, so they are left out.
+# Keep in sync with third_party/codec2/codec2.podspec.
 set(CODEC2_SOURCES
     dump.c
     lpc.c
@@ -6,21 +10,12 @@ set(CODEC2_SOURCES
     sine.c
     codec2.c
     codec2_fft.c
-    cohpsk.c
-    codec2_fifo.c
-    fdmdv.c
-    fm.c
-    fsk.c
-    fmfsk.c
     kiss_fft.c
     kiss_fftr.c
-    linreg.c
     interp.c
     lsp.c
     mbest.c
     newamp1.c
-    ofdm.c
-    ofdm_mode.c
     phase.c
     quantise.c
     pack.c
@@ -32,34 +27,4 @@ set(CODEC2_SOURCES
     codebooknewamp1_energy.c
     codebooknewamp2.c
     codebooknewamp2_energy.c
-    golay23.c
-    freedv_api.c
-    freedv_1600.c
-    freedv_700.c
-    freedv_2020.c
-    freedv_fsk.c
-    freedv_vhf_framing.c
-    freedv_data_channel.c
-    varicode.c
-    modem_stats.c
-    mpdecode_core.c
-    phi0.c
-    gp_interleaver.c
-    interldpc.c
-    filter.c
-    HRA_112_112.c
-    HRA_56_56.c
-    HRAb_396_504.c
-    H_256_768_22.c
-    H_256_512_4.c
-    HRAa_1536_512.c
-    H_128_256_5.c
-    H_2064_516_sparse.c
-    H_4096_8192_3d.c
-    H_16200_9720.c
-    H_1024_2048_4f.c
-    H_212_158.c
-    ldpc_codes.c
-    lpcnet_freq.c
-    reliable_text.c
 )
