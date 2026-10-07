@@ -1,0 +1,51 @@
+name: VOX diagnostics
+
+# Runs analyze / format / tests / a Linux build and commits the raw output to
+# the `ci-reports` branch so it can be read without access to Actions logs.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vox-diagnostics
+  cancel-in-progress: true
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Collect diagnostics
+        run: |
+          mkdir -p /tmp/r
+          git log -1 --format='%H %s' > /tmp/r/commit.txt
+          flutter --version > /tmp/r/flutter-version.txt 2>&1 || true
+          flutter pub get > /tmp/r/pub-get.txt 2>&1 || true
+          cp pubspec.lock /tmp/r/pubspec.lock || true
+          flutter analyze --fatal-infos --fatal-warnings > /tmp/r/analyze.txt 2>&1; echo "exit=$?" >> /tmp/r/analyze.txt
+          dart format --output=none --set-exit-if-changed . > /tmp/r/format.txt 2>&1; echo "exit=$?" >> /tmp/r/format.txt
+          dart format . > /dev/null 2>&1 || true
+          git diff > /tmp/r/format.diff || true
+          git checkout -- . || true
+          flutter test --reporter expanded > /tmp/r/test.txt 2>&1; echo "exit=$?" >> /tmp/r/test.txt
+          sudo apt-get update > /dev/null && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev > /dev/null
+          flutter build linux --release --no-pub > /tmp/r/build-linux.txt 2>&1; echo "exit=$?" >> /tmp/r/build-linux.txt
+      - name: Publish to ci-reports branch
+        if: always()
+        run: |
+          cd /tmp/r
+          git init -q -b ci-reports
+          git config user.name "vox-ci"
+          git config user.email "vox-ci@users.noreply.github.com"
+          git add -A
+          git commit -qm "Diagnostics for ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" ci-reports
