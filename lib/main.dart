@@ -35,6 +35,7 @@ import 'storage/prefs_manager.dart';
 import 'theme/mesh_theme.dart';
 import 'utils/app_logger.dart';
 import 'widgets/image_send_codec_binding.dart';
+import 'vox/voice_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -154,6 +155,9 @@ void main() async {
     onImageSenderPrefix: (prefix) => imageReassembler.selfPrefix = prefix,
   );
 
+  // MeshCore Open VOX: on-demand Codec2 voice messages (VE3).
+  final voxVoiceService = VoxVoiceService(connector);
+
   await connector.loadContactCache();
   await connector.loadChannelSettings();
   await connector.loadCachedChannels();
@@ -179,6 +183,7 @@ void main() async {
       imageCodecService: imageCodecService,
       receivedImageStore: receivedImageStore,
       imageReassembler: imageReassembler,
+      voxVoiceService: voxVoiceService,
     ),
   );
 }
@@ -314,6 +319,7 @@ class MeshCoreApp extends StatefulWidget {
   final ImageCodecService imageCodecService;
   final ReceivedImageStore receivedImageStore;
   final ImageStreamReassembler imageReassembler;
+  final VoxVoiceService? voxVoiceService;
 
   const MeshCoreApp({
     super.key,
@@ -332,6 +338,7 @@ class MeshCoreApp extends StatefulWidget {
     required this.imageCodecService,
     required this.receivedImageStore,
     required this.imageReassembler,
+    this.voxVoiceService,
   });
 
   @override
@@ -347,6 +354,8 @@ const Duration _kImageSweepInterval = Duration(seconds: 5);
 
 class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
   Timer? _imageSweepTimer;
+  late final VoxVoiceService _voxVoiceService =
+      widget.voxVoiceService ?? VoxVoiceService(widget.connector);
 
   @override
   void initState() {
@@ -406,11 +415,12 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
         ChangeNotifierProvider.value(value: widget.timeoutPredictionService),
         ChangeNotifierProvider.value(value: widget.imageCodecService),
         ChangeNotifierProvider.value(value: widget.receivedImageStore),
+        ChangeNotifierProvider<VoxVoiceService>.value(value: _voxVoiceService),
       ],
       child: Consumer<AppSettingsService>(
         builder: (context, settingsService, child) {
           return MaterialApp(
-            title: 'MeshCore Open',
+            title: 'MeshCore Open VOX',
             debugShowCheckedModeBanner: false,
             localizationsDelegates: const [
               AppLocalizations.delegate,

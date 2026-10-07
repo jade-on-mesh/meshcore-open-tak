@@ -49,6 +49,10 @@ import '../widgets/unread_divider.dart';
 import '../theme/mesh_theme.dart';
 import '../widgets/mesh_ui.dart';
 import 'telemetry_screen.dart';
+import '../vox/voice_message_bubble.dart';
+import '../vox/voice_record_sheet.dart';
+import '../vox/voice_service.dart';
+import '../vox/voice_wire.dart';
 
 // Image messages are deliberately absent from this screen, and there is no
 // flag to flip: the AEIC wire format is `CMD_SEND_CHANNEL_DATA` (62) /
@@ -490,6 +494,13 @@ class _ChatScreenState extends State<ChatScreen> {
                 icon: const Icon(Icons.gif_box_outlined),
                 tooltip: context.l10n.chat_sendGif,
                 onPressed: () => _showGifPicker(context),
+              ),
+              VoxMicButton(
+                recipientLabel: _resolveContact(connector).name,
+                onSend: (pcm) => context.read<VoxVoiceService>().sendToContact(
+                  _resolveContact(connector),
+                  pcm,
+                ),
               ),
               if (settings.translationEnabled)
                 MessageTranslationButton(
@@ -1361,8 +1372,9 @@ class _MessageBubble extends StatelessWidget {
     final enableTracing = settingsService.settings.enableMessageTracing;
     final isOutgoing = message.isOutgoing;
     final scheme = Theme.of(context).colorScheme;
-    final gifId = GifHelper.parseGif(message.text);
-    final poi = parseMarkerText(message.text);
+    final voxEnvelope = VoxVoiceEnvelope.tryParse(message.text);
+    final gifId = voxEnvelope != null ? null : GifHelper.parseGif(message.text);
+    final poi = voxEnvelope != null ? null : parseMarkerText(message.text);
     final isFailed = message.status == MessageStatus.failed;
     final urlImagesEnabled = context.select<MeshCoreConnector, bool>(
       (connector) => connector.isContactUrlImagesEnabled(sourceId),
@@ -1500,7 +1512,18 @@ class _MessageBubble extends StatelessWidget {
                             ),
                             if (gifId == null) const SizedBox(height: 2),
                           ],
-                          if (poi != null)
+                          if (voxEnvelope != null)
+                            VoxVoiceMessageContent(
+                              envelope: voxEnvelope,
+                              isOutgoing: isOutgoing,
+                              textColor: textColor,
+                              sender: isOutgoing
+                                  ? null
+                                  : context
+                                        .read<VoxVoiceService>()
+                                        .contactByKeyHex(sourceId),
+                            )
+                          else if (poi != null)
                             _buildPoiMessage(
                               context,
                               poi,

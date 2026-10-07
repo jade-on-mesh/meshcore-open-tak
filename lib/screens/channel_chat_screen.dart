@@ -58,6 +58,10 @@ import 'channel_message_path_screen.dart';
 import 'map_screen.dart';
 import 'region_management_screen.dart';
 import '../storage/region_store.dart';
+import '../vox/voice_message_bubble.dart';
+import '../vox/voice_record_sheet.dart';
+import '../vox/voice_service.dart';
+import '../vox/voice_wire.dart';
 
 class ChannelChatScreen extends StatefulWidget {
   final Channel channel;
@@ -602,8 +606,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     final enableTracing = settingsService.settings.enableMessageTracing;
     final isOutgoing = message.isOutgoing;
     final scheme = Theme.of(context).colorScheme;
-    final gifId = GifHelper.parseGif(message.text);
-    final poi = parseMarkerText(message.text);
+    final voxEnvelope = VoxVoiceEnvelope.tryParse(message.text);
+    final gifId = voxEnvelope != null ? null : GifHelper.parseGif(message.text);
+    final poi = voxEnvelope != null ? null : parseMarkerText(message.text);
     final translatedDisplayText =
         message.translatedText != null &&
             message.translatedText!.trim().isNotEmpty
@@ -745,7 +750,18 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                           _buildReplyPreview(message, textScale),
                           const SizedBox(height: 8),
                         ],
-                        if (poi != null)
+                        if (voxEnvelope != null)
+                          VoxVoiceMessageContent(
+                            envelope: voxEnvelope,
+                            isOutgoing: isOutgoing,
+                            textColor: textColor,
+                            sender: isOutgoing
+                                ? null
+                                : context
+                                      .read<VoxVoiceService>()
+                                      ?.contactByName(message.senderName),
+                          )
+                        else if (poi != null)
                           _buildPoiMessage(
                             context,
                             poi,
@@ -2079,6 +2095,12 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                           ),
                         ),
                     ],
+                  ),
+                  VoxMicButton(
+                    recipientLabel: widget.channel.name,
+                    onSend: (pcm) => context
+                        .read<VoxVoiceService>()
+                        .sendToChannel(widget.channel, pcm),
                   ),
                   if (settings.translationEnabled)
                     MessageTranslationButton(

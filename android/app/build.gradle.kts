@@ -30,19 +30,20 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.meshcore.meshcore_open"
+        // VOX uses its own id so it installs alongside upstream MeshCore Open.
+        applicationId = "com.jadeonmesh.meshcore_open_vox"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        // Codec2 native build removed - no longer needed
-        // externalNativeBuild {
-        //     cmake {
-        //         arguments += listOf("-DANDROID_STL=c++_shared")
-        //     }
-        // }
+        // Codec2 (LGPL-2.1) built as libcodec2.so for VOX voice messages.
+        externalNativeBuild {
+            cmake {
+                arguments += listOf("-DANDROID_STL=c++_shared")
+            }
+        }
         // arm64-v8a only, deliberately.
         //
         //  * ONNX Runtime (flutter_onnxruntime, used by the AEIC-SE image codec)
@@ -90,12 +91,12 @@ android {
         }
     }
 
-    // Codec2 native build removed - no longer needed
-    // externalNativeBuild {
-    //     cmake {
-    //         path = file("src/main/cpp/CMakeLists.txt")
-    //     }
-    // }
+    // Codec2 native build for VOX voice messages (third_party/codec2).
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+        }
+    }
 }
 
 flutter {

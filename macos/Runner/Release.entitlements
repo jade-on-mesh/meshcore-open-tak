@@ -16,6 +16,8 @@
 		<string>/dev/cu.</string>
 		<string>/dev/tty.</string>
 	</array>
+	<key>com.apple.security.device.audio-input</key>
+	<true/>
 	<key>com.apple.security.device.camera</key>
 	<true/>
 	<!-- image_picker: read photos the user explicitly chooses -->

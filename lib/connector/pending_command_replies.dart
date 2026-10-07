@@ -53,6 +53,7 @@ int? replyCodeForCommand(Uint8List data) {
     case cmdSetAutoAddConfig:
     case cmdSetPathHashMode:
     case cmdSendChannelData:
+    case cmdSendRawData: // VOX voice packets / fetch requests
       return respCodeOk;
     case cmdSendTxtMsg:
     case cmdSendLogin:

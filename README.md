@@ -1,3 +1,42 @@
+# MeshCore Open VOX
+
+**A fork of [MeshCore Open](https://github.com/zjs81/meshcore-open) that adds voice messages, and (coming next) SAR-compatible images and team coordination.**
+
+VOX runs on stock MeshCore companion firmware. No firmware changes are needed.
+
+### What VOX adds
+
+| Feature | Status |
+| --- | --- |
+| Codec2 1200 bps voice messages in DMs and channels (`VE3` envelope + on-demand chunked transfer) | ✅ first release |
+| Interop with [MeshCore SAR](https://github.com/dz0ny/meshcore-sar) voice clips | ✅ same wire format |
+| AVIF images (`IE4`, SAR-compatible) alongside MeshCore Open's own image codec | 🔜 planned |
+| Team tracking (live positions, trails) | 🔜 planned |
+| Offline maps | ✅ inherited from MeshCore Open |
+
+### How voice works
+
+1. You record up to 20 s. It is encoded with Codec2 at 1200 bps (150 bytes/s) and split into ≤156-byte packets, which are kept on your phone.
+2. Only a short text envelope such as `VE3:1ps9wxb:1:k:j` goes out over the mesh.
+3. A listener taps the bubble. Their app sends a small binary fetch request to you over its known direct route, and your app streams the packets back as raw data. Missing packets are re-requested.
+
+Audio is therefore only transmitted to people who actually want to hear it, which keeps channel airtime sane. Details: [docs/vox-voice.md](docs/vox-voice.md).
+
+**Requirements and limits:** both sides need a *direct* route to each other (exchange a message first). The firmware cannot flood raw data, and multi-byte path hashes are not supported for raw data yet. Senders serve a clip for 15 minutes after sending. Please be mindful of duty-cycle limits on shared regional meshes.
+
+### Licensing
+
+VOX is MIT, like MeshCore Open. Codec2 (`third_party/codec2`, LGPL-2.1) is built as a separate shared library on Android. The VE3 implementation was written from MeshCore SAR's published protocol documentation; no MeshCore SAR code is included.
+
+### Keeping up with upstream
+
+```sh
+git remote add upstream https://github.com/zjs81/meshcore-open.git
+git fetch upstream && git merge upstream/main
+```
+
+---
+
 # MeshCore Open
 
 Open-source Flutter client for MeshCore LoRa mesh networking devices.

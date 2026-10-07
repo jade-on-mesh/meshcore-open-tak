@@ -196,6 +196,7 @@ const int cmdImportContact = 18;
 const int cmdReboot = 19;
 const int cmdGetBattAndStorage = 20;
 const int cmdDeviceQuery = 22;
+const int cmdSendRawData = 25; // VOX: direct-path raw payload
 const int cmdSendLogin = 26;
 const int cmdSendStatusReq = 27;
 const int cmdGetContactByKey = 30;
@@ -275,6 +276,7 @@ const int pushCodeAdvert = 0x80;
 const int pushCodePathUpdated = 0x81;
 const int pushCodeSendConfirmed = 0x82;
 const int pushCodeMsgWaiting = 0x83;
+const int pushCodeRawData = 0x84; // VOX: [code][snr*4][rssi][0xFF][payload]
 const int pushCodeLoginSuccess = 0x85;
 const int pushCodeLoginFail = 0x86;
 const int pushCodeStatusResponse = 0x87;
@@ -1106,4 +1108,45 @@ Uint8List floodTransportCode({
     return Uint8List.fromList([0xFE, 0xFF]);
   }
   return Uint8List.fromList(code.sublist(0, 2));
+}
+
+// ---------------------------------------------------------------------------
+// MeshCore Open VOX: raw data (used for on-demand voice packets).
+//
+// CMD_SEND_RAW_DATA: [25][path_len][path...][payload]. The firmware only sends
+// raw data along a known direct path (flood is rejected) and treats path_len
+// as a byte count, so only 1-byte path hashes are supported.
+Uint8List buildSendRawDataFrame({
+  required Uint8List path,
+  required Uint8List payload,
+}) {
+  final writer = BufferWriter();
+  writer.writeByte(cmdSendRawData);
+  writer.writeByte(path.length);
+  writer.writeBytes(path);
+  writer.writeBytes(payload);
+  return writer.toBytes();
+}
+
+/// Parsed PUSH_CODE_RAW_DATA frame.
+class RawDataPush {
+  final double snr;
+  final int rssi;
+  final Uint8List payload;
+  const RawDataPush({
+    required this.snr,
+    required this.rssi,
+    required this.payload,
+  });
+
+  static RawDataPush? tryParse(Uint8List frame) {
+    if (frame.length < 5 || frame[0] != pushCodeRawData) return null;
+    final snrRaw = frame[1] >= 128 ? frame[1] - 256 : frame[1];
+    final rssiRaw = frame[2] >= 128 ? frame[2] - 256 : frame[2];
+    return RawDataPush(
+      snr: snrRaw / 4.0,
+      rssi: rssiRaw,
+      payload: Uint8List.fromList(frame.sublist(4)),
+    );
+  }
 }
