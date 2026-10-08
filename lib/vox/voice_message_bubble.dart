@@ -243,15 +243,17 @@ void showVoxVoiceLog(BuildContext context, VoxVoiceService service) {
             children: [
               ListTile(
                 title: const Text('Voice diagnostics'),
-                subtitle: const Text('Newest first. Copy and share when reporting a problem.'),
+                subtitle: const Text(
+                  'Newest first. Copy and share when reporting a problem.',
+                ),
                 trailing: IconButton(
                   icon: const Icon(Icons.copy),
                   tooltip: 'Copy',
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: text));
-                    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-                      const SnackBar(content: Text('Copied')),
-                    );
+                    ScaffoldMessenger.maybeOf(
+                      context,
+                    )?.showSnackBar(const SnackBar(content: Text('Copied')));
                   },
                 ),
               ),
@@ -266,7 +268,10 @@ void showVoxVoiceLog(BuildContext context, VoxVoiceService service) {
                     padding: const EdgeInsets.only(bottom: 4),
                     child: SelectableText(
                       lines[i],
-                      style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                      ),
                     ),
                   ),
                 ),
@@ -317,10 +322,7 @@ class VoxForcedRouteTile extends StatelessWidget {
             onPressed: () async {
               final picked = await pickVoxRepeaters(context, service);
               if (picked != null) {
-                await service.setForceRepeaterRoute(
-                  picked.isNotEmpty,
-                  picked,
-                );
+                await service.setForceRepeaterRoute(picked.isNotEmpty, picked);
               }
             },
           ),
@@ -372,7 +374,11 @@ Future<List<String>?> pickVoxRepeaters(
                               title: Text(c.name),
                               subtitle: Text(
                                 'hash ${c.publicKeyHex.substring(0, 2)} · '
-                                '${c.pathLength < 0 ? 'no route' : c.pathLength == 0 ? 'direct neighbour' : '${c.pathLength} hops'}',
+                                '${c.pathLength < 0
+                                    ? 'no route'
+                                    : c.pathLength == 0
+                                    ? 'direct neighbour'
+                                    : '${c.pathLength} hops'}',
                               ),
                               secondary: selected.contains(c.publicKeyHex)
                                   ? CircleAvatar(

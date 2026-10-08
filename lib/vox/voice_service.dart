@@ -128,7 +128,8 @@ class VoxVoiceService extends ChangeNotifier {
   Uint8List? get forcedRoute {
     if (!_forceRepeaterRoute || _forcedRepeaterKeys.isEmpty) return null;
     return Uint8List.fromList([
-      for (final k in _forcedRepeaterKeys) int.parse(k.substring(0, 2), radix: 16),
+      for (final k in _forcedRepeaterKeys)
+        int.parse(k.substring(0, 2), radix: 16),
     ]);
   }
 
@@ -218,8 +219,9 @@ class VoxVoiceService extends ChangeNotifier {
     debugPrint('VOX ${_log.last}');
   }
 
-  String _hex(List<int> b) =>
-      b.isEmpty ? '(0 hop)' : b.map((v) => v.toRadixString(16).padLeft(2, '0')).join(',');
+  String _hex(List<int> b) => b.isEmpty
+      ? '(0 hop)'
+      : b.map((v) => v.toRadixString(16).padLeft(2, '0')).join(',');
 
   String radioSummary() {
     final sf = _connector.currentSf;
@@ -527,7 +529,10 @@ class VoxVoiceService extends ChangeNotifier {
           if (!ok) throw StateError('channel send failed');
       }
     } catch (e) {
-      _logEvent('attempt ${clip.attempts} send failed: $e', clip.envelope.sessionId);
+      _logEvent(
+        'attempt ${clip.attempts} send failed: $e',
+        clip.envelope.sessionId,
+      );
       if (method != _Method.channel) clip.directFailures++;
       if (clip.attempts < _maxAttempts) {
         await _attempt(clip);
