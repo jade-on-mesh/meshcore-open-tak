@@ -5886,7 +5886,10 @@ class MeshCoreConnector extends ChangeNotifier {
       // MeshCore Open VOX: control DMs (e.g. VR3 voice fetch requests) are
       // consumed here and never shown in the chat or notified.
       if (!message.isOutgoing &&
-          (voxControlTextInterceptor?.call(message.senderKeyHex, message.text) ??
+          (voxControlTextInterceptor?.call(
+                message.senderKeyHex,
+                message.text,
+              ) ??
               false)) {
         return;
       }
