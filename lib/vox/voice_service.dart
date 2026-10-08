@@ -51,6 +51,21 @@ class VoxClipState {
 
 enum _Method { direct, dmRequest, channel }
 
+/// One line of the VOX voice diagnostic log (shown from a voice bubble).
+@immutable
+class VoxLogEntry {
+  final DateTime time;
+  final String sessionId; // '' when not tied to a clip
+  final String text;
+  const VoxLogEntry(this.time, this.sessionId, this.text);
+
+  @override
+  String toString() {
+    final t = time.toIso8601String().substring(11, 23);
+    return sessionId.isEmpty ? '$t $text' : '$t [$sessionId] $text';
+  }
+}
+
 class _IncomingClip {
   final VoxVoiceEnvelope envelope;
   final Map<int, Uint8List> packets = {};
@@ -117,6 +132,30 @@ class VoxVoiceService extends ChangeNotifier {
 
   Future<void> _serveChain = Future.value();
 
+  final List<VoxLogEntry> _log = [];
+
+  /// Recent voice events, oldest first.
+  List<VoxLogEntry> get log => List.unmodifiable(_log);
+
+  void _logEvent(String text, [String sid = '']) {
+    _log.add(VoxLogEntry(DateTime.now(), sid, text));
+    if (_log.length > 300) _log.removeRange(0, _log.length - 300);
+    debugPrint('VOX ${_log.last}');
+  }
+
+  String _hex(List<int> b) =>
+      b.isEmpty ? '(0 hop)' : b.map((v) => v.toRadixString(16).padLeft(2, '0')).join(',');
+
+  String radioSummary() {
+    final sf = _connector.currentSf;
+    final bw = _connector.currentBwHz;
+    final cr = _connector.currentCr;
+    final self = _connector.selfPublicKey;
+    return 'self=${self == null ? '?' : voxKey6Hex(self)} '
+        'SF=${sf ?? '?'} BW=${bw == null ? '?' : bw / 1000}kHz CR=4/${cr ?? '?'} '
+        'packetAir≈${_packetAir().inMilliseconds}ms';
+  }
+
   bool get isAvailable => voxCodecAvailable;
   String? get unavailableReason => voxCodecUnavailableReason;
 
@@ -150,6 +189,11 @@ class VoxVoiceService extends ChangeNotifier {
     VoxVoiceMode mode = voxDefaultVoiceMode,
   }) async {
     final env = await _prepare(pcm, mode);
+    _logEvent(
+      'sent ${env.totalPackets}-packet clip to ${contact.name} '
+      '(route ${contact.pathLength < 0 ? 'flood' : '${contact.pathLength} hops'})',
+      env.sessionId,
+    );
     await _connector.sendMessage(contact, env.encode());
     notifyListeners();
     return env;
@@ -161,6 +205,10 @@ class VoxVoiceService extends ChangeNotifier {
     VoxVoiceMode mode = voxDefaultVoiceMode,
   }) async {
     final env = await _prepare(pcm, mode);
+    _logEvent(
+      'sent ${env.totalPackets}-packet clip to channel ${channel.name}',
+      env.sessionId,
+    );
     await _connector.sendChannelMessage(channel, env.encode());
     notifyListeners();
     return env;
@@ -298,9 +346,14 @@ class VoxVoiceService extends ChangeNotifier {
     final route = sender == null ? null : _directRoute(sender);
     final canChannel =
         clip.channelIndex != null && _connector.supportsChannelData;
-    if (sender != null && clip.directFailures < 2) {
-      if (route != null) return _Method.direct;
+    if (sender != null) {
+      // 1. Known route: plain raw request (works when both radios have routes).
+      if (route != null && clip.directFailures == 0) return _Method.direct;
+      // 2. No answer, or no route: flooded VR3 DM. Its ACK + reciprocal path
+      //    exchange gives BOTH radios a fresh direct route to each other.
       if (!clip.sentDmRequest) return _Method.dmRequest;
+      // 3. Routes should now exist: raw request again.
+      if (route != null && clip.directFailures < 3) return _Method.direct;
     }
     if (canChannel) return _Method.channel;
     if (sender != null && route != null) return _Method.direct;
@@ -316,6 +369,11 @@ class VoxVoiceService extends ChangeNotifier {
     }
     final method = _chooseMethod(clip);
     if (method == null) {
+      _logEvent(
+        'no way to fetch: sender=${clip.sender?.name ?? 'unknown'} '
+        'channel=${clip.channelIndex}',
+        clip.envelope.sessionId,
+      );
       _fail(
         clip,
         clip.sender == null
@@ -344,12 +402,30 @@ class VoxVoiceService extends ChangeNotifier {
       switch (method) {
         case _Method.direct:
           final route = _directRoute(clip.sender!)!;
+          _logEvent(
+            'attempt ${clip.attempts}: raw request to ${clip.sender!.name} '
+            'via ${_hex(route)} (${req.missingIndices == null ? 'all' : '${req.missingIndices!.length} missing'})',
+            clip.envelope.sessionId,
+          );
           await _connector.sendFrame(
             buildSendRawDataFrame(path: route, payload: req.encode()),
             waitForGenericAck: true,
           );
         case _Method.dmRequest:
           clip.sentDmRequest = true;
+          // Make the DM flood even if we have a (possibly one-way) route, so
+          // the sender's radio learns a route back to us.
+          if (clip.sender!.pathLength >= 0) {
+            await _connector.clearContactPath(clip.sender!);
+            _logEvent(
+              'cleared route to ${clip.sender!.name} to force a flood',
+              clip.envelope.sessionId,
+            );
+          }
+          _logEvent(
+            'attempt ${clip.attempts}: VR3 DM (flood) to ${clip.sender!.name}',
+            clip.envelope.sessionId,
+          );
           await _connector.sendFrame(
             buildSendTextMsgFrame(
               clip.sender!.publicKey,
@@ -358,6 +434,10 @@ class VoxVoiceService extends ChangeNotifier {
             waitForGenericAck: true,
           );
         case _Method.channel:
+          _logEvent(
+            'attempt ${clip.attempts}: request on channel ${clip.channelIndex}',
+            clip.envelope.sessionId,
+          );
           final ok = await _connector.sendChannelDataBlobs(
             [req.encode()],
             channelIndex: clip.channelIndex!,
@@ -367,6 +447,7 @@ class VoxVoiceService extends ChangeNotifier {
           if (!ok) throw StateError('channel send failed');
       }
     } catch (e) {
+      _logEvent('attempt ${clip.attempts} send failed: $e', clip.envelope.sessionId);
       if (method != _Method.channel) clip.directFailures++;
       if (clip.attempts < _maxAttempts) {
         await _attempt(clip);
@@ -379,27 +460,36 @@ class VoxVoiceService extends ChangeNotifier {
   }
 
   Duration _waitFor(_IncomingClip clip) {
-    final hops = max(clip.sender?.pathLength ?? 3, 0);
+    final hops = max(clip.sender?.pathLength ?? 3, 0) + 1;
+    // One radio transmission of a full voice packet, plus each repeater's
+    // retransmit delay and the firmware/BLE turnaround.
+    final hopMs = _packetAir().inMilliseconds * 2 + 700;
     final perPacket = _packetGap(flood: clip.lastMethod == _Method.channel);
-    // First packet: request out + reply back. DM requests also need the
-    // route exchange (path return + reciprocal path) before the reply.
-    final base = switch (clip.lastMethod) {
-      _Method.dmRequest => 20,
-      _Method.channel => 12,
-      _ => 8,
+    // Trips before the first voice packet lands: request out + packet back.
+    // A DM request also needs path return + reciprocal path first.
+    final trips = switch (clip.lastMethod) {
+      _Method.dmRequest => 5,
+      _Method.channel => 3,
+      _ => 2,
     };
-    final wait = Duration(seconds: base + 2 * hops);
+    final wait = Duration(milliseconds: trips * hops * hopMs + 8000);
     return clip.status == VoxClipStatus.receiving ? perPacket * 3 + wait : wait;
   }
 
   void _armWatchdog(_IncomingClip clip) {
     clip.watchdog?.cancel();
-    clip.watchdog = Timer(_waitFor(clip), () => _onWatchdog(clip));
+    final wait = _waitFor(clip);
+    clip.watchdog = Timer(wait, () => _onWatchdog(clip));
   }
 
   Future<void> _onWatchdog(_IncomingClip clip) async {
     if (clip.isComplete) return;
     final progressed = clip.packets.length > clip.packetsAtLastAttempt;
+    _logEvent(
+      'timeout after ${clip.lastMethod?.name}: '
+      '${clip.packets.length}/${clip.envelope.totalPackets} packets',
+      clip.envelope.sessionId,
+    );
     if (!progressed && clip.lastMethod != _Method.channel) {
       clip.directFailures++;
     }
@@ -439,7 +529,22 @@ class VoxVoiceService extends ChangeNotifier {
     if (frame.isEmpty) return;
     if (frame[0] == pushCodeRawData) {
       final push = RawDataPush.tryParse(frame);
-      if (push != null) _onPayload(push.payload, channelIndex: null);
+      if (push != null) {
+        final p = push.payload;
+        final sid = p.length >= 5 ? voxSessionIdFromBytes(p, 1) : '';
+        final what = p.isEmpty
+            ? 'empty'
+            : p[0] == voxVoicePacketMagic
+            ? 'voice packet #${p.length > 5 ? p[5] : '?'}'
+            : p[0] == voxVoiceFetchMagic
+            ? 'fetch request'
+            : 'other (0x${p[0].toRadixString(16)})';
+        _logEvent(
+          'raw rx $what, ${p.length}B, SNR ${push.snr} RSSI ${push.rssi}',
+          sid,
+        );
+        _onPayload(push.payload, channelIndex: null);
+      }
     } else if (frame[0] == respCodeChannelDataRecv) {
       final parsed = parseChannelDataFrame(frame);
       if (parsed != null && parsed.dataType == voxChannelDataType) {
@@ -472,6 +577,12 @@ class VoxVoiceService extends ChangeNotifier {
   bool _onControlText(String senderKeyHex, String text) {
     if (!VoxVoiceTextRequest.looksLikeRequest(text)) return false;
     final req = VoxVoiceTextRequest.tryParse(text);
+    _logEvent(
+      req == null
+          ? 'VR3 DM from ${senderKeyHex.substring(0, 12)} could not be parsed'
+          : 'VR3 DM request from ${req.requesterKey6}',
+      req?.sessionId ?? '',
+    );
     if (req != null) _queueServe(req, viaChannel: null, waitForRoute: true);
     return true; // never show VR3 control messages in the chat
   }
@@ -542,6 +653,7 @@ class VoxVoiceService extends ChangeNotifier {
     final last = _recentServes[key];
     final now = DateTime.now();
     if (last != null && now.difference(last) < const Duration(seconds: 6)) {
+      _logEvent('ignoring duplicate request from $key', req.sessionId);
       return; // duplicate while we are already answering it
     }
     _recentServes[key] = now;
@@ -558,7 +670,10 @@ class VoxVoiceService extends ChangeNotifier {
     int? viaChannel,
     bool waitForRoute,
   ) async {
-    if (!await _loadFromStore(req.sessionId)) return;
+    if (!await _loadFromStore(req.sessionId)) {
+      _logEvent('asked for a clip we do not have', req.sessionId);
+      return;
+    }
     final bits = _bits[req.sessionId]!;
     final mode = _modes[req.sessionId]!;
     final wanted = req.missingIndices?.toSet();
@@ -569,6 +684,10 @@ class VoxVoiceService extends ChangeNotifier {
     if (packets.isEmpty) return;
 
     if (viaChannel != null) {
+      _logEvent(
+        'serving ${packets.length} packets on channel $viaChannel',
+        req.sessionId,
+      );
       await _connector.sendChannelDataBlobs(
         [for (final p in packets) p.encode()],
         channelIndex: viaChannel,
@@ -591,7 +710,23 @@ class VoxVoiceService extends ChangeNotifier {
       if (route != null || DateTime.now().isAfter(deadline)) break;
       await Future<void>.delayed(const Duration(milliseconds: 500));
     }
-    if (route == null) return;
+    if (route == null) {
+      final requester = _contactByKey6(req.requesterKey6);
+      _logEvent(
+        requester == null
+            ? 'cannot answer ${req.requesterKey6}: not in contacts'
+            : requester.pathHashWidth != 1
+            ? 'cannot answer ${requester.name}: ${requester.pathHashWidth}-byte path hashes are not supported for raw data'
+            : 'cannot answer ${requester.name}: no direct route back '
+                  '(waited ${waitForRoute ? 25 : 3}s)',
+        req.sessionId,
+      );
+      return;
+    }
+    _logEvent(
+      'serving ${packets.length} packets to ${req.requesterKey6} via ${_hex(route)}',
+      req.sessionId,
+    );
     for (var i = 0; i < packets.length; i++) {
       if (!_connector.isConnected) return;
       if (i > 0) await Future<void>.delayed(_packetGap(flood: false));
@@ -600,10 +735,12 @@ class VoxVoiceService extends ChangeNotifier {
           buildSendRawDataFrame(path: route, payload: packets[i].encode()),
           waitForGenericAck: true,
         );
-      } catch (_) {
+      } catch (e) {
+        _logEvent('serve stopped at packet $i: $e', req.sessionId);
         return;
       }
     }
+    _logEvent('served all ${packets.length} packets', req.sessionId);
   }
 
   // ---------------------------------------------------------------- routing
@@ -622,21 +759,25 @@ class VoxVoiceService extends ChangeNotifier {
     return Uint8List.fromList(c.path.sublist(0, c.pathLength));
   }
 
-  /// Pause between voice packets so we do not talk over our own relays.
-  Duration _packetGap({required bool flood}) {
+  /// Airtime of one full voice packet with the radio's current settings.
+  Duration _packetAir() {
     final sf = _connector.currentSf;
     final bwHz = _connector.currentBwHz;
-    final cr = _connector.currentCr;
     if (sf == null || bwHz == null || bwHz <= 0) {
-      return Duration(milliseconds: flood ? 2500 : 1500);
+      return const Duration(milliseconds: 1200);
     }
-    final air = voxEstimateAirtime(
+    return voxEstimateAirtime(
       totalPackets: 1,
       codecBytesPerPacket: voxMaxCodecBytesPerPacket,
       spreadingFactor: sf,
       bandwidthKhz: bwHz / 1000,
-      codingRate: cr ?? 5,
+      codingRate: _connector.currentCr ?? 5,
     );
+  }
+
+  /// Pause between voice packets so we do not talk over our own relays.
+  Duration _packetGap({required bool flood}) {
+    final air = _packetAir();
     // Direct: one packet of airtime plus a relay hop. Flood: leave room for
     // several repeaters to rebroadcast before the next packet.
     final factor = flood ? 4 : 2;

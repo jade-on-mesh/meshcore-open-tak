@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../connector/meshcore_connector.dart';
@@ -211,9 +212,67 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
                 ],
               ),
             ),
+            IconButton(
+              icon: Icon(Icons.info_outline, size: 18, color: meta),
+              tooltip: 'Voice diagnostics',
+              visualDensity: VisualDensity.compact,
+              onPressed: () => showVoxVoiceLog(context, s),
+            ),
           ],
         ),
       ),
     );
   }
+}
+
+/// Shows VOX's voice diagnostic log with a copy button.
+void showVoxVoiceLog(BuildContext context, VoxVoiceService service) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    builder: (context) {
+      final lines = [
+        service.radioSummary(),
+        ...service.log.reversed.map((e) => e.toString()),
+      ];
+      final text = lines.join('\n');
+      return SafeArea(
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: Column(
+            children: [
+              ListTile(
+                title: const Text('Voice diagnostics'),
+                subtitle: const Text('Newest first. Copy and share when reporting a problem.'),
+                trailing: IconButton(
+                  icon: const Icon(Icons.copy),
+                  tooltip: 'Copy',
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: text));
+                    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                      const SnackBar(content: Text('Copied')),
+                    );
+                  },
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: lines.length,
+                  itemBuilder: (_, i) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: SelectableText(
+                      lines[i],
+                      style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }
