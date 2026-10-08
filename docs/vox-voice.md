@@ -83,6 +83,24 @@ is 162 bytes on the raw-data plane.
 - **Channel senders** are matched to contacts by name (case and emoji
   variation selectors ignored).
 
+## Testing: force voice through repeaters
+
+Two devices on a desk will always talk directly. To exercise real repeater
+paths, open **Voice settings** (record sheet) or the ⓘ on any voice bubble
+and turn on **Force voice through repeaters**, then pick one or more repeaters
+in order.
+
+- Requests are sent with that path; replies use the reverse order. This
+  works because a radio drops a direct packet that isn't addressed to it as
+  the next hop, so the listener only accepts the copy the last repeater
+  re-sends.
+- While it's on, every fetch uses raw data along the forced path. The DM and
+  channel fallbacks are skipped, and the sender doesn't even need to be a
+  contact.
+- Turn it on, with the same repeaters, on **both** devices: the sender uses
+  its own setting to reply.
+- The diagnostics log marks these transfers `(FORCED)`, with the path bytes.
+
 ## Not yet implemented
 
 - SAR's swarm recovery (`0x6d`); the channel fallback covers a similar need

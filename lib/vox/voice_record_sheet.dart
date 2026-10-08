@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:record/record.dart';
 
 import 'voice_codec.dart';
+import 'voice_message_bubble.dart' show showVoxVoiceLog;
 import 'voice_service.dart';
 import 'voice_wire.dart';
 import 'wav.dart';
@@ -177,7 +178,31 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
               style: Theme.of(context).textTheme.bodySmall,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 20),
+            Builder(
+              builder: (context) {
+                final voice = context.watch<VoxVoiceService>();
+                return Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  children: [
+                    if (voice.forcedRoute != null)
+                      Chip(
+                        avatar: const Icon(Icons.alt_route, size: 16),
+                        label: Text(
+                          'Testing: forced via ${voice.forcedRouteLabel()}',
+                        ),
+                      ),
+                    TextButton.icon(
+                      icon: const Icon(Icons.tune, size: 18),
+                      label: const Text('Voice settings'),
+                      onPressed: () => showVoxVoiceLog(context, voice),
+                    ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 12),
             Text(
               recording
                   ? '${_fmt(_elapsed)} / ${_fmt(_max)}'

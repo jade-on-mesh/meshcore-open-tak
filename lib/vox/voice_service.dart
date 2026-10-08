@@ -18,6 +18,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
@@ -104,6 +105,80 @@ class VoxVoiceService extends ChangeNotifier {
     : _store = store ?? VoxClipStore() {
     _sub = _connector.receivedFrames.listen(_onFrame);
     _connector.voxControlTextInterceptor = _onControlText;
+    unawaited(_loadTestSettings());
+  }
+
+  // ------------------------------------------------- testing: forced route
+
+  static const _kForceRoute = 'vox_force_repeater_route';
+  static const _kForceRouteKeys = 'vox_force_repeater_keys';
+
+  bool _forceRepeaterRoute = false;
+  List<String> _forcedRepeaterKeys = const [];
+
+  /// Testing aid: send all voice raw data along [forcedRepeaterKeys] even
+  /// when the two radios can hear each other directly.
+  bool get forceRepeaterRoute => _forceRepeaterRoute;
+
+  /// Public keys (hex) of the repeaters to route through, in order from the
+  /// requester to the sender. Replies use the reverse order.
+  List<String> get forcedRepeaterKeys => _forcedRepeaterKeys;
+
+  /// The forced route as path bytes, or null when the toggle is off/empty.
+  Uint8List? get forcedRoute {
+    if (!_forceRepeaterRoute || _forcedRepeaterKeys.isEmpty) return null;
+    return Uint8List.fromList([
+      for (final k in _forcedRepeaterKeys) int.parse(k.substring(0, 2), radix: 16),
+    ]);
+  }
+
+  /// Names for the forced route, for display ("Hilltop → Ridge").
+  String forcedRouteLabel() => _forcedRepeaterKeys
+      .map((k) {
+        for (final c in _connector.contacts) {
+          if (c.publicKeyHex == k) return c.name;
+        }
+        return k.substring(0, 2);
+      })
+      .join(' → ');
+
+  Future<void> _loadTestSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _forceRepeaterRoute = prefs.getBool(_kForceRoute) ?? false;
+      _forcedRepeaterKeys = prefs.getStringList(_kForceRouteKeys) ?? const [];
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> setForceRepeaterRoute(bool enabled, List<String> keys) async {
+    _forceRepeaterRoute = enabled;
+    _forcedRepeaterKeys = List.unmodifiable(keys);
+    _logEvent(
+      enabled && keys.isNotEmpty
+          ? 'testing: forcing voice via ${forcedRouteLabel()} (${_hex(forcedRoute!)})'
+          : 'testing: forced repeater route off',
+    );
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kForceRoute, enabled);
+      await prefs.setStringList(_kForceRouteKeys, keys);
+    } catch (_) {}
+  }
+
+  /// Repeaters and room servers known to the radio, nearest first.
+  List<Contact> get repeaterCandidates {
+    final list = [
+      for (final c in _connector.contacts)
+        if (c.type == advTypeRepeater || c.type == advTypeRoom) c,
+    ];
+    int hops(Contact c) => c.pathLength < 0 ? 99 : c.pathLength;
+    list.sort((a, b) {
+      final h = hops(a).compareTo(hops(b));
+      return h != 0 ? h : a.name.compareTo(b.name);
+    });
+    return list;
   }
 
   /// Longest clip VOX will record. 20 s at 1200 bps is 20 packets.
@@ -342,6 +417,7 @@ class VoxVoiceService extends ChangeNotifier {
   }
 
   _Method? _chooseMethod(_IncomingClip clip) {
+    if (forcedRoute != null) return _Method.direct;
     final sender = clip.sender;
     final route = sender == null ? null : _directRoute(sender);
     final canChannel =
@@ -393,7 +469,10 @@ class VoxVoiceService extends ChangeNotifier {
     );
     clip.status = VoxClipStatus.requesting;
     clip.message = switch (method) {
-      _Method.direct => 'Requesting from ${clip.sender?.name ?? 'sender'}…',
+      _Method.direct =>
+        forcedRoute != null
+            ? 'Requesting via ${forcedRouteLabel()} (forced)…'
+            : 'Requesting from ${clip.sender?.name ?? 'sender'}…',
       _Method.dmRequest => 'Finding a route to ${clip.sender?.name}…',
       _Method.channel => 'Requesting on the channel…',
     };
@@ -401,10 +480,11 @@ class VoxVoiceService extends ChangeNotifier {
     try {
       switch (method) {
         case _Method.direct:
-          final route = _directRoute(clip.sender!)!;
+          final forced = forcedRoute;
+          final route = forced ?? _directRoute(clip.sender!)!;
           _logEvent(
-            'attempt ${clip.attempts}: raw request to ${clip.sender!.name} '
-            'via ${_hex(route)} (${req.missingIndices == null ? 'all' : '${req.missingIndices!.length} missing'})',
+            'attempt ${clip.attempts}: raw request to ${clip.sender?.name ?? 'sender'} '
+            'via ${_hex(route)}${forced != null ? ' (FORCED)' : ''} (${req.missingIndices == null ? 'all' : '${req.missingIndices!.length} missing'})',
             clip.envelope.sessionId,
           );
           await _connector.sendFrame(
@@ -460,7 +540,8 @@ class VoxVoiceService extends ChangeNotifier {
   }
 
   Duration _waitFor(_IncomingClip clip) {
-    final hops = max(clip.sender?.pathLength ?? 3, 0) + 1;
+    final hops =
+        (forcedRoute?.length ?? max(clip.sender?.pathLength ?? 3, 0)) + 1;
     // One radio transmission of a full voice packet, plus each repeater's
     // retransmit delay and the firmware/BLE turnaround.
     final hopMs = _packetAir().inMilliseconds * 2 + 700;
@@ -566,6 +647,10 @@ class VoxVoiceService extends ChangeNotifier {
       case voxVoiceFetchMagic:
         final req = VoxVoiceFetchRequest.tryParse(payload);
         if (req == null) return;
+        final self = _connector.selfPublicKey;
+        if (self != null && req.requesterKey6 == voxKey6Hex(self)) {
+          return; // our own request, heard back from a repeater
+        }
         if (channelIndex != null) {
           _onChannelRequest(req, channelIndex);
         } else {
@@ -703,8 +788,11 @@ class VoxVoiceService extends ChangeNotifier {
     final deadline = DateTime.now().add(
       waitForRoute ? const Duration(seconds: 25) : const Duration(seconds: 3),
     );
-    Uint8List? route;
-    while (true) {
+    final forced = forcedRoute;
+    Uint8List? route = forced == null
+        ? null
+        : Uint8List.fromList(forced.reversed.toList());
+    while (route == null) {
       final requester = _contactByKey6(req.requesterKey6);
       route = requester == null ? null : _directRoute(requester);
       if (route != null || DateTime.now().isAfter(deadline)) break;
@@ -724,7 +812,8 @@ class VoxVoiceService extends ChangeNotifier {
       return;
     }
     _logEvent(
-      'serving ${packets.length} packets to ${req.requesterKey6} via ${_hex(route)}',
+      'serving ${packets.length} packets to ${req.requesterKey6} via ${_hex(route)}'
+      '${forced != null ? ' (FORCED)' : ''}',
       req.sessionId,
     );
     for (var i = 0; i < packets.length; i++) {

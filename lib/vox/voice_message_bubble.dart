@@ -256,6 +256,8 @@ void showVoxVoiceLog(BuildContext context, VoxVoiceService service) {
                 ),
               ),
               const Divider(height: 1),
+              VoxForcedRouteTile(service: service),
+              const Divider(height: 1),
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.all(12),
@@ -274,5 +276,142 @@ void showVoxVoiceLog(BuildContext context, VoxVoiceService service) {
         ),
       );
     },
+  );
+}
+
+/// Testing toggle: force voice raw data through chosen repeaters.
+class VoxForcedRouteTile extends StatelessWidget {
+  final VoxVoiceService service;
+  const VoxForcedRouteTile({super.key, required this.service});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: service,
+      builder: (context, _) {
+        final keys = service.forcedRepeaterKeys;
+        final on = service.forceRepeaterRoute && keys.isNotEmpty;
+        return SwitchListTile(
+          title: const Text('Force voice through repeaters'),
+          subtitle: Text(
+            keys.isEmpty
+                ? 'Testing only. Pick repeaters to route voice through, even '
+                      'when the other device is in direct range.'
+                : '${on ? 'On' : 'Off'} · via ${service.forcedRouteLabel()}'
+                      ' · tap to change. Enable on both devices.',
+          ),
+          value: on,
+          onChanged: (v) async {
+            if (v && keys.isEmpty) {
+              final picked = await pickVoxRepeaters(context, service);
+              if (picked != null && picked.isNotEmpty) {
+                await service.setForceRepeaterRoute(true, picked);
+              }
+            } else {
+              await service.setForceRepeaterRoute(v, keys);
+            }
+          },
+          secondary: IconButton(
+            icon: const Icon(Icons.alt_route),
+            tooltip: 'Choose repeaters',
+            onPressed: () async {
+              final picked = await pickVoxRepeaters(context, service);
+              if (picked != null) {
+                await service.setForceRepeaterRoute(
+                  picked.isNotEmpty,
+                  picked,
+                );
+              }
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Lets the user pick repeaters in route order (tap order). Returns the
+/// selected public keys, or null if cancelled.
+Future<List<String>?> pickVoxRepeaters(
+  BuildContext context,
+  VoxVoiceService service,
+) {
+  final candidates = service.repeaterCandidates;
+  final selected = [...service.forcedRepeaterKeys];
+  return showDialog<List<String>>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        title: const Text('Route voice via'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: candidates.isEmpty
+              ? const Text(
+                  'No repeaters in your contacts yet. Add a nearby repeater '
+                  'from its advert first.',
+                )
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Tap repeaters in order, starting from the one nearest '
+                      'the listener. One nearby repeater is usually enough. '
+                      'Replies use the reverse order.',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    const SizedBox(height: 8),
+                    Flexible(
+                      child: ListView(
+                        shrinkWrap: true,
+                        children: [
+                          for (final c in candidates)
+                            CheckboxListTile(
+                              dense: true,
+                              value: selected.contains(c.publicKeyHex),
+                              title: Text(c.name),
+                              subtitle: Text(
+                                'hash ${c.publicKeyHex.substring(0, 2)} · '
+                                '${c.pathLength < 0 ? 'no route' : c.pathLength == 0 ? 'direct neighbour' : '${c.pathLength} hops'}',
+                              ),
+                              secondary: selected.contains(c.publicKeyHex)
+                                  ? CircleAvatar(
+                                      radius: 12,
+                                      child: Text(
+                                        '${selected.indexOf(c.publicKeyHex) + 1}',
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                    )
+                                  : null,
+                              onChanged: (v) => setState(() {
+                                if (v == true) {
+                                  selected.add(c.publicKeyHex);
+                                } else {
+                                  selected.remove(c.publicKeyHex);
+                                }
+                              }),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, const <String>[]),
+            child: const Text('Clear'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, selected),
+            child: const Text('Use route'),
+          ),
+        ],
+      ),
+    ),
   );
 }
