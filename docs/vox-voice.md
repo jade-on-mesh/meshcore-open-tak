@@ -59,22 +59,33 @@ is 162 bytes on the raw-data plane.
 
 ## Behaviour
 
-- **Sending.** Encode, packetize, cache for 15 minutes, send only the envelope.
-- **Listening.** Tap the bubble. The app sends a fetch request (all packets
-  first, then only missing ones). A watchdog re-requests twice if packets stop
-  arriving. When the clip completes it auto-plays and is saved, so it replays
-  offline.
-- **Serving.** Requests are deduplicated (5 s) and served one at a time,
-  paced at roughly 2× a packet's airtime for the current radio settings
-  (minimum 400 ms). Clips we have fully received can be served onward too.
-- **Channels.** Channel messages carry only a sender name, so the bubble
-  resolves the sender to a chat contact by name. If the sender is not a
-  contact, the bubble says so.
+- **Sending.** Encode, packetize, save the clip on the phone (it survives
+  restarts), send only the envelope.
+- **Listening.** Tap the bubble. The app picks the cheapest transport that can
+  work and escalates on timeouts (up to 5 attempts):
+  1. **Direct**: the sender is a contact with a known route, so a binary
+     fetch request goes over raw data and the packets come back the same way.
+  2. **`VR3:` DM**: the sender is a contact but there's no route. A silent
+     text request (`VR3:{sid}:{a|m<ranges>}:{key6}`, SAR's text form) is
+     flooded as a DM. Its ACK path exchange gives both radios a direct
+     route, and the sender replies over raw data. VR3 DMs are never shown in
+     the chat.
+  3. **Channel fallback**: the sender isn't a contact (channel messages only
+     carry a name), or direct attempts failed. The binary request and the
+     packets are flooded as GRP_DATA (data type `0x5643`) on the channel the
+     envelope was posted in. Every VOX listener on that channel keeps the
+     packets, so one transfer serves everyone who taps the clip. The original
+     sender answers at once; anyone else holding the clip only answers if
+     nobody has started within 5 to 8 s. Needs companion firmware with channel
+     data (v1.15+).
+- **Pacing.** Direct packets are about 2× a packet's airtime apart, and channel
+  packets about 4× (min 400 ms / 800 ms), based on the radio's current SF/BW/CR.
+- **Channel senders** are matched to contacts by name (case and emoji
+  variation selectors ignored).
 
 ## Not yet implemented
 
-- SAR's swarm recovery (`0x6d` requests to other peers for missing packets)
-- Serving outgoing clips again after an app restart
+- SAR's swarm recovery (`0x6d`); the channel fallback covers a similar need
 - Raw data over multi-byte path hashes (firmware limitation)
 - Desktop: Linux needs a system `libcodec2`; macOS and Windows don't ship
   Codec2 yet, so voice is hidden there

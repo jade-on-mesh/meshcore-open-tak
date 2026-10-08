@@ -755,6 +755,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                             envelope: voxEnvelope,
                             isOutgoing: isOutgoing,
                             textColor: textColor,
+                            channelIndex: widget.channel.index,
                             sender: isOutgoing
                                 ? null
                                 : context.read<VoxVoiceService>().contactByName(

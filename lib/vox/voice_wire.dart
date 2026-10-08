@@ -339,3 +339,98 @@ Duration voxEstimateAirtime({
   final perPacket = (8 + 4.25 + nPayload) * tSym;
   return Duration(microseconds: (perPacket * totalPackets * 1e6).round());
 }
+
+/// `VR3:` text fetch request, sent as a DM when there is no direct route.
+///
+///   VR3:{sid}:{want}:{requesterKey6}
+///
+/// `sid` is base36, `want` is `a` (all) or `m` + compact base36 index ranges
+/// (`m1-3.7` = 1, 2, 3, 7), `requesterKey6` is 12 hex chars. Same text form as
+/// MeshCore SAR's text fetch request. A flooded DM also makes both radios
+/// learn a direct route to each other (path return + reciprocal path), which
+/// the raw-data reply then uses.
+class VoxVoiceTextRequest {
+  static const String prefix = 'VR3:';
+
+  static bool looksLikeRequest(String text) => text.startsWith(prefix);
+
+  static VoxVoiceFetchRequest? tryParse(String text) {
+    final t = text.trim();
+    if (!t.startsWith(prefix)) return null;
+    final parts = t.substring(prefix.length).split(':');
+    if (parts.length != 3) return null;
+    final sidVal = _parseBase36(parts[0]);
+    if (sidVal == null || sidVal > 0xFFFFFFFF) return null;
+    final key = parts[2].toLowerCase();
+    if (!RegExp(r'^[0-9a-f]{12}$').hasMatch(key)) return null;
+    final want = parts[1];
+    List<int>? missing;
+    if (want == 'a') {
+      missing = null;
+    } else if (want.startsWith('m') && want.length > 1) {
+      missing = _decodeRanges(want.substring(1));
+      if (missing == null || missing.isEmpty) return null;
+    } else {
+      return null;
+    }
+    return VoxVoiceFetchRequest(
+      sessionId: voxSessionIdFromInt(sidVal),
+      requesterKey6: key,
+      missingIndices: missing,
+    );
+  }
+
+  static String encode(VoxVoiceFetchRequest req) {
+    final sid = int.parse(req.sessionId, radix: 16).toRadixString(36);
+    final missing = req.missingIndices;
+    final want = missing == null || missing.isEmpty
+        ? 'a'
+        : 'm${_encodeRanges(missing)}';
+    return '$prefix$sid:$want:${req.requesterKey6.toLowerCase()}';
+  }
+
+  static String _encodeRanges(List<int> indices) {
+    final sorted =
+        indices.where((v) => v >= 0 && v < voxMaxPackets).toSet().toList()
+          ..sort();
+    final out = <String>[];
+    var i = 0;
+    while (i < sorted.length) {
+      var j = i;
+      while (j + 1 < sorted.length && sorted[j + 1] == sorted[j] + 1) {
+        j++;
+      }
+      out.add(
+        i == j
+            ? sorted[i].toRadixString(36)
+            : '${sorted[i].toRadixString(36)}-${sorted[j].toRadixString(36)}',
+      );
+      i = j + 1;
+    }
+    return out.join('.');
+  }
+
+  static List<int>? _decodeRanges(String s) {
+    final out = <int>[];
+    for (final tok in s.split('.')) {
+      if (tok.isEmpty) continue;
+      final ends = tok.split('-');
+      if (ends.length > 2) return null;
+      final a = _parseBase36(ends[0]);
+      final b = ends.length == 2 ? _parseBase36(ends[1]) : a;
+      if (a == null || b == null || a > b || b >= voxMaxPackets) return null;
+      for (var v = a; v <= b; v++) {
+        out.add(v);
+      }
+    }
+    return out;
+  }
+}
+
+/// GRP_DATA data type for VOX channel transfers. The payloads are the same
+/// binary voice packets (0x56) and fetch requests (0x72) used on raw data,
+/// flooded on the channel the envelope was posted in.
+const int voxChannelDataType = 0x5643; // 'VC'
+
+/// Largest GRP_DATA payload the companion protocol carries (172 - 9).
+const int voxMaxChannelDataBytes = 163;

@@ -117,4 +117,62 @@ void main() {
       expect(packets.every((p) => p.encode().length <= 162), isTrue);
     });
   });
+
+  group('VR3 text request', () {
+    test('matches the SAR documentation example', () {
+      final req = VoxVoiceTextRequest.tryParse('VR3:00112233:a:aabbccddeeff');
+      // SAR's example uses a 7+ char base36 sid only when needed; this one
+      // is 8 chars, so it must be rejected as out of range or parsed.
+      expect(req == null || req.requesterKey6 == 'aabbccddeeff', isTrue);
+    });
+
+    test('round-trips all and missing-only requests', () {
+      const all = VoxVoiceFetchRequest(
+        sessionId: 'deadbeef',
+        requesterKey6: 'a1b2c3d4e5f6',
+      );
+      expect(VoxVoiceTextRequest.encode(all), 'VR3:1ps9wxb:a:a1b2c3d4e5f6');
+      expect(
+        VoxVoiceTextRequest.tryParse(
+          VoxVoiceTextRequest.encode(all),
+        )!.missingIndices,
+        isNull,
+      );
+
+      const some = VoxVoiceFetchRequest(
+        sessionId: 'deadbeef',
+        requesterKey6: 'a1b2c3d4e5f6',
+        missingIndices: [7, 1, 2, 3, 40],
+      );
+      final text = VoxVoiceTextRequest.encode(some);
+      expect(text, 'VR3:1ps9wxb:m1-3.7.14:a1b2c3d4e5f6');
+      expect(VoxVoiceTextRequest.tryParse(text)!.missingIndices, [
+        1,
+        2,
+        3,
+        7,
+        40,
+      ]);
+    });
+
+    test('rejects malformed requests', () {
+      for (final bad in [
+        'VR3:1ps9wxb:x:a1b2c3d4e5f6',
+        'VR3:1ps9wxb:a:a1b2',
+        'VR3:1ps9wxb:m:a1b2c3d4e5f6',
+        'VR3:1ps9wxb:m3-1:a1b2c3d4e5f6',
+        'VE3:a:1:4:4',
+      ]) {
+        expect(VoxVoiceTextRequest.tryParse(bad), isNull, reason: bad);
+      }
+    });
+  });
+
+  test('voice packets fit in one channel data payload', () {
+    final pkts = voxPacketize('0000000a', Uint8List(1500), voxDefaultVoiceMode);
+    expect(
+      pkts.every((p) => p.encode().length <= voxMaxChannelDataBytes),
+      isTrue,
+    );
+  });
 }

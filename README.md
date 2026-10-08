@@ -22,7 +22,7 @@ VOX runs on stock MeshCore companion firmware. No firmware changes are needed.
 
 Audio is therefore only transmitted to people who actually want to hear it, which keeps channel airtime sane. Details: [docs/vox-voice.md](docs/vox-voice.md).
 
-**Requirements and limits:** both sides need a *direct* route to each other (exchange a message first). The firmware cannot flood raw data, and multi-byte path hashes are not supported for raw data yet. Senders serve a clip for 15 minutes after sending. Please be mindful of duty-cycle limits on shared regional meshes.
+If there's no direct route, VOX sets one up with a silent DM. In channels, where the sender may not be a contact, the request and audio are flooded on the channel instead, and everyone on the channel who taps the clip gets it from that one transfer. Channel fallback needs companion firmware v1.15+; direct transfer over multi-byte path hashes isn't supported yet. Please be mindful of duty-cycle limits on shared regional meshes.
 
 ### Licensing
 

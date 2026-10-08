@@ -512,6 +512,10 @@ class MeshCoreConnector extends ChangeNotifier {
   bool get isLoadingChannels => _isLoadingChannels;
   bool get hasLoadedChannels => _hasLoadedChannels;
   Stream<Uint8List> get receivedFrames => _receivedFramesController.stream;
+
+  /// MeshCore Open VOX: returns true to swallow an incoming DM (by sender key
+  /// hex and text) before it is stored or notified.
+  bool Function(String senderKeyHex, String text)? voxControlTextInterceptor;
   Uint8List? get selfPublicKey => _selfPublicKey;
   String get selfPublicKeyHex => pubKeyToHex(_selfPublicKey ?? Uint8List(0));
 
@@ -4200,6 +4204,22 @@ class MeshCoreConnector extends ChangeNotifier {
     required int channelIndex,
     required Duration interChunkDelay,
     void Function(int sent, int total)? onProgress,
+  }) => sendChannelDataBlobs(
+    blobs,
+    channelIndex: channelIndex,
+    dataType: dataTypeAeicImage,
+    interChunkDelay: interChunkDelay,
+    onProgress: onProgress,
+  );
+
+  /// Sends [blobs] as GRP_DATA packets of [dataType] on [channelIndex], with
+  /// the same pacing, collision avoidance and region scoping as images.
+  Future<bool> sendChannelDataBlobs(
+    List<Uint8List> blobs, {
+    required int channelIndex,
+    required int dataType,
+    required Duration interChunkDelay,
+    void Function(int sent, int total)? onProgress,
   }) async {
     if (blobs.isEmpty) return false;
     if (!supportsChannelData) return false;
@@ -4222,7 +4242,7 @@ class MeshCoreConnector extends ChangeNotifier {
         await _sendFrameAndWaitForCommandAck(
           buildSendChannelDataFrame(
             channelIndex: channelIndex,
-            dataType: dataTypeAeicImage,
+            dataType: dataType,
             payload: blobs[i],
             pathLen: outPathUnknown, // 0xFF => flood
           ),
@@ -5860,6 +5880,14 @@ class MeshCoreConnector extends ChangeNotifier {
           message.senderKeyHex == pubKeyToHex(_selfPublicKey!) &&
           (message.pathLength == null || message.pathLength == 0)) {
         debugPrint('Ignoring direct message from self');
+        return;
+      }
+
+      // MeshCore Open VOX: control DMs (e.g. VR3 voice fetch requests) are
+      // consumed here and never shown in the chat or notified.
+      if (!message.isOutgoing &&
+          (voxControlTextInterceptor?.call(message.senderKeyHex, message.text) ??
+              false)) {
         return;
       }
 

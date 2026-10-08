@@ -18,6 +18,10 @@ class VoxVoiceMessageContent extends StatefulWidget {
   /// The contact to fetch audio from (DM partner, or channel sender resolved
   /// by name). Null for outgoing clips or unknown senders.
   final Contact? sender;
+
+  /// Channel the envelope was posted in (null for DMs). Enables the
+  /// channel fallback when the sender cannot be reached directly.
+  final int? channelIndex;
   final Color textColor;
 
   const VoxVoiceMessageContent({
@@ -26,6 +30,7 @@ class VoxVoiceMessageContent extends StatefulWidget {
     required this.isOutgoing,
     required this.textColor,
     this.sender,
+    this.channelIndex,
   });
 
   @override
@@ -46,7 +51,13 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
       _service?.removeListener(_onServiceChanged);
       _service = s;
       _service?.addListener(_onServiceChanged);
-      unawaited(_service?.warmUp(widget.envelope));
+      unawaited(
+        _service?.warmUp(
+          widget.envelope,
+          sender: widget.sender,
+          channelIndex: widget.channelIndex,
+        ),
+      );
     }
   }
 
@@ -93,7 +104,11 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
       return;
     }
     _playWhenReady = true;
-    await s.requestClip(widget.envelope, widget.sender);
+    await s.requestClip(
+      widget.envelope,
+      sender: widget.sender,
+      channelIndex: widget.channelIndex,
+    );
   }
 
   @override
@@ -153,7 +168,7 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
             ? '${env.durationSeconds}s · waiting for listeners'
             : '${env.durationSeconds}s · tap to download'
                   '${airHint == null ? '' : ' ($airHint)'}',
-      VoxClipStatus.requesting => 'Requesting from sender…',
+      VoxClipStatus.requesting => st.message ?? 'Requesting…',
       VoxClipStatus.receiving => 'Receiving ${st.received}/${st.total}',
       VoxClipStatus.unavailable => st.message ?? 'Voice unavailable right now',
     };
