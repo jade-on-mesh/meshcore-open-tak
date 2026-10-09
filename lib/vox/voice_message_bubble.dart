@@ -231,57 +231,102 @@ void showVoxVoiceLog(BuildContext context, VoxVoiceService service) {
     context: context,
     isScrollControlled: true,
     builder: (context) {
-      final lines = [
-        service.radioSummary(),
-        ...service.log.reversed.map((e) => e.toString()),
-      ];
-      final text = lines.join('\n');
       return SafeArea(
         child: SizedBox(
-          height: MediaQuery.of(context).size.height * 0.7,
-          child: Column(
-            children: [
-              ListTile(
-                title: const Text('Voice diagnostics'),
-                subtitle: const Text(
-                  'Newest first. Copy and share when reporting a problem.',
-                ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.copy),
-                  tooltip: 'Copy',
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: text));
-                    ScaffoldMessenger.maybeOf(
-                      context,
-                    )?.showSnackBar(const SnackBar(content: Text('Copied')));
-                  },
-                ),
-              ),
-              const Divider(height: 1),
-              VoxForcedRouteTile(service: service),
-              const Divider(height: 1),
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(12),
-                  itemCount: lines.length,
-                  itemBuilder: (_, i) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: SelectableText(
-                      lines[i],
-                      style: const TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 11,
+          height: MediaQuery.of(context).size.height * 0.8,
+          child: ValueListenableBuilder<int>(
+            valueListenable: service.logVersion,
+            builder: (context, _, _) {
+              final lines = [
+                service.radioSummary(),
+                ...service.log.reversed.map((e) => e.toString()),
+              ];
+              final text = lines.join('\n');
+              return Column(
+                children: [
+                  ListTile(
+                    title: const Text('Voice diagnostics'),
+                    subtitle: const Text(
+                      'Newest first. Copy and share when reporting a problem.',
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.copy),
+                      tooltip: 'Copy',
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: text));
+                        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                          const SnackBar(content: Text('Copied')),
+                        );
+                      },
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  VoxForcedRouteTile(service: service),
+                  ListTile(
+                    leading: const Icon(Icons.network_ping),
+                    title: const Text('Link test'),
+                    subtitle: const Text(
+                      'Ping a contact over raw data: no repeaters, their '
+                      'stored route, and your forced repeaters. Their app '
+                      'must be open.',
+                    ),
+                    onTap: () => _pickLinkTestTarget(context, service),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: lines.length,
+                      itemBuilder: (_, i) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: SelectableText(
+                          lines[i],
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 11,
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ),
-            ],
+                ],
+              );
+            },
           ),
         ),
       );
     },
   );
+}
+
+Future<void> _pickLinkTestTarget(
+  BuildContext context,
+  VoxVoiceService service,
+) async {
+  final contacts = service.chatContacts;
+  final picked = await showDialog<Contact>(
+    context: context,
+    builder: (context) => SimpleDialog(
+      title: const Text('Link test with'),
+      children: contacts.isEmpty
+          ? [
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('No chat contacts yet.'),
+              ),
+            ]
+          : [
+              for (final c in contacts)
+                SimpleDialogOption(
+                  onPressed: () => Navigator.pop(context, c),
+                  child: Text(
+                    '${c.name}  ·  ${c.pathLength < 0 ? 'no route' : '${c.pathLength} hops'}',
+                  ),
+                ),
+            ],
+    ),
+  );
+  if (picked != null) unawaited(service.sendLinkTest(picked));
 }
 
 /// Testing toggle: force voice raw data through chosen repeaters.

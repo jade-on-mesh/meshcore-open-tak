@@ -168,6 +168,15 @@ class VoxVoiceService extends ChangeNotifier {
     } catch (_) {}
   }
 
+  /// Chat contacts, for picking a link-test target.
+  List<Contact> get chatContacts {
+    final list = [
+      for (final c in _connector.contacts)
+        if (c.type == advTypeChat) c,
+    ]..sort((a, b) => a.name.compareTo(b.name));
+    return list;
+  }
+
   /// Repeaters and room servers known to the radio, nearest first.
   List<Contact> get repeaterCandidates {
     final list = [
@@ -210,12 +219,16 @@ class VoxVoiceService extends ChangeNotifier {
 
   final List<VoxLogEntry> _log = [];
 
+  /// Bumps on every new log line (the diagnostics sheet listens to it).
+  final ValueNotifier<int> logVersion = ValueNotifier(0);
+
   /// Recent voice events, oldest first.
   List<VoxLogEntry> get log => List.unmodifiable(_log);
 
   void _logEvent(String text, [String sid = '']) {
     _log.add(VoxLogEntry(DateTime.now(), sid, text));
     if (_log.length > 300) _log.removeRange(0, _log.length - 300);
+    logVersion.value++;
     debugPrint('VOX ${_log.last}');
   }
 
@@ -463,6 +476,15 @@ class VoxVoiceService extends ChangeNotifier {
     }
     clip.attempts++;
     clip.lastMethod = method;
+    final sc = clip.sender;
+    if (sc != null) {
+      final fresh = contactByKeyHex(sc.publicKeyHex) ?? sc;
+      _logEvent(
+        'route to ${fresh.name}: ${fresh.pathLength < 0 ? 'none (flood)' : '${fresh.pathLength} hops ${_hex(fresh.path)}'}'
+        '${fresh.pathHashWidth != 1 ? ' (${fresh.pathHashWidth}-byte hashes)' : ''}',
+        clip.envelope.sessionId,
+      );
+    }
     clip.packetsAtLastAttempt = clip.packets.length;
     final req = VoxVoiceFetchRequest(
       sessionId: clip.envelope.sessionId,
@@ -624,6 +646,10 @@ class VoxVoiceService extends ChangeNotifier {
             ? 'voice packet #${p.length > 5 ? p[5] : '?'}'
             : p[0] == voxVoiceFetchMagic
             ? 'fetch request'
+            : p[0] == _pingMagic
+            ? 'PING'
+            : p[0] == _pongMagic
+            ? 'PONG'
             : 'other (0x${p[0].toRadixString(16)})';
         _logEvent(
           'raw rx $what, ${p.length}B, SNR ${push.snr} RSSI ${push.rssi}',
@@ -649,6 +675,12 @@ class VoxVoiceService extends ChangeNotifier {
           _lastChannelPacket[pkt.sessionId] = DateTime.now();
         }
         _onPacket(pkt);
+      case _pingMagic:
+        _onPing(payload);
+        return;
+      case _pongMagic:
+        _onPong(payload);
+        return;
       case voxVoiceFetchMagic:
         final req = VoxVoiceFetchRequest.tryParse(payload);
         if (req == null) return;
@@ -877,6 +909,115 @@ class VoxVoiceService extends ChangeNotifier {
     final factor = flood ? 4 : 2;
     return Duration(
       milliseconds: max(flood ? 800 : 400, air.inMilliseconds * factor + 150),
+    );
+  }
+
+  // ------------------------------------------------------- link test (ping)
+  //
+  // VOX-only raw packets to test raw-data transport independently of voice:
+  //   ping [0x70][nonce:4][requesterKey6:6][pathLen][path...]
+  //   pong [0x50][nonce:4][responderKey6:6]
+  // The ping carries the path it was sent on; the other side replies along
+  // the reverse of that path, so no settings are needed on the receiver.
+
+  static const int _pingMagic = 0x70; // 'p'
+  static const int _pongMagic = 0x50; // 'P'
+  final Map<int, (DateTime, String)> _pingsOut = {};
+  final Map<int, DateTime> _pongsAnswered = {};
+
+  /// Routes a link test will try towards [target], labelled for the log.
+  List<(String, Uint8List)> linkTestRoutes(Contact target) {
+    final routes = <(String, Uint8List)>[('no repeaters (0 hop)', Uint8List(0))];
+    final r = _directRoute(target);
+    if (r != null && r.isNotEmpty) routes.add(('contact route', r));
+    final f = forcedRoute;
+    if (f != null) routes.add(('forced ${forcedRouteLabel()}', f));
+    return routes;
+  }
+
+  /// Sends one ping per route to [target], a few seconds apart.
+  Future<void> sendLinkTest(Contact target) async {
+    final self = _connector.selfPublicKey;
+    if (self == null || !_connector.isConnected) {
+      _logEvent('link test: not connected');
+      return;
+    }
+    _logEvent('link test to ${target.name} (${voxKey6Hex(target.publicKey)})');
+    final rng = Random();
+    for (final (label, path) in linkTestRoutes(target)) {
+      final nonce = rng.nextInt(1 << 31);
+      final b = BytesBuilder()
+        ..addByte(_pingMagic)
+        ..add([nonce >> 24 & 255, nonce >> 16 & 255, nonce >> 8 & 255, nonce & 255])
+        ..add(self.sublist(0, 6))
+        ..addByte(path.length)
+        ..add(path);
+      _pingsOut[nonce] = (DateTime.now(), label);
+      try {
+        await _connector.sendFrame(
+          buildSendRawDataFrame(path: path, payload: b.toBytes()),
+          waitForGenericAck: true,
+        );
+        _logEvent('PING sent via $label ${_hex(path)} (#${nonce.toRadixString(16)})');
+      } catch (e) {
+        _logEvent('PING via $label could not be sent: $e');
+      }
+      await Future<void>.delayed(const Duration(seconds: 4));
+    }
+    unawaited(
+      Future<void>.delayed(const Duration(seconds: 30), () {
+        final now = DateTime.now();
+        _pingsOut.removeWhere((nonce, v) {
+          final old = now.difference(v.$1) > const Duration(seconds: 25);
+          if (old) _logEvent('no PONG via ${v.$2} (#${nonce.toRadixString(16)})');
+          return old;
+        });
+      }),
+    );
+  }
+
+  int _nonceAt(List<int> p, int o) =>
+      (p[o] << 24) | (p[o + 1] << 16) | (p[o + 2] << 8) | p[o + 3];
+
+  Future<void> _onPing(Uint8List p) async {
+    if (p.length < 12) return;
+    final nonce = _nonceAt(p, 1);
+    final key6 = voxKey6Hex(p.sublist(5, 11));
+    final self = _connector.selfPublicKey;
+    if (self == null || key6 == voxKey6Hex(self)) return;
+    final n = p[11];
+    if (p.length < 12 + n) return;
+    final back = Uint8List.fromList(p.sublist(12, 12 + n).reversed.toList());
+    final last = _pongsAnswered[nonce];
+    if (last != null && DateTime.now().difference(last).inSeconds < 10) return;
+    _pongsAnswered[nonce] = DateTime.now();
+    _logEvent(
+      'PING from $key6 (sent via ${_hex(p.sublist(12, 12 + n))}); '
+      'answering via ${_hex(back)}',
+    );
+    final b = BytesBuilder()
+      ..addByte(_pongMagic)
+      ..add(p.sublist(1, 5))
+      ..add(self.sublist(0, 6));
+    try {
+      await _connector.sendFrame(
+        buildSendRawDataFrame(path: back, payload: b.toBytes()),
+        waitForGenericAck: true,
+      );
+    } catch (e) {
+      _logEvent('PONG could not be sent: $e');
+    }
+  }
+
+  void _onPong(Uint8List p) {
+    if (p.length < 11) return;
+    final nonce = _nonceAt(p, 1);
+    final sent = _pingsOut.remove(nonce);
+    if (sent == null) return;
+    final ms = DateTime.now().difference(sent.$1).inMilliseconds;
+    _logEvent(
+      'PONG from ${voxKey6Hex(p.sublist(5, 11))} via ${sent.$2}: '
+      'round trip ${ms}ms ✓',
     );
   }
 
