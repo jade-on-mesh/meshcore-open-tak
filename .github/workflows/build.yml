@@ -4,10 +4,13 @@ on:
   push:
     branches:
       - main
-  pull_request:
-  # iOS/macOS/Linux/web builds are manual (Actions tab > Build > Run workflow)
-  # to save Actions minutes; macOS runners count 10x on private repos.
   workflow_dispatch:
+
+# MeshCore Open VOX builds Android only. A newer push cancels an older,
+# still-running build so minutes aren't spent on superseded commits.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   android:
@@ -50,62 +53,3 @@ jobs:
           name: meshcore-open-vox-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30
-
-  ios:
-    runs-on: macos-latest
-    if: github.event_name == 'workflow_dispatch'
-    timeout-minutes: 40
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: "stable"
-          cache: true
-      - run: flutter pub get
-      - run: flutter build ios --release --no-codesign --no-pub
-
-  linux:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: "stable"
-          cache: true
-      - name: Install Linux build deps
-        timeout-minutes: 10
-        env:
-          DEBIAN_FRONTEND: noninteractive
-        run: |
-          sudo -E apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update
-          sudo -E apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install -y clang cmake ninja-build pkg-config libgtk-3-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
-      - run: flutter pub get
-      - run: flutter build linux --release --no-pub
-
-  macos:
-    runs-on: macos-latest
-    if: github.event_name == 'workflow_dispatch'
-    timeout-minutes: 40
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: "stable"
-          cache: true
-      - run: flutter pub get
-      - run: flutter build macos --release --no-pub
-
-  web:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: "stable"
-          cache: true
-      - run: flutter pub get
-      - run: flutter build web --release --no-pub
