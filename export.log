@@ -1,0 +1,39 @@
+[0;93m2026-10-10 05:57:13.867391221 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/350 [00:00<?, ?it/s]Loading weights: 100%|██████████| 350/350 [00:00<00:00, 18072.22it/s]
+sampling_rate=24000 frame_rate=12.5 codebook_size=2048 params=79.3M
+reference: 5.0s -> codes (1, 8, 63)
+causality: codes match after padding 98.6%
+/home/runner/work/meshcore-open-vox/meshcore-open-vox/tool/vox/mimi_export.py:97: DeprecationWarning: You are using the legacy TorchScript-based ONNX export. Starting in PyTorch 2.9, the new torch.export-based ONNX exporter has become the default. Learn more about the new export logic: https://docs.pytorch.org/docs/stable/onnx_export.html. For exporting control flow: https://pytorch.org/tutorials/beginner/onnx/export_control_flow_model_to_onnx_tutorial.html
+  torch.onnx.export(
+/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/transformers/models/mimi/modeling_mimi.py:1332: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  if channels < 1 or channels > 2:
+/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/transformers/masking_utils.py:860: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  if batch_size != position_ids.shape[0]:
+/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/transformers/masking_utils.py:606: TracerWarning: torch.tensor results are registered as constants in the trace. You can safely ignore this warning if you use this function to create tensors out of constant variables that would be the same every time you call this function. In any other case, this might cause the trace to be incorrect.
+  mask = torch.where(mask, torch.tensor(0.0, device=mask.device, dtype=dtype), min_dtype)
+/home/runner/work/meshcore-open-vox/meshcore-open-vox/tool/vox/mimi_export.py:101: DeprecationWarning: You are using the legacy TorchScript-based ONNX export. Starting in PyTorch 2.9, the new torch.export-based ONNX exporter has become the default. Learn more about the new export logic: https://docs.pytorch.org/docs/stable/onnx_export.html. For exporting control flow: https://pytorch.org/tutorials/beginner/onnx/export_control_flow_model_to_onnx_tutorial.html
+  torch.onnx.export(
+/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/transformers/models/mimi/modeling_mimi.py:1062: TracerWarning: Iterating over a tensor might cause the trace to be incorrect. Passing a tensor of different shape won't change the number of iterations executed (and might lead to errors or silently give incorrect results).
+  for i, indices in enumerate(codes):
+/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/transformers/models/mimi/modeling_mimi.py:1123: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  if codes.shape[1] > self.num_semantic_quantizers:
+export took 6s
+WARNING:root:Please consider to run pre-processing before quantization. Refer to example: https://github.com/microsoft/onnxruntime-inference-examples/blob/main/quantization/image_classification/cpu/ReadMe.md 
+WARNING:root:Please consider to run pre-processing before quantization. Refer to example: https://github.com/microsoft/onnxruntime-inference-examples/blob/main/quantization/image_classification/cpu/ReadMe.md 
+mimi_encoder.onnx: 203.0 MB
+mimi_decoder.onnx: 178.1 MB
+mimi_encoder_int8mm.onnx: 127.9 MB
+mimi_encoder_fp16.onnx: 124.8 MB
+mimi_decoder_int8mm.onnx: 102.9 MB
+mimi_decoder_fp16.onnx: 97.8 MB
+causality: decoder SNR after padding 149.4 dB
+onnx_fp32 threads=1: encode 1.75s, decode 1.92s (always 20s of work); codes match 98.6%; decoder SNR vs PyTorch 119.4 dB
+hts1a_ort_fp32.wav: 38 frames, 418 bytes on air
+kristoff_ort_fp32.wav: 63 frames, 693 bytes on air
+onnx_int8mm threads=1: encode 1.74s, decode 1.74s (always 20s of work); codes match 86.3%; decoder SNR vs PyTorch 33.1 dB
+hts1a_ort_int8mm.wav: 38 frames, 418 bytes on air
+kristoff_ort_int8mm.wav: 63 frames, 693 bytes on air
+onnx_fp16 threads=1: encode 1.80s, decode 1.83s (always 20s of work); codes match 98.6%; decoder SNR vs PyTorch 69.7 dB
+hts1a_ort_fp16.wav: 38 frames, 418 bytes on air
+kristoff_ort_fp16.wav: 63 frames, 693 bytes on air

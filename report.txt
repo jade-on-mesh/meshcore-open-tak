@@ -1,0 +1,20 @@
+sampling_rate=24000 frame_rate=12.5 codebook_size=2048 params=79.3M
+reference: 5.0s -> codes (1, 8, 63)
+causality: codes match after padding 98.6%
+export took 6s
+mimi_encoder.onnx: 203.0 MB
+mimi_decoder.onnx: 178.1 MB
+mimi_encoder_int8mm.onnx: 127.9 MB
+mimi_encoder_fp16.onnx: 124.8 MB
+mimi_decoder_int8mm.onnx: 102.9 MB
+mimi_decoder_fp16.onnx: 97.8 MB
+causality: decoder SNR after padding 149.4 dB
+onnx_fp32 threads=1: encode 1.75s, decode 1.92s (always 20s of work); codes match 98.6%; decoder SNR vs PyTorch 119.4 dB
+hts1a_ort_fp32.wav: 38 frames, 418 bytes on air
+kristoff_ort_fp32.wav: 63 frames, 693 bytes on air
+onnx_int8mm threads=1: encode 1.74s, decode 1.74s (always 20s of work); codes match 86.3%; decoder SNR vs PyTorch 33.1 dB
+hts1a_ort_int8mm.wav: 38 frames, 418 bytes on air
+kristoff_ort_int8mm.wav: 63 frames, 693 bytes on air
+onnx_fp16 threads=1: encode 1.80s, decode 1.83s (always 20s of work); codes match 98.6%; decoder SNR vs PyTorch 69.7 dB
+hts1a_ort_fp16.wav: 38 frames, 418 bytes on air
+kristoff_ort_fp16.wav: 63 frames, 693 bytes on air
