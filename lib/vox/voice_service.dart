@@ -79,6 +79,9 @@ class _IncomingClip {
   bool sentDmRequest = false;
   _Method? lastMethod;
   int packetsAtLastAttempt = 0;
+
+  /// Highest packet index asked for in the latest request (sent last).
+  int expectedLast = -1;
   Timer? watchdog;
 
   _IncomingClip(this.envelope);
@@ -486,6 +489,10 @@ class VoxVoiceService extends ChangeNotifier {
       );
     }
     clip.packetsAtLastAttempt = clip.packets.length;
+    final missingNow = clip.missing;
+    clip.expectedLast = missingNow.isEmpty
+        ? clip.envelope.totalPackets - 1
+        : missingNow.last;
     final req = VoxVoiceFetchRequest(
       sessionId: clip.envelope.sessionId,
       requesterKey6: voxKey6Hex(self),
@@ -739,7 +746,22 @@ class VoxVoiceService extends ChangeNotifier {
         clip.status == VoxClipStatus.receiving) {
       clip.status = VoxClipStatus.receiving;
       clip.message = null;
-      _armWatchdog(clip);
+      if (index == clip.expectedLast) {
+        // The sender has sent its last packet, so the gaps are final: ask
+        // for them again right away instead of waiting out the timeout.
+        clip.watchdog?.cancel();
+        final wait =
+            _packetGap(flood: clip.lastMethod == _Method.channel) +
+            const Duration(milliseconds: 1500);
+        _logEvent(
+          'last packet in, ${clip.missing.length} missing; re-requesting in '
+          '${wait.inMilliseconds}ms',
+          sid,
+        );
+        clip.watchdog = Timer(wait, () => _onWatchdog(clip));
+      } else {
+        _armWatchdog(clip);
+      }
     }
     if (notify) notifyListeners();
   }
