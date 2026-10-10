@@ -104,10 +104,27 @@ torch.onnx.export(
 )
 log(f"export took {time.time() - t0:.0f}s")
 
+import onnx  # noqa: E402
+from onnxconverter_common import float16  # noqa: E402
+
+VARIANTS = ["", "_int8mm", "_fp16"]
 for k in ("encoder", "decoder"):
-    q = paths[k].replace(".onnx", "_int8.onnx")
-    quantize_dynamic(paths[k], q, weight_type=QuantType.QInt8)
-    paths[k + "_int8"] = q
+    # 8-bit weights for the transformer MatMuls only (per channel); the
+    # convolutions and the quantizer codebook search stay fp32.
+    q = paths[k].replace(".onnx", "_int8mm.onnx")
+    quantize_dynamic(
+        paths[k], q, weight_type=QuantType.QInt8, per_channel=True,
+        op_types_to_quantize=["MatMul"],
+    )
+    paths[k + "_int8mm"] = q
+    # fp16 weights with fp32 inputs/outputs.
+    h = paths[k].replace(".onnx", "_fp16.onnx")
+    m16 = float16.convert_float_to_float16(
+        onnx.load(paths[k]), keep_io_types=True,
+        op_block_list=["ArgMin", "ReduceSum", "ReduceMean", "Pow", "Sqrt"],
+    )
+    onnx.save(m16, h)
+    paths[k + "_fp16"] = h
 for k, p in paths.items():
     log(f"{os.path.basename(p)}: {os.path.getsize(p) / 1e6:.1f} MB")
 
@@ -123,12 +140,16 @@ log(f"causality: decoder SNR after padding "
 
 F = ref_codes.shape[-1]
 T = ref_audio.shape[-1]
-for tag in ("", "_int8"):
-    for threads in (1, 4):
+for tag in VARIANTS:
+    for threads in (1,):
         so = ort.SessionOptions()
         so.intra_op_num_threads = threads
-        enc = ort.InferenceSession(paths["encoder" + tag], so)
-        dec = ort.InferenceSession(paths["decoder" + tag], so)
+        try:
+            enc = ort.InferenceSession(paths["encoder" + tag], so)
+            dec = ort.InferenceSession(paths["decoder" + tag], so)
+        except Exception as e:  # keep going with other variants
+            log(f"onnx{tag}: could not load: {e}")
+            continue
         t = time.time()
         codes = enc.run(None, {"audio": pad_audio(x).numpy()})[0][..., :F]
         te = time.time() - t
@@ -141,8 +162,11 @@ for tag in ("", "_int8"):
             f"decoder SNR vs PyTorch {snr(ref_audio.numpy(), audio):.1f} dB")
 
     # Full ONNX round trip on both voices, to listen to
-    enc = ort.InferenceSession(paths["encoder" + tag])
-    dec = ort.InferenceSession(paths["decoder" + tag])
+    try:
+        enc = ort.InferenceSession(paths["encoder" + tag])
+        dec = ort.InferenceSession(paths["decoder" + tag])
+    except Exception:
+        continue
     for voice in ("hts1a", "kristoff"):
         xv = load(voice)
         nf = int(np.ceil(xv.shape[-1] / SR * model.config.frame_rate))
