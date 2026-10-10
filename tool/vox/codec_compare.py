@@ -50,6 +50,9 @@ for voice in ["hts1a", "kristoff"]:
         )
 
     # --- LPCNet 1.6 kb/s codec: 16 kHz raw in/out
+    if not os.path.exists(LPCNET):
+        report.append(f"{voice}: LPCNet not built, see lpcnet-build.log")
+        continue
     x16 = AF.resample(x8, 8000, 16000)
     pcm16 = (x16.clamp(-1, 1) * 32767).numpy().astype("<i2")
     raw_in = f"/tmp/{voice}_16k.raw"

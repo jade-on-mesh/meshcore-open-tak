@@ -25,18 +25,27 @@ jobs:
           pip install "transformers>=4.45" soundfile numpy
       - name: Build LPCNet (xiph) with its pretrained model
         timeout-minutes: 10
+        continue-on-error: true
         run: |
-          sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 install -y autoconf automake libtool > /dev/null
-          git clone --depth 50 https://github.com/xiph/LPCNet.git /tmp/lpcnet
+          mkdir -p /tmp/out
+          exec > >(tee /tmp/out/lpcnet-build.log) 2>&1
+          set -x
+          sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 install -y autoconf automake libtool wget
+          git clone https://github.com/xiph/LPCNet.git /tmp/lpcnet
           cd /tmp/lpcnet
           ./autogen.sh
           CFLAGS='-Ofast -g -march=native' ./configure
           make -j"$(nproc)"
       - name: Encode samples
         timeout-minutes: 10
-        run: python tool/vox/codec_compare.py /tmp/out /tmp/lpcnet/lpcnet_demo
-      - name: Publish to codec-samples branch
         run: |
+          mkdir -p /tmp/out
+          python tool/vox/codec_compare.py /tmp/out /tmp/lpcnet/lpcnet_demo 2>&1 | tee /tmp/out/encode.log
+          exit ${PIPESTATUS[0]}
+      - name: Publish to codec-samples branch
+        if: always()
+        run: |
+          mkdir -p /tmp/out
           cd /tmp/out
           git init -q -b codec-samples
           git config user.name vox-ci
