@@ -284,14 +284,17 @@ class ImageStreamReassembler extends ImageReassembler {
 
 void _registerThirdPartyLicenses() {
   LicenseRegistry.addLicense(() async* {
-    yield const LicenseEntryWithLineBreaks(<String>['Mimi (Kyutai)'], '''
+    yield const LicenseEntryWithLineBreaks(
+      <String>['Mimi (Kyutai)'],
+      '''
 VOX voice messages can use the Mimi neural audio codec by Kyutai,
 downloaded on demand and converted to ONNX for on-device use.
 
 https://huggingface.co/kyutai/mimi
 Licensed under Creative Commons Attribution 4.0 International (CC BY 4.0)
 https://creativecommons.org/licenses/by/4.0/
-''');
+''',
+    );
   });
   LicenseRegistry.addLicense(() async* {
     yield const LicenseEntryWithLineBreaks(

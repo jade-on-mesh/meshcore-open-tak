@@ -9,7 +9,6 @@
 
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
@@ -214,11 +213,7 @@ class VoxMimi extends ChangeNotifier {
     _touch();
     final frames = VoxMimiSpec.framesFor(audio24k.length);
     final padded = Float32List(VoxMimiSpec.maxSamples)
-      ..setRange(
-        0,
-        audio24k.length.clamp(0, VoxMimiSpec.maxSamples),
-        audio24k,
-      );
+      ..setRange(0, audio24k.length.clamp(0, VoxMimiSpec.maxSamples), audio24k);
     final input = await OrtValue.fromList(padded, [
       1,
       1,
