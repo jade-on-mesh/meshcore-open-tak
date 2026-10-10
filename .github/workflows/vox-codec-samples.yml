@@ -34,7 +34,7 @@ jobs:
           git clone https://github.com/xiph/LPCNet.git /tmp/lpcnet
           cd /tmp/lpcnet
           ./autogen.sh
-          CFLAGS='-Ofast -g -march=native' ./configure
+          CFLAGS='-Ofast -g -march=native' ./configure --disable-shared
           make -j"$(nproc)"
       - name: Encode samples
         timeout-minutes: 10
