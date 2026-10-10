@@ -6,6 +6,12 @@ name: VOX diagnostics
 on:
   push:
     branches: [main]
+    # Docs, tooling and the one-off codec workflow don't affect the app.
+    paths-ignore:
+      - "docs/**"
+      - "tool/**"
+      - "**/*.md"
+      - ".github/workflows/vox-codec-samples.yml"
   workflow_dispatch:
 
 permissions:
