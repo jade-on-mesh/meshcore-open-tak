@@ -10,6 +10,7 @@ on:
       - "tool/**"
       - "**/*.md"
       - ".github/workflows/vox-codec-samples.yml"
+      - ".github/workflows/vox-mimi-export.yml"
   workflow_dispatch:
 
 # MeshCore Open VOX builds Android only. A newer push cancels an older,

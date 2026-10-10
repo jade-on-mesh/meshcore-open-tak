@@ -12,6 +12,7 @@ on:
       - "tool/**"
       - "**/*.md"
       - ".github/workflows/vox-codec-samples.yml"
+      - ".github/workflows/vox-mimi-export.yml"
   workflow_dispatch:
 
 permissions:
