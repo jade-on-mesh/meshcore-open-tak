@@ -16,7 +16,12 @@ import soundfile as sf
 import torch
 import torchaudio.functional as AF
 from onnxruntime.quantization import QuantType, quantize_dynamic
+import transformers.masking_utils as masking_utils
 from transformers import MimiModel
+
+# Mimi never packs several sequences into one batch row. The packed-sequence
+# check uses aten::diff, which the ONNX exporter cannot translate.
+masking_utils.find_packed_sequence_indices = lambda position_ids: None
 
 OUT = sys.argv[1]
 os.makedirs(OUT, exist_ok=True)
@@ -29,7 +34,7 @@ def log(s):
     report.append(s)
 
 
-model = MimiModel.from_pretrained("kyutai/mimi").eval()
+model = MimiModel.from_pretrained("kyutai/mimi", attn_implementation="eager").eval()
 SR = model.config.sampling_rate
 log(f"sampling_rate={SR} frame_rate={model.config.frame_rate} "
     f"codebook_size={model.config.codebook_size} params="
@@ -60,25 +65,42 @@ def load(voice):
     return AF.resample(x, 8000, SR).view(1, 1, -1)
 
 
+# Fixed-length export: tracing bakes sequence lengths into the attention
+# masks, so dynamic shapes would be silently wrong. Mimi is causal, so a clip
+# padded with silence to MAX_S and trimmed afterwards must give the same
+# result; this is checked below.
+MAX_S = 20
+MAX_T = MAX_S * SR
+MAX_F = int(MAX_S * model.config.frame_rate)
+
+
+def pad_audio(a):
+    return torch.nn.functional.pad(a, (0, MAX_T - a.shape[-1]))
+
+
+def pad_codes(c):
+    return torch.nn.functional.pad(c, (0, MAX_F - c.shape[-1]))
+
+
 x = load("kristoff")
 with torch.no_grad():
     ref_codes = Enc(model)(x)
     ref_audio = Dec(model)(ref_codes)
+    padded_codes = Enc(model)(pad_audio(x))[..., : ref_codes.shape[-1]]
+    padded_audio = Dec(model)(pad_codes(ref_codes))[..., : ref_audio.shape[-1]]
 log(f"reference: {x.shape[-1] / SR:.1f}s -> codes {tuple(ref_codes.shape)}")
+log(f"causality: codes match after padding "
+    f"{float((padded_codes == ref_codes).float().mean()) * 100:.1f}%")
 
 paths = {k: f"{OUT}/mimi_{k}.onnx" for k in ("encoder", "decoder")}
 t0 = time.time()
 torch.onnx.export(
-    Enc(model), (x,), paths["encoder"], opset_version=17,
-    input_names=["audio"], output_names=["codes"],
-    dynamic_axes={"audio": {2: "samples"}, "codes": {2: "frames"}},
-    dynamo=False,
+    Enc(model), (pad_audio(x),), paths["encoder"], opset_version=17,
+    input_names=["audio"], output_names=["codes"], dynamo=False,
 )
 torch.onnx.export(
-    Dec(model), (ref_codes,), paths["decoder"], opset_version=17,
-    input_names=["codes"], output_names=["audio"],
-    dynamic_axes={"codes": {2: "frames"}, "audio": {2: "samples"}},
-    dynamo=False,
+    Dec(model), (pad_codes(ref_codes),), paths["decoder"], opset_version=17,
+    input_names=["codes"], output_names=["audio"], dynamo=False,
 )
 log(f"export took {time.time() - t0:.0f}s")
 
@@ -96,6 +118,11 @@ def snr(ref, test):
     return 10 * np.log10(np.sum(r**2) / (np.sum((r - t) ** 2) + 1e-12))
 
 
+log(f"causality: decoder SNR after padding "
+    f"{snr(ref_audio.numpy(), padded_audio.numpy()):.1f} dB")
+
+F = ref_codes.shape[-1]
+T = ref_audio.shape[-1]
 for tag in ("", "_int8"):
     for threads in (1, 4):
         so = ort.SessionOptions()
@@ -103,14 +130,14 @@ for tag in ("", "_int8"):
         enc = ort.InferenceSession(paths["encoder" + tag], so)
         dec = ort.InferenceSession(paths["decoder" + tag], so)
         t = time.time()
-        codes = enc.run(None, {"audio": x.numpy()})[0]
+        codes = enc.run(None, {"audio": pad_audio(x).numpy()})[0][..., :F]
         te = time.time() - t
         t = time.time()
-        audio = dec.run(None, {"codes": ref_codes.numpy()})[0]
+        audio = dec.run(None, {"codes": pad_codes(ref_codes).numpy()})[0][..., :T]
         td = time.time() - t
         match = float(np.mean(codes == ref_codes.numpy())) * 100
         log(f"onnx{tag or '_fp32'} threads={threads}: encode {te:.2f}s, "
-            f"decode {td:.2f}s for 5.0s audio; codes match {match:.1f}%; "
+            f"decode {td:.2f}s (always {MAX_S}s of work); codes match {match:.1f}%; "
             f"decoder SNR vs PyTorch {snr(ref_audio.numpy(), audio):.1f} dB")
 
     # Full ONNX round trip on both voices, to listen to
@@ -118,8 +145,11 @@ for tag in ("", "_int8"):
     dec = ort.InferenceSession(paths["decoder" + tag])
     for voice in ("hts1a", "kristoff"):
         xv = load(voice)
-        codes = enc.run(None, {"audio": xv.numpy()})[0]
-        audio = dec.run(None, {"codes": codes})[0]
+        nf = int(np.ceil(xv.shape[-1] / SR * model.config.frame_rate))
+        codes = enc.run(None, {"audio": pad_audio(xv).numpy()})[0][..., :nf]
+        audio = dec.run(
+            None, {"codes": pad_codes(torch.from_numpy(codes)).numpy()}
+        )[0][..., : xv.shape[-1]]
         name = f"{voice}_ort{tag or '_fp32'}.wav"
         sf.write(f"{OUT}/{name}", audio.reshape(-1), SR)
         bits = codes.shape[-1] * NQ * 11
