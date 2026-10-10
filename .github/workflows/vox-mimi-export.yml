@@ -23,7 +23,7 @@ jobs:
         timeout-minutes: 10
         run: |
           pip install --index-url https://download.pytorch.org/whl/cpu torch torchaudio
-          pip install "transformers>=4.45" onnx onnxruntime onnxconverter-common soundfile numpy
+          pip install "transformers>=4.45" onnx onnxruntime soundfile numpy
       - name: Export, quantize, verify
         timeout-minutes: 15
         run: |

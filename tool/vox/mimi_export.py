@@ -105,7 +105,27 @@ torch.onnx.export(
 log(f"export took {time.time() - t0:.0f}s")
 
 import onnx  # noqa: E402
-from onnxconverter_common import float16  # noqa: E402
+from onnx import TensorProto, helper, numpy_helper  # noqa: E402
+
+
+def weights_to_fp16(m, min_elems=4096):
+    g = m.graph
+    keep, casts = [], []
+    for init in g.initializer:
+        if init.data_type == TensorProto.FLOAT and np.prod(init.dims) >= min_elems:
+            arr = numpy_helper.to_array(init).astype(np.float16)
+            half = numpy_helper.from_array(arr, init.name + "__fp16")
+            keep.append(half)
+            casts.append(helper.make_node(
+                "Cast", [half.name], [init.name], to=TensorProto.FLOAT,
+                name=init.name + "__cast"))
+        else:
+            keep.append(init)
+    del g.initializer[:]
+    g.initializer.extend(keep)
+    for n in reversed(casts):
+        g.node.insert(0, n)
+    return m
 
 VARIANTS = ["", "_int8mm", "_fp16"]
 for k in ("encoder", "decoder"):
@@ -117,18 +137,11 @@ for k in ("encoder", "decoder"):
         op_types_to_quantize=["MatMul"],
     )
     paths[k + "_int8mm"] = q
-    # fp16 weights with fp32 inputs/outputs.
+    # fp16 *storage* only: large fp32 weight tables are stored as fp16 and
+    # cast back to fp32 by a Cast node, which ORT constant-folds at load.
+    # All arithmetic stays fp32; only the weights are rounded to fp16.
     h = paths[k].replace(".onnx", "_fp16.onnx")
-    src = onnx.load(paths[k])
-    # Stale shape annotations from the fp32 export confuse the converter
-    # (it left a Cast whose declared type no longer matched).
-    del src.graph.value_info[:]
-    m16 = float16.convert_float_to_float16(
-        src, keep_io_types=True,
-        op_block_list=["ArgMin", "ReduceSum", "ReduceMean", "Pow", "Sqrt",
-                       "Cast", "Range", "CumSum"],
-    )
-    onnx.save(m16, h)
+    onnx.save(weights_to_fp16(onnx.load(paths[k])), h)
     paths[k + "_fp16"] = h
 for k, p in paths.items():
     log(f"{os.path.basename(p)}: {os.path.getsize(p) / 1e6:.1f} MB")
