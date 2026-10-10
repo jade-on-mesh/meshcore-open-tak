@@ -79,6 +79,7 @@ class _IncomingClip {
   bool sentDmRequest = false;
   _Method? lastMethod;
   int packetsAtLastAttempt = 0;
+  int stalls = 0;
 
   /// Highest packet index asked for in the latest request (sent last).
   int expectedLast = -1;
@@ -197,7 +198,11 @@ class VoxVoiceService extends ChangeNotifier {
   /// Longest clip VOX will record. 20 s at 1200 bps is 20 packets.
   static const Duration maxClipLength = Duration(seconds: 20);
 
-  static const int _maxAttempts = 5;
+  /// Hard cap on fetch attempts for one clip.
+  static const int _maxAttempts = 15;
+
+  /// Give up after this many consecutive attempts that brought no packets.
+  static const int _maxStalls = 3;
   static const int _storeMagic = 0xC2;
 
   final MeshCoreConnector _connector;
@@ -217,6 +222,7 @@ class VoxVoiceService extends ChangeNotifier {
   /// Last time any channel packet for a session was heard (serve dedupe).
   final Map<String, DateTime> _lastChannelPacket = {};
   final Map<String, DateTime> _recentServes = {};
+  final Map<String, int> _serveGen = {};
 
   Future<void> _serveChain = Future.value();
 
@@ -430,6 +436,7 @@ class VoxVoiceService extends ChangeNotifier {
     if (sender != null) clip.sender = sender;
     if (channelIndex != null) clip.channelIndex = channelIndex;
     clip.attempts = 0;
+    clip.stalls = 0;
     clip.directFailures = 0;
     await _attempt(clip);
   }
@@ -573,13 +580,19 @@ class VoxVoiceService extends ChangeNotifier {
     _armWatchdog(clip);
   }
 
+  /// Repeaters between us and the clip's sender.
+  int _clipHops(_IncomingClip clip) =>
+      forcedRoute?.length ?? max(clip.sender?.pathLength ?? 3, 0);
+
   Duration _waitFor(_IncomingClip clip) {
-    final hops =
-        (forcedRoute?.length ?? max(clip.sender?.pathLength ?? 3, 0)) + 1;
+    final hops = _clipHops(clip) + 1;
     // One radio transmission of a full voice packet, plus each repeater's
     // retransmit delay and the firmware/BLE turnaround.
     final hopMs = _packetAir().inMilliseconds * 2 + 700;
-    final perPacket = _packetGap(flood: clip.lastMethod == _Method.channel);
+    final perPacket = _packetGap(
+      flood: clip.lastMethod == _Method.channel,
+      hops: _clipHops(clip),
+    );
     // Trips before the first voice packet lands: request out + packet back.
     // A DM request also needs path return + reciprocal path first.
     final trips = switch (clip.lastMethod) {
@@ -605,10 +618,13 @@ class VoxVoiceService extends ChangeNotifier {
       '${clip.packets.length}/${clip.envelope.totalPackets} packets',
       clip.envelope.sessionId,
     );
-    if (!progressed && clip.lastMethod != _Method.channel) {
-      clip.directFailures++;
+    if (progressed) {
+      clip.stalls = 0;
+    } else {
+      clip.stalls++;
+      if (clip.lastMethod != _Method.channel) clip.directFailures++;
     }
-    if (clip.attempts < _maxAttempts) {
+    if (clip.stalls < _maxStalls && clip.attempts < _maxAttempts) {
       await _attempt(clip);
       return;
     }
@@ -751,7 +767,10 @@ class VoxVoiceService extends ChangeNotifier {
         // for them again right away instead of waiting out the timeout.
         clip.watchdog?.cancel();
         final wait =
-            _packetGap(flood: clip.lastMethod == _Method.channel) +
+            _packetGap(
+              flood: clip.lastMethod == _Method.channel,
+              hops: _clipHops(clip),
+            ) +
             const Duration(milliseconds: 1500);
         _logEvent(
           'last packet in, ${clip.missing.length} missing; re-requesting in '
@@ -794,18 +813,23 @@ class VoxVoiceService extends ChangeNotifier {
   }) {
     final key =
         '${req.sessionId}/${viaChannel == null ? req.requesterKey6 : 'ch$viaChannel'}';
-    final last = _recentServes[key];
+    final sig = '$key|${req.missingIndices?.join(',') ?? 'all'}';
+    final last = _recentServes[sig];
     final now = DateTime.now();
     if (last != null && now.difference(last) < const Duration(seconds: 6)) {
       _logEvent('ignoring duplicate request from $key', req.sessionId);
-      return; // duplicate while we are already answering it
+      return; // same request again (e.g. heard twice)
     }
-    _recentServes[key] = now;
+    _recentServes[sig] = now;
+    // A newer request for the same clip from the same listener replaces any
+    // burst still in progress, so we never keep sending stale packets.
+    final gen = (_serveGen[key] ?? 0) + 1;
+    _serveGen[key] = gen;
     _recentServes.removeWhere(
       (_, t) => now.difference(t) > const Duration(minutes: 10),
     );
     _serveChain = _serveChain
-        .then((_) => _serve(req, viaChannel, waitForRoute))
+        .then((_) => _serve(req, viaChannel, waitForRoute, key, gen))
         .catchError((_) {});
   }
 
@@ -813,7 +837,10 @@ class VoxVoiceService extends ChangeNotifier {
     VoxVoiceFetchRequest req,
     int? viaChannel,
     bool waitForRoute,
+    String key,
+    int gen,
   ) async {
+    if (_serveGen[key] != gen) return; // superseded while queued
     if (!await _loadFromStore(req.sessionId)) {
       _logEvent('asked for a clip we do not have', req.sessionId);
       return;
@@ -870,14 +897,23 @@ class VoxVoiceService extends ChangeNotifier {
       );
       return;
     }
+    final gap = _packetGap(flood: false, hops: route.length);
     _logEvent(
       'serving ${packets.length} packets to ${req.requesterKey6} via ${_hex(route)}'
+      ', ${gap.inMilliseconds}ms apart'
       '${forced != null ? ' (FORCED)' : ''}',
       req.sessionId,
     );
     for (var i = 0; i < packets.length; i++) {
       if (!_connector.isConnected) return;
-      if (i > 0) await Future<void>.delayed(_packetGap(flood: false));
+      if (_serveGen[key] != gen) {
+        _logEvent(
+          'stopped after $i/${packets.length}: a newer request replaced this one',
+          req.sessionId,
+        );
+        return;
+      }
+      if (i > 0) await Future<void>.delayed(gap);
       try {
         await _connector.sendFrame(
           buildSendRawDataFrame(path: route, payload: packets[i].encode()),
@@ -924,14 +960,20 @@ class VoxVoiceService extends ChangeNotifier {
   }
 
   /// Pause between voice packets so we do not talk over our own relays.
-  Duration _packetGap({required bool flood}) {
-    final air = _packetAir();
-    // Direct: one packet of airtime plus a relay hop. Flood: leave room for
-    // several repeaters to rebroadcast before the next packet.
-    final factor = flood ? 4 : 2;
-    return Duration(
-      milliseconds: max(flood ? 800 : 400, air.inMilliseconds * factor + 150),
-    );
+  ///
+  /// A stock repeater waits a random 0..1.5 airtimes (direct.txdelay 0.3)
+  /// before relaying, then spends a full airtime relaying. Within earshot of
+  /// that repeater, our next packet must not start until the relay is done,
+  /// or the two collide. The repeater may use a slower coding rate than us,
+  /// hence the 1.15 margin. Only the first two relays are near enough to
+  /// matter; further hops pipeline.
+  Duration _packetGap({required bool flood, int hops = 0}) {
+    final air = _packetAir().inMilliseconds;
+    if (flood) return Duration(milliseconds: max(800, air * 4 + 150));
+    if (hops <= 0) return Duration(milliseconds: max(400, air * 2 + 150));
+    final relayAir = air * 1.15;
+    final h = min(hops, 2);
+    return Duration(milliseconds: (air + h * 2.5 * relayAir + 400).round());
   }
 
   // ------------------------------------------------------- link test (ping)
