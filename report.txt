@@ -1,0 +1,6 @@
+hts1a_mimi_8q.wav: 1115 bps, 418 bytes for 3.0s
+hts1a_mimi_16q.wav: 2229 bps, 836 bytes for 3.0s
+hts1a_lpcnet_1600.wav: 1600 bps, 600 bytes for 3.0s
+kristoff_mimi_8q.wav: 1109 bps, 693 bytes for 5.0s
+kristoff_mimi_16q.wav: 2218 bps, 1386 bytes for 5.0s
+kristoff_lpcnet_1600.wav: 1600 bps, 1000 bytes for 5.0s
