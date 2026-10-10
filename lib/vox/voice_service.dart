@@ -949,7 +949,9 @@ class VoxVoiceService extends ChangeNotifier {
 
   /// Routes a link test will try towards [target], labelled for the log.
   List<(String, Uint8List)> linkTestRoutes(Contact target) {
-    final routes = <(String, Uint8List)>[('no repeaters (0 hop)', Uint8List(0))];
+    final routes = <(String, Uint8List)>[
+      ('no repeaters (0 hop)', Uint8List(0)),
+    ];
     final r = _directRoute(target);
     if (r != null && r.isNotEmpty) routes.add(('contact route', r));
     final f = forcedRoute;
@@ -970,7 +972,12 @@ class VoxVoiceService extends ChangeNotifier {
       final nonce = rng.nextInt(1 << 31);
       final b = BytesBuilder()
         ..addByte(_pingMagic)
-        ..add([nonce >> 24 & 255, nonce >> 16 & 255, nonce >> 8 & 255, nonce & 255])
+        ..add([
+          nonce >> 24 & 255,
+          nonce >> 16 & 255,
+          nonce >> 8 & 255,
+          nonce & 255,
+        ])
         ..add(self.sublist(0, 6))
         ..addByte(path.length)
         ..add(path);
@@ -980,7 +987,9 @@ class VoxVoiceService extends ChangeNotifier {
           buildSendRawDataFrame(path: path, payload: b.toBytes()),
           waitForGenericAck: true,
         );
-        _logEvent('PING sent via $label ${_hex(path)} (#${nonce.toRadixString(16)})');
+        _logEvent(
+          'PING sent via $label ${_hex(path)} (#${nonce.toRadixString(16)})',
+        );
       } catch (e) {
         _logEvent('PING via $label could not be sent: $e');
       }
@@ -991,7 +1000,8 @@ class VoxVoiceService extends ChangeNotifier {
         final now = DateTime.now();
         _pingsOut.removeWhere((nonce, v) {
           final old = now.difference(v.$1) > const Duration(seconds: 25);
-          if (old) _logEvent('no PONG via ${v.$2} (#${nonce.toRadixString(16)})');
+          if (old)
+            _logEvent('no PONG via ${v.$2} (#${nonce.toRadixString(16)})');
           return old;
         });
       }),
