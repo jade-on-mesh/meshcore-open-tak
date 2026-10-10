@@ -1000,8 +1000,9 @@ class VoxVoiceService extends ChangeNotifier {
         final now = DateTime.now();
         _pingsOut.removeWhere((nonce, v) {
           final old = now.difference(v.$1) > const Duration(seconds: 25);
-          if (old)
+          if (old) {
             _logEvent('no PONG via ${v.$2} (#${nonce.toRadixString(16)})');
+          }
           return old;
         });
       }),
