@@ -119,9 +119,14 @@ for k in ("encoder", "decoder"):
     paths[k + "_int8mm"] = q
     # fp16 weights with fp32 inputs/outputs.
     h = paths[k].replace(".onnx", "_fp16.onnx")
+    src = onnx.load(paths[k])
+    # Stale shape annotations from the fp32 export confuse the converter
+    # (it left a Cast whose declared type no longer matched).
+    del src.graph.value_info[:]
     m16 = float16.convert_float_to_float16(
-        onnx.load(paths[k]), keep_io_types=True,
-        op_block_list=["ArgMin", "ReduceSum", "ReduceMean", "Pow", "Sqrt"],
+        src, keep_io_types=True,
+        op_block_list=["ArgMin", "ReduceSum", "ReduceMean", "Pow", "Sqrt",
+                       "Cast", "Range", "CumSum"],
     )
     onnx.save(m16, h)
     paths[k + "_fp16"] = h
