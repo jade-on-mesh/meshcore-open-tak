@@ -1,0 +1,48 @@
+name: VOX Mimi model release
+
+# Exports Mimi (Kyutai, CC-BY 4.0) to ONNX with fp16-stored weights and
+# publishes the encoder/decoder as assets of the `mimi-onnx-v1` release,
+# where the app downloads them on first use. Manual only.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps (CPU-only PyTorch)
+        timeout-minutes: 10
+        run: |
+          pip install --index-url https://download.pytorch.org/whl/cpu torch torchaudio
+          pip install "transformers>=4.45" onnx onnxruntime soundfile numpy
+      - name: Export and verify
+        timeout-minutes: 15
+        run: python tool/vox/mimi_export.py /tmp/out
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/rel
+          cp /tmp/out/mimi_encoder_fp16.onnx /tmp/out/mimi_decoder_fp16.onnx /tmp/rel/
+          cp /tmp/out/report.txt /tmp/rel/export-report.txt
+          cat > /tmp/rel/NOTICE.txt <<'TXT'
+          Mimi neural audio codec by Kyutai (https://huggingface.co/kyutai/mimi),
+          licensed CC-BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
+          Converted to ONNX for MeshCore Open VOX: fixed 20 s input, 8 codebooks
+          (~1.1 kb/s), weights stored as fp16 and cast to fp32 at load time.
+          TXT
+          cd /tmp/rel && sha256sum *.onnx > SHA256SUMS && cat SHA256SUMS
+          gh release delete mimi-onnx-v1 --yes --cleanup-tag -R "$GITHUB_REPOSITORY" || true
+          gh release create mimi-onnx-v1 -R "$GITHUB_REPOSITORY" \
+            --title "Mimi voice model v1 (ONNX)" \
+            --notes-file NOTICE.txt \
+            mimi_encoder_fp16.onnx mimi_decoder_fp16.onnx SHA256SUMS NOTICE.txt export-report.txt
