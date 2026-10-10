@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 
 import '../connector/meshcore_connector.dart';
 import '../models/contact.dart';
+import 'mimi.dart';
 import 'voice_service.dart';
 import 'voice_wire.dart';
 
@@ -99,7 +100,14 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
     if (s == null) return;
     if (_playing) return _stop();
     final st = s.stateFor(widget.envelope);
-    if (st.status == VoxClipStatus.complete) return _play();
+    if (st.status == VoxClipStatus.complete) {
+      if (!s.canPlay(widget.envelope)) {
+        // A Mimi clip on a phone without the model: offer the download.
+        showVoxVoiceLog(context, s);
+        return;
+      }
+      return _play();
+    }
     if (st.status == VoxClipStatus.requesting ||
         st.status == VoxClipStatus.receiving) {
       return;
@@ -156,14 +164,18 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
     final IconData icon = _playing
         ? Icons.stop_circle_outlined
         : st.status == VoxClipStatus.complete
-        ? Icons.play_circle_outline
+        ? (s.canPlay(env) ? Icons.play_circle_outline : Icons.graphic_eq)
         : st.status == VoxClipStatus.unavailable
         ? Icons.refresh
         : Icons.download_for_offline_outlined;
 
     final String subtitle = switch (st.status) {
+      VoxClipStatus.complete when !s.canPlay(env) =>
+        'Mimi voice · tap to get the voice model '
+            '(${VoxMimi.downloadMb} MB) to play',
       VoxClipStatus.complete =>
-        '${env.durationSeconds}s · Codec2 ${env.mode.label}',
+        '${env.durationSeconds}s · '
+            '${env.mode.isMimi ? 'Mimi' : 'Codec2 ${env.mode.label}'}',
       VoxClipStatus.remote =>
         widget.isOutgoing
             ? '${env.durationSeconds}s · waiting for listeners'
@@ -261,6 +273,7 @@ void showVoxVoiceLog(BuildContext context, VoxVoiceService service) {
                     ),
                   ),
                   const Divider(height: 1),
+                  VoxMimiTile(service: service),
                   VoxForcedRouteTile(service: service),
                   ListTile(
                     leading: const Icon(Icons.network_ping),
@@ -465,4 +478,90 @@ Future<List<String>?> pickVoxRepeaters(
       ),
     ),
   );
+}
+
+/// Mimi voice model: download / progress / ready, and the send preference.
+class VoxMimiTile extends StatelessWidget {
+  final VoxVoiceService service;
+  const VoxMimiTile({super.key, required this.service});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: service,
+      builder: (context, _) {
+        final mimi = service.mimi;
+        final size = '${VoxMimi.downloadMb} MB';
+        switch (mimi.state) {
+          case VoxMimiState.ready:
+            return GestureDetector(
+              onLongPress: () async {
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (c) => AlertDialog(
+                    title: const Text('Delete Mimi voice model?'),
+                    content: Text(
+                      'Frees $size. Mimi clips won\'t play until you download '
+                      'it again, and new clips will be sent with Codec2.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(c, false),
+                        child: const Text('Cancel'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(c, true),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
+                if (ok == true) await mimi.deleteModel();
+              },
+              child: SwitchListTile(
+              secondary: const Icon(Icons.graphic_eq),
+              title: const Text('Send voice with Mimi'),
+              subtitle: const Text(
+                'Clearer voice, about the same data as Codec2 1200. Only VOX '
+                'can play Mimi clips; turn off to send Codec2 (MeshCore SAR '
+                'compatible). Long-press to delete the model.',
+              ),
+              value: service.preferMimi,
+              onChanged: service.setPreferMimi,
+              ),
+            );
+          case VoxMimiState.downloading:
+            return ListTile(
+              leading: const Icon(Icons.downloading),
+              title: Text(
+                'Downloading Mimi voice model '
+                '${(mimi.progress * 100).round()}%',
+              ),
+              subtitle: LinearProgressIndicator(value: mimi.progress),
+              trailing: TextButton(
+                onPressed: mimi.cancelDownload,
+                child: const Text('Cancel'),
+              ),
+            );
+          case VoxMimiState.missing:
+          case VoxMimiState.failed:
+            return ListTile(
+              leading: const Icon(Icons.graphic_eq),
+              title: const Text('Mimi voice model'),
+              subtitle: Text(
+                mimi.state == VoxMimiState.failed
+                    ? 'Download failed: ${mimi.error}. Tap to retry.'
+                    : 'Much clearer voice for the same airtime. One-time '
+                          '$size download (Wi-Fi recommended). Needed to send '
+                          'and play Mimi clips.',
+              ),
+              trailing: FilledButton(
+                onPressed: mimi.download,
+                child: const Text('Get'),
+              ),
+            );
+        }
+      },
+    );
+  }
 }

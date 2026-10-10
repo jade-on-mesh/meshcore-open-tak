@@ -175,4 +175,48 @@ void main() {
       isTrue,
     );
   });
+
+  group('Mimi', () {
+    test('VM1 envelope round-trips and is distinct from VE3', () {
+      const env = VoxVoiceEnvelope(
+        sessionId: 'deadbeef',
+        mode: VoxVoiceMode.mimi,
+        totalPackets: 5,
+        durationSeconds: 5,
+      );
+      final text = env.encode();
+      expect(text, 'VM1:1ps9wxb:w:5:5');
+      final back = VoxVoiceEnvelope.tryParse(text)!;
+      expect(back.mode, VoxVoiceMode.mimi);
+      // A Mimi mode id must never be accepted inside a VE3 (SAR) envelope,
+      // nor a Codec2 mode inside VM1.
+      expect(VoxVoiceEnvelope.tryParse('VE3:1ps9wxb:w:5:5'), isNull);
+      expect(VoxVoiceEnvelope.tryParse('VM1:1ps9wxb:1:5:5'), isNull);
+    });
+
+    test('11-bit code packing round-trips', () {
+      const frames = 63;
+      final codes = <int>[
+        for (var q = 0; q < VoxMimiSpec.codebooks; q++)
+          for (var f = 0; f < VoxMimiSpec.maxFrames; f++)
+            f < frames ? (q * 257 + f * 31) % 2048 : 0,
+      ];
+      final packed = voxPackMimiCodes(
+        codes,
+        frames,
+        stride: VoxMimiSpec.maxFrames,
+      );
+      expect(packed.length, frames * 11); // 693 bytes for 5 s
+      final back = voxUnpackMimiCodes(packed);
+      expect(back.length, VoxMimiSpec.codebooks * VoxMimiSpec.maxFrames);
+      expect(back.toList(), codes);
+    });
+
+    test('a 5 s Mimi clip fits in 5 raw packets', () {
+      final pkts = voxPacketize('0000000a', Uint8List(693), VoxVoiceMode.mimi);
+      expect(VoxVoiceMode.mimi.bytesPerPacket, 154); // 14 whole frames
+      expect(pkts.length, 5);
+      expect(pkts.every((p) => p.encode().length <= 162), isTrue);
+    });
+  });
 }

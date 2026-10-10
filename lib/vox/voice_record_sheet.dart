@@ -8,15 +8,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:record/record.dart';
 
-import 'voice_codec.dart';
+import 'mimi.dart';
+import 'resample.dart';
 import 'voice_message_bubble.dart' show showVoxVoiceLog;
 import 'voice_service.dart';
-import 'voice_wire.dart';
-import 'wav.dart';
 
-/// Mic button for a chat composer. Hidden when Codec2 is unavailable.
+/// Mic button for a chat composer. Hidden when no voice codec is available.
 class VoxMicButton extends StatelessWidget {
-  final Future<void> Function(Int16List pcm) onSend;
+  final Future<void> Function(VoxEncodedClip clip) onSend;
   final String? recipientLabel;
 
   const VoxMicButton({super.key, required this.onSend, this.recipientLabel});
@@ -39,7 +38,7 @@ class VoxMicButton extends StatelessWidget {
 }
 
 class VoxRecordSheet extends StatefulWidget {
-  final Future<void> Function(Int16List pcm) onSend;
+  final Future<void> Function(VoxEncodedClip clip) onSend;
   final String? recipientLabel;
 
   const VoxRecordSheet({super.key, required this.onSend, this.recipientLabel});
@@ -48,7 +47,7 @@ class VoxRecordSheet extends StatefulWidget {
   State<VoxRecordSheet> createState() => _VoxRecordSheetState();
 }
 
-enum _Phase { idle, recording, recorded, sending }
+enum _Phase { idle, recording, encoding, recorded, sending }
 
 class _VoxRecordSheetState extends State<VoxRecordSheet> {
   final AudioRecorder _recorder = AudioRecorder();
@@ -58,7 +57,8 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
   Timer? _ticker;
   _Phase _phase = _Phase.idle;
   Duration _elapsed = Duration.zero;
-  Int16List? _pcm;
+  VoxEncodedClip? _clip;
+  bool _previewing = false;
   String? _error;
 
   static const _max = VoxVoiceService.maxClipLength;
@@ -73,7 +73,7 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
     final stream = await _recorder.startStream(
       const RecordConfig(
         encoder: AudioEncoder.pcm16bits,
-        sampleRate: VoxVoiceMode.sampleRateHz,
+        sampleRate: voxRecordSampleRate,
         numChannels: 1,
         autoGain: true,
         noiseSuppress: true,
@@ -100,30 +100,52 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
     for (var i = 0; i < pcm.length; i++) {
       pcm[i] = bd.getInt16(i * 2, Endian.little);
     }
-    setState(() {
-      _pcm = pcm;
-      _phase = pcm.length < VoxVoiceMode.sampleRateHz ~/ 4
-          ? _Phase.idle
-          : _Phase.recorded;
-      if (_phase == _Phase.idle) _error = 'Too short';
-    });
+    if (pcm.length < voxRecordSampleRate ~/ 4) {
+      setState(() {
+        _phase = _Phase.idle;
+        _error = 'Too short';
+      });
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _phase = _Phase.encoding);
+    try {
+      final clip = await context.read<VoxVoiceService>().encodeRecording(pcm);
+      if (!mounted) return;
+      setState(() {
+        _clip = clip;
+        _phase = _Phase.recorded;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _phase = _Phase.idle;
+        _error = 'Could not encode: $e';
+      });
+    }
   }
 
   Future<void> _preview() async {
-    final pcm = _pcm;
-    if (pcm == null) return;
-    // Preview what the listener will actually hear: encode + decode.
-    final bits = voxEncodePcm(pcm, voxDefaultVoiceMode);
-    final decoded = voxDecodeBits(bits, voxDefaultVoiceMode);
-    await _player.play(BytesSource(voxPcm16ToWav(decoded)));
+    final clip = _clip;
+    if (clip == null || _previewing) return;
+    setState(() => _previewing = true);
+    try {
+      // Preview what the listener will actually hear: decode the sent bits.
+      final wav = await context.read<VoxVoiceService>().previewWav(clip);
+      await _player.play(BytesSource(wav));
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Preview failed: $e');
+    } finally {
+      if (mounted) setState(() => _previewing = false);
+    }
   }
 
   Future<void> _send() async {
-    final pcm = _pcm;
-    if (pcm == null) return;
+    final clip = _clip;
+    if (clip == null) return;
     setState(() => _phase = _Phase.sending);
     try {
-      await widget.onSend(pcm);
+      await widget.onSend(clip);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
@@ -150,15 +172,16 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final voice = context.watch<VoxVoiceService>();
+    final mode = _clip?.mode ?? voice.sendMode;
     final recording = _phase == _Phase.recording;
-    final secs = _pcm == null
+    final clip = _clip;
+    final packets = clip == null
         ? 0
-        : (_pcm!.length / VoxVoiceMode.sampleRateHz).ceil();
-    final packets =
-        (secs *
-                voxDefaultVoiceMode.bytesPerSecond /
-                voxDefaultVoiceMode.bytesPerPacket)
-            .ceil();
+        : (clip.bits.length / mode.bytesPerPacket).ceil();
+    final codecLine = mode.isMimi
+        ? 'Mimi · ~1.1 kb/s'
+        : 'Codec2 ${mode.label} bps';
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
@@ -173,42 +196,51 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Codec2 ${voxDefaultVoiceMode.label} bps · max ${_max.inSeconds}s · '
+              '$codecLine · max ${_max.inSeconds}s · '
               'listeners download it when they press play',
               style: Theme.of(context).textTheme.bodySmall,
               textAlign: TextAlign.center,
             ),
-            Builder(
-              builder: (context) {
-                final voice = context.watch<VoxVoiceService>();
-                return Wrap(
-                  alignment: WrapAlignment.center,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  children: [
-                    if (voice.forcedRoute != null)
-                      Chip(
-                        avatar: const Icon(Icons.alt_route, size: 16),
-                        label: Text(
-                          'Testing: forced via ${voice.forcedRouteLabel()}',
-                        ),
-                      ),
-                    TextButton.icon(
-                      icon: const Icon(Icons.tune, size: 18),
-                      label: const Text('Voice settings'),
-                      onPressed: () => showVoxVoiceLog(context, voice),
+            Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              children: [
+                if (voice.forcedRoute != null)
+                  Chip(
+                    avatar: const Icon(Icons.alt_route, size: 16),
+                    label: Text(
+                      'Testing: forced via ${voice.forcedRouteLabel()}',
                     ),
-                  ],
-                );
-              },
+                  ),
+                if (voice.preferMimi && !voice.mimi.isReady)
+                  ActionChip(
+                    avatar: const Icon(Icons.graphic_eq, size: 16),
+                    label: Text(
+                      voice.mimi.state == VoxMimiState.downloading
+                          ? 'Downloading Mimi voice '
+                                '${(voice.mimi.progress * 100).round()}%'
+                          : 'Clearer voice: get Mimi',
+                    ),
+                    onPressed: () => showVoxVoiceLog(context, voice),
+                  ),
+                TextButton.icon(
+                  icon: const Icon(Icons.tune, size: 18),
+                  label: const Text('Voice settings'),
+                  onPressed: () => showVoxVoiceLog(context, voice),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             Text(
               recording
                   ? '${_fmt(_elapsed)} / ${_fmt(_max)}'
-                  : _phase == _Phase.idle
+                  : _phase == _Phase.encoding
+                  ? 'Encoding…'
+                  : clip == null
                   ? 'Tap to record'
-                  : '${secs}s · $packets packet${packets == 1 ? '' : 's'}',
+                  : '${clip.durationSeconds}s · $packets packet'
+                        '${packets == 1 ? '' : 's'}',
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             if (recording)
@@ -217,6 +249,11 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
                 child: LinearProgressIndicator(
                   value: _elapsed.inMilliseconds / _max.inMilliseconds,
                 ),
+              ),
+            if (_phase == _Phase.encoding)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: LinearProgressIndicator(),
               ),
             const SizedBox(height: 20),
             if (_phase == _Phase.idle || recording)
@@ -229,7 +266,7 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
                 icon: Icon(recording ? Icons.stop : Icons.mic),
                 onPressed: recording ? _stop : _start,
               )
-            else
+            else if (_phase != _Phase.encoding)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -239,12 +276,18 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
                     onPressed: _phase == _Phase.sending
                         ? null
                         : () => setState(() {
-                            _pcm = null;
+                            _clip = null;
                             _phase = _Phase.idle;
                           }),
                   ),
                   OutlinedButton.icon(
-                    icon: const Icon(Icons.play_arrow),
+                    icon: _previewing
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.play_arrow),
                     label: const Text('Play'),
                     onPressed: _phase == _Phase.sending ? null : _preview,
                   ),

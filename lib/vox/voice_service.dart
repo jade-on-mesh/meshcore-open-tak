@@ -27,6 +27,8 @@ import '../models/contact.dart';
 import '../services/image_chunk_transport.dart'
     show parseChannelDataFrame, respCodeChannelDataRecv;
 import 'voice_clip_store.dart';
+import 'mimi.dart';
+import 'resample.dart';
 import 'voice_codec.dart';
 import 'voice_wire.dart';
 import 'wav.dart';
@@ -51,6 +53,15 @@ class VoxClipState {
 }
 
 enum _Method { direct, dmRequest, channel }
+
+/// A recording encoded and ready to send (and to preview).
+@immutable
+class VoxEncodedClip {
+  final VoxVoiceMode mode;
+  final Uint8List bits;
+  final int durationSeconds;
+  const VoxEncodedClip(this.mode, this.bits, this.durationSeconds);
+}
 
 /// One line of the VOX voice diagnostic log (shown from a voice bubble).
 @immutable
@@ -110,6 +121,29 @@ class VoxVoiceService extends ChangeNotifier {
     _sub = _connector.receivedFrames.listen(_onFrame);
     _connector.voxControlTextInterceptor = _onControlText;
     unawaited(_loadTestSettings());
+    mimi.addListener(notifyListeners);
+  }
+
+  /// The Mimi neural codec (download state + inference).
+  final VoxMimi mimi = VoxMimi();
+
+  static const _kPreferMimi = 'vox_prefer_mimi';
+  bool _preferMimi = true;
+
+  /// Send new clips with Mimi when its model is downloaded (else Codec2).
+  bool get preferMimi => _preferMimi;
+
+  /// The codec the next recording will be sent with.
+  VoxVoiceMode get sendMode =>
+      _preferMimi && mimi.isReady ? VoxVoiceMode.mimi : voxDefaultVoiceMode;
+
+  Future<void> setPreferMimi(bool v) async {
+    _preferMimi = v;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kPreferMimi, v);
+    } catch (_) {}
   }
 
   // ------------------------------------------------- testing: forced route
@@ -152,6 +186,7 @@ class VoxVoiceService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       _forceRepeaterRoute = prefs.getBool(_kForceRoute) ?? false;
       _forcedRepeaterKeys = prefs.getStringList(_kForceRouteKeys) ?? const [];
+      _preferMimi = prefs.getBool(_kPreferMimi) ?? true;
       notifyListeners();
     } catch (_) {}
   }
@@ -260,36 +295,66 @@ class VoxVoiceService extends ChangeNotifier {
 
   // ---------------------------------------------------------------- sending
 
-  Future<VoxVoiceEnvelope> _prepare(Int16List pcm, VoxVoiceMode mode) async {
+  /// Encodes a 48 kHz recording with [sendMode] (Mimi or Codec2).
+  Future<VoxEncodedClip> encodeRecording(Int16List pcm48k) async {
+    final maxIn = maxClipLength.inMilliseconds * voxRecordSampleRate ~/ 1000;
+    final clipped = pcm48k.length > maxIn
+        ? Int16List.sublistView(pcm48k, 0, maxIn)
+        : pcm48k;
+    final seconds = max(1, (clipped.length / voxRecordSampleRate).ceil());
+    final mode = sendMode;
+    if (mode.isMimi) {
+      final audio24 = await compute(_decimateJob, (clipped, 2));
+      final bits = await mimi.encode(audio24);
+      return VoxEncodedClip(mode, bits, seconds);
+    }
     if (!voxCodecAvailable) {
       throw StateError(voxCodecUnavailableReason ?? 'Codec2 unavailable');
     }
-    final maxSamples = maxClipLength.inMilliseconds * 8;
-    final clipped = pcm.length > maxSamples
-        ? Int16List.sublistView(pcm, 0, maxSamples)
-        : pcm;
-    final bits = await compute(_encodeJob, _EncodeJob(clipped, mode));
+    final audio8 = await compute(_decimateJob, (clipped, 6));
+    final bits = await compute(
+      _encodeJob,
+      _EncodeJob(voxFloatToPcm16(audio8), mode),
+    );
+    return VoxEncodedClip(mode, bits, seconds);
+  }
+
+  /// What the listener will hear, as a WAV file.
+  Future<Uint8List> previewWav(VoxEncodedClip clip) =>
+      _decodeToWav(clip.mode, clip.bits);
+
+  Future<Uint8List> _decodeToWav(VoxVoiceMode mode, Uint8List bits) async {
+    if (mode.isMimi) {
+      final audio = await mimi.decode(bits);
+      return voxPcm16ToWav(
+        voxFloatToPcm16(audio),
+        sampleRate: VoxMimiSpec.sampleRate,
+      );
+    }
+    final pcm = await compute(_decodeJob, _DecodeJob(bits, mode));
+    return voxPcm16ToWav(pcm);
+  }
+
+  VoxVoiceEnvelope _register(VoxEncodedClip clip) {
     final sid = voxNewSessionId();
-    final packets = voxPacketize(sid, bits, mode);
+    final packets = voxPacketize(sid, clip.bits, clip.mode);
     if (packets.isEmpty) throw StateError('Recording is empty');
-    _remember(sid, mode, bits, own: true);
-    final durationS = (clipped.length / VoxVoiceMode.sampleRateHz).ceil();
+    _remember(sid, clip.mode, clip.bits, own: true);
     return VoxVoiceEnvelope(
       sessionId: sid,
-      mode: mode,
+      mode: clip.mode,
       totalPackets: packets.length,
-      durationSeconds: max(durationS, 1),
+      durationSeconds: clip.durationSeconds,
     );
   }
 
-  Future<VoxVoiceEnvelope> sendToContact(
+  Future<VoxVoiceEnvelope> sendClipToContact(
     Contact contact,
-    Int16List pcm, {
-    VoxVoiceMode mode = voxDefaultVoiceMode,
-  }) async {
-    final env = await _prepare(pcm, mode);
+    VoxEncodedClip clip,
+  ) async {
+    final env = _register(clip);
     _logEvent(
-      'sent ${env.totalPackets}-packet clip to ${contact.name} '
+      'sent ${env.totalPackets}-packet ${clip.mode.label} clip to ${contact.name} '
       '(route ${contact.pathLength < 0 ? 'flood' : '${contact.pathLength} hops'})',
       env.sessionId,
     );
@@ -298,14 +363,13 @@ class VoxVoiceService extends ChangeNotifier {
     return env;
   }
 
-  Future<VoxVoiceEnvelope> sendToChannel(
+  Future<VoxVoiceEnvelope> sendClipToChannel(
     Channel channel,
-    Int16List pcm, {
-    VoxVoiceMode mode = voxDefaultVoiceMode,
-  }) async {
-    final env = await _prepare(pcm, mode);
+    VoxEncodedClip clip,
+  ) async {
+    final env = _register(clip);
     _logEvent(
-      'sent ${env.totalPackets}-packet clip to channel ${channel.name}',
+      'sent ${env.totalPackets}-packet ${clip.mode.label} clip to channel ${channel.name}',
       env.sessionId,
     );
     await _connector.sendChannelMessage(channel, env.encode());
@@ -648,11 +712,13 @@ class VoxVoiceService extends ChangeNotifier {
   Future<Uint8List?> wavFor(VoxVoiceEnvelope env) async {
     await _loadFromStore(env.sessionId);
     final bits = _bits[env.sessionId];
-    if (bits == null || !voxCodecAvailable) return null;
-    final mode = _modes[env.sessionId] ?? env.mode;
-    final pcm = await compute(_decodeJob, _DecodeJob(bits, mode));
-    return voxPcm16ToWav(pcm);
+    if (bits == null || !canPlay(env)) return null;
+    return _decodeToWav(_modes[env.sessionId] ?? env.mode, bits);
   }
+
+  /// Whether this device can decode [env]'s codec right now.
+  bool canPlay(VoxVoiceEnvelope env) =>
+      env.mode.isMimi ? mimi.isReady : voxCodecAvailable;
 
   // ------------------------------------------------------------ inbound data
 
@@ -1098,6 +1164,8 @@ class VoxVoiceService extends ChangeNotifier {
 
   @override
   void dispose() {
+    mimi.removeListener(notifyListeners);
+    mimi.dispose();
     _sub.cancel();
     if (_connector.voxControlTextInterceptor == _onControlText) {
       _connector.voxControlTextInterceptor = null;
@@ -1122,4 +1190,5 @@ class _DecodeJob {
 }
 
 Uint8List _encodeJob(_EncodeJob j) => voxEncodePcm(j.pcm, j.mode);
+Float32List _decimateJob((Int16List, int) a) => voxDecimate(a.$1, a.$2);
 Int16List _decodeJob(_DecodeJob j) => voxDecodeBits(j.bits, j.mode);

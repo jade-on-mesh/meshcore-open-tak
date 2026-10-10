@@ -497,10 +497,9 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               VoxMicButton(
                 recipientLabel: _resolveContact(connector).name,
-                onSend: (pcm) => context.read<VoxVoiceService>().sendToContact(
-                  _resolveContact(connector),
-                  pcm,
-                ),
+                onSend: (clip) => context
+                    .read<VoxVoiceService>()
+                    .sendClipToContact(_resolveContact(connector), clip),
               ),
               if (settings.translationEnabled)
                 MessageTranslationButton(

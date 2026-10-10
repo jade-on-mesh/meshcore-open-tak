@@ -17,6 +17,20 @@ published design so clips can be exchanged with SAR users.
 | `lib/vox/voice_clip_store*.dart` | On-disk cache of complete clips |
 | `third_party/codec2`, `android/app/src/main/cpp` | Vendored Codec2 and its Android build |
 
+## Codecs
+
+- **Mimi** (default once its model is downloaded): Kyutai's neural codec,
+  8 codebooks × 11 bits at 12.5 frames/s, so 11 bytes per 80 ms frame,
+  about 1.1 kb/s at 24 kHz audio. Announced with `VM1:` (same fields as
+  `VE3:`, mode id 32 = `w`). VOX only. Packets carry 14 frames (154 bytes).
+  The ONNX encoder/decoder (fixed 20 s, fp16-stored weights, ~223 MB) come
+  from this repo's `mimi-onnx-v1` release and are verified by SHA-256.
+  Built by `.github/workflows/vox-mimi-release.yml`.
+- **Codec2 1200** (fallback, and for MeshCore SAR users): `VE3:`.
+
+The recorder captures 48 kHz and decimates to 24 kHz (Mimi) or 8 kHz (Codec2).
+Voice settings has a toggle to keep sending Codec2 even with Mimi installed.
+
 ## Wire formats
 
 ### Envelope (normal text message, DM or channel)

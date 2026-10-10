@@ -8,7 +8,7 @@ VOX runs on stock MeshCore companion firmware. No firmware changes are needed.
 
 | Feature | Status |
 | --- | --- |
-| Codec2 1200 bps voice messages in DMs and channels (`VE3` envelope + on-demand chunked transfer) | ✅ first release |
+| Voice messages in DMs and channels, pulled on demand: **Mimi** neural codec (~1.1 kb/s, natural-sounding; 223 MB one-time model download) or Codec2 1200 | ✅ |
 | Interop with [MeshCore SAR](https://github.com/dz0ny/meshcore-sar) voice clips | ✅ same wire format |
 | AVIF images (`IE4`, SAR-compatible) alongside MeshCore Open's own image codec | 🔜 planned |
 | Team tracking (live positions, trails) | 🔜 planned |

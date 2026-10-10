@@ -2099,9 +2099,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                   ),
                   VoxMicButton(
                     recipientLabel: widget.channel.name,
-                    onSend: (pcm) => context
+                    onSend: (clip) => context
                         .read<VoxVoiceService>()
-                        .sendToChannel(widget.channel, pcm),
+                        .sendClipToChannel(widget.channel, clip),
                   ),
                   if (settings.translationEnabled)
                     MessageTranslationButton(

@@ -42,7 +42,13 @@ enum VoxVoiceMode {
     label: '3200',
     bytesPerFrame: 8,
     frameMs: 20,
-  );
+  ),
+
+  /// Mimi neural codec (Kyutai), 8 codebooks of 11 bits at 12.5 frames/s:
+  /// 88 bits = 11 bytes per 80 ms frame, about 1.1 kb/s. VOX-only, announced
+  /// with a `VM1:` envelope instead of `VE3:` so Codec2-only apps (MeshCore
+  /// SAR) never try to play it as Codec2.
+  mimi(wireId: 32, codec2Id: -1, label: 'Mimi', bytesPerFrame: 11, frameMs: 80);
 
   const VoxVoiceMode({
     required this.wireId,
@@ -58,7 +64,11 @@ enum VoxVoiceMode {
   final int bytesPerFrame;
   final int frameMs;
 
+  /// Codec2's sample rate. Mimi works at [VoxMimiSpec.sampleRate].
   static const int sampleRateHz = 8000;
+
+  bool get isMimi => this == mimi;
+  bool get isCodec2 => !isMimi;
 
   int get samplesPerFrame => sampleRateHz * frameMs ~/ 1000;
   int get bytesPerSecond => bytesPerFrame * 1000 ~/ frameMs;
@@ -138,7 +148,11 @@ int? _parseBase36(String s) {
 
 /// `VE3:` voice envelope carried as a normal text message.
 class VoxVoiceEnvelope {
+  /// Codec2 clips (MeshCore SAR compatible).
   static const String prefix = 'VE3:';
+
+  /// Mimi clips (VOX only). Same fields as VE3.
+  static const String mimiPrefix = 'VM1:';
 
   final String sessionId;
   final VoxVoiceMode mode;
@@ -152,11 +166,13 @@ class VoxVoiceEnvelope {
     required this.durationSeconds,
   });
 
-  static bool looksLikeEnvelope(String text) => text.startsWith(prefix);
+  static bool looksLikeEnvelope(String text) =>
+      text.startsWith(prefix) || text.startsWith(mimiPrefix);
 
   static VoxVoiceEnvelope? tryParse(String text) {
     final t = text.trim();
-    if (!t.startsWith(prefix)) return null;
+    final isMimi = t.startsWith(mimiPrefix);
+    if (!isMimi && !t.startsWith(prefix)) return null;
     final parts = t.substring(prefix.length).split(':');
     if (parts.length != 4) return null;
     final sidVal = _parseBase36(parts[0]);
@@ -168,7 +184,7 @@ class VoxVoiceEnvelope {
     }
     if (sidVal > 0xFFFFFFFF) return null;
     final mode = VoxVoiceMode.fromWireId(modeId);
-    if (mode == null) return null;
+    if (mode == null || mode.isMimi != isMimi) return null;
     if (total < 1 || total > voxMaxPackets) return null;
     if (dur < 0 || dur > voxMaxDurationSeconds) return null;
     return VoxVoiceEnvelope(
@@ -181,7 +197,8 @@ class VoxVoiceEnvelope {
 
   String encode() {
     final sid = int.parse(sessionId, radix: 16).toRadixString(36);
-    return '$prefix$sid:${mode.wireId.toRadixString(36)}:'
+    return '${mode.isMimi ? mimiPrefix : prefix}$sid:'
+        '${mode.wireId.toRadixString(36)}:'
         '${totalPackets.toRadixString(36)}:'
         '${durationSeconds.toRadixString(36)}';
   }
@@ -434,3 +451,67 @@ const int voxChannelDataType = 0x5643; // 'VC'
 
 /// Largest GRP_DATA payload the companion protocol carries (172 - 9).
 const int voxMaxChannelDataBytes = 163;
+
+/// Fixed properties of the Mimi model VOX ships (see tool/vox/mimi_export.py).
+class VoxMimiSpec {
+  VoxMimiSpec._();
+
+  static const int sampleRate = 24000;
+  static const int frameSamples = 1920; // 80 ms
+  static const int codebooks = 8;
+  static const int bitsPerCode = 11;
+  static const int bytesPerFrame = codebooks * bitsPerCode ~/ 8; // 11
+
+  /// The ONNX graphs are exported for a fixed 20 s; shorter clips are padded
+  /// with silence (Mimi is causal, so padding does not change earlier frames).
+  static const int maxFrames = 250;
+  static const int maxSamples = maxFrames * frameSamples; // 480000
+
+  static int framesFor(int samples24k) =>
+      min(maxFrames, (samples24k + frameSamples - 1) ~/ frameSamples);
+}
+
+/// Packs Mimi codes into 11 bytes per frame.
+///
+/// [codes] is the encoder output laid out `[codebook][frame]` with
+/// [stride] frames per codebook row (the ONNX output is `[1, 8, 250]`).
+/// Bits are written MSB first, frame by frame, codebook 0..7.
+Uint8List voxPackMimiCodes(List<int> codes, int frames, {int? stride}) {
+  final s = stride ?? frames;
+  final out = Uint8List(frames * VoxMimiSpec.bytesPerFrame);
+  var bitPos = 0;
+  for (var f = 0; f < frames; f++) {
+    for (var q = 0; q < VoxMimiSpec.codebooks; q++) {
+      final v = codes[q * s + f] & 0x7FF;
+      for (var b = VoxMimiSpec.bitsPerCode - 1; b >= 0; b--) {
+        if ((v >> b) & 1 == 1) out[bitPos >> 3] |= 0x80 >> (bitPos & 7);
+        bitPos++;
+      }
+    }
+  }
+  return out;
+}
+
+/// Inverse of [voxPackMimiCodes]. Returns `[codebook][frame]` codes with
+/// [stride] frames per row (zero-filled past the clip), ready for the
+/// decoder's `[1, 8, 250]` input.
+Int64List voxUnpackMimiCodes(
+  Uint8List bytes, {
+  int stride = VoxMimiSpec.maxFrames,
+}) {
+  final frames = min(stride, bytes.length ~/ VoxMimiSpec.bytesPerFrame);
+  final out = Int64List(VoxMimiSpec.codebooks * stride);
+  var bitPos = 0;
+  for (var f = 0; f < frames; f++) {
+    for (var q = 0; q < VoxMimiSpec.codebooks; q++) {
+      var v = 0;
+      for (var b = 0; b < VoxMimiSpec.bitsPerCode; b++) {
+        final bit = (bytes[bitPos >> 3] >> (7 - (bitPos & 7))) & 1;
+        v = (v << 1) | bit;
+        bitPos++;
+      }
+      out[q * stride + f] = v;
+    }
+  }
+  return out;
+}
