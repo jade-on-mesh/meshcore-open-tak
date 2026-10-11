@@ -25,7 +25,7 @@ class VoxMimiFile {
   const VoxMimiFile(this.name, this.sha256, this.bytes);
 
   String get url =>
-      'https://github.com/jade-on-mesh/meshcore-open-vox/releases/download/'
+      'https://github.com/jade-on-mesh/meshcore-open-tak/releases/download/'
       'mimi-onnx-v1/$name';
 }
 
