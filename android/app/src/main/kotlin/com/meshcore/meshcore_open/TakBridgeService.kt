@@ -112,19 +112,32 @@ object TakBridgeHub {
 
     // ------------------------------------------------------- from plugin
 
-    private fun allowed(ctx: Context, msg: Message): Boolean {
+    private fun isAtak(ctx: Context, msg: Message): Boolean {
         val uid = if (Build.VERSION.SDK_INT >= 22) msg.sendingUid else -1
         if (uid < 0) return false
         if (uid == android.os.Process.myUid()) return true
-        val prefs = ctx.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        if (!prefs.getBoolean("flutter.atak_bridge_enabled", true)) return false
         val pkgs = ctx.packageManager.getPackagesForUid(uid) ?: return false
         return pkgs.any { it.startsWith("com.atakmap.app") || it.startsWith("gov.tak.") }
     }
 
+    private fun enabled(ctx: Context): Boolean =
+        ctx.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            .getBoolean("flutter.atak_bridge_enabled", true)
+
     fun fromPlugin(ctx: Context, msg: Message) {
-        if (!allowed(ctx, msg)) {
+        if (!isAtak(ctx, msg)) {
             Log.w(TAG, "ignoring a bridge message from an app that isn't ATAK")
+            return
+        }
+        if (!enabled(ctx)) {
+            send(msg.replyTo, STATE, Bundle().apply {
+                putBoolean("connected", false)
+                putString("detail", "Turned off in MeshCore Open TAK (TAK interop)")
+            })
+            if (msg.what != HELLO && msg.what != BYE && msg.what != MEDIA_CHUNK_IN) {
+                send(msg.replyTo, RESULT, result(msg.data?.getInt("id") ?: 0, false,
+                    "The ATAK bridge is off in MeshCore Open TAK"))
+            }
             return
         }
         val reply = msg.replyTo

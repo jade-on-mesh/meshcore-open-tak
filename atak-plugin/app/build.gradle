@@ -80,6 +80,7 @@ def withMimi = !(project.findProperty('withMimi') ?: 'true').toString().equalsIg
 android {
     compileSdkVersion 26
     buildToolsVersion "30.0.2"
+    ndkVersion "21.4.7075529"
 
     dexOptions {
         jumboMode = true
@@ -166,7 +167,7 @@ android {
             defaultConfig.versionCode = getVersionCode()
             defaultConfig.versionName = PLUGIN_VERSION + " (" + getVersionName() + ") - [" + ATAK_VERSION + "]"
             if (!withMimi) {
-                java.exclude '**/media/MimiCodec.java'
+                java.filter.exclude '**/media/MimiCodec.java'
                 java.srcDir 'src/nomimi/java'
             }
         }
