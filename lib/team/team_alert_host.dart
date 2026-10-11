@@ -126,7 +126,9 @@ class _TeamAlertHostState extends State<TeamAlertHost> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      a.callsign.isEmpty ? a.senderKey4.toUpperCase() : a.callsign,
+                      a.callsign.isEmpty
+                          ? a.senderKey4.toUpperCase()
+                          : a.callsign,
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: Colors.white, fontSize: 26),
                     ),
@@ -141,7 +143,10 @@ class _TeamAlertHostState extends State<TeamAlertHost> {
                       Text(
                         a.note,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white70, fontSize: 18),
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 18,
+                        ),
                       ),
                     ],
                     if (alerts.length > 1)

@@ -185,7 +185,11 @@ class _PinEditorState extends State<_PinEditor> {
                 children: [
                   for (final k in MarkerKind.values)
                     ChoiceChip(
-                      avatar: Icon(markerKindIcon(k), size: 18, color: markerKindColor(k)),
+                      avatar: Icon(
+                        markerKindIcon(k),
+                        size: 18,
+                        color: markerKindColor(k),
+                      ),
                       label: Text(k.label),
                       selected: _kind == k,
                       onSelected: (_) => setState(() => _kind = k),
@@ -211,7 +215,9 @@ class _PinEditorState extends State<_PinEditor> {
               const SizedBox(height: 12),
               FilledButton.icon(
                 icon: const Icon(Icons.send),
-                label: Text(widget.existing == null ? 'Share with team' : 'Update'),
+                label: Text(
+                  widget.existing == null ? 'Share with team' : 'Update',
+                ),
                 onPressed: _sending ? null : _save,
               ),
             ],
@@ -320,22 +326,26 @@ class _SaluteFormState extends State<_SaluteForm> {
     if (mounted) Navigator.pop(context);
   }
 
-  Widget _counter(String label, String emoji, int value, ValueChanged<int> set) =>
-      Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('$emoji $label'),
-          IconButton(
-            icon: const Icon(Icons.remove_circle_outline),
-            onPressed: value > 0 ? () => set(value - 1) : null,
-          ),
-          Text('$value', style: Theme.of(context).textTheme.titleMedium),
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline),
-            onPressed: value < 250 ? () => set(value + 1) : null,
-          ),
-        ],
-      );
+  Widget _counter(
+    String label,
+    String emoji,
+    int value,
+    ValueChanged<int> set,
+  ) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text('$emoji $label'),
+      IconButton(
+        icon: const Icon(Icons.remove_circle_outline),
+        onPressed: value > 0 ? () => set(value - 1) : null,
+      ),
+      Text('$value', style: Theme.of(context).textTheme.titleMedium),
+      IconButton(
+        icon: const Icon(Icons.add_circle_outline),
+        onPressed: value < 250 ? () => set(value + 1) : null,
+      ),
+    ],
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -379,14 +389,26 @@ class _SaluteFormState extends State<_SaluteForm> {
               Text('S · Size', style: t.labelLarge),
               Wrap(
                 children: [
-                  _counter('Vehicles', '🚗', _vehicles, (v) => setState(() => _vehicles = v)),
-                  _counter('Personnel', '🥾', _people, (v) => setState(() => _people = v)),
+                  _counter(
+                    'Vehicles',
+                    '🚗',
+                    _vehicles,
+                    (v) => setState(() => _vehicles = v),
+                  ),
+                  _counter(
+                    'Personnel',
+                    '🥾',
+                    _people,
+                    (v) => setState(() => _people = v),
+                  ),
                 ],
               ),
               TextField(
                 controller: _size,
                 maxLength: teamMaxSaluteSizeBytes,
-                decoration: const InputDecoration(labelText: 'Other size note (optional)'),
+                decoration: const InputDecoration(
+                  labelText: 'Other size note (optional)',
+                ),
                 onChanged: (_) => setState(() {}),
               ),
               TextField(
@@ -408,14 +430,19 @@ class _SaluteFormState extends State<_SaluteForm> {
               TextField(
                 controller: _unit,
                 maxLength: teamMaxSaluteUnitBytes,
-                decoration: const InputDecoration(labelText: 'U · Unit / uniform'),
+                decoration: const InputDecoration(
+                  labelText: 'U · Unit / uniform',
+                ),
                 onChanged: (_) => setState(() {}),
               ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.schedule),
                 title: Text('T · Time observed: ${_preview.timeLabel}'),
-                trailing: TextButton(onPressed: _pickTime, child: const Text('Change')),
+                trailing: TextButton(
+                  onPressed: _pickTime,
+                  child: const Text('Change'),
+                ),
               ),
               TextField(
                 controller: _equipment,

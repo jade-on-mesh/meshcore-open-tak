@@ -220,7 +220,15 @@ void main() {
             speedMps: v,
             headingChangeDeg: turn,
           );
-      expect(p.shouldSend(sinceLast: null, metersSinceLast: null, speedMps: null, headingChangeDeg: null), isTrue);
+      expect(
+        p.shouldSend(
+          sinceLast: null,
+          metersSinceLast: null,
+          speedMps: null,
+          headingChangeDeg: null,
+        ),
+        isTrue,
+      );
       expect(send(10, v: 3, turn: 90), isFalse); // under the minimum
       expect(send(40, v: 3, turn: 90), isTrue); // sharp turn
       expect(send(100, v: 3), isTrue); // moving

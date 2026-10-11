@@ -93,7 +93,9 @@ class _RosterTab extends StatelessWidget {
                 trailing: IconButton(
                   icon: const Icon(Icons.send),
                   tooltip: 'Send my position now',
-                  onPressed: team.active ? () => unawaited(team.sendPosition()) : null,
+                  onPressed: team.active
+                      ? () => unawaited(team.sendPosition())
+                      : null,
                 ),
               ),
               Padding(
@@ -106,8 +108,9 @@ class _RosterTab extends StatelessWidget {
                       ChoiceChip(
                         label: Text(s.label),
                         selected: team.status == s,
-                        onSelected: (sel) =>
-                            unawaited(team.setStatus(sel ? s : TeamStatus.none)),
+                        onSelected: (sel) => unawaited(
+                          team.setStatus(sel ? s : TeamStatus.none),
+                        ),
                       ),
                   ],
                 ),
@@ -131,7 +134,11 @@ class _RosterTab extends StatelessWidget {
               onTap: a.lat == null
                   ? null
                   : () {
-                      team.houndPoint(a.lat!, a.lon!, '${a.type.label} ${a.callsign}');
+                      team.houndPoint(
+                        a.lat!,
+                        a.lon!,
+                        '${a.type.label} ${a.callsign}',
+                      );
                       Navigator.pop(context);
                     },
             ),
@@ -148,9 +155,9 @@ class _RosterTab extends StatelessWidget {
         for (final m in team.members)
           ListTile(
             leading: CircleAvatar(
-              backgroundColor: Color(m.position.color.argb).withValues(
-                alpha: m.freshness == TeamFreshness.live ? 1 : 0.4,
-              ),
+              backgroundColor: Color(
+                m.position.color.argb,
+              ).withValues(alpha: m.freshness == TeamFreshness.live ? 1 : 0.4),
               child: Icon(teamRoleIcon(m.position.role), color: Colors.black),
             ),
             title: Text(
@@ -160,14 +167,26 @@ class _RosterTab extends StatelessWidget {
             subtitle: Text(
               [
                 m.position.role.label,
-                if (m.position.status != TeamStatus.none) m.position.status.label,
+                if (m.position.status != TeamStatus.none)
+                  m.position.status.label,
                 teamAgo(m.heard),
                 if (fix != null)
                   teamRangeBearing(
-                    teamDistanceMeters(fix.lat, fix.lon, m.position.lat, m.position.lon),
-                    teamBearingDeg(fix.lat, fix.lon, m.position.lat, m.position.lon),
+                    teamDistanceMeters(
+                      fix.lat,
+                      fix.lon,
+                      m.position.lat,
+                      m.position.lon,
+                    ),
+                    teamBearingDeg(
+                      fix.lat,
+                      fix.lon,
+                      m.position.lat,
+                      m.position.lon,
+                    ),
                   ),
-                if (m.position.batteryPct != null) '🔋${m.position.batteryPct}%',
+                if (m.position.batteryPct != null)
+                  '🔋${m.position.batteryPct}%',
               ].join(' · '),
             ),
             onTap: () => showTeamMemberSheet(context, m.key4),
@@ -218,7 +237,10 @@ class _PinsTab extends StatelessWidget {
               children: [
                 for (final m in team.markers)
                   ListTile(
-                    leading: Icon(markerKindIcon(m.kind), color: markerKindColor(m.kind)),
+                    leading: Icon(
+                      markerKindIcon(m.kind),
+                      color: markerKindColor(m.kind),
+                    ),
                     title: Text(m.label.isEmpty ? m.kind.label : m.label),
                     subtitle: Text(
                       [
@@ -242,7 +264,8 @@ class _PinsTab extends StatelessWidget {
               label: const Text('Pin at my position'),
               onPressed: fix == null
                   ? null
-                  : () => showTeamPinEditor(context, lat: fix.lat, lon: fix.lon),
+                  : () =>
+                        showTeamPinEditor(context, lat: fix.lat, lon: fix.lon),
             )
           : null,
     );
@@ -378,7 +401,11 @@ class _SetupTabState extends State<_SetupTab> {
                   value: r,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: [Icon(teamRoleIcon(r), size: 18), const SizedBox(width: 6), Text(r.label)],
+                    children: [
+                      Icon(teamRoleIcon(r), size: 18),
+                      const SizedBox(width: 6),
+                      Text(r.label),
+                    ],
                   ),
                 ),
             ],
@@ -432,14 +459,16 @@ class _SetupTabState extends State<_SetupTab> {
         ListTile(
           leading: const Icon(Icons.replay),
           title: const Text('Resend my pins'),
-          subtitle: const Text('For teammates who joined after you dropped them.'),
+          subtitle: const Text(
+            'For teammates who joined after you dropped them.',
+          ),
           onTap: team.active
               ? () async {
                   final n = await team.resendMyMarkers();
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Resent $n pins')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('Resent $n pins')));
                   }
                 }
               : null,
@@ -517,7 +546,11 @@ class _TakSettingsState extends State<_TakSettings> {
       f.name,
       await f.readAsBytes(),
     );
-    await _apply(trust ? _s.copyWith(trustP12Path: path) : _s.copyWith(clientP12Path: path));
+    await _apply(
+      trust
+          ? _s.copyWith(trustP12Path: path)
+          : _s.copyWith(clientP12Path: path),
+    );
   }
 
   @override
@@ -527,7 +560,8 @@ class _TakSettingsState extends State<_TakSettings> {
     final stateText = switch (tak.state) {
       TakState.off => 'Off',
       TakState.connecting => 'Connecting…',
-      TakState.connected => 'Connected · sent ${tak.sentCount}, received ${tak.receivedCount}',
+      TakState.connected =>
+        'Connected · sent ${tak.sentCount}, received ${tak.receivedCount}',
       TakState.error => 'Not connected: ${tak.error ?? ''}',
     };
     return Column(
@@ -542,7 +576,9 @@ class _TakSettingsState extends State<_TakSettings> {
         ),
         SwitchListTile(
           title: const Text('Local ATAK on this Wi-Fi'),
-          subtitle: const Text('Standard SA multicast (239.2.3.1:6969). No server.'),
+          subtitle: const Text(
+            'Standard SA multicast (239.2.3.1:6969). No server.',
+          ),
           value: _s.multicastEnabled,
           onChanged: (v) => unawaited(_apply(_s.copyWith(multicastEnabled: v))),
         ),
@@ -601,7 +637,11 @@ class _TakSettingsState extends State<_TakSettings> {
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Client certificate (.p12)'),
-            subtitle: Text(_s.clientP12Path.isEmpty ? 'None' : _s.clientP12Path.split('/').last),
+            subtitle: Text(
+              _s.clientP12Path.isEmpty
+                  ? 'None'
+                  : _s.clientP12Path.split('/').last,
+            ),
             trailing: TextButton(
               onPressed: () => _pickCert(trust: false),
               child: const Text('Choose'),
@@ -610,12 +650,18 @@ class _TakSettingsState extends State<_TakSettings> {
           TextField(
             controller: _clientPw,
             obscureText: true,
-            decoration: const InputDecoration(labelText: 'Client certificate password'),
+            decoration: const InputDecoration(
+              labelText: 'Client certificate password',
+            ),
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Server trust store (.p12)'),
-            subtitle: Text(_s.trustP12Path.isEmpty ? 'None' : _s.trustP12Path.split('/').last),
+            subtitle: Text(
+              _s.trustP12Path.isEmpty
+                  ? 'None'
+                  : _s.trustP12Path.split('/').last,
+            ),
             trailing: TextButton(
               onPressed: () => _pickCert(trust: true),
               child: const Text('Choose'),
@@ -624,14 +670,19 @@ class _TakSettingsState extends State<_TakSettings> {
           TextField(
             controller: _trustPw,
             obscureText: true,
-            decoration: const InputDecoration(labelText: 'Trust store password'),
+            decoration: const InputDecoration(
+              labelText: 'Trust store password',
+            ),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Allow untrusted server certificate'),
-            subtitle: const Text('Only for testing; anyone could impersonate the server.'),
+            subtitle: const Text(
+              'Only for testing; anyone could impersonate the server.',
+            ),
             value: _s.allowUntrusted,
-            onChanged: (v) => setState(() => _s = _s.copyWith(allowUntrusted: v)),
+            onChanged: (v) =>
+                setState(() => _s = _s.copyWith(allowUntrusted: v)),
           ),
         ],
         SwitchListTile(

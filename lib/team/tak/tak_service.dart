@@ -13,7 +13,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:flutter/foundation.dart';
@@ -273,7 +272,10 @@ class TakService extends ChangeNotifier {
     _state = TakState.error;
     _error = why;
     notifyListeners();
-    _reconnect = Timer(Duration(seconds: _backoff), () => unawaited(_connect()));
+    _reconnect = Timer(
+      Duration(seconds: _backoff),
+      () => unawaited(_connect()),
+    );
     _backoff = min(_backoff * 2, 300);
   }
 
@@ -356,13 +358,13 @@ class TakService extends ChangeNotifier {
     } catch (_) {}
   }
 
-  bool get _publishing =>
-      _state == TakState.connected || _mcast != null;
+  bool get _publishing => _state == TakState.connected || _mcast != null;
 
   // ------------------------------------------- mesh -> TAK (gateway out)
 
   void _onSelfPosition(TeamPosition p) {
-    if (_publishing) _write(cotForPosition(p, uid: takUidForMember(p.senderKey4)));
+    if (_publishing)
+      _write(cotForPosition(p, uid: takUidForMember(p.senderKey4)));
   }
 
   void _onMeshMember(TeamMember m) {
@@ -416,7 +418,8 @@ class TakService extends ChangeNotifier {
     final self = _team.selfPositionForBridge;
     if (self != null && _publishing) _onSelfPosition(self);
     _entities.removeWhere(
-      (_, e) => DateTime.now().difference(e.event.stale) > const Duration(hours: 1),
+      (_, e) =>
+          DateTime.now().difference(e.event.stale) > const Duration(hours: 1),
     );
   }
 
@@ -456,24 +459,29 @@ class TakService extends ChangeNotifier {
     }
     _lastRelay[e.uid] = now;
     _lastAnyRelay = now;
-    final h = e.uid.codeUnits.fold<int>(0x811C9DC5, (a, c) => ((a ^ c) * 0x01000193) & 0xFFFFFFFF);
+    final h = e.uid.codeUnits.fold<int>(
+      0x811C9DC5,
+      (a, c) => ((a ^ c) * 0x01000193) & 0xFFFFFFFF,
+    );
     final key4 = '7a${(h & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
-    unawaited(_team.relayExternalPosition(
-      TeamPosition(
-        senderKey4: key4,
-        lat: e.lat,
-        lon: e.lon,
-        altitudeM: e.hae?.round(),
-        speedMps: e.speed,
-        headingDeg: e.course,
-        accuracyM: (e.ce ?? 0).round().clamp(0, 255),
-        batteryPct: e.battery,
-        role: teamRoleFromTak(e.groupRole),
-        color: teamColorFromTakGroup(e.groupName),
-        callsign: e.callsign ?? 'TAK',
-        relayed: true,
+    unawaited(
+      _team.relayExternalPosition(
+        TeamPosition(
+          senderKey4: key4,
+          lat: e.lat,
+          lon: e.lon,
+          altitudeM: e.hae?.round(),
+          speedMps: e.speed,
+          headingDeg: e.course,
+          accuracyM: (e.ce ?? 0).round().clamp(0, 255),
+          batteryPct: e.battery,
+          role: teamRoleFromTak(e.groupRole),
+          color: teamColorFromTakGroup(e.groupName),
+          callsign: e.callsign ?? 'TAK',
+          relayed: true,
+        ),
       ),
-    ));
+    );
   }
 
   // ------------------------------------------- ATAK data package import

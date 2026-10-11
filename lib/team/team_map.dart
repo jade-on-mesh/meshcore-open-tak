@@ -127,9 +127,9 @@ class TeamMapLayer extends StatelessWidget {
         if (m.trail.length > 1)
           Polyline(
             points: [for (final p in m.trail) LatLng(p.$1, p.$2)],
-            color: Color(m.position.color.argb).withValues(
-              alpha: m.freshness == TeamFreshness.live ? 0.7 : 0.3,
-            ),
+            color: Color(
+              m.position.color.argb,
+            ).withValues(alpha: m.freshness == TeamFreshness.live ? 0.7 : 0.3),
             strokeWidth: 3,
           ),
       if (hound != null && fix != null)
@@ -208,7 +208,11 @@ class TeamMapLayer extends StatelessWidget {
                         angle: p.headingDeg! * pi / 180,
                         child: const Align(
                           alignment: Alignment.topCenter,
-                          child: Icon(Icons.navigation, size: 14, color: Colors.white),
+                          child: Icon(
+                            Icons.navigation,
+                            size: 14,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     Container(
@@ -235,7 +239,9 @@ class TeamMapLayer extends StatelessWidget {
               ),
               _label(
                 p.relayed ? '${m.callsign} (TAK)' : m.callsign,
-                color: m.freshness == TeamFreshness.live ? null : Colors.white70,
+                color: m.freshness == TeamFreshness.live
+                    ? null
+                    : Colors.white70,
               ),
             ],
           ),
@@ -246,7 +252,9 @@ class TeamMapLayer extends StatelessWidget {
 
   Marker _pinMarker(BuildContext context, TeamService team, TeamMarker m) {
     final c = markerKindColor(m.kind);
-    final env = m.attachment == null ? null : teamAttachmentEnvelope(m.attachment!);
+    final env = m.attachment == null
+        ? null
+        : teamAttachmentEnvelope(m.attachment!);
     return Marker(
       point: LatLng(m.lat, m.lon),
       width: 110,
@@ -306,7 +314,9 @@ class TeamMapLayer extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            _label('${r.urgency.dot} ${r.countsLabel.isEmpty ? 'SALUTE' : r.countsLabel}'),
+            _label(
+              '${r.urgency.dot} ${r.countsLabel.isEmpty ? 'SALUTE' : r.countsLabel}',
+            ),
           ],
         ),
       ),
@@ -354,7 +364,11 @@ class _SelfDot extends StatelessWidget {
   final double? heading;
   final Color color;
   final bool sos;
-  const _SelfDot({required this.heading, required this.color, required this.sos});
+  const _SelfDot({
+    required this.heading,
+    required this.color,
+    required this.sos,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -364,7 +378,11 @@ class _SelfDot extends StatelessWidget {
         if (heading != null)
           Transform.rotate(
             angle: heading! * pi / 180,
-            child: const Icon(Icons.navigation, size: 34, color: Color(0x992196F3)),
+            child: const Icon(
+              Icons.navigation,
+              size: 34,
+              color: Color(0x992196F3),
+            ),
           ),
         Container(
           width: 16,
@@ -501,7 +519,11 @@ class _PinThumbState extends State<_PinThumb> {
 
 // ------------------------------------------------------------------ sheets
 
-Widget _attachmentView(BuildContext context, TeamAttachment a, String authorKey4) {
+Widget _attachmentView(
+  BuildContext context,
+  TeamAttachment a,
+  String authorKey4,
+) {
   final env = teamAttachmentEnvelope(a);
   if (env == null) return const SizedBox.shrink();
   final voice = context.read<VoxVoiceService>();
@@ -515,151 +537,178 @@ Widget _attachmentView(BuildContext context, TeamAttachment a, String authorKey4
   );
 }
 
-Widget _houndButton(BuildContext context, VoidCallback start) => FilledButton.tonalIcon(
-  icon: const Icon(Icons.track_changes),
-  label: const Text('Bloodhound'),
-  onPressed: () {
-    start();
-    Navigator.pop(context);
+Widget _houndButton(BuildContext context, VoidCallback start) =>
+    FilledButton.tonalIcon(
+      icon: const Icon(Icons.track_changes),
+      label: const Text('Bloodhound'),
+      onPressed: () {
+        start();
+        Navigator.pop(context);
+      },
+    );
+
+Future<void> showTeamMemberSheet(
+  BuildContext context,
+  String key4,
+) => showModalBottomSheet<void>(
+  context: context,
+  builder: (context) {
+    final team = context.watch<TeamService>();
+    final m = team.memberByKey(key4);
+    if (m == null) return const SizedBox(height: 120);
+    final p = m.position;
+    final range = _rangeFromMe(team, p.lat, p.lon);
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: Color(p.color.argb),
+                  child: Icon(teamRoleIcon(p.role), color: Colors.black),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        m.callsign,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      Text(
+                        '${p.role.label} · ${p.color.label} team'
+                        '${p.relayed ? ' · via TAK' : ''}',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (p.sosActive)
+              const Text(
+                'SOS ACTIVE',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            if (p.status != TeamStatus.none) Text('Status: ${p.status.label}'),
+            Text(
+              'Heard ${teamAgo(m.heard)}${p.fromRadio ? ' · radio GPS' : ''}',
+            ),
+            if (range != null) Text('From you: $range'),
+            if (p.speedMps != null && p.speedMps! > 0.3)
+              Text(
+                'Moving ${(p.speedMps! * 3.6).toStringAsFixed(1)} km/h, '
+                'heading ${p.headingDeg!.round()}°',
+              ),
+            if (p.altitudeM != null) Text('Altitude ${p.altitudeM} m'),
+            if (p.batteryPct != null) Text('Battery ${p.batteryPct}%'),
+            Text(
+              '${p.lat.toStringAsFixed(5)}, ${p.lon.toStringAsFixed(5)}'
+              '${p.accuracyM > 0 ? ' ±${p.accuracyM} m' : ''}',
+            ),
+            const SizedBox(height: 12),
+            _houndButton(context, () => team.houndMember(key4)),
+          ],
+        ),
+      ),
+    );
   },
 );
 
-Future<void> showTeamMemberSheet(BuildContext context, String key4) =>
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (context) {
-        final team = context.watch<TeamService>();
-        final m = team.memberByKey(key4);
-        if (m == null) return const SizedBox(height: 120);
-        final p = m.position;
-        final range = _rangeFromMe(team, p.lat, p.lon);
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+Future<void> showTeamPinSheet(
+  BuildContext context,
+  TeamMarker m,
+) => showModalBottomSheet<void>(
+  context: context,
+  isScrollControlled: true,
+  builder: (context) {
+    final team = context.watch<TeamService>();
+    final author =
+        team.memberByKey(m.authorKey4)?.callsign ??
+        (team.isMine(m) ? 'You' : m.authorKey4.toUpperCase());
+    final range = _rangeFromMe(team, m.lat, m.lon);
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: Color(p.color.argb),
-                      child: Icon(teamRoleIcon(p.role), color: Colors.black),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(m.callsign, style: Theme.of(context).textTheme.titleLarge),
-                          Text(
-                            '${p.role.label} · ${p.color.label} team'
-                            '${p.relayed ? ' · via TAK' : ''}',
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                Icon(
+                  markerKindIcon(m.kind),
+                  color: markerKindColor(m.kind),
+                  size: 32,
                 ),
-                const SizedBox(height: 12),
-                if (p.sosActive)
-                  const Text('SOS ACTIVE', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                if (p.status != TeamStatus.none) Text('Status: ${p.status.label}'),
-                Text('Heard ${teamAgo(m.heard)}${p.fromRadio ? ' · radio GPS' : ''}'),
-                if (range != null) Text('From you: $range'),
-                if (p.speedMps != null && p.speedMps! > 0.3)
-                  Text(
-                    'Moving ${(p.speedMps! * 3.6).toStringAsFixed(1)} km/h, '
-                    'heading ${p.headingDeg!.round()}°',
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    m.label.isEmpty ? m.kind.label : m.label,
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
-                if (p.altitudeM != null) Text('Altitude ${p.altitudeM} m'),
-                if (p.batteryPct != null) Text('Battery ${p.batteryPct}%'),
-                Text(
-                  '${p.lat.toStringAsFixed(5)}, ${p.lon.toStringAsFixed(5)}'
-                  '${p.accuracyM > 0 ? ' ±${p.accuracyM} m' : ''}',
                 ),
-                const SizedBox(height: 12),
-                _houndButton(context, () => team.houndMember(key4)),
               ],
             ),
-          ),
-        );
-      },
-    );
-
-Future<void> showTeamPinSheet(BuildContext context, TeamMarker m) =>
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        final team = context.watch<TeamService>();
-        final author = team.memberByKey(m.authorKey4)?.callsign ??
-            (team.isMine(m) ? 'You' : m.authorKey4.toUpperCase());
-        final range = _rangeFromMe(team, m.lat, m.lon);
-        return SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Text('${m.kind.label} · by $author · ${teamAgo(m.time)}'),
+            if (range != null) Text('From you: $range'),
+            Text('${m.lat.toStringAsFixed(5)}, ${m.lon.toStringAsFixed(5)}'),
+            if (m.note.isNotEmpty) ...[const SizedBox(height: 8), Text(m.note)],
+            if (m.attachment != null) ...[
+              const SizedBox(height: 12),
+              _attachmentView(context, m.attachment!, m.authorKey4),
+            ],
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                Row(
-                  children: [
-                    Icon(markerKindIcon(m.kind), color: markerKindColor(m.kind), size: 32),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        m.label.isEmpty ? m.kind.label : m.label,
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                    ),
-                  ],
+                _houndButton(
+                  context,
+                  () => team.houndPoint(
+                    m.lat,
+                    m.lon,
+                    m.label.isEmpty ? m.kind.label : m.label,
+                  ),
                 ),
-                Text('${m.kind.label} · by $author · ${teamAgo(m.time)}'),
-                if (range != null) Text('From you: $range'),
-                Text('${m.lat.toStringAsFixed(5)}, ${m.lon.toStringAsFixed(5)}'),
-                if (m.note.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(m.note),
-                ],
-                if (m.attachment != null) ...[
-                  const SizedBox(height: 12),
-                  _attachmentView(context, m.attachment!, m.authorKey4),
-                ],
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _houndButton(
-                      context,
-                      () => team.houndPoint(m.lat, m.lon, m.label.isEmpty ? m.kind.label : m.label),
-                    ),
-                    if (team.isMine(m))
-                      OutlinedButton.icon(
-                        icon: const Icon(Icons.edit),
-                        label: const Text('Edit'),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          showTeamPinEditor(context, lat: m.lat, lon: m.lon, existing: m);
-                        },
-                      ),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.delete_outline),
-                      label: Text(team.isMine(m) ? 'Delete for team' : 'Hide'),
-                      onPressed: () {
-                        unawaited(team.deleteMarker(m));
-                        Navigator.pop(context);
-                      },
-                    ),
-                  ],
+                if (team.isMine(m))
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.edit),
+                    label: const Text('Edit'),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      showTeamPinEditor(
+                        context,
+                        lat: m.lat,
+                        lon: m.lon,
+                        existing: m,
+                      );
+                    },
+                  ),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.delete_outline),
+                  label: Text(team.isMine(m) ? 'Delete for team' : 'Hide'),
+                  onPressed: () {
+                    unawaited(team.deleteMarker(m));
+                    Navigator.pop(context);
+                  },
                 ),
               ],
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
+  },
+);
 
 /// The condensed SALUTE card (also used in lists).
 class TeamReportCard extends StatelessWidget {
@@ -687,7 +736,10 @@ class TeamReportCard extends StatelessWidget {
             const SizedBox(width: 8),
             Text(r.urgency.label, style: t.titleMedium),
             const Spacer(),
-            Text(r.affiliation.label, style: TextStyle(color: affiliationColor(r.affiliation))),
+            Text(
+              r.affiliation.label,
+              style: TextStyle(color: affiliationColor(r.affiliation)),
+            ),
           ],
         ),
         for (final l in lines.skip(1)) Text(l, style: t.bodyLarge),
@@ -696,86 +748,106 @@ class TeamReportCard extends StatelessWidget {
   }
 }
 
-Future<void> showTeamReportSheet(BuildContext context, TeamReport r) =>
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        final team = context.watch<TeamService>();
-        final author = team.memberByKey(r.authorKey4)?.callsign ??
-            (r.authorKey4 == team.selfKey4 ? 'You' : r.authorKey4.toUpperCase());
-        final range = _rangeFromMe(team, r.lat, r.lon);
-        return SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+Future<void> showTeamReportSheet(
+  BuildContext context,
+  TeamReport r,
+) => showModalBottomSheet<void>(
+  context: context,
+  isScrollControlled: true,
+  builder: (context) {
+    final team = context.watch<TeamService>();
+    final author =
+        team.memberByKey(r.authorKey4)?.callsign ??
+        (r.authorKey4 == team.selfKey4 ? 'You' : r.authorKey4.toUpperCase());
+    final range = _rangeFromMe(team, r.lat, r.lon);
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'SALUTE report',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            const SizedBox(height: 6),
+            TeamReportCard(report: r),
+            const SizedBox(height: 8),
+            Text('By $author${range == null ? '' : ' · $range from you'}'),
+            if (r.attachment != null) ...[
+              const SizedBox(height: 12),
+              _attachmentView(context, r.attachment!, r.authorKey4),
+            ],
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
               children: [
-                Text('SALUTE report', style: Theme.of(context).textTheme.labelLarge),
-                const SizedBox(height: 6),
-                TeamReportCard(report: r),
-                const SizedBox(height: 8),
-                Text('By $author${range == null ? '' : ' · $range from you'}'),
-                if (r.attachment != null) ...[
-                  const SizedBox(height: 12),
-                  _attachmentView(context, r.attachment!, r.authorKey4),
-                ],
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    _houndButton(
-                      context,
-                      () => team.houndPoint(r.lat, r.lon, 'SALUTE @${r.placeLabel}'),
-                    ),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.delete_outline),
-                      label: const Text('Remove from my map'),
-                      onPressed: () {
-                        unawaited(team.deleteReport(r));
-                        Navigator.pop(context);
-                      },
-                    ),
-                  ],
+                _houndButton(
+                  context,
+                  () =>
+                      team.houndPoint(r.lat, r.lon, 'SALUTE @${r.placeLabel}'),
+                ),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Remove from my map'),
+                  onPressed: () {
+                    unawaited(team.deleteReport(r));
+                    Navigator.pop(context);
+                  },
                 ),
               ],
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
+  },
+);
 
-Future<void> showTakEntitySheet(BuildContext context, TakEntity t) =>
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (context) {
-        final team = context.read<TeamService>();
-        final e = t.event;
-        final range = _rangeFromMe(team, e.lat, e.lon);
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(e.callsign ?? e.uid, style: Theme.of(context).textTheme.titleLarge),
-                Text('From TAK · ${e.type}${e.groupRole == null ? '' : ' · ${e.groupRole}'}'
-                    '${e.groupName == null ? '' : ' · ${e.groupName}'}'),
-                Text('Updated ${teamAgo(e.time)}'),
-                if (range != null) Text('From you: $range'),
-                if (e.emergencyType != null) Text('Alert: ${e.emergencyType}',
-                    style: const TextStyle(color: Colors.red)),
-                if ((e.remarks ?? '').isNotEmpty) Text(e.remarks!),
-                const SizedBox(height: 12),
-                _houndButton(context, () => team.houndPoint(e.lat, e.lon, e.callsign ?? 'TAK')),
-              ],
+Future<void> showTakEntitySheet(
+  BuildContext context,
+  TakEntity t,
+) => showModalBottomSheet<void>(
+  context: context,
+  builder: (context) {
+    final team = context.read<TeamService>();
+    final e = t.event;
+    final range = _rangeFromMe(team, e.lat, e.lon);
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              e.callsign ?? e.uid,
+              style: Theme.of(context).textTheme.titleLarge,
             ),
-          ),
-        );
-      },
+            Text(
+              'From TAK · ${e.type}${e.groupRole == null ? '' : ' · ${e.groupRole}'}'
+              '${e.groupName == null ? '' : ' · ${e.groupName}'}',
+            ),
+            Text('Updated ${teamAgo(e.time)}'),
+            if (range != null) Text('From you: $range'),
+            if (e.emergencyType != null)
+              Text(
+                'Alert: ${e.emergencyType}',
+                style: const TextStyle(color: Colors.red),
+              ),
+            if ((e.remarks ?? '').isNotEmpty) Text(e.remarks!),
+            const SizedBox(height: 12),
+            _houndButton(
+              context,
+              () => team.houndPoint(e.lat, e.lon, e.callsign ?? 'TAK'),
+            ),
+          ],
+        ),
+      ),
     );
+  },
+);
 
 /// Long-press on the map with team mode on.
 Future<void> showTeamMapActions(
@@ -791,7 +863,9 @@ Future<void> showTeamMapActions(
         mainAxisSize: MainAxisSize.min,
         children: [
           ListTile(
-            title: Text('${at.latitude.toStringAsFixed(5)}, ${at.longitude.toStringAsFixed(5)}'),
+            title: Text(
+              '${at.latitude.toStringAsFixed(5)}, ${at.longitude.toStringAsFixed(5)}',
+            ),
             subtitle: Text(_rangeFromMe(team, at.latitude, at.longitude) ?? ''),
           ),
           ListTile(
@@ -864,7 +938,10 @@ class TeamMapOverlay extends StatelessWidget {
                   padding: const EdgeInsets.all(10),
                   child: Text(
                     '${own.type.label.toUpperCase()} ACTIVE · tap to cancel',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -878,21 +955,27 @@ class TeamMapOverlay extends StatelessWidget {
                   children: [
                     if (fix != null)
                       Transform.rotate(
-                        angle: (teamBearingDeg(fix.lat, fix.lon, hound.lat, hound.lon) -
+                        angle:
+                            (teamBearingDeg(
+                                  fix.lat,
+                                  fix.lon,
+                                  hound.lat,
+                                  hound.lon,
+                                ) -
                                 (fix.heading ?? 0)) *
                             pi /
                             180,
-                        child: const Icon(Icons.navigation, color: Color(0xFFFF6D00)),
+                        child: const Icon(
+                          Icons.navigation,
+                          color: Color(0xFFFF6D00),
+                        ),
                       ),
                     const SizedBox(width: 8),
                     Flexible(
                       child: Text(
                         fix == null
                             ? '${hound.label}: waiting for your position'
-                            : '${hound.label}\n${teamRangeBearing(
-                                teamDistanceMeters(fix.lat, fix.lon, hound.lat, hound.lon),
-                                teamBearingDeg(fix.lat, fix.lon, hound.lat, hound.lon),
-                              )}${fix.heading == null ? ' (arrow: north up)' : ''}',
+                            : '${hound.label}\n${teamRangeBearing(teamDistanceMeters(fix.lat, fix.lon, hound.lat, hound.lon), teamBearingDeg(fix.lat, fix.lon, hound.lat, hound.lon))}${fix.heading == null ? ' (arrow: north up)' : ''}',
                       ),
                     ),
                     IconButton(
@@ -918,7 +1001,9 @@ class TeamMapOverlay extends StatelessWidget {
                 ),
                 child: Badge(
                   isLabelVisible: team.members.isNotEmpty,
-                  label: Text('${team.members.where((m) => m.freshness == TeamFreshness.live).length}'),
+                  label: Text(
+                    '${team.members.where((m) => m.freshness == TeamFreshness.live).length}',
+                  ),
                   child: const Icon(Icons.groups),
                 ),
               ),
@@ -936,8 +1021,14 @@ class TeamMapOverlay extends StatelessWidget {
         title: const Text('Cancel your alert?'),
         content: const Text('Your team will be told you no longer need help.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Keep it')),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Cancel alert')),
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Keep it'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Cancel alert'),
+          ),
         ],
       ),
     );
@@ -953,16 +1044,18 @@ class _SosButton extends StatefulWidget {
   State<_SosButton> createState() => _SosButtonState();
 }
 
-class _SosButtonState extends State<_SosButton> with SingleTickerProviderStateMixin {
-  late final AnimationController _hold = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1500),
-  )..addStatusListener((s) {
-      if (s == AnimationStatus.completed) {
-        _hold.reset();
-        unawaited(_choose());
-      }
-    });
+class _SosButtonState extends State<_SosButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _hold =
+      AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 1500),
+      )..addStatusListener((s) {
+        if (s == AnimationStatus.completed) {
+          _hold.reset();
+          unawaited(_choose());
+        }
+      });
 
   Future<void> _choose() async {
     final type = await showModalBottomSheet<TeamAlertType>(
@@ -989,8 +1082,10 @@ class _SosButtonState extends State<_SosButton> with SingleTickerProviderStateMi
                 title: Text(t.label),
                 subtitle: Text(switch (t) {
                   TeamAlertType.sos => 'Emergency: I need help now',
-                  TeamAlertType.inContact => 'Encountered a threat or situation',
-                  TeamAlertType.ringTheBell => 'All team members: respond / regroup',
+                  TeamAlertType.inContact =>
+                    'Encountered a threat or situation',
+                  TeamAlertType.ringTheBell =>
+                    'All team members: respond / regroup',
                   _ => '',
                 }),
                 onTap: () => Navigator.pop(c, t),
@@ -1016,7 +1111,9 @@ class _SosButtonState extends State<_SosButton> with SingleTickerProviderStateMi
         if (_hold.isAnimating) {
           _hold.reset();
           ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-            const SnackBar(content: Text('Hold the SOS button to send an alert')),
+            const SnackBar(
+              content: Text('Hold the SOS button to send an alert'),
+            ),
           );
         }
       },
@@ -1038,11 +1135,17 @@ class _SosButtonState extends State<_SosButton> with SingleTickerProviderStateMi
             Container(
               width: 44,
               height: 44,
-              decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+              decoration: const BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
               alignment: Alignment.center,
               child: const Text(
                 'SOS',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],

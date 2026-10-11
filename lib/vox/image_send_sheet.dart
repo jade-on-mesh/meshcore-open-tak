@@ -50,73 +50,73 @@ Future<void> showVoxImagePicker(
   required Future<void> Function(VoxEncodedImage image) onSend,
   String sendLabel = 'Send',
 }) async {
-    final voice = context.read<VoxVoiceService>();
-    if (!voice.imagesAvailable) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Photo messages need the Android app.')),
-      );
-      return;
-    }
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('Take photo'),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Choose from gallery'),
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
-            ),
-          ],
-        ),
-      ),
+  final voice = context.read<VoxVoiceService>();
+  if (!voice.imagesAvailable) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Photo messages need the Android app.')),
     );
-    if (source == null || !context.mounted) return;
-    XFile? picked;
-    try {
-      picked = await ImagePicker().pickImage(
-        source: source,
-        maxWidth: 2048,
-        maxHeight: 2048,
-        imageQuality: 95,
-      );
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Couldn\'t open the photo: $e')));
-      }
-      return;
-    }
-    if (picked == null || !context.mounted) return;
-    VoxRgbImage ref;
-    try {
-      ref = await voxLoadReference(await picked.readAsBytes());
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Couldn\'t read that photo: $e')),
-        );
-      }
-      return;
-    }
-    if (!context.mounted) return;
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => VoxImageSendSheet(
-        reference: ref,
-        recipientLabel: recipientLabel,
-        onSend: onSend,
-        sendLabel: sendLabel,
+    return;
+  }
+  final source = await showModalBottomSheet<ImageSource>(
+    context: context,
+    builder: (context) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.photo_camera_outlined),
+            title: const Text('Take photo'),
+            onTap: () => Navigator.pop(context, ImageSource.camera),
+          ),
+          ListTile(
+            leading: const Icon(Icons.photo_library_outlined),
+            title: const Text('Choose from gallery'),
+            onTap: () => Navigator.pop(context, ImageSource.gallery),
+          ),
+        ],
       ),
+    ),
+  );
+  if (source == null || !context.mounted) return;
+  XFile? picked;
+  try {
+    picked = await ImagePicker().pickImage(
+      source: source,
+      maxWidth: 2048,
+      maxHeight: 2048,
+      imageQuality: 95,
     );
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Couldn\'t open the photo: $e')));
+    }
+    return;
+  }
+  if (picked == null || !context.mounted) return;
+  VoxRgbImage ref;
+  try {
+    ref = await voxLoadReference(await picked.readAsBytes());
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Couldn\'t read that photo: $e')));
+    }
+    return;
+  }
+  if (!context.mounted) return;
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    builder: (_) => VoxImageSendSheet(
+      reference: ref,
+      recipientLabel: recipientLabel,
+      onSend: onSend,
+      sendLabel: sendLabel,
+    ),
+  );
 }
 
 /// Decodes a picked file to the RGB reference picture (at most

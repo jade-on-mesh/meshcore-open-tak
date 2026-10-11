@@ -208,7 +208,8 @@ String teamKey4Hex(List<int> b, [int offset = 0]) {
 }
 
 Uint8List _key4(String hex) => Uint8List.fromList([
-  for (var i = 0; i < 4; i++) int.parse(hex.substring(i * 2, i * 2 + 2), radix: 16),
+  for (var i = 0; i < 4; i++)
+    int.parse(hex.substring(i * 2, i * 2 + 2), radix: 16),
 ]);
 
 /// Message type and sender of a team payload, or null if it isn't one.
@@ -409,7 +410,12 @@ class TeamAttachment {
   final String sessionId; // 8 hex chars
   final int packets;
   final int extra; // duration (voice) or aspect code (image)
-  const TeamAttachment(this.modeWireId, this.sessionId, this.packets, this.extra);
+  const TeamAttachment(
+    this.modeWireId,
+    this.sessionId,
+    this.packets,
+    this.extra,
+  );
 }
 
 class TeamMarker {

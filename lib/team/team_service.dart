@@ -4,7 +4,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
@@ -604,7 +603,8 @@ class TeamService extends ChangeNotifier {
   final Map<String, TeamReport> _reports = {};
 
   List<TeamReport> get reports =>
-      _reports.values.toList()..sort((a, b) => b.observed.compareTo(a.observed));
+      _reports.values.toList()
+        ..sort((a, b) => b.observed.compareTo(a.observed));
 
   void Function(TeamReport r)? onReportChanged;
 
@@ -623,7 +623,8 @@ class TeamService extends ChangeNotifier {
     unawaited(
       NotificationService().showTeamAlert(
         id: r.key.hashCode,
-        title: '${r.urgency.dot} ${r.kind.label}: ${r.urgency.label} @${r.placeLabel}',
+        title:
+            '${r.urgency.dot} ${r.kind.label}: ${r.urgency.label} @${r.placeLabel}',
         body: r.condensedLines().skip(3).join('  '),
       ),
     );
@@ -714,7 +715,8 @@ class TeamService extends ChangeNotifier {
       unawaited(
         NotificationService().showTeamAlert(
           id: a.key.hashCode,
-          title: '${a.type.label}: ${a.callsign.isEmpty ? a.senderKey4 : a.callsign}',
+          title:
+              '${a.type.label}: ${a.callsign.isEmpty ? a.senderKey4 : a.callsign}',
           body: a.note.isNotEmpty ? a.note : _alertWhere(a),
         ),
       );

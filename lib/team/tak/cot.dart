@@ -143,7 +143,9 @@ String cotForPosition(TeamPosition p, {required String uid}) => cotEvent(
     b.element(
       'contact',
       attributes: {
-        'callsign': p.callsign.isEmpty ? p.senderKey4.toUpperCase() : p.callsign,
+        'callsign': p.callsign.isEmpty
+            ? p.senderKey4.toUpperCase()
+            : p.callsign,
       },
     );
     b.element(
@@ -198,10 +200,15 @@ String cotForMarker(TeamMarker m) {
       b.element(
         'contact',
         attributes: {
-          'callsign': m.label.isEmpty ? m.kind.label : '${m.label} (${m.kind.label})',
+          'callsign': m.label.isEmpty
+              ? m.kind.label
+              : '${m.label} (${m.kind.label})',
         },
       );
-      b.element('color', attributes: {'argb': '${_signed32(takMarkerArgb(m.kind))}'});
+      b.element(
+        'color',
+        attributes: {'argb': '${_signed32(takMarkerArgb(m.kind))}'},
+      );
       b.element(
         'link',
         attributes: {
@@ -276,10 +283,7 @@ String cotForAlert(TeamAlert a, {required String memberUid}) {
         'link',
         attributes: {'uid': memberUid, 'relation': 'p-p', 'type': 'a-f-G-U-C'},
       );
-      b.element(
-        'contact',
-        attributes: {'callsign': '${a.callsign}-Alert'},
-      );
+      b.element('contact', attributes: {'callsign': '${a.callsign}-Alert'});
       b.element(
         'emergency',
         attributes: a.active ? {'type': name} : {'cancel': 'true'},
