@@ -31,3 +31,21 @@ endif()
 
 # Math library required on some platforms.
 target_link_libraries(codec2 m)
+
+# ---------------------------------------------------------------------------
+# MeshCore Open VOX: AV1 still images (libvox_av1.so) on libaom (BSD-2).
+# CI builds libaom into third_party/aom-android/<ABI> before the app build
+# (see .github/workflows/build.yml). Without it, image messages are disabled.
+set(AOM_PREBUILT ${CMAKE_CURRENT_LIST_DIR}/../../../../../third_party/aom-android/${ANDROID_ABI})
+if(ANDROID AND EXISTS ${AOM_PREBUILT}/lib/libaom.a)
+    add_library(aom_static STATIC IMPORTED)
+    set_target_properties(aom_static PROPERTIES
+        IMPORTED_LOCATION ${AOM_PREBUILT}/lib/libaom.a)
+    add_library(vox_av1 SHARED ${CMAKE_CURRENT_LIST_DIR}/vox_av1.c)
+    target_include_directories(vox_av1 PRIVATE ${AOM_PREBUILT}/include)
+    target_compile_options(vox_av1 PRIVATE -O2 -std=gnu11)
+    target_link_libraries(vox_av1 aom_static m)
+    target_link_options(vox_av1 PRIVATE -Wl,--exclude-libs,ALL)
+else()
+    message(WARNING "libaom not found at ${AOM_PREBUILT}: VOX image messages disabled")
+endif()

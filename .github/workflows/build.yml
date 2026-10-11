@@ -12,6 +12,9 @@ on:
       - ".github/workflows/vox-codec-samples.yml"
       - ".github/workflows/vox-mimi-export.yml"
       - ".github/workflows/vox-mimi-release.yml"
+      - ".github/workflows/vox-image-compare.yml"
+      - ".github/workflows/vox-fetch-compressai.yml"
+      - ".github/workflows/vox-fetch-aom.yml"
   workflow_dispatch:
 
 # MeshCore Open VOX builds Android only. A newer push cancels an older,
@@ -53,6 +56,34 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties', 'android/build.gradle', 'android/settings.gradle', 'android/app/build.gradle', 'pubspec.lock') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
+      - name: Cache libaom (Android)
+        id: aomcache
+        uses: actions/cache@v4
+        with:
+          path: third_party/aom-android
+          key: aom-android-v3.12.1-arm64-1
+      - name: Build libaom for Android
+        if: steps.aomcache.outputs.cache-hit != 'true'
+        timeout-minutes: 20
+        run: |
+          set -euo pipefail
+          curl -sSL -o /tmp/aom.tgz "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/deps-cache/aom-v3.12.1.tar.gz"
+          echo "76558ad5918820d66fa78460d9957e5bbf7cf9eef1a5421b5ba5e616f200d76e  /tmp/aom.tgz" | sha256sum -c
+          tar xzf /tmp/aom.tgz -C /tmp
+          NDK="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_HOME:-}}"
+          echo "Using NDK: $NDK"
+          cmake -S /tmp/aom -B /tmp/aom-build \
+            -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-21 \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+            -DENABLE_DOCS=0 -DENABLE_EXAMPLES=0 -DENABLE_TESTS=0 -DENABLE_TESTDATA=0 \
+            -DENABLE_TOOLS=0 -DCONFIG_AV1_HIGHBITDEPTH=0 -DCONFIG_WEBM_IO=0
+          cmake --build /tmp/aom-build -j"$(nproc)" --target aom
+          OUT=third_party/aom-android/arm64-v8a
+          mkdir -p "$OUT/lib" "$OUT/include/aom"
+          cp /tmp/aom-build/libaom.a "$OUT/lib/"
+          cp /tmp/aom/aom/*.h "$OUT/include/aom/"
+          ls -la "$OUT/lib"
       - run: flutter pub get
       - run: flutter build apk --release --no-pub --target-platform android-arm64
       - name: Upload APK
