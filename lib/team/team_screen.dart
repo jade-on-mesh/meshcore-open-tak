@@ -6,37 +6,388 @@ import 'dart:async';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'tak/tak_service.dart';
 import 'team_forms.dart';
 import 'team_map.dart';
 import 'team_service.dart';
 import 'team_wire.dart';
+import 'watch_feed.dart';
 
 class TeamScreen extends StatelessWidget {
-  const TeamScreen({super.key});
+  /// 0 Team, 1 Watch, 2 Pins, 3 Reports, 4 Setup.
+  final int? initialTab;
+  const TeamScreen({super.key, this.initialTab});
 
   @override
   Widget build(BuildContext context) {
     final team = context.watch<TeamService>();
+    final watch = context.watch<WatchFeedService>();
+    final tak = context.watch<TakService>();
+    final ch = team.teamChannel;
+    final live = team.members.where((m) => m.freshness == TeamFreshness.live).length;
     return DefaultTabController(
-      length: 4,
-      initialIndex: team.enabled ? 0 : 3,
+      length: 5,
+      initialIndex: initialTab ?? (team.enabled ? 0 : 4),
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Team'),
-          bottom: const TabBar(
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Tactical'),
+              Text(
+                [
+                  if (!team.enabled)
+                    'Team mode off'
+                  else if (ch == null)
+                    'No team channel'
+                  else
+                    '${ch.name} · $live live',
+                  if (tak.state == TakState.connected) 'TAK connected',
+                  if (tak.state == TakState.error) 'TAK offline',
+                ].join(' · '),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+          bottom: TabBar(
             isScrollable: true,
+            tabAlignment: TabAlignment.start,
             tabs: [
-              Tab(text: 'Roster'),
-              Tab(text: 'Pins'),
-              Tab(text: 'Reports'),
-              Tab(text: 'Setup'),
+              const Tab(icon: Icon(Icons.groups_outlined), text: 'Team'),
+              Tab(
+                icon: Badge(
+                  isLabelVisible: watch.unseenCount > 0,
+                  label: Text('${watch.unseenCount}'),
+                  child: const Icon(Icons.visibility_outlined),
+                ),
+                text: 'Watch',
+              ),
+              const Tab(icon: Icon(Icons.place_outlined), text: 'Pins'),
+              const Tab(icon: Icon(Icons.assignment_outlined), text: 'Reports'),
+              const Tab(icon: Icon(Icons.tune), text: 'Setup'),
             ],
           ),
         ),
         body: const TabBarView(
-          children: [_RosterTab(), _PinsTab(), _ReportsTab(), _SetupTab()],
+          children: [
+            _RosterTab(),
+            WatchTab(),
+            _PinsTab(),
+            _ReportsTab(),
+            _SetupTab(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Shown on the Team tab until team mode is set up.
+class _Onboarding extends StatelessWidget {
+  const _Onboarding();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    Widget step(IconData i, String title, String body) => ListTile(
+      leading: CircleAvatar(
+        backgroundColor: scheme.primaryContainer,
+        child: Icon(i, color: scheme.onPrimaryContainer),
+      ),
+      title: Text(title),
+      subtitle: Text(body),
+    );
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        Icon(Icons.groups, size: 72, color: scheme.primary),
+        const SizedBox(height: 12),
+        Text('Work as a team over the mesh', style: t.headlineSmall, textAlign: TextAlign.center),
+        const SizedBox(height: 8),
+        const Text(
+          'See each other on the map, drop pins, file SALUTE reports and raise '
+          'SOS alerts, with no cell service.',
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 24),
+        step(Icons.lock_outline, 'Agree on a private channel', 'Everyone on the team adds the same private channel.'),
+        step(Icons.badge_outlined, 'Pick a callsign, role and colour', 'This is how teammates (and TAK users) see you.'),
+        step(Icons.my_location, 'Turn on team mode', 'Your position goes out about every 90 s while moving.'),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          icon: const Icon(Icons.arrow_forward),
+          label: const Text('Set up team'),
+          onPressed: () => DefaultTabController.of(context).animateTo(4),
+        ),
+      ],
+    );
+  }
+}
+
+// ------------------------------------------------------------------- watch
+
+/// Feeds from other channels (#icewatch, #dronewatch, …).
+class WatchTab extends StatefulWidget {
+  const WatchTab({super.key});
+  @override
+  State<WatchTab> createState() => _WatchTabState();
+}
+
+class _WatchTabState extends State<WatchTab> {
+  String? _channel; // null = all
+  final Set<WatchLevel> _levels = {};
+  final Set<String> _expanded = {};
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(context.read<WatchFeedService>().markSeen());
+    });
+  }
+
+  Future<void> _chooseChannels() => showModalBottomSheet<void>(
+    context: context,
+    builder: (context) {
+      final feed = context.watch<WatchFeedService>();
+      return SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const ListTile(
+              title: Text('Channels to watch'),
+              subtitle: Text('Their messages show here as a compact feed.'),
+            ),
+            for (final c in feed.allChannels)
+              CheckboxListTile(
+                value: feed.watchedNames.contains(c.name),
+                title: Text(c.name),
+                onChanged: (v) => unawaited(feed.setWatched(c, v ?? false)),
+              ),
+          ],
+        ),
+      );
+    },
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final feed = context.watch<WatchFeedService>();
+    final scheme = Theme.of(context).colorScheme;
+    if (feed.watchedChannels.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.visibility_outlined, size: 64, color: scheme.primary),
+              const SizedBox(height: 12),
+              const Text(
+                'Watch other channels, like #icewatch or #dronewatch, as a '
+                'compact report feed. Reports with coordinates also show on '
+                'the map.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                icon: const Icon(Icons.add),
+                label: const Text('Choose channels'),
+                onPressed: _chooseChannels,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    final all = feed.items;
+    final items = [
+      for (final i in all)
+        if ((_channel == null || i.channel.name == _channel) &&
+            (_levels.isEmpty || _levels.contains(i.level)))
+          i,
+    ];
+    final fix = context.watch<TeamService>().fix;
+    return Column(
+      children: [
+        SizedBox(
+          height: 48,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            children: [
+              ChoiceChip(
+                label: Text('All ${all.length}'),
+                selected: _channel == null,
+                onSelected: (_) => setState(() => _channel = null),
+              ),
+              for (final c in feed.watchedChannels) ...[
+                const SizedBox(width: 6),
+                ChoiceChip(
+                  label: Text(c.name),
+                  selected: _channel == c.name,
+                  onSelected: (sel) => setState(() => _channel = sel ? c.name : null),
+                ),
+              ],
+              const SizedBox(width: 6),
+              ActionChip(
+                avatar: const Icon(Icons.tune, size: 16),
+                label: const Text('Channels'),
+                onPressed: _chooseChannels,
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 44,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            children: [
+              for (final l in WatchLevel.values.where((l) => l != WatchLevel.none)) ...[
+                FilterChip(
+                  avatar: CircleAvatar(backgroundColor: Color(l.argb), radius: 6),
+                  label: Text(
+                    '${l.label[0]}${l.label.substring(1).toLowerCase()} '
+                    '${all.where((i) => i.level == l).length}',
+                  ),
+                  selected: _levels.contains(l),
+                  onSelected: (sel) => setState(() => sel ? _levels.add(l) : _levels.remove(l)),
+                ),
+                const SizedBox(width: 6),
+              ],
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: items.isEmpty
+              ? const Center(child: Text('Nothing matches these filters.'))
+              : ListView.builder(
+                  itemCount: items.length,
+                  itemBuilder: (context, i) {
+                    final it = items[i];
+                    final open = _expanded.contains(it.key);
+                    return _WatchCard(
+                      item: it,
+                      unseen: feed.isUnseen(it),
+                      expanded: open,
+                      range: fix == null || !it.hasPosition
+                          ? null
+                          : teamRangeBearing(
+                              teamDistanceMeters(fix.lat, fix.lon, it.lat!, it.lon!),
+                              teamBearingDeg(fix.lat, fix.lon, it.lat!, it.lon!),
+                            ),
+                      onTap: () => setState(
+                        () => open ? _expanded.remove(it.key) : _expanded.add(it.key),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _WatchCard extends StatelessWidget {
+  final WatchItem item;
+  final bool unseen, expanded;
+  final String? range;
+  final VoidCallback onTap;
+  const _WatchCard({
+    required this.item,
+    required this.unseen,
+    required this.expanded,
+    required this.onTap,
+    this.range,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final it = item;
+    final color = Color(it.level.argb);
+    final meta = [
+      it.when ?? teamAgo(it.message.timestamp),
+      if (it.counts.isNotEmpty) it.counts.map((c) => '${c.$1} ${c.$2}').join('  '),
+      it.channel.name,
+      if (range != null) range!,
+    ].join(' · ');
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            left: BorderSide(color: color, width: 5),
+            bottom: BorderSide(color: scheme.outlineVariant, width: 0.5),
+          ),
+          color: unseen ? scheme.primaryContainer.withValues(alpha: 0.18) : null,
+        ),
+        padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                if (it.statusWord != null) ...[
+                  Text(
+                    it.statusWord!,
+                    style: t.labelMedium?.copyWith(color: color, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                  child: Text(
+                    it.headline,
+                    maxLines: expanded ? 3 : 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.titleSmall,
+                  ),
+                ),
+                if (it.hasPosition)
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.track_changes, size: 20),
+                    tooltip: 'Bloodhound',
+                    onPressed: () {
+                      context.read<TeamService>().houndPoint(
+                        it.lat!,
+                        it.lon!,
+                        it.place ?? it.channel.name,
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Bloodhound set. Open the map to follow it.')),
+                      );
+                    },
+                  ),
+                if (it.url != null)
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.open_in_new, size: 20),
+                    tooltip: 'Open link',
+                    onPressed: () => unawaited(
+                      launchUrl(Uri.parse(it.url!), mode: LaunchMode.externalApplication),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(meta, style: t.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+            if (expanded) ...[
+              const SizedBox(height: 6),
+              Text(it.message.text, style: t.bodyMedium),
+              const SizedBox(height: 4),
+              Text(
+                'From ${it.message.senderName} · ${teamAgo(it.message.timestamp)}',
+                style: t.bodySmall,
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -53,9 +404,7 @@ class _RosterTab extends StatelessWidget {
     final team = context.watch<TeamService>();
     final tak = context.watch<TakService>();
     final fix = team.fix;
-    if (!team.enabled) {
-      return const _Empty('Team mode is off. Turn it on in Setup.');
-    }
+    if (!team.enabled) return const _Onboarding();
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
@@ -334,6 +683,37 @@ class _SetupTabState extends State<_SetupTab> {
     super.dispose();
   }
 
+  Widget _section(BuildContext context, int n, String title, List<Widget> children,
+      {bool done = false}) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const SizedBox(width: 8),
+                CircleAvatar(
+                  radius: 13,
+                  backgroundColor: done ? Colors.green : scheme.primary,
+                  child: done
+                      ? const Icon(Icons.check, size: 16, color: Colors.white)
+                      : Text('$n', style: TextStyle(color: scheme.onPrimary, fontSize: 13)),
+                ),
+                const SizedBox(width: 10),
+                Text(title, style: Theme.of(context).textTheme.titleMedium),
+              ],
+            ),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final team = context.watch<TeamService>();
@@ -342,92 +722,87 @@ class _SetupTabState extends State<_SetupTab> {
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
-        SwitchListTile(
-          title: const Text('Team mode'),
-          subtitle: const Text(
-            'Share your position, pins, reports and alerts on a private team '
-            'channel.',
-          ),
-          value: team.enabled,
-          onChanged: (v) => unawaited(team.configure(enabled: v)),
-        ),
-        ListTile(
-          title: const Text('Team channel'),
-          subtitle: channels.isEmpty
-              ? const Text(
-                  'Create a private channel first (Channels → add). Everyone on '
-                  'the team adds the same one.',
-                )
-              : null,
-          trailing: channels.isEmpty
-              ? null
-              : DropdownButton<int>(
-                  value: current?.index,
-                  hint: const Text('Choose'),
-                  items: [
-                    for (final c in channels)
-                      DropdownMenuItem(value: c.index, child: Text(c.name)),
-                  ],
-                  onChanged: (i) {
-                    final c = channels.firstWhere((c) => c.index == i);
-                    unawaited(team.configure(channel: c));
-                  },
+        _section(context, 1, 'Team channel', done: current != null, [
+          if (channels.isEmpty)
+            const ListTile(
+              leading: Icon(Icons.info_outline),
+              title: Text('No private channels yet'),
+              subtitle: Text(
+                'Create one under Channels and share it with your team. Public '
+                'and # channels can\'t be used: positions would go to everyone.',
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: DropdownButtonFormField<int>(
+                initialValue: current?.index,
+                decoration: const InputDecoration(
+                  labelText: 'Private channel your team shares',
+                  border: OutlineInputBorder(),
                 ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: TextField(
-            controller: _callsign,
-            maxLength: teamMaxCallsignBytes,
-            decoration: InputDecoration(
-              labelText: 'Callsign',
-              hintText: team.callsign,
+                items: [
+                  for (final c in channels)
+                    DropdownMenuItem(value: c.index, child: Text(c.name)),
+                ],
+                onChanged: (i) {
+                  final c = channels.firstWhere((c) => c.index == i);
+                  unawaited(team.configure(channel: c));
+                },
+              ),
             ),
-            onSubmitted: (v) => unawaited(team.configure(callsign: v)),
-            onTapOutside: (_) {
-              if (_callsign.text.trim() != team.callsignSetting) {
-                unawaited(team.configure(callsign: _callsign.text));
-              }
-            },
+        ]),
+        _section(context, 2, 'You', done: team.callsignSetting.isNotEmpty, [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: TextField(
+              controller: _callsign,
+              maxLength: teamMaxCallsignBytes,
+              textCapitalization: TextCapitalization.characters,
+              decoration: InputDecoration(
+                labelText: 'Callsign',
+                hintText: team.callsign,
+                border: const OutlineInputBorder(),
+              ),
+              onSubmitted: (v) => unawaited(team.configure(callsign: v)),
+              onTapOutside: (_) {
+                if (_callsign.text.trim() != team.callsignSetting) {
+                  unawaited(team.configure(callsign: _callsign.text));
+                }
+              },
+            ),
           ),
-        ),
-        ListTile(
-          title: const Text('Role'),
-          trailing: DropdownButton<TeamRole>(
-            value: team.role,
-            items: [
-              for (final r in TeamRole.values)
-                DropdownMenuItem(
-                  value: r,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(teamRoleIcon(r), size: 18),
-                      const SizedBox(width: 6),
-                      Text(r.label),
-                    ],
-                  ),
-                ),
-            ],
-            onChanged: (r) => unawaited(team.configure(role: r)),
-          ),
-        ),
-        ListTile(
-          title: const Text('Team colour'),
-          subtitle: Padding(
-            padding: const EdgeInsets.only(top: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Wrap(
               spacing: 6,
               runSpacing: 6,
+              children: [
+                for (final r in TeamRole.values)
+                  ChoiceChip(
+                    avatar: Icon(teamRoleIcon(r), size: 16),
+                    label: Text(r.label),
+                    selected: team.role == r,
+                    onSelected: (_) => unawaited(team.configure(role: r)),
+                  ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 for (final c in TeamColor.values)
                   Tooltip(
                     message: c.label,
                     child: InkWell(
+                      customBorder: const CircleBorder(),
                       onTap: () => unawaited(team.configure(color: c)),
                       child: Container(
-                        width: 30,
-                        height: 30,
+                        width: 32,
+                        height: 32,
                         decoration: BoxDecoration(
                           color: Color(c.argb),
                           shape: BoxShape.circle,
@@ -438,43 +813,67 @@ class _SetupTabState extends State<_SetupTab> {
                             width: team.color == c ? 3 : 1,
                           ),
                         ),
+                        child: team.color == c
+                            ? Icon(
+                                Icons.check,
+                                size: 18,
+                                color: Color(c.argb).computeLuminance() > 0.5
+                                    ? Colors.black
+                                    : Colors.white,
+                              )
+                            : null,
                       ),
                     ),
                   ),
               ],
             ),
           ),
-        ),
-        SwitchListTile(
-          title: const Text('Share my position'),
-          subtitle: Text(
-            team.gpsProblem ??
-                'Phone GPS (radio GPS if the phone has no fix). Sent about '
-                    'every 90 s while moving, every 10 min when still, and at '
-                    'once on a sharp turn.',
+        ]),
+        _section(context, 3, 'Go live', done: team.active, [
+          SwitchListTile(
+            title: const Text('Team mode'),
+            subtitle: Text(
+              team.enabled
+                  ? (team.inactiveReason ?? 'On. Your team sees you on the map.')
+                  : 'Share your position, pins, reports and alerts with the team.',
+            ),
+            value: team.enabled,
+            onChanged: current == null && !team.enabled
+                ? null
+                : (v) => unawaited(team.configure(enabled: v)),
           ),
-          value: team.sharePosition,
-          onChanged: (v) => unawaited(team.configure(sharePosition: v)),
-        ),
-        ListTile(
-          leading: const Icon(Icons.replay),
-          title: const Text('Resend my pins'),
-          subtitle: const Text(
-            'For teammates who joined after you dropped them.',
+          SwitchListTile(
+            title: const Text('Share my position'),
+            subtitle: Text(
+              team.gpsProblem ??
+                  'Phone GPS (radio GPS as a fallback). About every 90 s while '
+                      'moving, every 10 min when still, and at once on a sharp turn.',
+            ),
+            value: team.sharePosition,
+            onChanged: (v) => unawaited(team.configure(sharePosition: v)),
           ),
-          onTap: team.active
-              ? () async {
-                  final n = await team.resendMyMarkers();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text('Resent $n pins')));
+          ListTile(
+            leading: const Icon(Icons.replay),
+            title: const Text('Resend my pins'),
+            subtitle: const Text('For teammates who joined after you dropped them.'),
+            onTap: team.active
+                ? () async {
+                    final n = await team.resendMyMarkers();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Resent $n pins')),
+                      );
+                    }
                   }
-                }
-              : null,
+                : null,
+          ),
+        ]),
+        const Card(
+          child: Padding(
+            padding: EdgeInsets.all(12),
+            child: _TakSettings(),
+          ),
         ),
-        const Divider(height: 32),
-        const _TakSettings(),
       ],
     );
   }

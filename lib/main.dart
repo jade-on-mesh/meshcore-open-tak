@@ -38,6 +38,7 @@ import 'widgets/image_send_codec_binding.dart';
 import 'team/tak/tak_service.dart';
 import 'team/team_alert_host.dart';
 import 'team/team_service.dart';
+import 'team/watch_feed.dart';
 import 'vox/voice_service.dart';
 
 void main() async {
@@ -374,6 +375,7 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
       widget.voxVoiceService ?? VoxVoiceService(widget.connector);
   late final TeamService _teamService = TeamService(widget.connector);
   late final TakService _takService = TakService(_teamService);
+  late final WatchFeedService _watchFeed = WatchFeedService(widget.connector);
 
   @override
   void initState() {
@@ -436,6 +438,7 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
         ChangeNotifierProvider<VoxVoiceService>.value(value: _voxVoiceService),
         ChangeNotifierProvider<TeamService>.value(value: _teamService),
         ChangeNotifierProvider<TakService>.value(value: _takService),
+        ChangeNotifierProvider<WatchFeedService>.value(value: _watchFeed),
       ],
       child: Consumer<AppSettingsService>(
         builder: (context, settingsService, child) {

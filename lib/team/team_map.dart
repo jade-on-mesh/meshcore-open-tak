@@ -20,6 +20,7 @@ import 'team_forms.dart';
 import 'team_screen.dart';
 import 'team_service.dart';
 import 'team_wire.dart';
+import 'watch_feed.dart';
 
 // ------------------------------------------------------------------ styling
 
@@ -118,7 +119,14 @@ class TeamMapLayer extends StatelessWidget {
   Widget build(BuildContext context) {
     final team = context.watch<TeamService>();
     final tak = context.watch<TakService>();
-    if (!team.enabled && tak.entities.isEmpty) return const SizedBox.shrink();
+    final watch = context.watch<WatchFeedService>();
+    final watched = [
+      for (final i in watch.items.take(300))
+        if (i.hasPosition) i,
+    ];
+    if (!team.enabled && tak.entities.isEmpty && watched.isEmpty) {
+      return const SizedBox.shrink();
+    }
     final fix = team.fix;
     final hound = team.bloodhound;
 
@@ -142,7 +150,8 @@ class TeamMapLayer extends StatelessWidget {
     ];
 
     final markers = <Marker>[
-      // TAK units and markers (under the mesh team).
+      // Watch-feed reports and TAK units sit under the mesh team.
+      for (final w in watched) _watchMarker(context, w),
       for (final e in tak.entities) _takMarker(context, e),
       for (final r in team.reports) _reportMarker(context, r),
       for (final m in team.markers) _pinMarker(context, team, m),
@@ -317,6 +326,37 @@ class TeamMapLayer extends StatelessWidget {
             _label(
               '${r.urgency.dot} ${r.countsLabel.isEmpty ? 'SALUTE' : r.countsLabel}',
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Marker _watchMarker(BuildContext context, WatchItem w) {
+    final c = Color(w.level.argb);
+    return Marker(
+      point: LatLng(w.lat!, w.lon!),
+      width: 110,
+      height: 50,
+      child: GestureDetector(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const TeamScreen(initialTab: 1),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                color: c,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.black87, width: 2),
+              ),
+            ),
+            _label('${w.channel.name} ${w.place ?? w.statusWord ?? ''}'),
           ],
         ),
       ),
@@ -988,28 +1028,82 @@ class TeamMapOverlay extends StatelessWidget {
               ),
             ),
           const SizedBox(height: 6),
+          _StatusPill(team: team),
+          const SizedBox(height: 8),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               _SosButton(team: team),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               FloatingActionButton.small(
-                heroTag: 'vox-team',
-                tooltip: 'Team',
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const TeamScreen()),
-                ),
-                child: Badge(
-                  isLabelVisible: team.members.isNotEmpty,
-                  label: Text(
-                    '${team.members.where((m) => m.freshness == TeamFreshness.live).length}',
-                  ),
-                  child: const Icon(Icons.groups),
-                ),
+                heroTag: 'tak-quick',
+                tooltip: 'Pin, report or status',
+                onPressed: () => _quickActions(context, team),
+                child: const Icon(Icons.add),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _quickActions(BuildContext context, TeamService team) {
+    final fix = team.fix;
+    return showModalBottomSheet<void>(
+      context: context,
+      builder: (c) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: const Text('At my position'),
+              subtitle: Text(
+                fix == null
+                    ? 'No position yet. Long-press the map to place things there.'
+                    : '${fix.lat.toStringAsFixed(5)}, ${fix.lon.toStringAsFixed(5)}'
+                          '${fix.source == TeamFixSource.radio ? ' (radio GPS)' : ''}',
+              ),
+            ),
+            ListTile(
+              enabled: fix != null,
+              leading: const Icon(Icons.add_location_alt),
+              title: const Text('Drop tactical pin'),
+              onTap: () {
+                Navigator.pop(c);
+                showTeamPinEditor(context, lat: fix!.lat, lon: fix.lon);
+              },
+            ),
+            ListTile(
+              enabled: fix != null,
+              leading: const Icon(Icons.assignment_outlined),
+              title: const Text('SALUTE report'),
+              onTap: () {
+                Navigator.pop(c);
+                showSaluteForm(context, lat: fix!.lat, lon: fix.lon);
+              },
+            ),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final st in TeamStatus.values.skip(1))
+                    ChoiceChip(
+                      label: Text(st.label),
+                      selected: team.status == st,
+                      onSelected: (sel) {
+                        unawaited(team.setStatus(sel ? st : TeamStatus.none));
+                        Navigator.pop(c);
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1149,6 +1243,70 @@ class _SosButtonState extends State<_SosButton>
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+
+/// "● Alpha · 3 live · GPS ±4 m". Tap for the Tactical screen.
+class _StatusPill extends StatelessWidget {
+  final TeamService team;
+  const _StatusPill({required this.team});
+
+  @override
+  Widget build(BuildContext context) {
+    final watch = context.watch<WatchFeedService>();
+    final ch = team.teamChannel;
+    final live = team.members
+        .where((m) => m.freshness == TeamFreshness.live)
+        .length;
+    final fix = team.fix;
+    final ok = team.active;
+    final parts = [
+      ch?.name ?? 'No team channel',
+      '$live live',
+      if (fix == null)
+        'no GPS'
+      else if (fix.source == TeamFixSource.phone)
+        'GPS ±${fix.accuracy.round()} m'
+      else
+        'radio GPS',
+      if (watch.unseenCount > 0) '${watch.unseenCount} new',
+    ];
+    return Material(
+      color: Colors.black.withValues(alpha: 0.72),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const TeamScreen()),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.circle,
+                size: 10,
+                color: ok ? Colors.greenAccent : Colors.orangeAccent,
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  ok
+                      ? parts.join(' · ')
+                      : (team.inactiveReason ?? parts.join(' · ')),
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right, size: 16, color: Colors.white70),
+            ],
+          ),
         ),
       ),
     );
