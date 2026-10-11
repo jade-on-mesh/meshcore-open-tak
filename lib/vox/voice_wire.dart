@@ -121,6 +121,12 @@ const int voxFetchFlagMissingOnly = 0x01;
 /// Plain VE3 implementations only look at bit 0, so they ignore this.
 const int voxFetchFlagSaltOk = 0x02;
 
+/// VOX extension: the request ends with `[len][path bytes]`, the route the
+/// requester used to reach the sender (requester -> sender order). The
+/// sender replies along the reverse, which is known to work right now,
+/// instead of its own stored route (which can be stale or asymmetric).
+const int voxFetchFlagHasPath = 0x04;
+
 /// VOX extension: a voice packet with one random byte appended.
 ///
 /// MeshCore radios drop any packet whose contents they have already seen
@@ -319,11 +325,16 @@ class VoxVoiceFetchRequest {
   /// Requester accepts salted (0x57) packets. Only VOX sets this.
   final bool saltOk;
 
+  /// The route the requester used to reach the sender (requester -> sender),
+  /// or null if not given. Empty means the requester reached us directly.
+  final List<int>? requesterPath;
+
   const VoxVoiceFetchRequest({
     required this.sessionId,
     required this.requesterKey6,
     this.missingIndices,
     this.saltOk = false,
+    this.requesterPath,
   });
 
   static VoxVoiceFetchRequest? tryParse(List<int> payload) {
@@ -343,11 +354,20 @@ class VoxVoiceFetchRequest {
           if (payload[minLength + i] < voxMaxPackets) payload[minLength + i],
       ];
     }
+    List<int>? path;
+    final pathAt = minLength + count;
+    if ((flags & voxFetchFlagHasPath) != 0 && payload.length > pathAt) {
+      final n = payload[pathAt];
+      if (n <= 63 && payload.length >= pathAt + 1 + n) {
+        path = payload.sublist(pathAt + 1, pathAt + 1 + n);
+      }
+    }
     return VoxVoiceFetchRequest(
       sessionId: voxSessionIdFromBytes(payload, 1),
       requesterKey6: keySb.toString(),
       missingIndices: missing,
       saltOk: (flags & voxFetchFlagSaltOk) != 0,
+      requesterPath: path,
     );
   }
 
@@ -360,13 +380,16 @@ class VoxVoiceFetchRequest {
               .toList()
             ..sort());
     // Keep the request inside one raw packet.
-    final capped = missing.length > 150 ? missing.sublist(0, 150) : missing;
-    final out = Uint8List(minLength + capped.length);
+    final capped = missing.length > 140 ? missing.sublist(0, 140) : missing;
+    final path = requesterPath;
+    final pathBytes = path == null ? 0 : 1 + path.length;
+    final out = Uint8List(minLength + capped.length + pathBytes);
     out[0] = voxVoiceFetchMagic;
     out.setRange(1, 5, voxSessionIdToBytes(sessionId));
     out[5] =
         (missingIndices == null ? 0x00 : voxFetchFlagMissingOnly) |
-        (saltOk ? voxFetchFlagSaltOk : 0x00);
+        (saltOk ? voxFetchFlagSaltOk : 0x00) |
+        (path != null ? voxFetchFlagHasPath : 0x00);
     for (var i = 0; i < 6; i++) {
       out[6 + i] = int.parse(
         requesterKey6.substring(i * 2, i * 2 + 2),
@@ -374,7 +397,11 @@ class VoxVoiceFetchRequest {
       );
     }
     out[12] = capped.length;
-    out.setRange(minLength, out.length, capped);
+    out.setRange(minLength, minLength + capped.length, capped);
+    if (path != null) {
+      out[minLength + capped.length] = path.length;
+      out.setRange(minLength + capped.length + 1, out.length, path);
+    }
     return out;
   }
 }

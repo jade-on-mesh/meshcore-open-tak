@@ -639,8 +639,17 @@ class VoxVoiceService extends ChangeNotifier {
             'via ${_hex(route)}${forced != null ? ' (FORCED)' : ''} (${req.missingIndices == null ? 'all' : '${req.missingIndices!.length} missing'})',
             clip.envelope.sessionId,
           );
+          // Tell the sender how we reached it, so it answers the same way
+          // back rather than over its own (possibly stale) route to us.
+          final withPath = VoxVoiceFetchRequest(
+            sessionId: req.sessionId,
+            requesterKey6: req.requesterKey6,
+            missingIndices: req.missingIndices,
+            saltOk: true,
+            requesterPath: route,
+          );
           await _connector.sendFrame(
-            buildSendRawDataFrame(path: route, payload: req.encode()),
+            buildSendRawDataFrame(path: route, payload: withPath.encode()),
             waitForGenericAck: true,
           );
         case _Method.dmRequest:
@@ -1273,6 +1282,9 @@ class VoxVoiceService extends ChangeNotifier {
         .catchError((_) {});
   }
 
+  /// Longest raw-data path we accept from a request (keeps frames in size).
+  static const int _maxRawPathBytes = 8;
+
   Future<void> _serve(
     VoxVoiceFetchRequest req,
     int? viaChannel,
@@ -1318,9 +1330,19 @@ class VoxVoiceService extends ChangeNotifier {
       waitForRoute ? const Duration(seconds: 25) : const Duration(seconds: 3),
     );
     final forced = forcedRoute;
-    Uint8List? route = forced == null
-        ? null
-        : Uint8List.fromList(forced.reversed.toList());
+    final viaRequest = req.requesterPath;
+    Uint8List? route = forced != null
+        ? Uint8List.fromList(forced.reversed.toList())
+        // The way the request just reached us, reversed: known to work now.
+        : viaRequest != null && viaRequest.length <= _maxRawPathBytes
+        ? Uint8List.fromList(viaRequest.reversed.toList())
+        : null;
+    if (forced == null && viaRequest != null) {
+      _logEvent(
+        'replying along the request\'s path (${viaRequest.isEmpty ? 'direct' : _hex(Uint8List.fromList(viaRequest))})',
+        req.sessionId,
+      );
+    }
     while (route == null) {
       final requester = _contactByKey6(req.requesterKey6);
       route = requester == null ? null : _directRoute(requester);

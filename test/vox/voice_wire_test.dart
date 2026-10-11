@@ -271,4 +271,43 @@ void main() {
       }
     });
   });
+
+  group('requester path', () {
+    test('round-trips with missing indices and an empty (direct) path', () {
+      const req = VoxVoiceFetchRequest(
+        sessionId: 'deadbeef',
+        requesterKey6: 'a1b2c3d4e5f6',
+        missingIndices: [11],
+        saltOk: true,
+        requesterPath: [],
+      );
+      final back = VoxVoiceFetchRequest.tryParse(req.encode())!;
+      expect(back.missingIndices, [11]);
+      expect(back.requesterPath, isEmpty);
+      expect(back.saltOk, isTrue);
+    });
+
+    test('round-trips a multi-hop path for a send-all request', () {
+      const req = VoxVoiceFetchRequest(
+        sessionId: 'deadbeef',
+        requesterKey6: 'a1b2c3d4e5f6',
+        saltOk: true,
+        requesterPath: [0x19, 0x1e],
+      );
+      final bytes = req.encode();
+      expect(bytes[5] & voxFetchFlagHasPath, voxFetchFlagHasPath);
+      final back = VoxVoiceFetchRequest.tryParse(bytes)!;
+      expect(back.missingIndices, isNull);
+      expect(back.requesterPath, [0x19, 0x1e]);
+    });
+
+    test('requests without a path stay byte-identical to plain VE3', () {
+      const req = VoxVoiceFetchRequest(
+        sessionId: 'deadbeef',
+        requesterKey6: 'a1b2c3d4e5f6',
+      );
+      expect(VoxVoiceFetchRequest.tryParse(req.encode())!.requesterPath, isNull);
+      expect(req.encode().length, VoxVoiceFetchRequest.minLength);
+    });
+  });
 }
