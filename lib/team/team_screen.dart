@@ -316,7 +316,7 @@ class _WatchCard extends StatelessWidget {
       it.when ?? teamAgo(it.message.timestamp),
       if (it.counts.isNotEmpty) it.counts.map((c) => '${c.$1} ${c.$2}').join('  '),
       it.channel.name,
-      if (range != null) range!,
+      ?range,
     ].join(' · ');
     return InkWell(
       onTap: onTap,

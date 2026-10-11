@@ -363,8 +363,9 @@ class TakService extends ChangeNotifier {
   // ------------------------------------------- mesh -> TAK (gateway out)
 
   void _onSelfPosition(TeamPosition p) {
-    if (_publishing)
+    if (_publishing) {
       _write(cotForPosition(p, uid: takUidForMember(p.senderKey4)));
+    }
   }
 
   void _onMeshMember(TeamMember m) {
