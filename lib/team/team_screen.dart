@@ -26,7 +26,9 @@ class TeamScreen extends StatelessWidget {
     final watch = context.watch<WatchFeedService>();
     final tak = context.watch<TakService>();
     final ch = team.teamChannel;
-    final live = team.members.where((m) => m.freshness == TeamFreshness.live).length;
+    final live = team.members
+        .where((m) => m.freshness == TeamFreshness.live)
+        .length;
     return DefaultTabController(
       length: 5,
       initialIndex: initialTab ?? (team.enabled ? 0 : 4),
@@ -105,7 +107,11 @@ class _Onboarding extends StatelessWidget {
       children: [
         Icon(Icons.groups, size: 72, color: scheme.primary),
         const SizedBox(height: 12),
-        Text('Work as a team over the mesh', style: t.headlineSmall, textAlign: TextAlign.center),
+        Text(
+          'Work as a team over the mesh',
+          style: t.headlineSmall,
+          textAlign: TextAlign.center,
+        ),
         const SizedBox(height: 8),
         const Text(
           'See each other on the map, drop pins, file SALUTE reports and raise '
@@ -113,9 +119,21 @@ class _Onboarding extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 24),
-        step(Icons.lock_outline, 'Agree on a private channel', 'Everyone on the team adds the same private channel.'),
-        step(Icons.badge_outlined, 'Pick a callsign, role and colour', 'This is how teammates (and TAK users) see you.'),
-        step(Icons.my_location, 'Turn on team mode', 'Your position goes out about every 90 s while moving.'),
+        step(
+          Icons.lock_outline,
+          'Agree on a private channel',
+          'Everyone on the team adds the same private channel.',
+        ),
+        step(
+          Icons.badge_outlined,
+          'Pick a callsign, role and colour',
+          'This is how teammates (and TAK users) see you.',
+        ),
+        step(
+          Icons.my_location,
+          'Turn on team mode',
+          'Your position goes out about every 90 s while moving.',
+        ),
         const SizedBox(height: 16),
         FilledButton.icon(
           icon: const Icon(Icons.arrow_forward),
@@ -229,7 +247,8 @@ class _WatchTabState extends State<WatchTab> {
                 ChoiceChip(
                   label: Text(c.name),
                   selected: _channel == c.name,
-                  onSelected: (sel) => setState(() => _channel = sel ? c.name : null),
+                  onSelected: (sel) =>
+                      setState(() => _channel = sel ? c.name : null),
                 ),
               ],
               const SizedBox(width: 6),
@@ -247,15 +266,21 @@ class _WatchTabState extends State<WatchTab> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 8),
             children: [
-              for (final l in WatchLevel.values.where((l) => l != WatchLevel.none)) ...[
+              for (final l in WatchLevel.values.where(
+                (l) => l != WatchLevel.none,
+              )) ...[
                 FilterChip(
-                  avatar: CircleAvatar(backgroundColor: Color(l.argb), radius: 6),
+                  avatar: CircleAvatar(
+                    backgroundColor: Color(l.argb),
+                    radius: 6,
+                  ),
                   label: Text(
                     '${l.label[0]}${l.label.substring(1).toLowerCase()} '
                     '${all.where((i) => i.level == l).length}',
                   ),
                   selected: _levels.contains(l),
-                  onSelected: (sel) => setState(() => sel ? _levels.add(l) : _levels.remove(l)),
+                  onSelected: (sel) =>
+                      setState(() => sel ? _levels.add(l) : _levels.remove(l)),
                 ),
                 const SizedBox(width: 6),
               ],
@@ -278,11 +303,23 @@ class _WatchTabState extends State<WatchTab> {
                       range: fix == null || !it.hasPosition
                           ? null
                           : teamRangeBearing(
-                              teamDistanceMeters(fix.lat, fix.lon, it.lat!, it.lon!),
-                              teamBearingDeg(fix.lat, fix.lon, it.lat!, it.lon!),
+                              teamDistanceMeters(
+                                fix.lat,
+                                fix.lon,
+                                it.lat!,
+                                it.lon!,
+                              ),
+                              teamBearingDeg(
+                                fix.lat,
+                                fix.lon,
+                                it.lat!,
+                                it.lon!,
+                              ),
                             ),
                       onTap: () => setState(
-                        () => open ? _expanded.remove(it.key) : _expanded.add(it.key),
+                        () => open
+                            ? _expanded.remove(it.key)
+                            : _expanded.add(it.key),
                       ),
                     );
                   },
@@ -314,7 +351,8 @@ class _WatchCard extends StatelessWidget {
     final color = Color(it.level.argb);
     final meta = [
       it.when ?? teamAgo(it.message.timestamp),
-      if (it.counts.isNotEmpty) it.counts.map((c) => '${c.$1} ${c.$2}').join('  '),
+      if (it.counts.isNotEmpty)
+        it.counts.map((c) => '${c.$1} ${c.$2}').join('  '),
       it.channel.name,
       ?range,
     ].join(' · ');
@@ -326,7 +364,9 @@ class _WatchCard extends StatelessWidget {
             left: BorderSide(color: color, width: 5),
             bottom: BorderSide(color: scheme.outlineVariant, width: 0.5),
           ),
-          color: unseen ? scheme.primaryContainer.withValues(alpha: 0.18) : null,
+          color: unseen
+              ? scheme.primaryContainer.withValues(alpha: 0.18)
+              : null,
         ),
         padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
         child: Column(
@@ -337,7 +377,10 @@ class _WatchCard extends StatelessWidget {
                 if (it.statusWord != null) ...[
                   Text(
                     it.statusWord!,
-                    style: t.labelMedium?.copyWith(color: color, fontWeight: FontWeight.w800),
+                    style: t.labelMedium?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   const SizedBox(width: 8),
                 ],
@@ -361,7 +404,11 @@ class _WatchCard extends StatelessWidget {
                         it.place ?? it.channel.name,
                       );
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Bloodhound set. Open the map to follow it.')),
+                        const SnackBar(
+                          content: Text(
+                            'Bloodhound set. Open the map to follow it.',
+                          ),
+                        ),
                       );
                     },
                   ),
@@ -371,13 +418,21 @@ class _WatchCard extends StatelessWidget {
                     icon: const Icon(Icons.open_in_new, size: 20),
                     tooltip: 'Open link',
                     onPressed: () => unawaited(
-                      launchUrl(Uri.parse(it.url!), mode: LaunchMode.externalApplication),
+                      launchUrl(
+                        Uri.parse(it.url!),
+                        mode: LaunchMode.externalApplication,
+                      ),
                     ),
                   ),
               ],
             ),
             const SizedBox(height: 2),
-            Text(meta, style: t.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text(
+              meta,
+              style: t.bodySmall,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
             if (expanded) ...[
               const SizedBox(height: 6),
               Text(it.message.text, style: t.bodyMedium),
@@ -683,8 +738,13 @@ class _SetupTabState extends State<_SetupTab> {
     super.dispose();
   }
 
-  Widget _section(BuildContext context, int n, String title, List<Widget> children,
-      {bool done = false}) {
+  Widget _section(
+    BuildContext context,
+    int n,
+    String title,
+    List<Widget> children, {
+    bool done = false,
+  }) {
     final scheme = Theme.of(context).colorScheme;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -701,7 +761,13 @@ class _SetupTabState extends State<_SetupTab> {
                   backgroundColor: done ? Colors.green : scheme.primary,
                   child: done
                       ? const Icon(Icons.check, size: 16, color: Colors.white)
-                      : Text('$n', style: TextStyle(color: scheme.onPrimary, fontSize: 13)),
+                      : Text(
+                          '$n',
+                          style: TextStyle(
+                            color: scheme.onPrimary,
+                            fontSize: 13,
+                          ),
+                        ),
                 ),
                 const SizedBox(width: 10),
                 Text(title, style: Theme.of(context).textTheme.titleMedium),
@@ -834,7 +900,8 @@ class _SetupTabState extends State<_SetupTab> {
             title: const Text('Team mode'),
             subtitle: Text(
               team.enabled
-                  ? (team.inactiveReason ?? 'On. Your team sees you on the map.')
+                  ? (team.inactiveReason ??
+                        'On. Your team sees you on the map.')
                   : 'Share your position, pins, reports and alerts with the team.',
             ),
             value: team.enabled,
@@ -855,24 +922,23 @@ class _SetupTabState extends State<_SetupTab> {
           ListTile(
             leading: const Icon(Icons.replay),
             title: const Text('Resend my pins'),
-            subtitle: const Text('For teammates who joined after you dropped them.'),
+            subtitle: const Text(
+              'For teammates who joined after you dropped them.',
+            ),
             onTap: team.active
                 ? () async {
                     final n = await team.resendMyMarkers();
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Resent $n pins')),
-                      );
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text('Resent $n pins')));
                     }
                   }
                 : null,
           ),
         ]),
         const Card(
-          child: Padding(
-            padding: EdgeInsets.all(12),
-            child: _TakSettings(),
-          ),
+          child: Padding(padding: EdgeInsets.all(12), child: _TakSettings()),
         ),
       ],
     );
