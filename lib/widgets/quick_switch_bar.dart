@@ -1,7 +1,12 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../l10n/l10n.dart';
+import '../team/team_screen.dart';
+import '../team/team_service.dart';
+import '../team/watch_feed.dart';
 import '../theme/mesh_theme.dart';
 
 class QuickSwitchBar extends StatelessWidget {
@@ -79,7 +84,18 @@ class QuickSwitchBar extends StatelessWidget {
               child: NavigationBar(
                 height: 60,
                 selectedIndex: selectedIndex,
-                onDestinationSelected: onDestinationSelected,
+                onDestinationSelected: (i) {
+                  // Tactical opens as its own screen rather than a tab.
+                  if (i == 3) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const TeamScreen(),
+                      ),
+                    );
+                    return;
+                  }
+                  onDestinationSelected(i);
+                },
                 destinations: [
                   NavigationDestination(
                     icon: _buildIconWithBadge(
@@ -112,6 +128,10 @@ class QuickSwitchBar extends StatelessWidget {
                     selectedIcon: const Icon(Icons.map),
                     label: context.l10n.nav_map,
                   ),
+                  NavigationDestination(
+                    icon: _TacticalIcon(alertColor: colorScheme.error),
+                    label: 'Tactical',
+                  ),
                 ],
               ),
             ),
@@ -125,5 +145,36 @@ class QuickSwitchBar extends StatelessWidget {
     if (count <= 0) return icon;
     final label = count > 99 ? '99+' : '$count';
     return Badge(label: Text(label), child: icon);
+  }
+}
+
+
+/// Tactical tab icon: red badge for active team alerts, otherwise the count
+/// of new watch-feed reports.
+class _TacticalIcon extends StatelessWidget {
+  final Color alertColor;
+  const _TacticalIcon({required this.alertColor});
+
+  @override
+  Widget build(BuildContext context) {
+    var alerts = 0, unseen = 0;
+    try {
+      alerts = context.select<TeamService, int>((t) => t.activeAlerts.length);
+      unseen = context.select<WatchFeedService, int>((w) => w.unseenCount);
+    } on ProviderNotFoundException {
+      // Screens shown without the team services (e.g. in tests).
+    }
+    const icon = Icon(Icons.shield_outlined);
+    if (alerts > 0) {
+      return Badge(
+        backgroundColor: alertColor,
+        label: const Text('SOS'),
+        child: icon,
+      );
+    }
+    if (unseen > 0) {
+      return Badge(label: Text(unseen > 99 ? '99+' : '$unseen'), child: icon);
+    }
+    return icon;
   }
 }
