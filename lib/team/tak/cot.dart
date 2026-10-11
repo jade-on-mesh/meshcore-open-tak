@@ -463,7 +463,9 @@ String cotForPoint(TeamPoint p) {
     detail: (b) {
       b.element(
         'contact',
-        attributes: {'callsign': p.callsign.isEmpty ? 'Mesh point' : p.callsign},
+        attributes: {
+          'callsign': p.callsign.isEmpty ? 'Mesh point' : p.callsign,
+        },
       );
       if (p.argb != null) {
         b.element('color', attributes: {'argb': '${p.argb}'});
@@ -585,14 +587,19 @@ String cotForShape(TeamShape s) {
                     'LineStyle',
                     nest: () {
                       b.element('color', nest: _kmlColor(s.strokeArgb));
-                      b.element('width', nest: s.strokeWidth.toStringAsFixed(1));
+                      b.element(
+                        'width',
+                        nest: s.strokeWidth.toStringAsFixed(1),
+                      );
                     },
                   );
                   b.element(
                     'PolyStyle',
                     nest: () => b.element(
                       'color',
-                      nest: _kmlColor(s.fillArgb ?? (s.strokeArgb & 0x00FFFFFF)),
+                      nest: _kmlColor(
+                        s.fillArgb ?? (s.strokeArgb & 0x00FFFFFF),
+                      ),
                     ),
                   );
                 },
@@ -602,7 +609,8 @@ String cotForShape(TeamShape s) {
         );
       } else {
         final pts = [...s.points];
-        if (s.kind == TeamShapeKind.polygon && pts.length > 2) pts.add(pts.first);
+        if (s.kind == TeamShapeKind.polygon && pts.length > 2)
+          pts.add(pts.first);
         for (final p in pts) {
           b.element('link', attributes: {'point': pt(p)});
         }

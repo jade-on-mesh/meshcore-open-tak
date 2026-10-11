@@ -210,7 +210,10 @@ class AtakPluginBridge {
       return true;
     }
     if (!_enabled) {
-      return {'ok': false, 'msg': 'The ATAK bridge is off in MeshCore Open TAK'};
+      return {
+        'ok': false,
+        'msg': 'The ATAK bridge is off in MeshCore Open TAK',
+      };
     }
     try {
       switch (call.method) {
@@ -229,7 +232,8 @@ class AtakPluginBridge {
           return {'ok': true};
         case 'sendDirectText':
           final c = _contactByKey(a['key']! as Uint8List);
-          if (c == null) return {'ok': false, 'msg': 'Not in the radio contacts'};
+          if (c == null)
+            return {'ok': false, 'msg': 'Not in the radio contacts'};
           await _connector.sendMessage(c, a['text']! as String);
           return {'ok': true};
         case 'sendTeam':
@@ -237,7 +241,10 @@ class AtakPluginBridge {
             _blobs(a['blobs']),
             Duration(milliseconds: (a['gap'] as int?) ?? 0),
           );
-          return {'ok': ok, 'msg': ok ? null : 'No team channel or send failed'};
+          return {
+            'ok': ok,
+            'msg': ok ? null : 'No team channel or send failed',
+          };
         case 'publishSelf':
           final p = TeamPosition.tryParse(a['payload']! as Uint8List);
           if (p != null) _team.setAtakIdentity(p);

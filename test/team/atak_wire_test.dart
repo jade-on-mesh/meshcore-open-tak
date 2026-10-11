@@ -9,15 +9,15 @@ import 'package:meshcore_open/team/team_wire.dart';
 import 'package:meshcore_open/team/team_wire_atak.dart';
 
 Uint8List _hex(String s) => Uint8List.fromList([
-  for (var i = 0; i < s.length; i += 2) int.parse(s.substring(i, i + 2), radix: 16),
+  for (var i = 0; i < s.length; i += 2)
+    int.parse(s.substring(i, i + 2), radix: 16),
 ]);
 
 String _toHex(Uint8List b) =>
     b.map((v) => v.toRadixString(16).padLeft(2, '0')).join();
 
 // Produced by the plugin's Java encoder (see TeamWireTest / Gold.java).
-const _position =
-    '50c99d98ce0b1c60218fb7159b7c0038034004512c03044a414445';
+const _position = '50c99d98ce0b1c60218fb7159b7c0038034004512c03044a414445';
 const _marker =
     '4d01020304deadbeef00051becbe20b76ce60068e778000b4c5a2050617261646973650b'
     '466c6174206d6561646f7728a1b2c3d4120085';

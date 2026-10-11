@@ -330,7 +330,8 @@ class TeamShape {
     w.uvar(points.length);
     var plat = 0, plon = 0;
     for (var i = 0; i < points.length; i++) {
-      final la = (points[i].$1 * 1e6).round(), lo = (points[i].$2 * 1e6).round();
+      final la = (points[i].$1 * 1e6).round(),
+          lo = (points[i].$2 * 1e6).round();
       if (i == 0) {
         w
           ..i32(la)
@@ -513,11 +514,7 @@ class TeamChunkReassembler {
   static void _recover(_Partial p) {
     var missing = -1, lenXor = p.lenXor;
     final x = Uint8List(teamChunkDataBody)
-      ..setRange(
-        0,
-        p.parity!.length.clamp(0, teamChunkDataBody),
-        p.parity!,
-      );
+      ..setRange(0, p.parity!.length.clamp(0, teamChunkDataBody), p.parity!);
     for (var i = 0; i < p.total; i++) {
       final b = p.bodies[i];
       if (b == null) {

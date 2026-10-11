@@ -1185,7 +1185,6 @@ class _TakSettingsState extends State<_TakSettings> {
   }
 }
 
-
 /// Lets the MeshCore ATAK plugin on this phone use this app's radio.
 class _AtakPluginTile extends StatefulWidget {
   const _AtakPluginTile();

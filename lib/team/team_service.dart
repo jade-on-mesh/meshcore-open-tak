@@ -616,9 +616,11 @@ class TeamService extends ChangeNotifier {
   /// Small files sent by the ATAK plugin.
   void Function(TeamBlob file)? onFileReceived;
 
-  List<TeamPoint> get points => _points.values.where((p) => !p.deleted).toList();
+  List<TeamPoint> get points =>
+      _points.values.where((p) => !p.deleted).toList();
 
-  List<TeamShape> get shapes => _shapes.values.where((s) => !s.deleted).toList();
+  List<TeamShape> get shapes =>
+      _shapes.values.where((s) => !s.deleted).toList();
 
   void _onPoint(TeamPoint p) {
     final cur = _points[p.key];

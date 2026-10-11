@@ -1430,7 +1430,6 @@ class _StatusPill extends StatelessWidget {
   }
 }
 
-
 // ------------------------------------------------- shared ATAK item sheets
 
 Future<void> showSharedPointSheet(BuildContext context, TeamPoint p) =>
@@ -1438,7 +1437,8 @@ Future<void> showSharedPointSheet(BuildContext context, TeamPoint p) =>
       context: context,
       builder: (context) {
         final team = context.read<TeamService>();
-        final author = team.memberByKey(p.authorKey4)?.callsign ??
+        final author =
+            team.memberByKey(p.authorKey4)?.callsign ??
             p.authorKey4.toUpperCase();
         return SafeArea(
           child: Padding(
@@ -1494,67 +1494,66 @@ Future<void> showSharedPointSheet(BuildContext context, TeamPoint p) =>
       },
     );
 
-Future<void> showSharedShapeSheet(BuildContext context, TeamShape s) =>
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (context) {
-        final team = context.read<TeamService>();
-        final author = team.memberByKey(s.authorKey4)?.callsign ??
-            s.authorKey4.toUpperCase();
-        var length = 0.0;
-        for (var i = 1; i < s.points.length; i++) {
-          length += teamDistanceMeters(
-            s.points[i - 1].$1,
-            s.points[i - 1].$2,
-            s.points[i].$1,
-            s.points[i].$2,
-          );
-        }
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  s.label.isEmpty ? s.kind.label : s.label,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  [
-                    s.kind.label,
-                    if (s.kind == TeamShapeKind.circle)
-                      'radius ${s.radiusM} m'
-                    else
-                      '${s.points.length} points',
-                    if (length > 0 &&
-                        (s.kind == TeamShapeKind.route ||
-                            s.kind == TeamShapeKind.polyline))
-                      length >= 1000
-                          ? '${(length / 1000).toStringAsFixed(1)} km'
-                          : '${length.round()} m',
-                    'shared by $author',
-                    teamAgo(s.time),
-                  ].join(' · '),
-                ),
-                if (s.note.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(s.note),
-                ],
-                const SizedBox(height: 12),
-                TextButton.icon(
-                  icon: const Icon(Icons.visibility_off),
-                  label: const Text('Hide on this phone'),
-                  onPressed: () {
-                    team.dismissItem(s.key);
-                    Navigator.pop(context);
-                  },
-                ),
-              ],
+Future<void> showSharedShapeSheet(
+  BuildContext context,
+  TeamShape s,
+) => showModalBottomSheet<void>(
+  context: context,
+  builder: (context) {
+    final team = context.read<TeamService>();
+    final author =
+        team.memberByKey(s.authorKey4)?.callsign ?? s.authorKey4.toUpperCase();
+    var length = 0.0;
+    for (var i = 1; i < s.points.length; i++) {
+      length += teamDistanceMeters(
+        s.points[i - 1].$1,
+        s.points[i - 1].$2,
+        s.points[i].$1,
+        s.points[i].$2,
+      );
+    }
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              s.label.isEmpty ? s.kind.label : s.label,
+              style: Theme.of(context).textTheme.titleLarge,
             ),
-          ),
-        );
-      },
+            const SizedBox(height: 4),
+            Text(
+              [
+                s.kind.label,
+                if (s.kind == TeamShapeKind.circle)
+                  'radius ${s.radiusM} m'
+                else
+                  '${s.points.length} points',
+                if (length > 0 &&
+                    (s.kind == TeamShapeKind.route ||
+                        s.kind == TeamShapeKind.polyline))
+                  length >= 1000
+                      ? '${(length / 1000).toStringAsFixed(1)} km'
+                      : '${length.round()} m',
+                'shared by $author',
+                teamAgo(s.time),
+              ].join(' · '),
+            ),
+            if (s.note.isNotEmpty) ...[const SizedBox(height: 8), Text(s.note)],
+            const SizedBox(height: 12),
+            TextButton.icon(
+              icon: const Icon(Icons.visibility_off),
+              label: const Text('Hide on this phone'),
+              onPressed: () {
+                team.dismissItem(s.key);
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      ),
     );
+  },
+);
