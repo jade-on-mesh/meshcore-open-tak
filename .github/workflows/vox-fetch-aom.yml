@@ -21,7 +21,7 @@ jobs:
       - name: Clone and pack
         run: |
           git clone --depth 1 --branch "${{ inputs.version }}" https://aomedia.googlesource.com/aom /tmp/aom
-          rm -rf /tmp/aom/.git /tmp/aom/test /tmp/aom/testdata /tmp/aom/examples
+          rm -rf /tmp/aom/.git /tmp/aom/testdata
           mkdir -p /tmp/out
           tar -C /tmp -czf "/tmp/out/aom-${{ inputs.version }}.tar.gz" aom
           sha256sum /tmp/out/*.tar.gz | tee /tmp/out/SHA256SUMS
