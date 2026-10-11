@@ -1,0 +1,50 @@
+name: VOX image codec comparison
+
+# One-off quality test: image codecs at the voice-message byte budget.
+# Manual only. Results are pushed to the `image-samples` branch.
+
+on:
+  workflow_dispatch:
+    inputs:
+      budget:
+        description: "Byte budget per image"
+        default: "2750"
+
+permissions:
+  contents: write
+
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install codecs
+        timeout-minutes: 10
+        run: |
+          sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 install -y libavif-bin libjxl-tools
+          avifenc --version || true
+          cjxl --version || true
+          pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
+          pip install compressai pytorch-msssim pillow numpy
+      - name: Compare
+        timeout-minutes: 75
+        run: |
+          mkdir -p /tmp/out
+          EXTRA_IMAGES_DIR=tool/vox/test_images python tool/vox/image_compare.py /tmp/out "${{ inputs.budget }}" 2>&1 | tee /tmp/out/compare.log
+          exit ${PIPESTATUS[0]}
+      - name: Publish to image-samples branch
+        if: always()
+        run: |
+          mkdir -p /tmp/out
+          cd /tmp/out
+          git init -q -b image-samples
+          git config user.name vox-ci
+          git config user.email vox-ci@users.noreply.github.com
+          git add -A
+          git commit -qm "Image samples for ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" image-samples
