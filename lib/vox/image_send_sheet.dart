@@ -67,9 +67,9 @@ class VoxImageButton extends StatelessWidget {
       );
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Couldn\'t open the photo: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Couldn\'t open the photo: $e')));
       }
       return;
     }
@@ -115,9 +115,7 @@ Future<VoxRgbImage> voxLoadReference(Uint8List fileBytes) async {
   final (w, h) = voxFitSize(desc.width, desc.height, voxImageWorkSide);
   final codec = await desc.instantiateCodec(targetWidth: w, targetHeight: h);
   final frame = await codec.getNextFrame();
-  final data = await frame.image.toByteData(
-    format: ui.ImageByteFormat.rawRgba,
-  );
+  final data = await frame.image.toByteData(format: ui.ImageByteFormat.rawRgba);
   final iw = frame.image.width, ih = frame.image.height;
   frame.image.dispose();
   codec.dispose();

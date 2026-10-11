@@ -9,7 +9,6 @@
 //     map that we threshold into boxes.
 
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_onnxruntime/flutter_onnxruntime.dart';
@@ -100,8 +99,14 @@ class VoxFocusDetector {
       }
       // Faces get a margin (hair, chin) and duplicates are merged.
       return _nms(found)
-          .map((r) => VoxRect(r.left - r.width * 0.15, r.top - r.height * 0.2,
-              r.width * 1.3, r.height * 1.35))
+          .map(
+            (r) => VoxRect(
+              r.left - r.width * 0.15,
+              r.top - r.height * 0.2,
+              r.width * 1.3,
+              r.height * 1.35,
+            ),
+          )
           .toList();
     } finally {
       await value.dispose();
@@ -155,8 +160,13 @@ class VoxFocusDetector {
 
 /// Connected regions of a text-probability map, as padded boxes.
 @visibleForTesting
-List<VoxRect> voxTextBoxesFromProb(List<double> prob, int w, int h,
-    {double thresh = 0.3, double boxThresh = 0.5}) {
+List<VoxRect> voxTextBoxesFromProb(
+  List<double> prob,
+  int w,
+  int h, {
+  double thresh = 0.3,
+  double boxThresh = 0.5,
+}) {
   final seen = Uint8List(w * h);
   final boxes = <VoxRect>[];
   final stack = <int>[];

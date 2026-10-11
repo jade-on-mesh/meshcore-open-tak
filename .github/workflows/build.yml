@@ -86,6 +86,15 @@ jobs:
           ls -la "$OUT/lib"
       - run: flutter pub get
       - run: flutter build apk --release --no-pub --target-platform android-arm64
+      - name: Check VOX native libraries and models are in the APK
+        run: |
+          unzip -l build/app/outputs/flutter-apk/app-release.apk > /tmp/apk.txt
+          for f in lib/arm64-v8a/libvox_av1.so lib/arm64-v8a/libcodec2.so \
+                   assets/flutter_assets/assets/vox/face_yunet_2023mar.onnx \
+                   assets/flutter_assets/assets/vox/text_ppocrv3_det.onnx; do
+            grep -q "$f" /tmp/apk.txt || { echo "missing from APK: $f"; exit 1; }
+          done
+          grep -E "libvox_av1|libcodec2|assets/vox" /tmp/apk.txt
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:

@@ -22,22 +22,24 @@ VoxRgbImage _gradient(int w, int h) {
 /// Stand-in for libaom: "compresses" by size and quantizer, and decodes to
 /// the scaled picture with noise that grows with q.
 class _FakeAv1 {
-  final _pictures = Expando<VoxRgbImage>();
+  final _pictures = <int, VoxRgbImage>{};
   int calls = 0;
 
   Uint8List? encode(VoxRgbImage img, int q, int speed) {
-    calls++;
+    final id = ++calls;
     final n = (img.width * img.height * 3 * 0.12 / (1 + q / 6)).round() + 12;
-    final data = Uint8List(n);
+    final data = Uint8List(n)..buffer.asByteData().setUint32(0, id);
     final noisy = Uint8List.fromList(img.rgb);
     for (var i = 0; i < noisy.length; i += 7) {
       noisy[i] = (noisy[i] + q).clamp(0, 255);
     }
-    _pictures[data] = VoxRgbImage(img.width, img.height, noisy);
+    _pictures[id] = VoxRgbImage(img.width, img.height, noisy);
     return data;
   }
 
-  VoxRgbImage? decode(Uint8List obus) => _pictures[obus];
+  VoxRgbImage? decode(Uint8List obus) => obus.length < 4
+      ? null
+      : _pictures[ByteData.sublistView(obus).getUint32(0)];
 }
 
 void main() {
@@ -87,10 +89,14 @@ void main() {
 
   group('pixel helpers', () {
     test('area downscale averages', () {
-      final img = VoxRgbImage(2, 2, Uint8List.fromList([
-        0, 0, 0, 100, 100, 100, //
-        200, 200, 200, 100, 100, 100,
-      ]));
+      final img = VoxRgbImage(
+        2,
+        2,
+        Uint8List.fromList([
+          0, 0, 0, 100, 100, 100, //
+          200, 200, 200, 100, 100, 100,
+        ]),
+      );
       final small = voxResize(img, 1, 1);
       expect(small.rgb, [100, 100, 100]);
     });
@@ -108,8 +114,9 @@ void main() {
 
     test('softening leaves the focus region untouched', () {
       final img = _gradient(40, 40);
-      final mask = voxFocusMask(40, 40, const [VoxRect(0, 0, 20, 40)],
-          feather: 0);
+      final mask = voxFocusMask(40, 40, const [
+        VoxRect(0, 0, 20, 40),
+      ], feather: 0);
       final soft = voxSoftenOutside(img, mask);
       expect(soft.rgb.sublist(0, 3), img.rgb.sublist(0, 3));
     });
@@ -146,10 +153,7 @@ void main() {
       expect(enc.aspect, closeTo(1.5, 0.01));
       expect(enc.focused, isFalse);
       expect(enc.textPsnr, isNull);
-      expect(
-        voxDecodeImagePayload(enc.payload, fake.decode),
-        isNotNull,
-      );
+      expect(voxDecodeImagePayload(enc.payload, fake.decode), isNotNull);
     });
 
     test('more detail never sends fewer bytes', () {

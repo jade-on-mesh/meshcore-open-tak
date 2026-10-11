@@ -255,9 +255,9 @@ class VoxVoiceEnvelope {
   int get estimatedCodecBytes => isImage
       ? totalPackets * mode.bytesPerPacket
       : min(
-    totalPackets * mode.bytesPerPacket,
-    max(durationSeconds, 1) * mode.bytesPerSecond,
-  );
+          totalPackets * mode.bytesPerPacket,
+          max(durationSeconds, 1) * mode.bytesPerSecond,
+        );
 }
 
 /// One raw voice packet: `[0x56][sid:4][index:1][codec2...]`.

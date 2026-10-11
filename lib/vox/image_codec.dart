@@ -162,7 +162,8 @@ Float32List _boxBlurPlane(Float32List p, int w, int h, int r, int passes) {
       }
       for (var x = 0; x < w; x++) {
         b[row + x] = sum / (2 * r + 1);
-        sum += a[row + (x + r + 1).clamp(0, w - 1)] -
+        sum +=
+            a[row + (x + r + 1).clamp(0, w - 1)] -
             a[row + (x - r).clamp(0, w - 1)];
       }
     }
@@ -173,7 +174,8 @@ Float32List _boxBlurPlane(Float32List p, int w, int h, int r, int passes) {
       }
       for (var y = 0; y < h; y++) {
         a[y * w + x] = sum / (2 * r + 1);
-        sum += b[(y + r + 1).clamp(0, h - 1) * w + x] -
+        sum +=
+            b[(y + r + 1).clamp(0, h - 1) * w + x] -
             b[(y - r).clamp(0, h - 1) * w + x];
       }
     }
@@ -181,25 +183,37 @@ Float32List _boxBlurPlane(Float32List p, int w, int h, int r, int passes) {
   return a;
 }
 
-/// 0..1 mask: 1 inside [rects] (feathered), 0 elsewhere.
+/// 0..1 mask: 1 inside [rects], fading to 0 over about [feather] px
+/// outside them. The inside always stays exactly 1, however small the rect.
 Float32List voxFocusMask(int w, int h, List<VoxRect> rects, {int feather = 6}) {
-  final m = Float32List(w * h);
-  for (final r in rects) {
-    final x0 = r.left.floor().clamp(0, w), x1 = r.right.ceil().clamp(0, w);
-    final y0 = r.top.floor().clamp(0, h), y1 = r.bottom.ceil().clamp(0, h);
-    for (var y = y0; y < y1; y++) {
-      for (var x = x0; x < x1; x++) {
-        m[y * w + x] = 1;
+  Float32List paint(double grow) {
+    final m = Float32List(w * h);
+    for (final r0 in rects) {
+      final r = r0.inflate(grow);
+      final x0 = r.left.floor().clamp(0, w), x1 = r.right.ceil().clamp(0, w);
+      final y0 = r.top.floor().clamp(0, h), y1 = r.bottom.ceil().clamp(0, h);
+      for (var y = y0; y < y1; y++) {
+        m.fillRange(y * w + x0, y * w + x1, 1);
       }
     }
+    return m;
   }
-  if (feather <= 0) return m;
-  return _boxBlurPlane(m, w, h, max(1, feather ~/ 2), 3);
+
+  final hard = paint(0);
+  if (feather <= 0) return hard;
+  final soft = _boxBlurPlane(paint(feather / 2), w, h, max(1, feather ~/ 2), 3);
+  for (var i = 0; i < hard.length; i++) {
+    if (hard[i] > soft[i]) soft[i] = hard[i];
+  }
+  return soft;
 }
 
 /// Softens everything outside [mask] (blur radius ~[radius] px).
-VoxRgbImage voxSoftenOutside(VoxRgbImage img, Float32List mask,
-    {int radius = 2}) {
+VoxRgbImage voxSoftenOutside(
+  VoxRgbImage img,
+  Float32List mask, {
+  int radius = 2,
+}) {
   final w = img.width, h = img.height, n = w * h;
   final out = Uint8List(n * 3);
   for (var c = 0; c < 3; c++) {
@@ -238,7 +252,20 @@ double voxPsnr(VoxRgbImage a, VoxRgbImage b, [Float32List? mask]) {
 
 /// Candidate long sides for the coded picture.
 const List<int> voxImageSides = [
-  128, 160, 192, 224, 256, 288, 320, 352, 384, 448, 512, 576, 640, 768,
+  128,
+  160,
+  192,
+  224,
+  256,
+  288,
+  320,
+  352,
+  384,
+  448,
+  512,
+  576,
+  640,
+  768,
 ];
 
 class _Fit {

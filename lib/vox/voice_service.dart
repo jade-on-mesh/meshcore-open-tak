@@ -811,10 +811,7 @@ class VoxVoiceService extends ChangeNotifier {
     VoxImageDetail detail, {
     VoxFocusRegions focus = VoxFocusRegions.none,
     bool useFocus = true,
-  }) => compute(
-    _encodeImageJob,
-    _ImageEncodeJob(ref, detail, focus, useFocus),
-  );
+  }) => compute(_encodeImageJob, _ImageEncodeJob(ref, detail, focus, useFocus));
 
   Future<VoxVoiceEnvelope> sendImageToContact(
     Contact contact,
@@ -1559,7 +1556,9 @@ class _ImageEncodeJob {
 VoxEncodedImage _encodeImageJob(_ImageEncodeJob j) {
   final av1 = VoxAv1.instanceOrNull;
   if (av1 == null) {
-    throw StateError('Image support is not in this build (${VoxAv1.loadError})');
+    throw StateError(
+      'Image support is not in this build (${VoxAv1.loadError})',
+    );
   }
   return voxEncodeImage(
     ref: j.ref,
