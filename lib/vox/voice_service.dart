@@ -258,6 +258,10 @@ class VoxVoiceService extends ChangeNotifier {
   final Map<String, DateTime> _lastChannelPacket = {};
   final Map<String, DateTime> _recentServes = {};
   final Map<String, int> _serveGen = {};
+  final Random _rng = Random();
+
+  /// Companion protocol frame limit (MAX_FRAME_SIZE in the firmware).
+  static const int _maxCompanionFrame = 172;
 
   Future<void> _serveChain = Future.value();
 
@@ -568,6 +572,7 @@ class VoxVoiceService extends ChangeNotifier {
       sessionId: clip.envelope.sessionId,
       requesterKey6: voxKey6Hex(self),
       missingIndices: clip.packets.isEmpty ? null : clip.missing,
+      saltOk: true,
     );
     clip.status = VoxClipStatus.requesting;
     clip.message = switch (method) {
@@ -731,8 +736,9 @@ class VoxVoiceService extends ChangeNotifier {
         final sid = p.length >= 5 ? voxSessionIdFromBytes(p, 1) : '';
         final what = p.isEmpty
             ? 'empty'
-            : p[0] == voxVoicePacketMagic
+            : VoxVoicePacket.isVoicePacket(p)
             ? 'voice packet #${p.length > 5 ? p[5] : '?'}'
+                  '${p[0] == voxVoicePacketSaltedMagic ? ' (salted)' : ''}'
             : p[0] == voxVoiceFetchMagic
             ? 'fetch request'
             : p[0] == _pingMagic
@@ -758,6 +764,7 @@ class VoxVoiceService extends ChangeNotifier {
     if (payload.isEmpty) return;
     switch (payload[0]) {
       case voxVoicePacketMagic:
+      case voxVoicePacketSaltedMagic:
         final pkt = VoxVoicePacket.tryParse(payload);
         if (pkt == null) return;
         if (channelIndex != null) {
@@ -926,7 +933,10 @@ class VoxVoiceService extends ChangeNotifier {
         req.sessionId,
       );
       await _connector.sendChannelDataBlobs(
-        [for (final p in packets) p.encode()],
+        [
+          for (final p in packets)
+            p.encode(salt: req.saltOk ? _rng.nextInt(256) : null),
+        ],
         channelIndex: viaChannel,
         dataType: voxChannelDataType,
         interChunkDelay: _packetGap(flood: true),
@@ -981,8 +991,18 @@ class VoxVoiceService extends ChangeNotifier {
       }
       if (i > 0) await Future<void>.delayed(gap);
       try {
+        // Salt each send so a resend is never dropped as a duplicate by a
+        // radio that saw an earlier copy; skip it if the frame would not fit.
+        final fits =
+            2 + route.length + packets[i].encode().length + 1 <=
+            _maxCompanionFrame;
         await _connector.sendFrame(
-          buildSendRawDataFrame(path: route, payload: packets[i].encode()),
+          buildSendRawDataFrame(
+            path: route,
+            payload: packets[i].encode(
+              salt: req.saltOk && fits ? _rng.nextInt(256) : null,
+            ),
+          ),
           waitForGenericAck: true,
         );
       } catch (e) {

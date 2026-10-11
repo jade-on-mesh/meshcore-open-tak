@@ -219,4 +219,55 @@ void main() {
       expect(pkts.every((p) => p.encode().length <= 162), isTrue);
     });
   });
+
+  group('salted packets', () {
+    test('salted packet carries the same data and differs per salt', () {
+      final pkt = VoxVoicePacket(
+        sessionId: 'deadbeef',
+        index: 1,
+        codecData: Uint8List.fromList([1, 2, 3]),
+      );
+      final a = pkt.encode(salt: 7);
+      final b = pkt.encode(salt: 9);
+      expect(_toHex(a), '57deadbeef0101020307');
+      expect(_toHex(a) == _toHex(b), isFalse);
+      final back = VoxVoicePacket.tryParse(a)!;
+      expect(back.index, 1);
+      expect(back.codecData, [1, 2, 3]);
+      // Unsalted packets are unchanged (MeshCore SAR compatible).
+      expect(_toHex(pkt.encode()), '56deadbeef01010203');
+    });
+
+    test('fetch request carries the salt-ok flag without breaking SAR', () {
+      const req = VoxVoiceFetchRequest(
+        sessionId: 'deadbeef',
+        requesterKey6: 'a1b2c3d4e5f6',
+        missingIndices: [1],
+        saltOk: true,
+      );
+      final bytes = req.encode();
+      expect(bytes[5], 0x03); // missing-only (SAR bit 0) + salt-ok (bit 1)
+      final back = VoxVoiceFetchRequest.tryParse(bytes)!;
+      expect(back.saltOk, isTrue);
+      expect(back.missingIndices, [1]);
+      expect(VoxVoiceFetchRequest.tryParse(
+        const VoxVoiceFetchRequest(
+          sessionId: 'deadbeef',
+          requesterKey6: 'a1b2c3d4e5f6',
+        ).encode(),
+      )!.saltOk, isFalse);
+    });
+
+    test('salted packets still fit channel data', () {
+      for (final mode in [voxDefaultVoiceMode, VoxVoiceMode.mimi]) {
+        final pkts = voxPacketize('0000000a', Uint8List(3000), mode);
+        expect(
+          pkts.every(
+            (p) => p.encode(salt: 1).length <= voxMaxChannelDataBytes,
+          ),
+          isTrue,
+        );
+      }
+    });
+  });
 }

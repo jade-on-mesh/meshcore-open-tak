@@ -103,6 +103,19 @@ const int voxVoicePacketMagic = 0x56; // 'V'
 const int voxVoiceFetchMagic = 0x72; // 'r'
 const int voxFetchFlagMissingOnly = 0x01;
 
+/// VOX extension: the requester understands salted voice packets (0x57).
+/// MeshCore SAR only looks at bit 0, so it ignores this.
+const int voxFetchFlagSaltOk = 0x02;
+
+/// VOX extension: a voice packet with one random byte appended.
+///
+/// MeshCore radios drop any packet whose contents they have already seen
+/// (the "seen" table hashes type + payload only). If a voice packet reaches
+/// the listener's radio but is lost between radio and phone, every identical
+/// resend is then silently dropped. A fresh salt byte on each send makes each
+/// resend unique.
+const int voxVoicePacketSaltedMagic = 0x57; // 'W'
+
 /// 32-bit session id, held as 8 lowercase hex chars (big-endian bytes).
 String voxNewSessionId([Random? rng]) {
   final r = rng ?? Random.secure();
@@ -225,22 +238,33 @@ class VoxVoicePacket {
   }) : assert(_isSessionId(sessionId)),
        assert(index >= 0 && index < voxMaxPackets);
 
+  static bool isVoicePacket(List<int> payload) =>
+      payload.isNotEmpty &&
+      (payload[0] == voxVoicePacketMagic ||
+          payload[0] == voxVoicePacketSaltedMagic);
+
   static VoxVoicePacket? tryParse(List<int> payload) {
-    if (payload.length <= headerLength) return null;
-    if (payload[0] != voxVoicePacketMagic) return null;
+    if (!isVoicePacket(payload)) return null;
+    final salted = payload[0] == voxVoicePacketSaltedMagic;
+    final end = salted ? payload.length - 1 : payload.length;
+    if (end <= headerLength) return null;
     return VoxVoicePacket(
       sessionId: voxSessionIdFromBytes(payload, 1),
       index: payload[5],
-      codecData: Uint8List.fromList(payload.sublist(headerLength)),
+      codecData: Uint8List.fromList(payload.sublist(headerLength, end)),
     );
   }
 
-  Uint8List encode() {
-    final out = Uint8List(headerLength + codecData.length);
-    out[0] = voxVoicePacketMagic;
+  /// Standard SAR-compatible packet, or, with [salt], a VOX salted packet
+  /// (`0x57`, one extra trailing byte) so resends are never deduplicated.
+  Uint8List encode({int? salt}) {
+    final extra = salt == null ? 0 : 1;
+    final out = Uint8List(headerLength + codecData.length + extra);
+    out[0] = salt == null ? voxVoicePacketMagic : voxVoicePacketSaltedMagic;
     out.setRange(1, 5, voxSessionIdToBytes(sessionId));
     out[5] = index;
-    out.setRange(headerLength, out.length, codecData);
+    out.setRange(headerLength, headerLength + codecData.length, codecData);
+    if (salt != null) out[out.length - 1] = salt & 0xFF;
     return out;
   }
 }
@@ -255,10 +279,14 @@ class VoxVoiceFetchRequest {
   /// Null means "send every packet".
   final List<int>? missingIndices;
 
+  /// Requester accepts salted (0x57) packets. Set by VOX, never by SAR.
+  final bool saltOk;
+
   const VoxVoiceFetchRequest({
     required this.sessionId,
     required this.requesterKey6,
     this.missingIndices,
+    this.saltOk = false,
   });
 
   static VoxVoiceFetchRequest? tryParse(List<int> payload) {
@@ -282,6 +310,7 @@ class VoxVoiceFetchRequest {
       sessionId: voxSessionIdFromBytes(payload, 1),
       requesterKey6: keySb.toString(),
       missingIndices: missing,
+      saltOk: (flags & voxFetchFlagSaltOk) != 0,
     );
   }
 
@@ -298,7 +327,9 @@ class VoxVoiceFetchRequest {
     final out = Uint8List(minLength + capped.length);
     out[0] = voxVoiceFetchMagic;
     out.setRange(1, 5, voxSessionIdToBytes(sessionId));
-    out[5] = missingIndices == null ? 0x00 : voxFetchFlagMissingOnly;
+    out[5] =
+        (missingIndices == null ? 0x00 : voxFetchFlagMissingOnly) |
+        (saltOk ? voxFetchFlagSaltOk : 0x00);
     for (var i = 0; i < 6; i++) {
       out[6 + i] = int.parse(
         requesterKey6.substring(i * 2, i * 2 + 2),
