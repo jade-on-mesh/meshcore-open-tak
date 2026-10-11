@@ -40,7 +40,9 @@ void main() {
   });
 
   test('a single count line still parses', () {
-    final it = _parse('🟢 OBSERVED\n10-01 14:44\n🧊 @Federal Way S 320th St\n1-🥾');
+    final it = _parse(
+      '🟢 OBSERVED\n10-01 14:44\n🧊 @Federal Way S 320th St\n1-🥾',
+    );
     expect(it.counts, [(1, '🥾')]);
   });
 

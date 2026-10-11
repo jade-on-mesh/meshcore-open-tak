@@ -1249,7 +1249,6 @@ class _SosButtonState extends State<_SosButton>
   }
 }
 
-
 /// "● Alpha · 3 live · GPS ±4 m". Tap for the Tactical screen.
 class _StatusPill extends StatelessWidget {
   final TeamService team;
@@ -1280,9 +1279,9 @@ class _StatusPill extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const TeamScreen()),
-        ),
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute<void>(builder: (_) => const TeamScreen())),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           child: Row(

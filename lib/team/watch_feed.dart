@@ -54,7 +54,8 @@ class WatchItem {
     this.otherLines = const [],
   });
 
-  bool get isStructured => statusWord != null || place != null || counts.isNotEmpty;
+  bool get isStructured =>
+      statusWord != null || place != null || counts.isNotEmpty;
   bool get hasPosition => lat != null && lon != null;
   String get key => '${channel.index}:${message.messageId}';
 
