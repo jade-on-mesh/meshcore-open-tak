@@ -25,6 +25,9 @@ const int voxImageBaseBudget = 2750;
 /// Longest side of the reference picture.
 const int voxImageWorkSide = 768;
 
+/// Encoder speed meaning "fast all-intra trial" (see vox_av1.c).
+const int voxAv1TrialSpeed = 10;
+
 /// First payload byte: format version.
 const int voxImagePayloadVersion = 1;
 
@@ -301,13 +304,14 @@ VoxEncodedImage voxEncodeImage({
     return mask == null ? whole : voxPsnr(ref, up, mask) + 0.25 * whole;
   }
 
-  // Smallest quantizer (best quality) that fits, by bisection.
-  (int, Uint8List)? fitQ(VoxRgbImage img) {
+  // Smallest quantizer (best quality) that fits, by bisection. Speed 10 is
+  // the native side's fast all-intra trial mode.
+  (int, Uint8List)? fitQ(VoxRgbImage img, {int speed = voxAv1TrialSpeed}) {
     var lo = 0, hi = 63;
     (int, Uint8List)? best;
     while (lo <= hi) {
       final q = (lo + hi) >> 1;
-      final data = encode(img, q, 8);
+      final data = encode(img, q, speed);
       if (data != null && data.length <= budget) {
         best = (q, data);
         hi = q - 1;
@@ -342,17 +346,25 @@ VoxEncodedImage voxEncodeImage({
     throw StateError('Image does not fit in ${detail.budget} bytes');
   }
 
-  // Final encode at a slower, better speed; nudge q up if it grew.
+  // Trials picked the size; now the efficient encoder finds the quantizer,
+  // then a slower final pass (nudging q up if that grew past the budget).
   final scaled = voxResize(source, best.w, best.h);
+  final good = fitQ(scaled, speed: 6);
   Uint8List? data;
-  for (var q = best.q; q <= 63; q++) {
-    final d = encode(scaled, q, 4);
-    if (d != null && d.length <= budget) {
-      data = d;
-      break;
+  if (good != null) {
+    for (var q = good.$1; q <= 63; q++) {
+      final d = encode(scaled, q, 4);
+      if (d != null && d.length <= budget) {
+        data = d;
+        break;
+      }
     }
+    data ??= good.$2;
   }
-  data ??= encode(scaled, best.q, 8)!;
+  data ??= fitQ(scaled)?.$2;
+  if (data == null) {
+    throw StateError('Image does not fit in ${detail.budget} bytes');
+  }
   final preview = decode(data)!;
   double? textPsnr;
   if (textMask != null) {

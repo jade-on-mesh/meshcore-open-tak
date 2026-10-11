@@ -94,14 +94,21 @@ static void i420_to_rgb(const aom_image_t *img, uint8_t *rgb) {
 }
 
 // Encodes rgb (w*h*3 bytes) at quantizer q (0 best .. 63 smallest) and
-// libaom speed (0 slowest/best .. 9). Writes OBUs to out. Returns the number
+// libaom speed (0 slowest/best .. 9). speed 10 selects libaom's all-intra
+// mode at its fastest setting: about 10x quicker but less efficient, for
+// trial encodes while searching sizes. Writes OBUs to out. Returns the number
 // of bytes written, -(bytes needed) if out_cap is too small, or 0 on error.
 VOX_EXPORT int vox_av1_encode(const uint8_t *rgb, int w, int h, int q, int speed,
                               int threads, uint8_t *out, int out_cap) {
   if (!rgb || w < 1 || h < 1 || q < 0 || q > 63) return 0;
   aom_codec_iface_t *iface = aom_codec_av1_cx();
   aom_codec_enc_cfg_t cfg;
-  if (aom_codec_enc_config_default(iface, &cfg, AOM_USAGE_GOOD_QUALITY)) return 0;
+  const int trial = speed >= 10;
+  if (trial) speed = 9;
+  if (aom_codec_enc_config_default(
+          iface, &cfg, trial ? AOM_USAGE_ALL_INTRA : AOM_USAGE_GOOD_QUALITY)) {
+    return 0;
+  }
   cfg.g_w = (unsigned)w;
   cfg.g_h = (unsigned)h;
   cfg.g_bit_depth = AOM_BITS_8;
@@ -117,6 +124,7 @@ VOX_EXPORT int vox_av1_encode(const uint8_t *rgb, int w, int h, int q, int speed
 
   aom_codec_ctx_t ctx;
   if (aom_codec_enc_init(&ctx, iface, &cfg, 0)) return 0;
+  // (all-intra needs no extra controls; it implies a single key frame)
   aom_codec_control(&ctx, AOME_SET_CPUUSED, speed);
   aom_codec_control(&ctx, AOME_SET_CQ_LEVEL, q);
   aom_codec_control(&ctx, AOME_SET_TUNING, AOM_TUNE_SSIM);
