@@ -53,7 +53,11 @@ def load_images():
     imgs = {}
     extra = os.environ.get("EXTRA_IMAGES_DIR")
     for name in KODAK:
-        url = f"http://r0k.us/graphics/kodak/kodak/{name}.png"
+        url = (
+            "https://raw.githubusercontent.com/MohamedBakrAli/"
+            "Kodak-Lossless-True-Color-Image-Suite/master/PhotoCD_PCD0992/"
+            f"{int(name[5:])}.png"
+        )
         data = urllib.request.urlopen(url, timeout=60).read()
         imgs[name] = Image.open(io.BytesIO(data)).convert("RGB")
     if extra and os.path.isdir(extra):
