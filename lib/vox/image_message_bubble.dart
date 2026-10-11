@@ -60,6 +60,7 @@ class _VoxImageMessageContentState extends State<VoxImageMessageContent> {
   ui.Image? _image;
   bool _loading = false;
   bool _failed = false;
+  int _loadGen = 0;
 
   @override
   void didChangeDependencies() {
@@ -81,6 +82,33 @@ class _VoxImageMessageContentState extends State<VoxImageMessageContent> {
     }
   }
 
+  /// The chat list reuses bubble state when messages shift, so a bubble can
+  /// be handed a different photo. Drop everything tied to the old one.
+  @override
+  void didUpdateWidget(VoxImageMessageContent old) {
+    super.didUpdateWidget(old);
+    if (old.envelope.sessionId == widget.envelope.sessionId) return;
+    _image?.dispose();
+    _image = null;
+    _loading = false;
+    _failed = false;
+    _loadGen++;
+    final s = _service;
+    if (s != null) {
+      unawaited(
+        s
+            .warmUp(
+              widget.envelope,
+              sender: widget.sender,
+              channelIndex: widget.channelIndex,
+            )
+            .then((_) {
+              if (mounted) _maybeLoad();
+            }),
+      );
+    }
+  }
+
   void _onServiceChanged() {
     if (!mounted) return;
     _maybeLoad();
@@ -92,10 +120,13 @@ class _VoxImageMessageContentState extends State<VoxImageMessageContent> {
     if (s == null || _image != null || _loading || _failed) return;
     if (s.stateFor(widget.envelope).status != VoxClipStatus.complete) return;
     _loading = true;
+    final gen = _loadGen;
+    final env = widget.envelope;
     unawaited(() async {
-      final rgb = await s.imageFor(widget.envelope);
+      final rgb = await s.imageFor(env);
       final img = rgb == null ? null : await voxRgbToUiImage(rgb);
-      if (!mounted) {
+      // Drop the result if this bubble now shows a different photo.
+      if (!mounted || gen != _loadGen) {
         img?.dispose();
         return;
       }

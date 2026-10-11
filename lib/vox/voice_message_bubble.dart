@@ -60,6 +60,20 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
     }
   }
 
+  @override
+  void didUpdateWidget(VoxVoiceMessageContent old) {
+    super.didUpdateWidget(old);
+    if (old.envelope.sessionId != widget.envelope.sessionId) {
+      unawaited(
+        _service?.warmUp(
+          widget.envelope,
+          sender: widget.sender,
+          channelIndex: widget.channelIndex,
+        ),
+      );
+    }
+  }
+
   void _onServiceChanged() {
     if (mounted) setState(() {});
   }
@@ -102,6 +116,7 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
   Widget build(BuildContext context) {
     if (widget.envelope.isImage) {
       return VoxImageMessageContent(
+        key: ValueKey('vox-image-${widget.envelope.sessionId}'),
         envelope: widget.envelope,
         isOutgoing: widget.isOutgoing,
         textColor: widget.textColor,
