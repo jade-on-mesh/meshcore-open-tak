@@ -1,0 +1,36 @@
+name: VOX fetch libaom source
+
+# One-off: mirror the libaom (AV1, BSD-2-Clause) release source to the
+# `deps-cache` branch so builds don't depend on googlesource tarballs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "libaom tag"
+        default: "v3.12.1"
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Clone and pack
+        run: |
+          git clone --depth 1 --branch "${{ inputs.version }}" https://aomedia.googlesource.com/aom /tmp/aom
+          rm -rf /tmp/aom/.git /tmp/aom/test /tmp/aom/testdata /tmp/aom/examples
+          mkdir -p /tmp/out
+          tar -C /tmp -czf "/tmp/out/aom-${{ inputs.version }}.tar.gz" aom
+          sha256sum /tmp/out/*.tar.gz | tee /tmp/out/SHA256SUMS
+      - name: Publish
+        run: |
+          cd /tmp/out
+          git init -q -b deps-cache
+          git config user.name vox-ci
+          git config user.email vox-ci@users.noreply.github.com
+          git add -A
+          git commit -qm "libaom ${{ inputs.version }} source (BSD-2-Clause, AOM patent license)"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" deps-cache
