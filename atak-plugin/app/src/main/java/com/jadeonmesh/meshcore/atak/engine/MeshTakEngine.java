@@ -721,7 +721,7 @@ public final class MeshTakEngine implements MeshRadio.Listener,
                 }
                 return;
             }
-        } else if (CotConvert.isPointType(type) && !type.startsWith("a-f-G-U-C")) {
+        } else if (CotConvert.isPointType(type) && !CotConvert.isPli(ev)) {
             TeamWire.Point p = CotConvert.pointOut(ev, key4, nowSec);
             byte[] b = p.encode();
             if (notDuplicate(uid, b)) {
@@ -914,8 +914,15 @@ public final class MeshTakEngine implements MeshRadio.Listener,
             String part = Bytes.utf8(cut, 0, cut.length);
             if (part.isEmpty())
                 break;
-            out.add(part);
-            rest = rest.trim().substring(part.length()).trim();
+            String trimmed = rest.trim();
+            if (part.length() < trimmed.length()) {
+                // Break at a word boundary when there is one in the back half.
+                int sp = part.lastIndexOf(' ');
+                if (sp > part.length() / 2)
+                    part = part.substring(0, sp);
+            }
+            out.add(part.trim());
+            rest = trimmed.substring(part.length()).trim();
         }
         for (int i = 0; i < out.size(); i++)
             out.set(i, "(" + (i + 1) + "/" + out.size() + ") " + out.get(i));
@@ -1109,7 +1116,9 @@ public final class MeshTakEngine implements MeshRadio.Listener,
         File dir = it.itemUid != null ? sink.attachmentsDir(it.itemUid)
                 : new File(sink.mediaDir(), "photos");
         dir.mkdirs();
-        File f = new File(dir, "mesh-" + it.env.sessionId + ".jpg");
+        boolean png = jpeg.length > 4 && (jpeg[0] & 0xFF) == 0x89
+                && jpeg[1] == 'P' && jpeg[2] == 'N' && jpeg[3] == 'G';
+        File f = new File(dir, "mesh-" + it.env.sessionId + (png ? ".png" : ".jpg"));
         try (FileOutputStream o = new FileOutputStream(f)) {
             o.write(jpeg);
             it.savedFile = f;

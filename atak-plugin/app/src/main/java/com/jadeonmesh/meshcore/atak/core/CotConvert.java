@@ -622,6 +622,12 @@ public final class CotConvert {
                 || t.startsWith("u-d-p");
     }
 
+    /** Someone's position report (SA), as opposed to a placed marker. */
+    public static boolean isPli(XNode ev) {
+        return ev.path("detail/__group") != null
+                || ev.path("detail/takv") != null;
+    }
+
     public static boolean isShapeType(String t) {
         return t.equals("u-d-f") || t.equals("u-d-r") || t.equals("u-d-c-c")
                 || t.equals("b-m-r");

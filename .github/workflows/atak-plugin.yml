@@ -49,6 +49,8 @@ jobs:
     name: App analyze + team tests
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -56,21 +58,17 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - name: Format (writes a patch artifact if anything changes)
-        run: |
-          dart format lib/team lib/main.dart test/team || true
-          git diff > /tmp/format.patch || true
-          if [ -s /tmp/format.patch ]; then echo "::warning::dart format would change files"; cat /tmp/format.patch | head -200; fi
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: format-patch
-          path: /tmp/format.patch
-          if-no-files-found: ignore
       - name: Analyze
+        run: flutter analyze --fatal-infos --fatal-warnings
+      - name: Format (commits dart format fixes to this branch)
         run: |
-          git checkout -- . # analyze what is committed, not the reformatted tree
-          flutter analyze --fatal-infos --fatal-warnings
+          dart format lib/team lib/main.dart test/team
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -am "dart format"
+            git push
+          fi
       - name: Team tests
         run: flutter test test/team
 

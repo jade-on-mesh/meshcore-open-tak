@@ -1,0 +1,142 @@
+# MeshCore ATAK plugin
+
+Puts an ATAK team on a [MeshCore](https://meshcore.co.uk) LoRa mesh, the way
+the [Meshtastic ATAK plugin](https://meshtastic.org/docs/software/integrations/integrations-atak-plugin/)
+does for Meshtastic. It speaks the same team format as MeshCore Open TAK, so
+ATAK users and MeshCore Open TAK users see each other.
+
+| From ATAK | On the mesh |
+|---|---|
+| Your position (PLI), callsign, team colour, role, battery | Team position beacon, smart-beaconed (often when moving, rarely when still) |
+| GeoChat **All Chat Rooms** | Text on the team channel (readable in any MeshCore app) |
+| GeoChat to a mesh contact | MeshCore direct message |
+| Spot markers, waypoints, 2525 units, SPIs you *send* | Compact point (`0x43`), CoT type, icon and colour kept |
+| Lines, polygons, rectangles, circles, routes you *send* | Compact shape (`0x47`), delta-encoded; simplified to fit one packet |
+| 911 / In Contact / Ring the Bell / Geo-fence alerts | Team alert (repeated), SOS flag on your beacon until cancelled |
+| Anything else you send (casevac/9-line, ranges…) | Whole CoT, compressed and chunked (`0x58`), up to 6 packets by default |
+| Photos (pane), photo on a marker | AV1 still, VI1 envelope, fetched on demand |
+| Push-to-talk (pane) | Mimi (~1.1 kb/s) or Codec2 1200 clip, VM1/VE3 envelope, fetched on demand |
+| Small files (pane, ≤ ~4 KB compressed) | Chunked transfer; data packages, KML and GPX are imported on arrival |
+
+Everything from the mesh appears in ATAK as ordinary CoT: teammates as
+friendly units you can chat with, MeshCore Open TAK pins and SALUTE reports,
+shared shapes and routes, alerts, chat in GeoChat.
+
+A mesh icon sits in the map's bottom-right corner: **green** ready, **amber**
+connecting or missing a team channel, **red** link error, **grey** off. Tap it
+(or the MeshCore toolbar button) for the pane.
+
+## Two ways to reach the radio
+
+**App mode (recommended).** Install [MeshCore Open TAK](../README.md) on the
+same phone, connect it to your radio and turn on team mode with a private team
+channel. The plugin binds to the app's bridge service (only ATAK is allowed
+to), so the app keeps the BLE/USB connection, beacons your position with your
+ATAK callsign, and does all voice and photo encoding (Mimi, Codec2, AV1). The
+bridge can be turned off in the app: Team → TAK interop → *ATAK plugin on this
+phone*.
+
+**Direct mode.** No app needed: the plugin talks the MeshCore companion
+protocol itself, over Bluetooth (Nordic UART) or USB serial (CDC-ACM, CP210x,
+CH34x). Pick the radio in the pane, then pick a *private* team channel (public
+and #hashtag channels would broadcast positions to strangers). Codec2 voice is
+built in; Mimi needs its model (≈223 MB, downloaded from this repo's
+`mimi-onnx-v1` release when you long-press the Mimi line in the pane); photos
+need libaom built in (see below).
+
+**Auto** (the default) uses the app when it's installed, else the USB or
+Bluetooth radio you picked.
+
+Radios need companion firmware 1.15 or newer (channel data, ver code 11).
+
+## Building
+
+ATAK only loads plugins built against its exact version. This project targets
+**ATAK-CIV 4.6.0** with the SDK from tak.gov (it can't be committed here).
+
+1. Unpack the SDK and the Gradle wrapper:
+
+   ```bash
+   cd atak-plugin
+   scripts/setup-sdk.sh ~/Downloads/atak-civ-sdk-4_6_0_5.zip
+   ```
+
+   This writes `local.properties` (Android SDK path, takdev plugin, debug
+   signing key); check it.
+2. Optional, for direct-mode photos: build libaom for Android once
+   (`ANDROID_NDK_HOME=… scripts/build-libaom.sh arm64-v8a armeabi-v7a`). Without
+   it the plugin builds fine; direct mode just can't encode or show photos
+   (app mode still can).
+3. Build and install:
+
+   ```bash
+   ./gradlew assembleCivDebug
+   adb install -r app/build/outputs/apk/civ/debug/ATAK-Plugin-MeshCore-*.apk
+   ```
+
+   Then in ATAK: Settings → Tool Preferences → Plugins (or the Plugins tool),
+   load *MeshCore*.
+
+Options: `-PwithMimi=false` leaves out ONNX Runtime (smaller APK; no Mimi in
+direct mode).
+
+For ATAK 5.x: unpack that SDK instead, set `ATAK_VERSION` in `app/build.gradle`
+and move the build to the Android Gradle plugin version its template uses. The
+plugin code itself only uses APIs that 5.x still has.
+
+Toolchain the 4.6 template expects: JDK 11, Android Gradle plugin 4.2.2,
+Gradle 6.9.1, compileSdk 26, NDK r21 with CMake 3.10 (Android Studio's SDK
+Manager installs these).
+
+## Using it
+
+1. Pick the link (Auto/App/Bluetooth/USB) and, in direct mode, the radio and
+   the team channel.
+2. Your position goes out on its own. *Share my position* and the *My status*
+   buttons (OK, Busy, Need help, Returning, Resting) are in the pane.
+3. Chat in GeoChat as usual. All Chat Rooms ↔ the team channel; a direct chat
+   with a mesh contact goes as a MeshCore DM (they must be in the radio's
+   contacts).
+4. To share a marker, shape or route, use ATAK's normal **Send** on it. Only
+   items you send are shared.
+5. Voice: hold *Hold to talk* in the pane. *To…* picks the team channel or a
+   contact. Received clips show in the pane and (for DMs) play as they arrive.
+6. Photos: *Send photo…* picks a recent photo; *Photo on a map item…* then
+   asks you to tap the marker and shares the marker with the photo attached
+   (it lands in that marker's attachments on other ATAKs once fetched).
+
+Airtime is precious: positions are smart-beaconed, photos and clips are only
+pulled by people who open them, and big CoT is refused rather than flooding
+the mesh. The log in the pane shows what went out.
+
+## How it fits together
+
+```
+ATAK ──PreSendProcessor──▶ MeshTakEngine ──▶ MeshRadio ──┬─ AppRadio ── Messenger ──▶ MeshCore Open TAK (TakBridgeService → Dart)
+  ▲                         │    ▲              │           └─ DirectRadio ── BleTransport / UsbTransport ──▶ radio
+  └── internal dispatch ◀───┘    └── MediaBackend: AppMedia (app codecs) / LocalMedia (Codec2, AV1, Mimi + VE3 fetch/serve)
+```
+
+- `core/`: pure Java, unit-tested on the JDK: companion frames, the team wire
+  format (shared with `lib/team/team_wire.dart` and `team_wire_atak.dart`, with
+  byte-for-byte test vectors on both sides), voice envelopes, CoT conversion.
+- `radio/`: the two link types and the bridge protocol.
+- `media/`: voice and photos; `LocalMedia` is a port of the app's VE3
+  fetch/serve so either side can fetch the other's clips.
+- `tak/AtakBridge`: PreSendProcessor in, `CotMapComponent` internal dispatch
+  out. Mesh items use the same uids as the app's TAK gateway (`VOX-<key4>`,
+  `VOX-M-…`, `VOX-C-…`, `VOX-G-…`), so running both never duplicates.
+
+Tests: `./gradlew testCivDebugUnitTest`, or without the SDK, the
+`ATAK plugin` GitHub workflow (compiles and runs the core tests with plain
+`javac`).
+
+## Limitations
+
+- Built against ATAK-CIV 4.6.0; other ATAK versions need a rebuild with their
+  SDK.
+- Direct-mode raw-data voice/photo transfers need 1-byte path hashes (a
+  firmware limit); clips still arrive over the team channel otherwise.
+- Shapes with many vertices are simplified to fit one packet (a toast says so).
+- Mesh contacts can only be messaged if they're in the radio's contact list.
+- One radio, one team channel at a time.
