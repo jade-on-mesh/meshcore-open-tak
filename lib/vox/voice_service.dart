@@ -950,9 +950,7 @@ class VoxVoiceService extends ChangeNotifier {
       return;
     }
     _logEvent('auto-play: downloading new clip', sid);
-    unawaited(
-      requestClip(env, sender: sender, channelIndex: channelIndex),
-    );
+    unawaited(requestClip(env, sender: sender, channelIndex: channelIndex));
   }
 
   void _onClipComplete(VoxVoiceEnvelope env) {

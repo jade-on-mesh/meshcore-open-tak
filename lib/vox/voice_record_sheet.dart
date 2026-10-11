@@ -122,8 +122,7 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
       final clip = await context.read<VoxVoiceService>().encodeRecording(pcm);
       if (!mounted) return;
       // Start decoding the preview now so Play is instant.
-      _previewWav = context.read<VoxVoiceService>().previewWav(clip)
-        ..ignore();
+      _previewWav = context.read<VoxVoiceService>().previewWav(clip)..ignore();
       setState(() {
         _clip = clip;
         _phase = _Phase.recorded;
