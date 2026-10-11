@@ -58,6 +58,7 @@ import 'channel_message_path_screen.dart';
 import 'map_screen.dart';
 import 'region_management_screen.dart';
 import '../storage/region_store.dart';
+import '../vox/image_send_sheet.dart';
 import '../vox/voice_message_bubble.dart';
 import '../vox/voice_record_sheet.dart';
 import '../vox/voice_service.dart';
@@ -2096,6 +2097,12 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                           ),
                         ),
                     ],
+                  ),
+                  VoxImageButton(
+                    recipientLabel: widget.channel.name,
+                    onSend: (image) => context
+                        .read<VoxVoiceService>()
+                        .sendImageToChannel(widget.channel, image),
                   ),
                   VoxMicButton(
                     recipientLabel: widget.channel.name,

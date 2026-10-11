@@ -28,6 +28,8 @@ import '../models/contact.dart';
 import '../services/image_chunk_transport.dart'
     show parseChannelDataFrame, respCodeChannelDataRecv;
 import 'voice_clip_store.dart';
+import 'av1_ffi.dart';
+import 'image_codec.dart';
 import 'mimi.dart';
 import 'resample.dart';
 import 'voice_codec.dart';
@@ -365,7 +367,8 @@ class VoxVoiceService extends ChangeNotifier {
   ) async {
     final env = _register(clip);
     _logEvent(
-      'sent ${env.totalPackets}-packet ${clip.mode.label} clip to ${contact.name} '
+      'sent ${env.totalPackets}-packet ${clip.mode.label} '
+      '${clip.mode.isImage ? '(${clip.bits.length}B)' : 'clip'} to ${contact.name} '
       '(route ${contact.pathLength < 0 ? 'flood' : '${contact.pathLength} hops'})',
       env.sessionId,
     );
@@ -757,8 +760,77 @@ class VoxVoiceService extends ChangeNotifier {
   final Map<String, Future<Uint8List?>> _decoding = {};
 
   /// Whether this device can decode [env]'s codec right now.
-  bool canPlay(VoxVoiceEnvelope env) =>
-      env.mode.isMimi ? mimi.isReady : voxCodecAvailable;
+  bool canPlay(VoxVoiceEnvelope env) => env.mode.isImage
+      ? false
+      : env.mode.isMimi
+      ? mimi.isReady
+      : voxCodecAvailable;
+
+  // ----------------------------------------------------------------- images
+
+  /// Whether this build can encode and show AV1 image messages.
+  bool get imagesAvailable => VoxAv1.isAvailable;
+
+  /// Decoded pictures, most recently used last.
+  final Map<String, VoxRgbImage> _imageCache = {};
+  final Map<String, Future<VoxRgbImage?>> _imageDecoding = {};
+
+  /// The received (or sent) picture for [env], decoded off the UI thread.
+  /// Null until the clip is complete, or if it can't be decoded.
+  Future<VoxRgbImage?> imageFor(VoxVoiceEnvelope env) {
+    final sid = env.sessionId;
+    final cached = _imageCache.remove(sid);
+    if (cached != null) {
+      _imageCache[sid] = cached;
+      return Future.value(cached);
+    }
+    return _imageDecoding[sid] ??= () async {
+      try {
+        await _loadFromStore(sid);
+        final bits = _bits[sid];
+        if (bits == null || !imagesAvailable) return null;
+        final img = await compute(_decodeImageJob, bits);
+        if (img == null) {
+          _logEvent('image did not decode', sid);
+          return null;
+        }
+        _imageCache[sid] = img;
+        while (_imageCache.length > 12) {
+          _imageCache.remove(_imageCache.keys.first);
+        }
+        return img;
+      } finally {
+        _imageDecoding.remove(sid);
+      }
+    }();
+  }
+
+  /// Encodes a picture for sending, off the UI thread.
+  Future<VoxEncodedImage> encodeImage(
+    VoxRgbImage ref,
+    VoxImageDetail detail, {
+    VoxFocusRegions focus = VoxFocusRegions.none,
+    bool useFocus = true,
+  }) => compute(
+    _encodeImageJob,
+    _ImageEncodeJob(ref, detail, focus, useFocus),
+  );
+
+  Future<VoxVoiceEnvelope> sendImageToContact(
+    Contact contact,
+    VoxEncodedImage image,
+  ) => sendClipToContact(contact, _imageClip(image));
+
+  Future<VoxVoiceEnvelope> sendImageToChannel(
+    Channel channel,
+    VoxEncodedImage image,
+  ) => sendClipToChannel(channel, _imageClip(image));
+
+  VoxEncodedClip _imageClip(VoxEncodedImage image) => VoxEncodedClip(
+    VoxVoiceMode.av1Image,
+    image.payload,
+    voxAspectCode(image.aspect),
+  );
 
   // --------------------------------------------------------------- playback
 
@@ -914,7 +986,11 @@ class VoxVoiceService extends ChangeNotifier {
     _autoSids.remove(env.sessionId);
     await requestClip(env, sender: sender, channelIndex: channelIndex);
     if (_bits.containsKey(env.sessionId) && _tapSids.remove(env.sessionId)) {
-      unawaited(play(env));
+      if (env.isImage) {
+        unawaited(imageFor(env));
+      } else {
+        unawaited(play(env));
+      }
     }
   }
 
@@ -939,7 +1015,12 @@ class VoxVoiceService extends ChangeNotifier {
         ? contactByKeyHex(senderKeyHex)
         : (senderName == null ? null : contactByName(senderName));
     _autoSids.add(sid);
-    if (!canPlay(env)) {
+    if (env.isImage) {
+      if (!imagesAvailable) {
+        _autoSids.remove(sid);
+        return;
+      }
+    } else if (!canPlay(env)) {
       _logEvent('auto-play skipped: Mimi model not downloaded', sid);
       _autoSids.remove(sid);
       return;
@@ -955,6 +1036,12 @@ class VoxVoiceService extends ChangeNotifier {
 
   void _onClipComplete(VoxVoiceEnvelope env) {
     final sid = env.sessionId;
+    if (env.isImage) {
+      _tapSids.remove(sid);
+      _autoSids.remove(sid);
+      unawaited(imageFor(env)); // decode now so it shows at once
+      return;
+    }
     if (_tapSids.remove(sid)) {
       _autoSids.remove(sid);
       unawaited(play(env));
@@ -1460,3 +1547,32 @@ class _DecodeJob {
 Uint8List _encodeJob(_EncodeJob j) => voxEncodePcm(j.pcm, j.mode);
 Float32List _decimateJob((Int16List, int) a) => voxDecimate(a.$1, a.$2);
 Int16List _decodeJob(_DecodeJob j) => voxDecodeBits(j.bits, j.mode);
+
+class _ImageEncodeJob {
+  final VoxRgbImage ref;
+  final VoxImageDetail detail;
+  final VoxFocusRegions focus;
+  final bool useFocus;
+  _ImageEncodeJob(this.ref, this.detail, this.focus, this.useFocus);
+}
+
+VoxEncodedImage _encodeImageJob(_ImageEncodeJob j) {
+  final av1 = VoxAv1.instanceOrNull;
+  if (av1 == null) {
+    throw StateError('Image support is not in this build (${VoxAv1.loadError})');
+  }
+  return voxEncodeImage(
+    ref: j.ref,
+    detail: j.detail,
+    focus: j.focus,
+    useFocus: j.useFocus,
+    encode: (img, q, speed) => av1.encode(img, q, speed: speed),
+    decode: (obus) => av1.decode(obus),
+  );
+}
+
+VoxRgbImage? _decodeImageJob(Uint8List payload) {
+  final av1 = VoxAv1.instanceOrNull;
+  if (av1 == null) return null;
+  return voxDecodeImagePayload(payload, (obus) => av1.decode(obus));
+}

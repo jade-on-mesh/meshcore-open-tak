@@ -49,6 +49,7 @@ import '../widgets/unread_divider.dart';
 import '../theme/mesh_theme.dart';
 import '../widgets/mesh_ui.dart';
 import 'telemetry_screen.dart';
+import '../vox/image_send_sheet.dart';
 import '../vox/voice_message_bubble.dart';
 import '../vox/voice_record_sheet.dart';
 import '../vox/voice_service.dart';
@@ -494,6 +495,12 @@ class _ChatScreenState extends State<ChatScreen> {
                 icon: const Icon(Icons.gif_box_outlined),
                 tooltip: context.l10n.chat_sendGif,
                 onPressed: () => _showGifPicker(context),
+              ),
+              VoxImageButton(
+                recipientLabel: _resolveContact(connector).name,
+                onSend: (image) => context
+                    .read<VoxVoiceService>()
+                    .sendImageToContact(_resolveContact(connector), image),
               ),
               VoxMicButton(
                 recipientLabel: _resolveContact(connector).name,

@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import '../connector/meshcore_connector.dart';
 import '../models/contact.dart';
+import 'image_message_bubble.dart';
 import 'mimi.dart';
 import 'voice_service.dart';
 import 'voice_wire.dart';
@@ -99,6 +100,15 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.envelope.isImage) {
+      return VoxImageMessageContent(
+        envelope: widget.envelope,
+        isOutgoing: widget.isOutgoing,
+        textColor: widget.textColor,
+        sender: widget.sender,
+        channelIndex: widget.channelIndex,
+      );
+    }
     final s = _service;
     final env = widget.envelope;
     final color = widget.textColor;
@@ -374,9 +384,10 @@ class VoxAutoPlayTile extends StatelessWidget {
         children: [
           SwitchListTile(
             secondary: const Icon(Icons.volume_up_outlined),
-            title: const Text('Auto-play voice messages'),
+            title: const Text('Auto-play voice, auto-show photos'),
             subtitle: const Text(
-              'Download and play new voice DMs as soon as they arrive.',
+              'Download new voice and photo DMs as soon as they arrive, '
+              'and play voice messages.',
             ),
             value: service.autoPlay,
             onChanged: service.setAutoPlay,

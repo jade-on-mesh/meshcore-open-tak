@@ -48,7 +48,19 @@ enum VoxVoiceMode {
   /// 88 bits = 11 bytes per 80 ms frame, about 1.1 kb/s. VOX-only, announced
   /// with a `VM1:` envelope instead of `VE3:` so Codec2-only apps (MeshCore
   /// SAR) never try to play it as Codec2.
-  mimi(wireId: 32, codec2Id: -1, label: 'Mimi', bytesPerFrame: 11, frameMs: 80);
+  mimi(wireId: 32, codec2Id: -1, label: 'Mimi', bytesPerFrame: 11, frameMs: 80),
+
+  /// AV1 still image (VOX only), announced with `VI1:`. Not audio: the
+  /// "frame" is one byte so packets carry [voxMaxCodecBytesPerPacket] bytes,
+  /// and the envelope's duration field carries the aspect ratio instead
+  /// (width * 100 / height).
+  av1Image(
+    wireId: 40,
+    codec2Id: -1,
+    label: 'AV1 image',
+    bytesPerFrame: 1,
+    frameMs: 1,
+  );
 
   const VoxVoiceMode({
     required this.wireId,
@@ -68,7 +80,9 @@ enum VoxVoiceMode {
   static const int sampleRateHz = 8000;
 
   bool get isMimi => this == mimi;
-  bool get isCodec2 => !isMimi;
+  bool get isImage => this == av1Image;
+  bool get isAudio => !isImage;
+  bool get isCodec2 => !isMimi && !isImage;
 
   int get samplesPerFrame => sampleRateHz * frameMs ~/ 1000;
   int get bytesPerSecond => bytesPerFrame * 1000 ~/ frameMs;
@@ -167,6 +181,16 @@ class VoxVoiceEnvelope {
   /// Mimi clips (VOX only). Same fields as VE3.
   static const String mimiPrefix = 'VM1:';
 
+  /// AV1 still images (VOX only). Same fields as VE3, but the last field is
+  /// the aspect ratio (width * 100 / height) rather than a duration.
+  static const String imagePrefix = 'VI1:';
+
+  static String prefixFor(VoxVoiceMode mode) => mode.isImage
+      ? imagePrefix
+      : mode.isMimi
+      ? mimiPrefix
+      : prefix;
+
   final String sessionId;
   final VoxVoiceMode mode;
   final int totalPackets;
@@ -180,12 +204,17 @@ class VoxVoiceEnvelope {
   });
 
   static bool looksLikeEnvelope(String text) =>
-      text.startsWith(prefix) || text.startsWith(mimiPrefix);
+      text.startsWith(prefix) ||
+      text.startsWith(mimiPrefix) ||
+      text.startsWith(imagePrefix);
 
   static VoxVoiceEnvelope? tryParse(String text) {
     final t = text.trim();
-    final isMimi = t.startsWith(mimiPrefix);
-    if (!isMimi && !t.startsWith(prefix)) return null;
+    if (t.length < prefix.length) return null;
+    final head = t.substring(0, prefix.length);
+    if (head != prefix && head != mimiPrefix && head != imagePrefix) {
+      return null;
+    }
     final parts = t.substring(prefix.length).split(':');
     if (parts.length != 4) return null;
     final sidVal = _parseBase36(parts[0]);
@@ -197,7 +226,7 @@ class VoxVoiceEnvelope {
     }
     if (sidVal > 0xFFFFFFFF) return null;
     final mode = VoxVoiceMode.fromWireId(modeId);
-    if (mode == null || mode.isMimi != isMimi) return null;
+    if (mode == null || prefixFor(mode) != head) return null;
     if (total < 1 || total > voxMaxPackets) return null;
     if (dur < 0 || dur > voxMaxDurationSeconds) return null;
     return VoxVoiceEnvelope(
@@ -210,14 +239,22 @@ class VoxVoiceEnvelope {
 
   String encode() {
     final sid = int.parse(sessionId, radix: 16).toRadixString(36);
-    return '${mode.isMimi ? mimiPrefix : prefix}$sid:'
+    return '${prefixFor(mode)}$sid:'
         '${mode.wireId.toRadixString(36)}:'
         '${totalPackets.toRadixString(36)}:'
         '${durationSeconds.toRadixString(36)}';
   }
 
+  bool get isImage => mode.isImage;
+
+  /// Image aspect ratio (width / height); 1 for audio or unknown.
+  double get imageAspect =>
+      isImage && durationSeconds > 0 ? durationSeconds / 100 : 1;
+
   /// Estimated payload bytes for the whole clip (for airtime display).
-  int get estimatedCodecBytes => min(
+  int get estimatedCodecBytes => isImage
+      ? totalPackets * mode.bytesPerPacket
+      : min(
     totalPackets * mode.bytesPerPacket,
     max(durationSeconds, 1) * mode.bytesPerSecond,
   );

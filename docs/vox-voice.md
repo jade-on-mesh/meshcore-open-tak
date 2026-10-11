@@ -1,4 +1,4 @@
-# VOX voice messages
+# VOX voice and photo messages
 
 MeshCore Open VOX sends short voice clips over MeshCore using Codec2 and an
 on-demand, pull-based transfer. The wire format follows MeshCore SAR's
@@ -107,6 +107,33 @@ is 162 bytes on the raw-data plane.
   auto-download in channels** is on (every listener then pulls its own copy).
 - **Channel senders** are matched to contacts by name (case and emoji
   variation selectors ignored).
+
+## Photo messages
+
+Photos ride the same on-demand transport as voice (direct, through
+repeaters, channel fallback, salted resends). They're announced with `VI1:`
+(same fields as `VE3:`, mode id 40 = `14`, and the last field is the aspect
+ratio, width × 100 / height). Android only.
+
+- **Codec.** A single AV1 key frame (libaom, reduced still-picture header,
+  4:2:0, tuned for SSIM) sent as raw OBUs with no AVIF container, so every
+  byte is picture data. Payload: `[0x01 version][OBUs]`. Native code:
+  `android/app/src/main/cpp/vox_av1.c`; CI builds libaom from the source
+  mirrored on the `deps-cache` branch.
+- **Budget.** Standard is one full voice message (2,750 B, 18 packets);
+  More detail is 2×, Most detail 4×.
+- **Fitting.** The sending phone scales the photo to at most 768 px, then
+  searches sizes and quantizers for the best-scoring encode within the
+  budget. The preview is the decoded result, so the sender sees exactly what
+  the receiver will.
+- **Focus.** Two small bundled detectors (YuNet faces, PP-OCRv3 text, see
+  `assets/vox/LICENSES.md`) mark text and faces. Everything else is softened
+  slightly before encoding so the bytes go where they matter. Nothing is
+  generated: every pixel comes from the photo.
+- **Small-text check.** When detected text scores poorly at the chosen
+  detail, the sheet suggests More detail.
+- **Receiving** follows the auto-play setting: new photo DMs download on
+  arrival; channel photos download on tap unless channel auto-download is on.
 
 ## Testing: force voice through repeaters
 
