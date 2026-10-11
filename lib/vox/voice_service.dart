@@ -96,6 +96,11 @@ class _IncomingClip {
 
   /// The channel fallback has been tried since the last manual retry.
   bool triedChannel = false;
+
+  /// Ask the sender to reply along our request's path (true) or along its
+  /// own stored route (false). Flipped whenever a direct request gets
+  /// nothing back, so one-way links get both chances.
+  bool askReplyAlongPath = true;
   bool sentDmRequest = false;
   _Method? lastMethod;
   int packetsAtLastAttempt = 0;
@@ -544,6 +549,7 @@ class VoxVoiceService extends ChangeNotifier {
     clip.stalls = 0;
     clip.directFailures = 0;
     clip.triedChannel = false;
+    clip.askReplyAlongPath = true;
     await _attempt(clip);
   }
 
@@ -646,8 +652,14 @@ class VoxVoiceService extends ChangeNotifier {
             requesterKey6: req.requesterKey6,
             missingIndices: req.missingIndices,
             saltOk: true,
-            requesterPath: route,
+            requesterPath: clip.askReplyAlongPath ? route : null,
           );
+          if (!clip.askReplyAlongPath) {
+            _logEvent(
+              'asking the sender to reply over its own route this time',
+              clip.envelope.sessionId,
+            );
+          }
           await _connector.sendFrame(
             buildSendRawDataFrame(path: route, payload: withPath.encode()),
             waitForGenericAck: true,
@@ -746,6 +758,10 @@ class VoxVoiceService extends ChangeNotifier {
     } else {
       clip.stalls++;
       if (clip.lastMethod != _Method.channel) clip.directFailures++;
+      if (clip.lastMethod == _Method.direct) {
+        // Nothing came back: try the other return route next time.
+        clip.askReplyAlongPath = !clip.askReplyAlongPath;
+      }
     }
     final channelLeft =
         clip.channelIndex != null &&

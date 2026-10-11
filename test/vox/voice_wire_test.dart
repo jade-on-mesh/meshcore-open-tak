@@ -306,7 +306,10 @@ void main() {
         sessionId: 'deadbeef',
         requesterKey6: 'a1b2c3d4e5f6',
       );
-      expect(VoxVoiceFetchRequest.tryParse(req.encode())!.requesterPath, isNull);
+      expect(
+        VoxVoiceFetchRequest.tryParse(req.encode())!.requesterPath,
+        isNull,
+      );
       expect(req.encode().length, VoxVoiceFetchRequest.minLength);
     });
   });
