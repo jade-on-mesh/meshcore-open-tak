@@ -15,6 +15,8 @@
     <!-- Foreground service permission for background BLE -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"/>
+    <!-- VOX team: share position while the screen is off (geolocator service) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <!-- Microphone permission (VOX voice messages) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
@@ -24,7 +26,7 @@
     <uses-feature android:name="android.hardware.usb.host" android:required="false"/>
 
     <application
-        android:label="MeshCore Open VOX"
+        android:label="MeshCore Open TAK"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <service

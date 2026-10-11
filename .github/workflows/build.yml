@@ -17,7 +17,7 @@ on:
       - ".github/workflows/vox-fetch-aom.yml"
   workflow_dispatch:
 
-# MeshCore Open VOX builds Android only. A newer push cancels an older,
+# MeshCore Open TAK builds Android only. A newer push cancels an older,
 # still-running build so minutes aren't spent on superseded commits.
 concurrency:
   group: build-${{ github.ref }}

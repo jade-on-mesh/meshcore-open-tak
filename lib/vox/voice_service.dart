@@ -1,4 +1,4 @@
-// MeshCore Open VOX - on-demand voice messages over MeshCore.
+// MeshCore Open TAK - on-demand voice messages over MeshCore.
 //
 // Send: record -> Codec2 -> clip kept locally -> only a VE3 text envelope goes
 // out. Listeners pull the audio when they press play, using the cheapest
@@ -359,6 +359,30 @@ class VoxVoiceService extends ChangeNotifier {
       totalPackets: packets.length,
       durationSeconds: clip.durationSeconds,
     );
+  }
+
+  /// Keeps [clip] ready to serve without announcing it in a chat (used for
+  /// photos and voice notes attached to team pins). Returns its envelope.
+  VoxVoiceEnvelope registerClip(VoxEncodedClip clip) {
+    final env = _register(clip);
+    _logEvent(
+      'registered ${env.totalPackets}-packet ${clip.mode.label} attachment',
+      env.sessionId,
+    );
+    notifyListeners();
+    return env;
+  }
+
+  /// [VoxEncodedClip] for a photo, for [registerClip].
+  VoxEncodedClip imageClip(VoxEncodedImage image) => _imageClip(image);
+
+  /// The contact whose public key starts with [hexPrefix], if any.
+  Contact? contactByKeyPrefix(String hexPrefix) {
+    final p = hexPrefix.toLowerCase();
+    for (final c in _connector.contacts) {
+      if (c.publicKeyHex.toLowerCase().startsWith(p)) return c;
+    }
+    return null;
   }
 
   Future<VoxVoiceEnvelope> sendClipToContact(

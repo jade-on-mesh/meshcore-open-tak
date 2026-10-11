@@ -1,4 +1,4 @@
-// MeshCore Open VOX - chat bubble content for a VI1 image message.
+// MeshCore Open TAK - chat bubble content for a VI1 image message.
 
 import 'dart:async';
 import 'dart:typed_data';
@@ -178,7 +178,7 @@ class _VoxImageMessageContentState extends State<VoxImageMessageContent> {
     final meta = color.withValues(alpha: 0.65);
     if (s == null || !s.imagesAvailable) {
       return Text(
-        '🖼 Photo — this build can\'t show VOX images',
+        '🖼 Photo — this build can\'t show photo messages',
         style: TextStyle(color: meta, fontStyle: FontStyle.italic),
       );
     }

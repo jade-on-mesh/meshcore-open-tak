@@ -513,11 +513,11 @@ class MeshCoreConnector extends ChangeNotifier {
   bool get hasLoadedChannels => _hasLoadedChannels;
   Stream<Uint8List> get receivedFrames => _receivedFramesController.stream;
 
-  /// MeshCore Open VOX: returns true to swallow an incoming DM (by sender key
+  /// MeshCore Open TAK: returns true to swallow an incoming DM (by sender key
   /// hex and text) before it is stored or notified.
   bool Function(String senderKeyHex, String text)? voxControlTextInterceptor;
 
-  /// MeshCore Open VOX: told about every new incoming DM or channel message
+  /// MeshCore Open TAK: told about every new incoming DM or channel message
   /// (used to auto-play voice clips as they arrive).
   void Function(
     String text, {
@@ -5894,7 +5894,7 @@ class MeshCoreConnector extends ChangeNotifier {
         return;
       }
 
-      // MeshCore Open VOX: control DMs (e.g. VR3 voice fetch requests) are
+      // MeshCore Open TAK: control DMs (e.g. VR3 voice fetch requests) are
       // consumed here and never shown in the chat or notified.
       if (!message.isOutgoing &&
           (voxControlTextInterceptor?.call(

@@ -1,4 +1,4 @@
-// MeshCore Open VOX - dart:ffi binding for libvox_av1.so (AV1 still images
+// MeshCore Open TAK - dart:ffi binding for libvox_av1.so (AV1 still images
 // on libaom, see android/app/src/main/cpp/vox_av1.c). Android only.
 
 import 'dart:ffi';
@@ -75,7 +75,7 @@ class VoxAv1 {
     if (_instance != null || _loadError != null) return _instance;
     try {
       if (!Platform.isAndroid) {
-        throw UnsupportedError('VOX images are Android-only');
+        throw UnsupportedError('Photo messages are Android-only');
       }
       _instance = VoxAv1._(DynamicLibrary.open('libvox_av1.so'));
     } catch (e) {

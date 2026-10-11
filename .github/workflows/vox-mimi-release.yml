@@ -37,7 +37,7 @@ jobs:
           cat > /tmp/rel/NOTICE.txt <<'TXT'
           Mimi neural audio codec by Kyutai (https://huggingface.co/kyutai/mimi),
           licensed CC-BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
-          Converted to ONNX for MeshCore Open VOX: fixed 20 s input, 8 codebooks
+          Converted to ONNX for MeshCore Open TAK: fixed 20 s input, 8 codebooks
           (~1.1 kb/s), weights stored as fp16 and cast to fp32 at load time.
           TXT
           cd /tmp/rel && sha256sum *.onnx > SHA256SUMS && cat SHA256SUMS

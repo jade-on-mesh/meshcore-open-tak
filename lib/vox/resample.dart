@@ -1,4 +1,4 @@
-// MeshCore Open VOX - integer-factor downsampling for the voice recorder.
+// MeshCore Open TAK - integer-factor downsampling for the voice recorder.
 //
 // The mic is recorded once at 48 kHz (a rate every Android device supports)
 // and decimated to 24 kHz for Mimi or 8 kHz for Codec2.

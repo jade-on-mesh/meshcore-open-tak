@@ -1,6 +1,6 @@
 # VOX voice and photo messages
 
-MeshCore Open VOX sends short voice clips over MeshCore using Codec2 and an
+MeshCore Open TAK sends short voice clips over MeshCore using Codec2 and an
 on-demand, pull-based transfer. Codec2 clips use the published VE3 wire
 format, so other VE3 apps can exchange them.
 

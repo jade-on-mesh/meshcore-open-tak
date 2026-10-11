@@ -1,4 +1,4 @@
-// MeshCore Open VOX - image messages: fit a photo into a byte budget.
+// MeshCore Open TAK - image messages: fit a photo into a byte budget.
 //
 // Pipeline (all on the sending phone):
 //   1. Scale the photo to at most [voxImageWorkSide] px; that is the

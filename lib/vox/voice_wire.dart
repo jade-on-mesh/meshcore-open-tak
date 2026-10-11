@@ -1,6 +1,6 @@
-// MeshCore Open VOX - voice message wire formats.
+// MeshCore Open TAK - voice message wire formats.
 //
-// Written from scratch for MeshCore Open VOX. Codec2 clips use the VE3
+// Written from scratch for MeshCore Open TAK. Codec2 clips use the VE3
 // format, a published on-air design, so VOX interoperates with other apps
 // that speak it:
 //

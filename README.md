@@ -1,17 +1,23 @@
-# MeshCore Open VOX
+# MeshCore Open TAK
 
-**A fork of [MeshCore Open](https://github.com/zjs81/meshcore-open) that adds voice and photo messages, and (coming next) team coordination.**
+**A fork of [MeshCore Open](https://github.com/zjs81/meshcore-open) for team operations over LoRa mesh: ATAK-style team awareness, TAK Server interop, voice and photo messages.**
 
-VOX runs on stock MeshCore companion firmware. No firmware changes are needed.
+It runs on stock MeshCore companion firmware. No firmware changes are needed. (Formerly MeshCore Open VOX; internal code names still say "vox".)
 
-### What VOX adds
+### What it adds
 
 | Feature | Status |
 | --- | --- |
 | Voice messages in DMs and channels, pulled on demand: **Mimi** neural codec (~1.1 kb/s, natural-sounding; 223 MB one-time model download) or Codec2 1200 | ✅ |
 | Codec2 clips in the standard VE3 wire format | ✅ |
 | Photo messages (AV1, 1× or 2× a voice message's airtime) | ✅ |
-| Team tracking (live positions, trails) | 🔜 planned |
+| Team awareness: live positions with ATAK roles and team colours, trails, smart position updates (phone GPS, radio fallback) | ✅ |
+| Alerts: SOS/911, In Contact, Ring the Bell, with a full-screen alarm | ✅ |
+| Tactical pins (last known point, staging, clue, hazard, LZ, …) with photo or voice attachments | ✅ |
+| SALUTE reports in a condensed card format | ✅ |
+| Range and bearing, Bloodhound tracking | ✅ |
+| TAK Server gateway (CoT over TLS or TCP, ATAK data package import) and local ATAK multicast | ✅ |
+| CASEVAC 9-line, routes, geofences, drawing, GeoChat bridge | 🔜 planned |
 | Offline maps | ✅ inherited from MeshCore Open |
 
 ### How voice works

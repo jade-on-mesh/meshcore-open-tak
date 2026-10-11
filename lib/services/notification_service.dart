@@ -712,6 +712,44 @@ class NotificationService {
     );
   }
 
+  /// MeshCore Open TAK: a team alert (SOS, In Contact, Ring the Bell).
+  /// High importance so it sounds and shows even when the app is closed.
+  Future<void> showTeamAlert({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    if (!await _ensureCanNotify()) return;
+    try {
+      await _notifications.show(
+        id: id,
+        title: title,
+        body: body,
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'vox_team_alerts',
+            'Team alerts',
+            channelDescription: 'SOS and other alerts from your team',
+            importance: Importance.max,
+            priority: Priority.max,
+            category: AndroidNotificationCategory.alarm,
+            fullScreenIntent: true,
+            ongoing: true,
+            icon: '@mipmap/ic_launcher',
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Failed to show team alert: $e');
+    }
+  }
+
+  Future<void> cancelTeamAlert(int id) async {
+    try {
+      await _notifications.cancel(id: id);
+    } catch (_) {}
+  }
+
   Future<void> showAdvertNotification({
     required String contactName,
     required String contactType,

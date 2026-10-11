@@ -35,6 +35,9 @@ import 'storage/prefs_manager.dart';
 import 'theme/mesh_theme.dart';
 import 'utils/app_logger.dart';
 import 'widgets/image_send_codec_binding.dart';
+import 'team/tak/tak_service.dart';
+import 'team/team_alert_host.dart';
+import 'team/team_service.dart';
 import 'vox/voice_service.dart';
 
 void main() async {
@@ -155,7 +158,7 @@ void main() async {
     onImageSenderPrefix: (prefix) => imageReassembler.selfPrefix = prefix,
   );
 
-  // MeshCore Open VOX: on-demand Codec2 voice messages (VE3).
+  // MeshCore Open TAK: on-demand Codec2 voice messages (VE3).
   final voxVoiceService = VoxVoiceService(connector);
 
   await connector.loadContactCache();
@@ -369,6 +372,8 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
   Timer? _imageSweepTimer;
   late final VoxVoiceService _voxVoiceService =
       widget.voxVoiceService ?? VoxVoiceService(widget.connector);
+  late final TeamService _teamService = TeamService(widget.connector);
+  late final TakService _takService = TakService(_teamService);
 
   @override
   void initState() {
@@ -429,11 +434,13 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
         ChangeNotifierProvider.value(value: widget.imageCodecService),
         ChangeNotifierProvider.value(value: widget.receivedImageStore),
         ChangeNotifierProvider<VoxVoiceService>.value(value: _voxVoiceService),
+        ChangeNotifierProvider<TeamService>.value(value: _teamService),
+        ChangeNotifierProvider<TakService>.value(value: _takService),
       ],
       child: Consumer<AppSettingsService>(
         builder: (context, settingsService, child) {
           return MaterialApp(
-            title: 'MeshCore Open VOX',
+            title: 'MeshCore Open TAK',
             debugShowCheckedModeBanner: false,
             localizationsDelegates: const [
               AppLocalizations.delegate,
@@ -456,7 +463,7 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
               NotificationService().setLocale(locale);
               return AnnotatedRegion<SystemUiOverlayStyle>(
                 value: _systemUiOverlayStyle(context),
-                child: child ?? const SizedBox.shrink(),
+                child: TeamAlertHost(child: child ?? const SizedBox.shrink()),
               );
             },
             home: (PlatformInfo.isWeb && !PlatformInfo.isChrome)

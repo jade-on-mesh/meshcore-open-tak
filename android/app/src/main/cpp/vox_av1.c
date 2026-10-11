@@ -1,4 +1,4 @@
-// MeshCore Open VOX - AV1 still images for mesh image messages.
+// MeshCore Open TAK - AV1 still images for mesh image messages.
 //
 // Encodes RGB888 to a single AV1 key frame (reduced still-picture header,
 // 4:2:0, full-range BT.601) and returns the raw OBUs with the temporal

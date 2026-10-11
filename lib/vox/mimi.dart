@@ -1,4 +1,4 @@
-// MeshCore Open VOX - Mimi neural voice codec (Kyutai, CC-BY 4.0).
+// MeshCore Open TAK - Mimi neural voice codec (Kyutai, CC-BY 4.0).
 //
 // The ONNX encoder/decoder (~223 MB together) are downloaded on first use
 // from this repo's `mimi-onnx-v1` release and verified by SHA-256. Both

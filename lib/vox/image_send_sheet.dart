@@ -1,4 +1,4 @@
-// MeshCore Open VOX - pick or take a photo, preview exactly what the receiver
+// MeshCore Open TAK - pick or take a photo, preview exactly what the receiver
 // will see, choose how much airtime to spend, send.
 
 import 'dart:async';
@@ -28,7 +28,28 @@ class VoxImageButton extends StatelessWidget {
     required this.onSend,
   });
 
-  Future<void> _start(BuildContext context) async {
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.add_photo_alternate_outlined),
+      tooltip: 'Send a photo',
+      onPressed: () => showVoxImagePicker(
+        context,
+        recipientLabel: recipientLabel,
+        onSend: onSend,
+      ),
+    );
+  }
+}
+
+/// Camera/gallery -> preview sheet -> [onSend]. Also used for photos
+/// attached to team pins and reports.
+Future<void> showVoxImagePicker(
+  BuildContext context, {
+  required String recipientLabel,
+  required Future<void> Function(VoxEncodedImage image) onSend,
+  String sendLabel = 'Send',
+}) async {
     final voice = context.read<VoxVoiceService>();
     if (!voice.imagesAvailable) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -93,18 +114,9 @@ class VoxImageButton extends StatelessWidget {
         reference: ref,
         recipientLabel: recipientLabel,
         onSend: onSend,
+        sendLabel: sendLabel,
       ),
     );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      icon: const Icon(Icons.add_photo_alternate_outlined),
-      tooltip: 'Send a photo',
-      onPressed: () => _start(context),
-    );
-  }
 }
 
 /// Decodes a picked file to the RGB reference picture (at most
@@ -136,12 +148,14 @@ class VoxImageSendSheet extends StatefulWidget {
   final VoxRgbImage reference;
   final String recipientLabel;
   final Future<void> Function(VoxEncodedImage image) onSend;
+  final String sendLabel;
 
   const VoxImageSendSheet({
     super.key,
     required this.reference,
     required this.recipientLabel,
     required this.onSend,
+    this.sendLabel = 'Send',
   });
 
   @override
@@ -441,7 +455,7 @@ class _VoxImageSendSheetState extends State<VoxImageSendSheet> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.send),
-                    label: const Text('Send'),
+                    label: Text(widget.sendLabel),
                     onPressed: enc == null || _encoding || _sending
                         ? null
                         : _send,

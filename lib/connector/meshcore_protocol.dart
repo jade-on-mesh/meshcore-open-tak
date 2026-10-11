@@ -1111,7 +1111,7 @@ Uint8List floodTransportCode({
 }
 
 // ---------------------------------------------------------------------------
-// MeshCore Open VOX: raw data (used for on-demand voice packets).
+// MeshCore Open TAK: raw data (used for on-demand voice packets).
 //
 // CMD_SEND_RAW_DATA: [25][path_len][path...][payload]. The firmware only sends
 // raw data along a known direct path (flood is rejected) and treats path_len

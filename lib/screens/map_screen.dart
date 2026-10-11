@@ -11,6 +11,8 @@ import 'package:meshcore_open/screens/path_trace_map.dart';
 import 'package:meshcore_open/widgets/app_bar.dart';
 import 'package:provider/provider.dart';
 
+import '../team/team_map.dart';
+import '../team/team_service.dart';
 import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
 import '../l10n/l10n.dart';
@@ -358,6 +360,18 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
         position: latLng,
         defaultLabel: context.l10n.map_pointOfInterest,
         flags: 'poi',
+      );
+      return;
+    }
+    if (context.read<TeamService>().enabled) {
+      showTeamMapActions(
+        context,
+        latLng,
+        shareMarker: () => _showShareMarkerAtPositionSheet(
+          context: context,
+          connector: connector,
+          position: latLng,
+        ),
       );
       return;
     }
@@ -836,6 +850,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                       PolylineLayer(polylines: _polylines),
                     if (sharedMarkerPolylines.isNotEmpty)
                       PolylineLayer(polylines: sharedMarkerPolylines),
+                    const TeamMapLayer(),
                     MarkerLayer(
                       markers: [
                         if (highlightPosition != null)
@@ -972,6 +987,8 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                     pinCount: sharedMarkers.length,
                   ),
                 if (_isBuildingPathTrace) _buildPathTraceOverlay(),
+                if (!_isBuildingPathTrace && selectedContact == null)
+                  const TeamMapOverlay(),
                 if (contactsWithLocation.isEmpty &&
                     selectedContact == null &&
                     !_isBuildingPathTrace)

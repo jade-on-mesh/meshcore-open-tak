@@ -1,4 +1,4 @@
-// MeshCore Open VOX - find text and faces so the image encoder can spend its
+// MeshCore Open TAK - find text and faces so the image encoder can spend its
 // bytes there. Runs on the sending phone only; it decides where bytes go and
 // never changes what a region shows.
 //

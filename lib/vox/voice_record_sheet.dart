@@ -1,4 +1,4 @@
-// MeshCore Open VOX - record / preview / send sheet for voice messages.
+// MeshCore Open TAK - record / preview / send sheet for voice messages.
 
 import 'dart:async';
 import 'dart:typed_data';

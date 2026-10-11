@@ -1,7 +1,7 @@
 // Codec2 FFI binding.
 //
 // Originally part of MeshCore Open (MIT, removed upstream in baf92ef) and
-// restored for MeshCore Open VOX, now parameterised by mode and with Linux
+// restored for MeshCore Open TAK, now parameterised by mode and with Linux
 // support. Codec2 itself is LGPL-2.1 and is built as a separate shared
 // library from third_party/codec2 (Android: libcodec2.so via CMake, iOS: the
 // codec2 pod, Linux: the system libcodec2).

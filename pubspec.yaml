@@ -84,7 +84,10 @@ dependencies:
   # the abiFilters note in android/app/build.gradle.kts; a universal APK pays
   # ~56 MB for ORT instead of ~18 MB.
   flutter_onnxruntime: ^1.8.3
-  # MeshCore Open VOX voice messages
+  geolocator: ^14.0.0     # VOX team: phone GPS for position sharing
+  xml: ^7.0.0            # VOX TAK: Cursor-on-Target XML
+  archive: ^4.0.0        # VOX TAK: import ATAK connection data packages
+  # MeshCore Open TAK voice messages
   record: ^6.1.2          # PCM16 8 kHz mic capture
   audioplayers: ^6.1.0    # playback of decoded Codec2 clips
   base32: ^2.2.0
