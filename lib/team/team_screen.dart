@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'tak/atak_plugin_bridge.dart';
 import 'tak/tak_service.dart';
 import 'team_forms.dart';
 import 'team_map.dart';
@@ -486,9 +487,12 @@ class _RosterTab extends StatelessWidget {
                     if (fix == null)
                       'no position'
                     else
-                      fix.source == TeamFixSource.phone
-                          ? 'phone GPS ±${fix.accuracy.round()} m'
-                          : 'radio GPS',
+                      switch (fix.source) {
+                        TeamFixSource.phone =>
+                          'phone GPS ±${fix.accuracy.round()} m',
+                        TeamFixSource.atak => 'ATAK position',
+                        _ => 'radio GPS',
+                      },
                     if (team.lastBeacon != null)
                       'sent ${teamAgo(team.lastBeacon!)}',
                     if (team.gpsProblem != null) team.gpsProblem!,
@@ -1039,6 +1043,7 @@ class _TakSettingsState extends State<_TakSettings> {
           'your map. Only this phone needs internet or Wi-Fi; it acts as the '
           'gateway for the whole team.',
         ),
+        const _AtakPluginTile(),
         SwitchListTile(
           title: const Text('Local ATAK on this Wi-Fi'),
           subtitle: const Text(
@@ -1176,6 +1181,34 @@ class _TakSettingsState extends State<_TakSettings> {
         ),
         const SizedBox(height: 24),
       ],
+    );
+  }
+}
+
+
+/// Lets the MeshCore ATAK plugin on this phone use this app's radio.
+class _AtakPluginTile extends StatefulWidget {
+  const _AtakPluginTile();
+
+  @override
+  State<_AtakPluginTile> createState() => _AtakPluginTileState();
+}
+
+class _AtakPluginTileState extends State<_AtakPluginTile> {
+  @override
+  Widget build(BuildContext context) {
+    final bridge = context.read<AtakPluginBridge>();
+    return SwitchListTile(
+      title: const Text('ATAK plugin on this phone'),
+      subtitle: const Text(
+        'Lets the MeshCore ATAK plugin use this radio, your team channel and '
+        'voice and photo codecs. Only ATAK can connect.',
+      ),
+      value: bridge.enabled,
+      onChanged: (v) async {
+        await bridge.setEnabled(v);
+        if (mounted) setState(() {});
+      },
     );
   }
 }

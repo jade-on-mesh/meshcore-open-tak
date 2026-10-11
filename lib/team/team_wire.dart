@@ -19,6 +19,12 @@
 //             [place][size][activity][unit][equipment] (length-prefixed)
 //             [attachMode u8][sid4][packets][extra]
 //
+// Added with the ATAK plugin (atak-plugin/), which speaks all of the above
+// too; formats in team_wire_atak.dart:
+//   point     [0x43] any single-point CoT item (spot marker, 2525 unit...)
+//   shape     [0x47] routes, lines, polygons, rectangles and circles
+//   chunk     [0x58] chunked, compressed CoT or a small file
+//
 // Coordinates are degrees x 1e7 (about 1 cm). All integers big-endian.
 
 import 'dart:convert';
@@ -212,13 +218,20 @@ Uint8List _key4(String hex) => Uint8List.fromList([
     int.parse(hex.substring(i * 2, i * 2 + 2), radix: 16),
 ]);
 
+const int teamMsgPoint = 0x43; // 'C'
+const int teamMsgShape = 0x47; // 'G'
+const int teamMsgChunk = 0x58; // 'X'
+
 /// Message type and sender of a team payload, or null if it isn't one.
 (int, String)? teamPeek(Uint8List p) {
   if (p.length < 5) return null;
   if (p[0] != teamMsgPosition &&
       p[0] != teamMsgAlert &&
       p[0] != teamMsgMarker &&
-      p[0] != teamMsgReport) {
+      p[0] != teamMsgReport &&
+      p[0] != teamMsgPoint &&
+      p[0] != teamMsgShape &&
+      p[0] != teamMsgChunk) {
     return null;
   }
   return (p[0], teamKey4Hex(p, 1));

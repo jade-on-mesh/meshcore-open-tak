@@ -9,9 +9,11 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         usbFunctions.configureFlutterEngine(flutterEngine)
+        TakBridgeHub.attach(flutterEngine)
     }
 
     override fun onDestroy() {
+        TakBridgeHub.detach()
         usbFunctions.dispose()
         super.onDestroy()
     }

@@ -15,6 +15,7 @@ import '../services/image_chunk_transport.dart'
     show parseChannelDataFrame, respCodeChannelDataRecv;
 import '../services/notification_service.dart';
 import 'team_wire.dart';
+import 'team_wire_atak.dart';
 
 /// One teammate (or this phone), as last heard.
 class TeamMember {
@@ -46,7 +47,7 @@ class TeamMember {
 enum TeamFreshness { live, stale, lost }
 
 /// Where this phone's position comes from right now.
-enum TeamFixSource { none, phone, radio }
+enum TeamFixSource { none, phone, radio, atak }
 
 class TeamFix {
   final double lat, lon;
@@ -160,6 +161,14 @@ class TeamService extends ChangeNotifier {
       for (final b64 in p.getStringList(_kReports) ?? const <String>[]) {
         final r = TeamReport.tryParse(base64Decode(b64));
         if (r != null) _reports[r.key] = r;
+      }
+      for (final b64 in p.getStringList(_kPoints) ?? const <String>[]) {
+        final pt = TeamPoint.tryParse(base64Decode(b64));
+        if (pt != null) _points[pt.key] = pt;
+      }
+      for (final b64 in p.getStringList(_kShapes) ?? const <String>[]) {
+        final sh = TeamShape.tryParse(base64Decode(b64));
+        if (sh != null) _shapes[sh.key] = sh;
       }
     } catch (e) {
       debugPrint('Team settings load failed: $e');
@@ -295,6 +304,20 @@ class TeamService extends ChangeNotifier {
   /// This phone's best current position: phone GPS if fresh, else the
   /// radio's own position.
   TeamFix? get fix {
+    final a = _atakSelf;
+    if (a != null &&
+        DateTime.now().difference(_atakSelfAt!) < const Duration(minutes: 2)) {
+      return TeamFix(
+        lat: a.lat,
+        lon: a.lon,
+        altitude: a.altitudeM?.toDouble(),
+        speed: a.speedMps,
+        heading: a.headingDeg,
+        accuracy: a.accuracyM.toDouble(),
+        time: _atakSelfAt!,
+        source: TeamFixSource.atak,
+      );
+    }
     final p = _phoneFix;
     if (p != null &&
         DateTime.now().difference(p.timestamp) < const Duration(minutes: 2)) {
@@ -438,6 +461,7 @@ class TeamService extends ChangeNotifier {
   TeamPosition? _selfPosition() {
     final f = fix;
     if (f == null) return null;
+    final atak = atakLinked ? _atakSelf : null;
     final mv = _connector.batteryMillivolts;
     int? batt;
     if (mv != null && mv > 0) {
@@ -452,10 +476,12 @@ class TeamService extends ChangeNotifier {
       headingDeg: f.heading,
       accuracyM: f.accuracy.round(),
       batteryPct: batt,
-      role: _role,
-      color: _color,
+      role: atak?.role ?? _role,
+      color: atak?.color ?? _color,
       status: _status,
-      callsign: callsign,
+      callsign: atak != null && atak.callsign.isNotEmpty
+          ? atak.callsign
+          : callsign,
       fromRadio: f.source == TeamFixSource.radio,
       sosActive: _activeOwnAlert != null,
     );
@@ -485,16 +511,152 @@ class TeamService extends ChangeNotifier {
     final ch = teamChannel;
     if (ch == null || !_connector.supportsChannelData) return false;
     try {
-      return await _connector.sendChannelDataBlobs(
+      final ok = await _connector.sendChannelDataBlobs(
         [payload],
         channelIndex: ch.index,
         dataType: teamChannelDataType,
         interChunkDelay: Duration.zero,
       );
+      if (ok) onTeamPayload?.call(payload, true);
+      return ok;
     } catch (e) {
       debugPrint('Team send failed: $e');
       return false;
     }
+  }
+
+  // ---------------------------------------------------- ATAK plugin bridge
+
+  /// Every team payload heard (own: false) or sent by this app (own: true),
+  /// for the ATAK plugin bridge.
+  void Function(Uint8List payload, bool own)? onTeamPayload;
+
+  TeamPosition? _atakSelf;
+  DateTime? _atakSelfAt;
+
+  /// ATAK (through the plugin) is giving this phone's identity and position.
+  bool get atakLinked =>
+      _atakSelfAt != null &&
+      DateTime.now().difference(_atakSelfAt!) < const Duration(minutes: 2);
+
+  /// The ATAK user's callsign, team and fix, used for this radio's beacons
+  /// while the plugin keeps sending it.
+  void setAtakIdentity(TeamPosition p) {
+    final wasLinked = atakLinked;
+    _atakSelf = p;
+    _atakSelfAt = DateTime.now();
+    if (!wasLinked) {
+      _forceBeacon = true;
+      notifyListeners();
+    }
+  }
+
+  /// Sends team payloads built by the ATAK plugin, and records the items
+  /// among them as this phone's own (so the map shows them and they're
+  /// re-sent with the rest).
+  Future<bool> sendExternal(List<Uint8List> blobs, Duration gap) async {
+    final ch = teamChannel;
+    if (ch == null || !_connector.supportsChannelData) return false;
+    for (final b in blobs) {
+      final peek = teamPeek(b);
+      if (peek == null) continue;
+      switch (peek.$1) {
+        case teamMsgMarker:
+          final m = TeamMarker.tryParse(b);
+          if (m != null) _onMarker(m);
+        case teamMsgReport:
+          final r = TeamReport.tryParse(b);
+          if (r != null && !_reports.containsKey(r.key)) {
+            _reports[r.key] = r;
+            unawaited(_persistReports());
+            onReportChanged?.call(r);
+          }
+        case teamMsgAlert:
+          final a = TeamAlert.tryParse(b);
+          if (a != null && a.senderKey4 == selfKey4) {
+            _activeOwnAlert = a.active ? a : null;
+            onAlertChanged?.call(a);
+          }
+        case teamMsgPoint:
+          final pt = TeamPoint.tryParse(b);
+          if (pt != null) _onPoint(pt);
+        case teamMsgShape:
+          final sh = TeamShape.tryParse(b);
+          if (sh != null) _onShape(sh);
+      }
+    }
+    notifyListeners();
+    try {
+      return await _connector.sendChannelDataBlobs(
+        blobs,
+        channelIndex: ch.index,
+        dataType: teamChannelDataType,
+        interChunkDelay: gap,
+      );
+    } catch (e) {
+      debugPrint('Team send (ATAK) failed: $e');
+      return false;
+    }
+  }
+
+  // ------------------------------------------------- shared ATAK items
+
+  static const _kPoints = 'team_points_v1';
+  static const _kShapes = 'team_shapes_v1';
+  final Map<String, TeamPoint> _points = {};
+  final Map<String, TeamShape> _shapes = {};
+  final TeamChunkReassembler _chunks = TeamChunkReassembler();
+
+  void Function(TeamPoint p)? onPointChanged;
+  void Function(TeamShape s)? onShapeChanged;
+
+  /// Whole CoT events relayed over the mesh by the ATAK plugin.
+  void Function(String xml, String senderKey4)? onRawCot;
+
+  /// Small files sent by the ATAK plugin.
+  void Function(TeamBlob file)? onFileReceived;
+
+  List<TeamPoint> get points => _points.values.where((p) => !p.deleted).toList();
+
+  List<TeamShape> get shapes => _shapes.values.where((s) => !s.deleted).toList();
+
+  void _onPoint(TeamPoint p) {
+    final cur = _points[p.key];
+    if (cur != null && p.time.isBefore(cur.time)) return;
+    _points[p.key] = p;
+    unawaited(
+      _save(
+        (sp) => sp.setStringList(_kPoints, [
+          for (final x in _points.values)
+            if (!x.deleted) base64Encode(x.encode()),
+        ]),
+      ),
+    );
+    onPointChanged?.call(p);
+    notifyListeners();
+  }
+
+  void _onShape(TeamShape s) {
+    final cur = _shapes[s.key];
+    if (cur != null && s.time.isBefore(cur.time)) return;
+    _shapes[s.key] = s;
+    unawaited(
+      _save(
+        (sp) => sp.setStringList(_kShapes, [
+          for (final x in _shapes.values)
+            if (!x.deleted) base64Encode(x.encode()),
+        ]),
+      ),
+    );
+    onShapeChanged?.call(s);
+    notifyListeners();
+  }
+
+  /// Removes a shared ATAK item from this phone's map (not from the team).
+  void dismissItem(String key) {
+    _points.remove(key);
+    _shapes.remove(key);
+    notifyListeners();
   }
 
   /// Sends a position from outside the mesh (a TAK user) to the team.
@@ -804,6 +966,7 @@ class TeamService extends ChangeNotifier {
     if (peek == null) return;
     final (type, sender) = peek;
     if (sender == selfKey4) return;
+    onTeamPayload?.call(p, false);
     switch (type) {
       case teamMsgPosition:
         final pos = TeamPosition.tryParse(p);
@@ -817,6 +980,20 @@ class TeamService extends ChangeNotifier {
       case teamMsgReport:
         final r = TeamReport.tryParse(p);
         if (r != null) _onReport(r);
+      case teamMsgPoint:
+        final pt = TeamPoint.tryParse(p);
+        if (pt != null) _onPoint(pt);
+      case teamMsgShape:
+        final sh = TeamShape.tryParse(p);
+        if (sh != null) _onShape(sh);
+      case teamMsgChunk:
+        final blob = _chunks.accept(p);
+        if (blob == null) return;
+        if (blob.isCot) {
+          onRawCot?.call(blob.text, blob.senderKey4);
+        } else {
+          onFileReceived?.call(blob);
+        }
     }
   }
 

@@ -1,0 +1,31 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.jadeonmesh.meshcore.atak"
+    tools:ignore="GoogleAppIndexingWarning">
+
+    <!-- The plugin runs inside ATAK's process and uses ATAK's permissions
+         (Bluetooth, location, USB host, microphone, internet). These entries
+         only document what it relies on; Android grants them to ATAK. -->
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
+
+
+    <application
+        android:allowBackup="false"
+        android:icon="@drawable/ic_launcher"
+        android:label="@string/app_name"
+        android:description="@string/app_desc"
+        android:extractNativeLibs="true"
+        android:theme="@style/AppTheme">
+        <meta-data android:name="plugin-api" android:value="${atakApiVersion}" />
+        <meta-data android:name="app_desc" android:value="@string/app_desc" />
+
+        <!-- Required for ATAK 4.6.0.2+ plugin discovery; do not remove. -->
+        <activity android:name="com.atakmap.app.component"
+            tools:ignore="MissingClass">
+            <intent-filter android:label="@string/app_name">
+                <action android:name="com.atakmap.app.component" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

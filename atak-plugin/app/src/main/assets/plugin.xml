@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- if you change this file, bump the version in app/build.gradle. -->
+<plugin>
+    <extension
+        type="transapps.maps.plugin.lifecycle.Lifecycle"
+        impl="com.jadeonmesh.meshcore.atak.plugin.MeshTakLifecycle"
+        singleton="true" />
+    <extension
+        type="transapps.maps.plugin.tool.ToolDescriptor"
+        impl="com.jadeonmesh.meshcore.atak.plugin.MeshTakTool"
+        singleton="true" />
+</plugin>
