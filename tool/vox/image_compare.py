@@ -27,7 +27,7 @@ from PIL import Image
 
 OUT = sys.argv[1]
 BUDGET = int(sys.argv[2]) if len(sys.argv) > 2 else 2750
-LONG_SIDES = [256, 320, 384, 448, 512, 576, 640, 768]
+LONG_SIDES = [160, 192, 224, 256, 288, 320, 352, 384, 416, 448, 512, 576, 640]
 
 # Kodak PhotoCD test set (released for unrestricted use).
 KODAK = {
@@ -35,10 +35,7 @@ KODAK = {
     "kodim23": "Parrots",
     "kodim21": "Lighthouse",
     "kodim08": "Houses (fine detail)",
-    "kodim05": "Motorbikes",
     "kodim13": "Mountain stream",
-    "kodim14": "Rafting",
-    "kodim20": "Airplane",
 }
 
 os.makedirs(OUT, exist_ok=True)
@@ -56,7 +53,7 @@ def load_images():
         url = (
             "https://raw.githubusercontent.com/MohamedBakrAli/"
             "Kodak-Lossless-True-Color-Image-Suite/master/PhotoCD_PCD0992/"
-            f"{int(name[5:])}.png"
+            f"{name[5:]}.png"
         )
         data = urllib.request.urlopen(url, timeout=60).read()
         imgs[name] = Image.open(io.BytesIO(data)).convert("RGB")
@@ -146,28 +143,24 @@ def pil_codec(fmt, **opts):
     return encode
 
 
-def run(cmd):
-    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import imagecodecs  # noqa: E402
 
 
 def jxl_encode(im):
-    src = os.path.join(TMP, "in.png")
-    im.save(src)
-    out = os.path.join(TMP, "o.jxl")
+    arr = np.asarray(im)
 
     def enc(d):
-        # Larger distance = smaller file; bisect on -distance via negation.
-        run(["cjxl", src, out, "-e", "9", "-d", f"{-d:.3f}"])
-        return open(out, "rb").read()
+        # Larger distance = smaller file; bisect on the negated distance.
+        return imagecodecs.jpegxl_encode(
+            arr, distance=-d, effort=9, usecontainer=False
+        )
 
-    best = bisect_quality(-25.0, -0.5, enc, integer=False)
+    best = bisect_quality(-25.0, -0.3, enc, integer=False)
     if best is None:
         return None
     d, data = best
-    open(out, "wb").write(data)
-    png = os.path.join(TMP, "o_jxl.png")
-    run(["djxl", out, png])
-    return data, Image.open(png).convert("RGB"), f"d{-d:.2f}"
+    dec = Image.fromarray(imagecodecs.jpegxl_decode(data)).convert("RGB")
+    return data, dec, f"d{-d:.2f}"
 
 
 def mdat_payload(data):
@@ -179,30 +172,34 @@ def mdat_payload(data):
 
 def avif_encode(stripped):
     def encode(im):
-        src = os.path.join(TMP, "in.png")
-        im.save(src)
-        out = os.path.join(TMP, "o.avif")
+        cache = {}
 
-        def enc(q):
-            run([
-                "avifenc", "-s", "0", "-y", "420", "-q", str(q),
-                "-a", "tune=ssim", "--ignore-exif", "--ignore-xmp", src, out,
-            ])
-            data = open(out, "rb").read()
-            if stripped:
-                # Only the AV1 payload + a few bytes of our own header goes on
-                # air; the receiver rebuilds the AVIF container.
-                return b"\0" * (mdat_payload(data) + 6)
-            return data
+        def raw(q, speed=4):
+            key = (q, speed)
+            if key not in cache:
+                buf = io.BytesIO()
+                im.save(buf, "AVIF", quality=int(q), speed=speed,
+                        subsampling="4:2:0", advanced={"tune": "ssim"})
+                cache[key] = buf.getvalue()
+            return cache[key]
 
-        best = bisect_quality(0, 100, enc)
+        def sized(data):
+            return b"\0" * (mdat_payload(data) + 6) if stripped else data
+
+        # Stripped: only the AV1 payload + a few bytes of our own header go
+        # on air; the receiver rebuilds the AVIF container.
+        best = bisect_quality(0, 100, lambda q: sized(raw(q)))
         if best is None:
             return None
-        q, sized = best
-        enc(q)
-        png = os.path.join(TMP, "o_avif.png")
-        run(["avifdec", out, png])
-        return sized, Image.open(png).convert("RGB"), f"q{q}"
+        q = best[0]
+        # Final encode at the slowest, best speed; step down if it grew.
+        while q >= 0:
+            data = raw(q, speed=0)
+            if len(sized(data)) <= BUDGET:
+                dec = Image.open(io.BytesIO(data)).convert("RGB")
+                return sized(data), dec, f"q{q}"
+            q -= 2
+        return None
 
     return encode
 
@@ -210,7 +207,7 @@ def avif_encode(stripped):
 # ------------------------------------------------------------ learned codecs
 
 import compressai  # noqa: E402
-from compressai.zoo import cheng2020_anchor, mbt2018_mean  # noqa: E402
+from compressai.zoo import cheng2020_anchor, cheng2020_attn, mbt2018_mean  # noqa: E402
 
 torch.set_num_threads(os.cpu_count() or 2)
 _models = {}
@@ -219,7 +216,7 @@ _models = {}
 def get_model(kind, q):
     key = (kind, q)
     if key not in _models:
-        fn = {"mbt": mbt2018_mean, "cheng": cheng2020_anchor}[kind]
+        fn = {"mbt": mbt2018_mean, "cheng": cheng2020_anchor, "attn": cheng2020_attn}[kind]
         _models[key] = fn(quality=q, metric="mse", pretrained=True).eval()
     return _models[key]
 
@@ -293,7 +290,7 @@ CLASSIC = {
 }
 LEARNED = {
     "Neural: Hyperprior (mbt2018-mean)": learned_encode("mbt", [1, 2, 3]),
-    "Neural: Cheng2020 (anchor)": learned_encode("cheng", [1, 2, 3]),
+    "Neural: Cheng2020 (attention)": learned_encode("attn", [1, 2, 3]),
 }
 
 
