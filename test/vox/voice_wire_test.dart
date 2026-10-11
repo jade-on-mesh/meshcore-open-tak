@@ -250,21 +250,22 @@ void main() {
       final back = VoxVoiceFetchRequest.tryParse(bytes)!;
       expect(back.saltOk, isTrue);
       expect(back.missingIndices, [1]);
-      expect(VoxVoiceFetchRequest.tryParse(
-        const VoxVoiceFetchRequest(
-          sessionId: 'deadbeef',
-          requesterKey6: 'a1b2c3d4e5f6',
-        ).encode(),
-      )!.saltOk, isFalse);
+      expect(
+        VoxVoiceFetchRequest.tryParse(
+          const VoxVoiceFetchRequest(
+            sessionId: 'deadbeef',
+            requesterKey6: 'a1b2c3d4e5f6',
+          ).encode(),
+        )!.saltOk,
+        isFalse,
+      );
     });
 
     test('salted packets still fit channel data', () {
       for (final mode in [voxDefaultVoiceMode, VoxVoiceMode.mimi]) {
         final pkts = voxPacketize('0000000a', Uint8List(3000), mode);
         expect(
-          pkts.every(
-            (p) => p.encode(salt: 1).length <= voxMaxChannelDataBytes,
-          ),
+          pkts.every((p) => p.encode(salt: 1).length <= voxMaxChannelDataBytes),
           isTrue,
         );
       }
