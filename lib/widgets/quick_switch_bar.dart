@@ -148,7 +148,6 @@ class QuickSwitchBar extends StatelessWidget {
   }
 }
 
-
 /// Tactical tab icon: red badge for active team alerts, otherwise the count
 /// of new watch-feed reports.
 class _TacticalIcon extends StatelessWidget {

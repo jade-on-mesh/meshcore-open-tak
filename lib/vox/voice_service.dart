@@ -93,6 +93,9 @@ class _IncomingClip {
   int? channelIndex;
   int attempts = 0;
   int directFailures = 0;
+
+  /// The channel fallback has been tried since the last manual retry.
+  bool triedChannel = false;
   bool sentDmRequest = false;
   _Method? lastMethod;
   int packetsAtLastAttempt = 0;
@@ -540,6 +543,7 @@ class VoxVoiceService extends ChangeNotifier {
     clip.attempts = 0;
     clip.stalls = 0;
     clip.directFailures = 0;
+    clip.triedChannel = false;
     await _attempt(clip);
   }
 
@@ -549,6 +553,12 @@ class VoxVoiceService extends ChangeNotifier {
     final route = sender == null ? null : _directRoute(sender);
     final canChannel =
         clip.channelIndex != null && _connector.supportsChannelData;
+    // Two requests in a row got nothing back: the direct path isn't working
+    // right now, so try the channel (it floods, and anyone holding the clip
+    // can answer) before going round the direct options again.
+    if (canChannel && clip.stalls >= 2 && !clip.triedChannel) {
+      return _Method.channel;
+    }
     if (sender != null) {
       // 1. Known route: plain raw request (works when both radios have routes).
       if (route != null && clip.directFailures == 0) return _Method.direct;
@@ -588,6 +598,7 @@ class VoxVoiceService extends ChangeNotifier {
     }
     clip.attempts++;
     clip.lastMethod = method;
+    if (method == _Method.channel) clip.triedChannel = true;
     final sc = clip.sender;
     if (sc != null) {
       final fresh = contactByKeyHex(sc.publicKeyHex) ?? sc;
@@ -727,14 +738,19 @@ class VoxVoiceService extends ChangeNotifier {
       clip.stalls++;
       if (clip.lastMethod != _Method.channel) clip.directFailures++;
     }
-    if (clip.stalls < _maxStalls && clip.attempts < _maxAttempts) {
+    final channelLeft =
+        clip.channelIndex != null &&
+        _connector.supportsChannelData &&
+        !clip.triedChannel;
+    if ((clip.stalls < _maxStalls || channelLeft) &&
+        clip.attempts < _maxAttempts) {
       await _attempt(clip);
       return;
     }
     _fail(
       clip,
       clip.packets.isEmpty
-          ? 'Voice unavailable right now. Tap to retry.'
+          ? '${clip.envelope.isImage ? 'Photo' : 'Voice'} unavailable right now. Tap to retry.'
           : 'Got ${clip.packets.length}/${clip.envelope.totalPackets}. '
                 'Tap to retry.',
     );
