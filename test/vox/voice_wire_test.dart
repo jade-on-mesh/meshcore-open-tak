@@ -13,7 +13,7 @@ String _toHex(List<int> b) =>
 
 void main() {
   group('VE3 envelope', () {
-    test('parses the MeshCore SAR documentation example', () {
+    test('parses the VE3 reference example', () {
       final env = VoxVoiceEnvelope.tryParse('VE3:a:1:4:4')!;
       expect(env.sessionId, '0000000a');
       expect(env.mode, VoxVoiceMode.mode1200);
@@ -119,9 +119,9 @@ void main() {
   });
 
   group('VR3 text request', () {
-    test('matches the SAR documentation example', () {
+    test('matches the VR3 reference example', () {
       final req = VoxVoiceTextRequest.tryParse('VR3:00112233:a:aabbccddeeff');
-      // SAR's example uses a 7+ char base36 sid only when needed; this one
+      // The reference uses a 7+ char base36 sid only when needed; this one
       // is 8 chars, so it must be rejected as out of range or parsed.
       expect(req == null || req.requesterKey6 == 'aabbccddeeff', isTrue);
     });
@@ -188,7 +188,7 @@ void main() {
       expect(text, 'VM1:1ps9wxb:w:5:5');
       final back = VoxVoiceEnvelope.tryParse(text)!;
       expect(back.mode, VoxVoiceMode.mimi);
-      // A Mimi mode id must never be accepted inside a VE3 (SAR) envelope,
+      // A Mimi mode id must never be accepted inside a VE3 envelope,
       // nor a Codec2 mode inside VM1.
       expect(VoxVoiceEnvelope.tryParse('VE3:1ps9wxb:w:5:5'), isNull);
       expect(VoxVoiceEnvelope.tryParse('VM1:1ps9wxb:1:5:5'), isNull);
@@ -234,11 +234,11 @@ void main() {
       final back = VoxVoicePacket.tryParse(a)!;
       expect(back.index, 1);
       expect(back.codecData, [1, 2, 3]);
-      // Unsalted packets are unchanged (MeshCore SAR compatible).
+      // Unsalted packets are unchanged (standard VE3).
       expect(_toHex(pkt.encode()), '56deadbeef01010203');
     });
 
-    test('fetch request carries the salt-ok flag without breaking SAR', () {
+    test('fetch request carries the salt-ok flag without breaking VE3', () {
       const req = VoxVoiceFetchRequest(
         sessionId: 'deadbeef',
         requesterKey6: 'a1b2c3d4e5f6',
@@ -246,7 +246,7 @@ void main() {
         saltOk: true,
       );
       final bytes = req.encode();
-      expect(bytes[5], 0x03); // missing-only (SAR bit 0) + salt-ok (bit 1)
+      expect(bytes[5], 0x03); // missing-only (VE3 bit 0) + salt-ok (bit 1)
       final back = VoxVoiceFetchRequest.tryParse(bytes)!;
       expect(back.saltOk, isTrue);
       expect(back.missingIndices, [1]);

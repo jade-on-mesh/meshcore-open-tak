@@ -80,7 +80,7 @@ void main() {
       );
       final most = voxPacketize(
         '0000000a',
-        Uint8List(VoxImageDetail.most.budget),
+        Uint8List(VoxImageDetail.more.budget),
         VoxVoiceMode.av1Image,
       );
       expect(most.length, lessThanOrEqualTo(voxMaxPackets));
@@ -167,12 +167,12 @@ void main() {
       );
       final b = voxEncodeImage(
         ref: ref,
-        detail: VoxImageDetail.most,
+        detail: VoxImageDetail.more,
         encode: fake.encode,
         decode: fake.decode,
       );
       expect(b.payload.length, greaterThanOrEqualTo(a.payload.length));
-      expect(b.payload.length, lessThanOrEqualTo(VoxImageDetail.most.budget));
+      expect(b.payload.length, lessThanOrEqualTo(VoxImageDetail.more.budget));
     });
 
     test('focus regions are used and text gets a readability score', () {

@@ -395,7 +395,7 @@ class _VoxImageSendSheetState extends State<VoxImageSendSheet> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          _detail == VoxImageDetail.most
+                          _detail == VoxImageDetail.more
                               ? 'Small text may still be hard to read.'
                               : 'Small text may not be readable. '
                                     'More detail would help.',

@@ -606,8 +606,8 @@ class VoxMimiTile extends StatelessWidget {
                 title: const Text('Send voice with Mimi'),
                 subtitle: const Text(
                   'Clearer voice, about the same data as Codec2 1200. Only VOX '
-                  'can play Mimi clips; turn off to send Codec2 (MeshCore SAR '
-                  'compatible). Long-press to delete the model.',
+                  'can play Mimi clips; turn off to send Codec2, which other '
+                  'VE3 voice apps can play. Long-press to delete the model.',
                 ),
                 value: service.preferMimi,
                 onChanged: service.setPreferMimi,

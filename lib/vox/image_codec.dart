@@ -34,8 +34,7 @@ const int voxImagePayloadVersion = 1;
 /// How much airtime to spend, in voice messages.
 enum VoxImageDetail {
   standard(1, 'Standard'),
-  more(2, 'More detail'),
-  most(4, 'Most detail');
+  more(2, 'More detail');
 
   const VoxImageDetail(this.multiple, this.label);
   final int multiple;

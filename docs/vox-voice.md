@@ -1,8 +1,8 @@
 # VOX voice and photo messages
 
 MeshCore Open VOX sends short voice clips over MeshCore using Codec2 and an
-on-demand, pull-based transfer. The wire format follows MeshCore SAR's
-published design so clips can be exchanged with SAR users.
+on-demand, pull-based transfer. Codec2 clips use the published VE3 wire
+format, so other VE3 apps can exchange them.
 
 ## Code map
 
@@ -26,7 +26,7 @@ published design so clips can be exchanged with SAR users.
   The ONNX encoder/decoder (fixed 20 s, fp16-stored weights, ~223 MB) come
   from this repo's `mimi-onnx-v1` release and are verified by SHA-256.
   Built by `.github/workflows/vox-mimi-release.yml`.
-- **Codec2 1200** (fallback, and for MeshCore SAR users): `VE3:`.
+- **Codec2 1200** (fallback, and for other VE3 apps): `VE3:`.
 
 The recorder captures 48 kHz and decimates to 24 kHz (Mimi) or 8 kHz (Codec2).
 Voice settings has a toggle to keep sending Codec2 even with Mimi installed.
@@ -80,7 +80,7 @@ is 162 bytes on the raw-data plane.
   1. **Direct**: the sender is a contact with a known route, so a binary
      fetch request goes over raw data and the packets come back the same way.
   2. **`VR3:` DM**: the sender is a contact but there's no route. A silent
-     text request (`VR3:{sid}:{a|m<ranges>}:{key6}`, SAR's text form) is
+     text request (`VR3:{sid}:{a|m<ranges>}:{key6}`, VE3's text form) is
      flooded as a DM. Its ACK path exchange gives both radios a direct
      route, and the sender replies over raw data. VR3 DMs are never shown in
      the chat.
@@ -121,7 +121,7 @@ ratio, width × 100 / height). Android only.
   `android/app/src/main/cpp/vox_av1.c`; CI builds libaom from the source
   mirrored on the `deps-cache` branch.
 - **Budget.** Standard is one full voice message (2,750 B, 18 packets);
-  More detail is 2×, Most detail 4×.
+  More detail is 2× (36 packets).
 - **Fitting.** The sending phone scales the photo to at most 768 px, then
   searches sizes and quantizers for the best-scoring encode within the
   budget. The preview is the decoded result, so the sender sees exactly what
@@ -155,7 +155,7 @@ in order.
 
 ## Not yet implemented
 
-- SAR's swarm recovery (`0x6d`); the channel fallback covers a similar need
+- Swarm recovery (`0x6d`); the channel fallback covers a similar need
 - Raw data over multi-byte path hashes (firmware limitation)
 - Desktop: Linux needs a system `libcodec2`; macOS and Windows don't ship
   Codec2 yet, so voice is hidden there

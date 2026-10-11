@@ -1,8 +1,8 @@
 // MeshCore Open VOX - voice message wire formats.
 //
-// Written from scratch for MeshCore Open VOX. The on-air formats follow the
-// publicly documented MeshCore SAR voice design (docs/voice-mode-technical.md
-// in dz0ny/meshcore-sar) so VOX can exchange voice messages with SAR users:
+// Written from scratch for MeshCore Open VOX. Codec2 clips use the VE3
+// format, a published on-air design, so VOX interoperates with other apps
+// that speak it:
 //
 //   Control plane (ordinary text message, DM or channel):
 //     VE3:{sid}:{mode}:{total}:{durS}        all fields base36
@@ -47,7 +47,7 @@ enum VoxVoiceMode {
   /// Mimi neural codec (Kyutai), 8 codebooks of 11 bits at 12.5 frames/s:
   /// 88 bits = 11 bytes per 80 ms frame, about 1.1 kb/s. VOX-only, announced
   /// with a `VM1:` envelope instead of `VE3:` so Codec2-only apps (MeshCore
-  /// SAR) never try to play it as Codec2.
+  /// apps) never try to play it as Codec2.
   mimi(wireId: 32, codec2Id: -1, label: 'Mimi', bytesPerFrame: 11, frameMs: 80),
 
   /// AV1 still image (VOX only), announced with `VI1:`. Not audio: the
@@ -106,7 +106,7 @@ const VoxVoiceMode voxDefaultVoiceMode = VoxVoiceMode.mode1200;
 /// Codec2 payload budget per raw packet. A raw push frame is at most 172
 /// bytes: 4 bytes of push header + 6 bytes of voice header leaves 162; 156 is
 /// the largest multiple of the 1200/2400 frame size under that and keeps
-/// packets the same size SAR sends.
+/// packets the standard VE3 size.
 const int voxMaxCodecBytesPerPacket = 156;
 
 /// Hard limits enforced by the parser (matching the VE3 field ranges).
@@ -118,7 +118,7 @@ const int voxVoiceFetchMagic = 0x72; // 'r'
 const int voxFetchFlagMissingOnly = 0x01;
 
 /// VOX extension: the requester understands salted voice packets (0x57).
-/// MeshCore SAR only looks at bit 0, so it ignores this.
+/// Plain VE3 implementations only look at bit 0, so they ignore this.
 const int voxFetchFlagSaltOk = 0x02;
 
 /// VOX extension: a voice packet with one random byte appended.
@@ -175,7 +175,7 @@ int? _parseBase36(String s) {
 
 /// `VE3:` voice envelope carried as a normal text message.
 class VoxVoiceEnvelope {
-  /// Codec2 clips (MeshCore SAR compatible).
+  /// Codec2 clips (standard VE3).
   static const String prefix = 'VE3:';
 
   /// Mimi clips (VOX only). Same fields as VE3.
@@ -292,7 +292,7 @@ class VoxVoicePacket {
     );
   }
 
-  /// Standard SAR-compatible packet, or, with [salt], a VOX salted packet
+  /// Standard VE3 packet, or, with [salt], a VOX salted packet
   /// (`0x57`, one extra trailing byte) so resends are never deduplicated.
   Uint8List encode({int? salt}) {
     final extra = salt == null ? 0 : 1;
@@ -316,7 +316,7 @@ class VoxVoiceFetchRequest {
   /// Null means "send every packet".
   final List<int>? missingIndices;
 
-  /// Requester accepts salted (0x57) packets. Set by VOX, never by SAR.
+  /// Requester accepts salted (0x57) packets. Only VOX sets this.
   final bool saltOk;
 
   const VoxVoiceFetchRequest({
@@ -430,8 +430,8 @@ Duration voxEstimateAirtime({
 ///   VR3:{sid}:{want}:{requesterKey6}
 ///
 /// `sid` is base36, `want` is `a` (all) or `m` + compact base36 index ranges
-/// (`m1-3.7` = 1, 2, 3, 7), `requesterKey6` is 12 hex chars. Same text form as
-/// MeshCore SAR's text fetch request. A flooded DM also makes both radios
+/// (`m1-3.7` = 1, 2, 3, 7), `requesterKey6` is 12 hex chars. This is the
+/// standard VE3 text fetch request. A flooded DM also makes both radios
 /// learn a direct route to each other (path return + reciprocal path), which
 /// the raw-data reply then uses.
 class VoxVoiceTextRequest {
