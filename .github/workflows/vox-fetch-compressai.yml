@@ -1,0 +1,41 @@
+name: VOX fetch CompressAI weights
+
+# One-off: mirror CompressAI's pretrained MSE models (BSD-3-Clause-Clear)
+# to the `model-cache` branch so they can be used where S3 is unreachable.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision && pip install compressai
+      - name: Download weights
+        run: |
+          python - <<'PY'
+          from compressai.zoo import mbt2018_mean, cheng2020_anchor, cheng2020_attn
+          for fn in (mbt2018_mean, cheng2020_anchor, cheng2020_attn):
+              for q in (1, 2, 3):
+                  fn(quality=q, metric="mse", pretrained=True)
+          PY
+          mkdir -p /tmp/out
+          cp ~/.cache/torch/hub/checkpoints/* /tmp/out/
+          pip download compressai --no-deps -d /tmp/out/wheel
+          ls -la /tmp/out /tmp/out/wheel
+      - name: Publish
+        run: |
+          cd /tmp/out
+          git init -q -b model-cache
+          git config user.name vox-ci
+          git config user.email vox-ci@users.noreply.github.com
+          git add -A
+          git commit -qm "CompressAI pretrained MSE weights (BSD-3-Clause-Clear)"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" model-cache
