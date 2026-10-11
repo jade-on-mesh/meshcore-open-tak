@@ -516,6 +516,17 @@ class MeshCoreConnector extends ChangeNotifier {
   /// MeshCore Open VOX: returns true to swallow an incoming DM (by sender key
   /// hex and text) before it is stored or notified.
   bool Function(String senderKeyHex, String text)? voxControlTextInterceptor;
+
+  /// MeshCore Open VOX: told about every new incoming DM or channel message
+  /// (used to auto-play voice clips as they arrive).
+  void Function(
+    String text, {
+    String? senderKeyHex,
+    String? senderName,
+    int? channelIndex,
+    DateTime? timestamp,
+  })?
+  voxIncomingTextObserver;
   Uint8List? get selfPublicKey => _selfPublicKey;
   String get selfPublicKeyHex => pubKeyToHex(_selfPublicKey ?? Uint8List(0));
 
@@ -5922,6 +5933,13 @@ class MeshCoreConnector extends ChangeNotifier {
       _addMessage(message.senderKeyHex, message);
       _maybeIncrementContactUnread(message);
       notifyListeners();
+      if (!message.isOutgoing && !message.isCli) {
+        voxIncomingTextObserver?.call(
+          message.text,
+          senderKeyHex: message.senderKeyHex,
+          timestamp: message.timestamp,
+        );
+      }
 
       // Show notification for new incoming message (run async with translation)
       if (!message.isOutgoing &&
@@ -6320,6 +6338,14 @@ class MeshCoreConnector extends ChangeNotifier {
       _maybeIncrementChannelUnread(message, isNew: isNew);
       notifyListeners();
       if (isNew && !message.isOutgoing) {
+        voxIncomingTextObserver?.call(
+          message.text,
+          senderName: message.senderName,
+          channelIndex: message.channelIndex,
+          timestamp: message.timestamp,
+        );
+      }
+      if (isNew && !message.isOutgoing) {
         final msg = message; // capture for closure
         unawaited(() async {
           final translationResult = await translateChannelMessage(
@@ -6405,6 +6431,14 @@ class MeshCoreConnector extends ChangeNotifier {
           final isNew = _addChannelMessage(channel.index, message);
           _maybeIncrementChannelUnread(message, isNew: isNew);
           notifyListeners();
+          if (isNew && !message.isOutgoing) {
+            voxIncomingTextObserver?.call(
+              message.text,
+              senderName: message.senderName,
+              channelIndex: channel.index,
+              timestamp: message.timestamp,
+            );
+          }
           if (isNew) {
             // Run translation + notification asynchronously to avoid blocking
             unawaited(() async {

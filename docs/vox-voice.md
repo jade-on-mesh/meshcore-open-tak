@@ -94,6 +94,17 @@ is 162 bytes on the raw-data plane.
      data (v1.15+).
 - **Pacing.** Direct packets are about 2× a packet's airtime apart, and channel
   packets about 4× (min 400 ms / 800 ms), based on the radio's current SF/BW/CR.
+- **Playback.** One shared player. While a clip decodes (Mimi takes a few
+  seconds) the button shows a spinning accent-coloured ring; while it plays
+  the ring fills with progress around a stop button. Completed clips are
+  decoded in the background and the last few decoded clips are cached, so a
+  tap usually plays at once. The recorder decodes its preview right after
+  encoding.
+- **Auto-play** (Voice settings, on by default). New incoming voice DMs are
+  downloaded and played as they arrive, one after another, never while the
+  recorder is open, and not for a backlog older than 15 minutes. In channels,
+  clips only auto-play if they reach the phone anyway, unless **Also
+  auto-download in channels** is on (every listener then pulls its own copy).
 - **Channel senders** are matched to contacts by name (case and emoji
   variation selectors ignored).
 

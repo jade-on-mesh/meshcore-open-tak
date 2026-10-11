@@ -2,7 +2,6 @@
 
 import 'dart:async';
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -40,9 +39,6 @@ class VoxVoiceMessageContent extends StatefulWidget {
 }
 
 class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
-  AudioPlayer? _player;
-  bool _playing = false;
-  bool _playWhenReady = false;
   VoxVoiceService? _service;
 
   @override
@@ -64,57 +60,29 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
   }
 
   void _onServiceChanged() {
-    final s = _service;
-    if (s == null || !mounted) return;
-    if (_playWhenReady &&
-        s.stateFor(widget.envelope).status == VoxClipStatus.complete) {
-      _playWhenReady = false;
-      unawaited(_play());
-    }
-    setState(() {});
-  }
-
-  Future<void> _play() async {
-    final s = _service;
-    if (s == null) return;
-    final wav = await s.wavFor(widget.envelope);
-    if (wav == null || !mounted) return;
-    var player = _player;
-    if (player == null) {
-      player = _player = AudioPlayer();
-      player.onPlayerComplete.listen((_) {
-        if (mounted) setState(() => _playing = false);
-      });
-    }
-    setState(() => _playing = true);
-    await player.play(BytesSource(wav));
-  }
-
-  Future<void> _stop() async {
-    await _player?.stop();
-    if (mounted) setState(() => _playing = false);
+    if (mounted) setState(() {});
   }
 
   Future<void> _onTap() async {
     final s = _service;
     if (s == null) return;
-    if (_playing) return _stop();
-    final st = s.stateFor(widget.envelope);
+    final env = widget.envelope;
+    if (s.playbackFor(env) != VoxPlayback.idle) return s.stopPlayback();
+    final st = s.stateFor(env);
     if (st.status == VoxClipStatus.complete) {
-      if (!s.canPlay(widget.envelope)) {
+      if (!s.canPlay(env)) {
         // A Mimi clip on a phone without the model: offer the download.
         showVoxVoiceLog(context, s);
         return;
       }
-      return _play();
+      return s.play(env);
     }
     if (st.status == VoxClipStatus.requesting ||
         st.status == VoxClipStatus.receiving) {
       return;
     }
-    _playWhenReady = true;
-    await s.requestClip(
-      widget.envelope,
+    await s.requestAndPlay(
+      env,
       sender: widget.sender,
       channelIndex: widget.channelIndex,
     );
@@ -123,9 +91,11 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
   @override
   void dispose() {
     _service?.removeListener(_onServiceChanged);
-    _player?.dispose();
     super.dispose();
   }
+
+  static String _clock(Duration d) =>
+      '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
 
   @override
   Widget build(BuildContext context) {
@@ -141,9 +111,11 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
       );
     }
     final st = s.stateFor(env);
+    final playback = s.playbackFor(env);
     final busy =
         st.status == VoxClipStatus.requesting ||
         st.status == VoxClipStatus.receiving;
+    final accent = Theme.of(context).colorScheme.primary;
 
     final connector = context.read<MeshCoreConnector>();
     final sf = connector.currentSf;
@@ -161,9 +133,7 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
       airHint = '~${(air.inMilliseconds / 1000).toStringAsFixed(1)}s air';
     }
 
-    final IconData icon = _playing
-        ? Icons.stop_circle_outlined
-        : st.status == VoxClipStatus.complete
+    final IconData icon = st.status == VoxClipStatus.complete
         ? (s.canPlay(env) ? Icons.play_circle_outline : Icons.graphic_eq)
         : st.status == VoxClipStatus.unavailable
         ? Icons.refresh
@@ -173,6 +143,10 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
       VoxClipStatus.complete when !s.canPlay(env) =>
         'Mimi voice · tap to get the voice model '
             '(${VoxMimi.downloadMb} MB) to play',
+      VoxClipStatus.complete when playback == VoxPlayback.preparing =>
+        'Preparing audio…',
+      VoxClipStatus.complete when playback == VoxPlayback.playing =>
+        'Playing · tap to stop',
       VoxClipStatus.complete =>
         '${env.durationSeconds}s · '
             '${env.mode.isMimi ? 'Mimi' : 'Codec2 ${env.mode.label}'}',
@@ -197,18 +171,51 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
             SizedBox(
               width: 36,
               height: 36,
-              child: busy
-                  ? Padding(
-                      padding: const EdgeInsets.all(6),
+              child: switch (playback) {
+                // Decoding (Mimi takes a few seconds): a spinning ring in the
+                // accent colour around a waveform.
+                VoxPlayback.preparing => Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox.expand(
                       child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        color: color,
-                        value: st.status == VoxClipStatus.receiving
-                            ? st.progress
-                            : null,
+                        strokeWidth: 3,
+                        color: accent,
                       ),
-                    )
-                  : Icon(icon, size: 34, color: color),
+                    ),
+                    Icon(Icons.graphic_eq, size: 18, color: accent),
+                  ],
+                ),
+                // Playing: the ring fills as the clip plays, around a stop.
+                VoxPlayback.playing => ValueListenableBuilder<double>(
+                  valueListenable: s.playbackFraction,
+                  builder: (_, f, _) => Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox.expand(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          value: f,
+                          color: accent,
+                          backgroundColor: accent.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      Icon(Icons.stop_rounded, size: 20, color: accent),
+                    ],
+                  ),
+                ),
+                VoxPlayback.idle when busy => Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: color,
+                    value: st.status == VoxClipStatus.receiving
+                        ? st.progress
+                        : null,
+                  ),
+                ),
+                VoxPlayback.idle => Icon(icon, size: 34, color: color),
+              },
             ),
             const SizedBox(width: 8),
             Flexible(
@@ -220,7 +227,17 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
                     'Voice message',
                     style: TextStyle(color: color, fontWeight: FontWeight.w600),
                   ),
-                  Text(subtitle, style: TextStyle(color: meta, fontSize: 12)),
+                  if (playback == VoxPlayback.playing)
+                    ValueListenableBuilder<double>(
+                      valueListenable: s.playbackFraction,
+                      builder: (_, f, _) => Text(
+                        'Playing ${_clock(s.playbackLength * f)} / '
+                        '${_clock(s.playbackLength)}',
+                        style: TextStyle(color: meta, fontSize: 12),
+                      ),
+                    )
+                  else
+                    Text(subtitle, style: TextStyle(color: meta, fontSize: 12)),
                 ],
               ),
             ),
@@ -274,6 +291,7 @@ void showVoxVoiceLog(BuildContext context, VoxVoiceService service) {
                   ),
                   const Divider(height: 1),
                   VoxMimiTile(service: service),
+                  VoxAutoPlayTile(service: service),
                   VoxForcedRouteTile(service: service),
                   ListTile(
                     leading: const Icon(Icons.network_ping),
@@ -340,6 +358,45 @@ Future<void> _pickLinkTestTarget(
     ),
   );
   if (picked != null) unawaited(service.sendLinkTest(picked));
+}
+
+/// Auto-play settings: play new voice DMs as they arrive.
+class VoxAutoPlayTile extends StatelessWidget {
+  final VoxVoiceService service;
+  const VoxAutoPlayTile({super.key, required this.service});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: service,
+      builder: (context, _) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SwitchListTile(
+            secondary: const Icon(Icons.volume_up_outlined),
+            title: const Text('Auto-play voice messages'),
+            subtitle: const Text(
+              'Download and play new voice DMs as soon as they arrive.',
+            ),
+            value: service.autoPlay,
+            onChanged: service.setAutoPlay,
+          ),
+          if (service.autoPlay)
+            SwitchListTile(
+              secondary: const SizedBox(width: 24),
+              title: const Text('Also auto-download in channels'),
+              subtitle: const Text(
+                'Off: channel clips auto-play only if they reach you anyway. '
+                'On: every listener pulls its own copy, which adds airtime '
+                'on busy channels.',
+              ),
+              value: service.autoDownloadChannels,
+              onChanged: service.setAutoDownloadChannels,
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Testing toggle: force voice raw data through chosen repeaters.

@@ -17,6 +17,7 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -34,6 +35,9 @@ import 'voice_wire.dart';
 import 'wav.dart';
 
 enum VoxClipStatus { remote, requesting, receiving, complete, unavailable }
+
+/// Playback of one clip: decoding it (Mimi takes a few seconds), then audio.
+enum VoxPlayback { idle, preparing, playing }
 
 @immutable
 class VoxClipState {
@@ -120,6 +124,7 @@ class VoxVoiceService extends ChangeNotifier {
     : _store = store ?? VoxClipStore() {
     _sub = _connector.receivedFrames.listen(_onFrame);
     _connector.voxControlTextInterceptor = _onControlText;
+    _connector.voxIncomingTextObserver = _onIncomingText;
     unawaited(_loadTestSettings());
     mimi.addListener(notifyListeners);
   }
@@ -187,6 +192,8 @@ class VoxVoiceService extends ChangeNotifier {
       _forceRepeaterRoute = prefs.getBool(_kForceRoute) ?? false;
       _forcedRepeaterKeys = prefs.getStringList(_kForceRouteKeys) ?? const [];
       _preferMimi = prefs.getBool(_kPreferMimi) ?? true;
+      _autoPlay = prefs.getBool(_kAutoPlay) ?? true;
+      _autoDownloadChannels = prefs.getBool(_kAutoChannels) ?? false;
       notifyListeners();
     } catch (_) {}
   }
@@ -714,16 +721,253 @@ class VoxVoiceService extends ChangeNotifier {
   }
 
   /// Decoded audio as a WAV file, or null if the clip is not complete.
-  Future<Uint8List?> wavFor(VoxVoiceEnvelope env) async {
-    await _loadFromStore(env.sessionId);
-    final bits = _bits[env.sessionId];
-    if (bits == null || !canPlay(env)) return null;
-    return _decodeToWav(_modes[env.sessionId] ?? env.mode, bits);
+  /// Results are cached, and a decode already running is shared, so a clip
+  /// pre-decoded on arrival plays at once.
+  Future<Uint8List?> wavFor(VoxVoiceEnvelope env) {
+    final sid = env.sessionId;
+    final cached = _wavCache.remove(sid);
+    if (cached != null) {
+      _wavCache[sid] = cached; // most recently used last
+      return Future.value(cached);
+    }
+    return _decoding[sid] ??= () async {
+      try {
+        await _loadFromStore(sid);
+        final bits = _bits[sid];
+        if (bits == null || !canPlay(env)) return null;
+        final sw = Stopwatch()..start();
+        final wav = await _decodeToWav(_modes[sid] ?? env.mode, bits);
+        _logEvent('decoded in ${sw.elapsedMilliseconds}ms', sid);
+        _wavCache[sid] = wav;
+        while (_wavCache.length > _wavCacheSize) {
+          _wavCache.remove(_wavCache.keys.first);
+        }
+        return wav;
+      } catch (e) {
+        _logEvent('decode failed: $e', sid);
+        return null;
+      } finally {
+        _decoding.remove(sid);
+      }
+    }();
   }
+
+  static const _wavCacheSize = 6;
+  final Map<String, Uint8List> _wavCache = {};
+  final Map<String, Future<Uint8List?>> _decoding = {};
 
   /// Whether this device can decode [env]'s codec right now.
   bool canPlay(VoxVoiceEnvelope env) =>
       env.mode.isMimi ? mimi.isReady : voxCodecAvailable;
+
+  // --------------------------------------------------------------- playback
+
+  static const _kAutoPlay = 'vox_autoplay';
+  static const _kAutoChannels = 'vox_autoplay_channels';
+  bool _autoPlay = true;
+  bool _autoDownloadChannels = false;
+
+  /// Download and play incoming voice DMs as soon as they arrive.
+  bool get autoPlay => _autoPlay;
+
+  /// With [autoPlay], also download channel clips on arrival. Off by
+  /// default: every listener pulls its own copy, which adds airtime on a busy
+  /// channel. Channel clips that arrive anyway (someone else's channel
+  /// transfer) still auto-play.
+  bool get autoDownloadChannels => _autoDownloadChannels;
+
+  Future<void> setAutoPlay(bool v) async {
+    _autoPlay = v;
+    if (!v) {
+      _autoSids.clear();
+      _autoQueue.clear();
+    }
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kAutoPlay, v);
+    } catch (_) {}
+  }
+
+  Future<void> setAutoDownloadChannels(bool v) async {
+    _autoDownloadChannels = v;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kAutoChannels, v);
+    } catch (_) {}
+  }
+
+  AudioPlayer? _player;
+  String? _playSid;
+  VoxPlayback _phase = VoxPlayback.idle;
+  int _playGen = 0;
+  Duration _playLength = Duration.zero;
+
+  /// Playback position as a 0..1 fraction of the clip playing now.
+  final ValueNotifier<double> playbackFraction = ValueNotifier(0);
+
+  /// Clips the user tapped before they were downloaded: play on arrival.
+  final Set<String> _tapSids = {};
+
+  /// Clips fetched (or watched) because of auto-play.
+  final Set<String> _autoSids = {};
+  final List<VoxVoiceEnvelope> _autoQueue = [];
+  bool _micBusy = false;
+
+  VoxPlayback playbackFor(VoxVoiceEnvelope env) =>
+      env.sessionId == _playSid ? _phase : VoxPlayback.idle;
+
+  /// Length of the clip playing now (zero when idle).
+  Duration get playbackLength => _playLength;
+
+  /// Set while the recorder is open so nothing auto-plays into the mic.
+  set micBusy(bool busy) {
+    if (busy == _micBusy) return;
+    _micBusy = busy;
+    if (busy) {
+      unawaited(stopPlayback());
+    } else {
+      _playNextQueued();
+    }
+  }
+
+  /// Plays [env] now, replacing whatever is playing.
+  Future<void> play(VoxVoiceEnvelope env) async {
+    final sid = env.sessionId;
+    final gen = ++_playGen;
+    await _player?.stop();
+    _playSid = sid;
+    _phase = VoxPlayback.preparing;
+    playbackFraction.value = 0;
+    notifyListeners();
+    final sw = Stopwatch()..start();
+    final wav = await wavFor(env);
+    if (gen != _playGen) return; // stopped or replaced while decoding
+    if (wav == null) {
+      _endPlayback();
+      return;
+    }
+    _playLength = _wavDuration(wav);
+    final player = _player ??= _createPlayer();
+    _phase = VoxPlayback.playing;
+    notifyListeners();
+    _logEvent('playing (ready after ${sw.elapsedMilliseconds}ms)', sid);
+    try {
+      await player.play(BytesSource(wav));
+    } catch (e) {
+      _logEvent('playback failed: $e', sid);
+      if (gen == _playGen) _endPlayback();
+    }
+  }
+
+  Future<void> stopPlayback() async {
+    if (_phase == VoxPlayback.idle) return;
+    _playGen++;
+    _autoQueue.clear();
+    await _player?.stop();
+    _endPlayback(playNext: false);
+  }
+
+  AudioPlayer _createPlayer() {
+    final p = AudioPlayer();
+    p.onPlayerComplete.listen((_) => _endPlayback());
+    p.onPositionChanged.listen((pos) {
+      final ms = _playLength.inMilliseconds;
+      if (ms > 0 && _phase == VoxPlayback.playing) {
+        playbackFraction.value = (pos.inMilliseconds / ms).clamp(0.0, 1.0);
+      }
+    });
+    return p;
+  }
+
+  void _endPlayback({bool playNext = true}) {
+    _phase = VoxPlayback.idle;
+    _playSid = null;
+    _playLength = Duration.zero;
+    playbackFraction.value = 0;
+    notifyListeners();
+    if (playNext) _playNextQueued();
+  }
+
+  void _playNextQueued() {
+    if (_micBusy || _phase != VoxPlayback.idle || _autoQueue.isEmpty) return;
+    unawaited(play(_autoQueue.removeAt(0)));
+  }
+
+  static Duration _wavDuration(Uint8List wav) {
+    if (wav.length <= 44) return Duration.zero;
+    final bd = ByteData.sublistView(wav);
+    final rate = bd.getUint32(24, Endian.little);
+    if (rate == 0) return Duration.zero;
+    return Duration(microseconds: (wav.length - 44) * 500000 ~/ rate);
+  }
+
+  /// Fetches [env] and plays it as soon as it is complete (a tap on a clip
+  /// that hasn't been downloaded yet).
+  Future<void> requestAndPlay(
+    VoxVoiceEnvelope env, {
+    Contact? sender,
+    int? channelIndex,
+  }) async {
+    _tapSids.add(env.sessionId);
+    _autoSids.remove(env.sessionId);
+    await requestClip(env, sender: sender, channelIndex: channelIndex);
+    if (_bits.containsKey(env.sessionId) && _tapSids.remove(env.sessionId)) {
+      unawaited(play(env));
+    }
+  }
+
+  /// Called by the connector for every new incoming chat message.
+  void _onIncomingText(
+    String text, {
+    String? senderKeyHex,
+    String? senderName,
+    int? channelIndex,
+    DateTime? timestamp,
+  }) {
+    final env = VoxVoiceEnvelope.tryParse(text);
+    if (env == null || !_autoPlay) return;
+    final sid = env.sessionId;
+    // Don't auto-play a backlog synced from the radio after a reconnect.
+    if (timestamp != null &&
+        DateTime.now().difference(timestamp) > const Duration(minutes: 15)) {
+      return;
+    }
+    if (_bits.containsKey(sid) || _ownClips.contains(sid)) return;
+    final sender = senderKeyHex != null
+        ? contactByKeyHex(senderKeyHex)
+        : (senderName == null ? null : contactByName(senderName));
+    _autoSids.add(sid);
+    if (!canPlay(env)) {
+      _logEvent('auto-play skipped: Mimi model not downloaded', sid);
+      _autoSids.remove(sid);
+      return;
+    }
+    if (channelIndex != null && !_autoDownloadChannels) {
+      _logEvent('auto-play: watching channel clip (not auto-downloading)', sid);
+      unawaited(warmUp(env, sender: sender, channelIndex: channelIndex));
+      return;
+    }
+    _logEvent('auto-play: downloading new clip', sid);
+    unawaited(
+      requestClip(env, sender: sender, channelIndex: channelIndex),
+    );
+  }
+
+  void _onClipComplete(VoxVoiceEnvelope env) {
+    final sid = env.sessionId;
+    if (_tapSids.remove(sid)) {
+      _autoSids.remove(sid);
+      unawaited(play(env));
+    } else if (_autoSids.remove(sid) && _autoPlay && canPlay(env)) {
+      _autoQueue.add(env);
+      unawaited(wavFor(env)); // start decoding even if something is playing
+      _playNextQueued();
+    } else if (canPlay(env)) {
+      unawaited(wavFor(env)); // pre-decode so a tap plays at once
+    }
+  }
 
   // ------------------------------------------------------------ inbound data
 
@@ -831,6 +1075,7 @@ class VoxVoiceService extends ChangeNotifier {
       clip.watchdog?.cancel();
       clip.status = VoxClipStatus.complete;
       _remember(sid, clip.envelope.mode, clip.joined());
+      _onClipComplete(clip.envelope);
     } else if (clip.status == VoxClipStatus.requesting ||
         clip.status == VoxClipStatus.receiving) {
       clip.status = VoxClipStatus.receiving;
@@ -1190,9 +1435,14 @@ class VoxVoiceService extends ChangeNotifier {
     if (_connector.voxControlTextInterceptor == _onControlText) {
       _connector.voxControlTextInterceptor = null;
     }
+    if (_connector.voxIncomingTextObserver == _onIncomingText) {
+      _connector.voxIncomingTextObserver = null;
+    }
     for (final c in _incoming.values) {
       c.watchdog?.cancel();
     }
+    _player?.dispose();
+    playbackFraction.dispose();
     super.dispose();
   }
 }

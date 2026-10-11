@@ -62,6 +62,15 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
   String? _error;
 
   static const _max = VoxVoiceService.maxClipLength;
+  VoxVoiceService? _voice;
+  Future<Uint8List>? _previewWav;
+
+  @override
+  void initState() {
+    super.initState();
+    // Nothing auto-plays while the recorder is open.
+    _voice = context.read<VoxVoiceService>()..micBusy = true;
+  }
 
   Future<void> _start() async {
     setState(() => _error = null);
@@ -112,6 +121,9 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
     try {
       final clip = await context.read<VoxVoiceService>().encodeRecording(pcm);
       if (!mounted) return;
+      // Start decoding the preview now so Play is instant.
+      _previewWav = context.read<VoxVoiceService>().previewWav(clip)
+        ..ignore();
       setState(() {
         _clip = clip;
         _phase = _Phase.recorded;
@@ -131,7 +143,9 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
     setState(() => _previewing = true);
     try {
       // Preview what the listener will actually hear: decode the sent bits.
-      final wav = await context.read<VoxVoiceService>().previewWav(clip);
+      final wav = await (_previewWav ??= context
+          .read<VoxVoiceService>()
+          .previewWav(clip));
       await _player.play(BytesSource(wav));
     } catch (e) {
       if (mounted) setState(() => _error = 'Preview failed: $e');
@@ -163,6 +177,7 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
     _sub?.cancel();
     _recorder.dispose();
     _player.dispose();
+    _voice?.micBusy = false;
     super.dispose();
   }
 
@@ -277,6 +292,7 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
                         ? null
                         : () => setState(() {
                             _clip = null;
+                            _previewWav = null;
                             _phase = _Phase.idle;
                           }),
                   ),
