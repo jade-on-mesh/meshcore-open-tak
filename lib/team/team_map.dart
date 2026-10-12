@@ -14,6 +14,7 @@ import '../vox/image_message_bubble.dart' show voxRgbToUiImage;
 import '../vox/voice_message_bubble.dart';
 import '../vox/voice_service.dart';
 import '../vox/voice_wire.dart';
+import 'role_icon_library.dart';
 import 'tak/cot.dart';
 import 'tak/tak_service.dart';
 import 'team_forms.dart';
@@ -35,6 +36,16 @@ IconData teamRoleIcon(TeamRole r) => switch (r) {
   TeamRole.observer => Icons.visibility,
   TeamRole.command => Icons.account_balance,
 };
+
+/// Role [roleId]'s icon: the team's choice from the icon library, else the
+/// role's own (a badge for an added role).
+IconData teamRoleIconFor(TeamService team, int roleId) {
+  final chosen = roleIconById(team.roleIconId(roleId));
+  if (chosen != null) return chosen.icon;
+  return roleId < teamFirstAddedRole
+      ? teamRoleIcon(TeamRole.fromIndex(roleId))
+      : Icons.badge_outlined;
+}
 
 IconData markerKindIcon(MarkerKind k) => switch (k) {
   MarkerKind.point => Icons.place,
@@ -236,7 +247,10 @@ class TeamMapLayer extends StatelessWidget {
                         ),
                       ),
                       child: Icon(
-                        teamRoleIcon(p.role),
+                        teamRoleIconFor(
+                          context.read<TeamService>(),
+                          p.roleId,
+                        ),
                         size: 16,
                         color: color.computeLuminance() > 0.5
                             ? Colors.black
@@ -609,7 +623,10 @@ Future<void> showTeamMemberSheet(
               children: [
                 CircleAvatar(
                   backgroundColor: Color(p.color.argb),
-                  child: Icon(teamRoleIcon(p.role), color: Colors.black),
+                  child: Icon(
+                    teamRoleIconFor(team, p.roleId),
+                    color: Colors.black,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -621,7 +638,7 @@ Future<void> showTeamMemberSheet(
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       Text(
-                        '${p.role.label} · ${p.color.label} team'
+                        '${team.roleName(p.roleId)} · ${p.color.label} team'
                         '${p.relayed ? ' · via TAK' : ''}',
                       ),
                     ],

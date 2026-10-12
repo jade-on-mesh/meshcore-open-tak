@@ -14,6 +14,7 @@ import 'tak/tak_service.dart';
 import 'team_forms.dart';
 import 'team_map.dart';
 import 'team_mini_map.dart';
+import 'team_roles_screen.dart';
 import 'team_service.dart';
 import 'team_wire.dart';
 import 'watch_feed.dart';
@@ -481,12 +482,15 @@ class _RosterTab extends StatelessWidget {
               ListTile(
                 leading: CircleAvatar(
                   backgroundColor: Color(team.color.argb),
-                  child: Icon(teamRoleIcon(team.role), color: Colors.black),
+                  child: Icon(
+                    teamRoleIconFor(team, team.roleId),
+                    color: Colors.black,
+                  ),
                 ),
                 title: Text('${team.callsign} (you)'),
                 subtitle: Text(
                   [
-                    team.role.label,
+                    team.roleName(team.roleId),
                     if (fix == null)
                       'no position'
                     else
@@ -566,7 +570,10 @@ class _RosterTab extends StatelessWidget {
               backgroundColor: Color(
                 m.position.color.argb,
               ).withValues(alpha: m.freshness == TeamFreshness.live ? 1 : 0.4),
-              child: Icon(teamRoleIcon(m.position.role), color: Colors.black),
+              child: Icon(
+                teamRoleIconFor(team, m.position.roleId),
+                color: Colors.black,
+              ),
             ),
             title: Text(
               '${m.callsign}${m.position.relayed ? ' (TAK)' : ''}'
@@ -574,7 +581,7 @@ class _RosterTab extends StatelessWidget {
             ),
             subtitle: Text(
               [
-                m.position.role.label,
+                team.roleName(m.position.roleId),
                 if (m.position.status != TeamStatus.none)
                   m.position.status.label,
                 teamAgo(m.heard),
@@ -934,13 +941,22 @@ class _SetupTabState extends State<_SetupTab> {
               spacing: 6,
               runSpacing: 6,
               children: [
-                for (final r in TeamRole.values)
+                for (final r in team.roleIds)
                   ChoiceChip(
-                    avatar: Icon(teamRoleIcon(r), size: 16),
-                    label: Text(r.label),
-                    selected: team.role == r,
-                    onSelected: (_) => unawaited(team.configure(role: r)),
+                    avatar: Icon(teamRoleIconFor(team, r), size: 16),
+                    label: Text(team.roleName(r)),
+                    selected: team.roleId == r,
+                    onSelected: (_) => unawaited(team.configure(roleId: r)),
                   ),
+                ActionChip(
+                  avatar: const Icon(Icons.edit_outlined, size: 16),
+                  label: const Text('Edit roles'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const TeamRolesScreen(),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

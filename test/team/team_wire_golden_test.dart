@@ -25,7 +25,55 @@ const kM1 =
 const kM2 =
     '4d0a0b0c0d000000ff0109000000000000000000000001204142434445464748494a4b4c4d4e4f505152535455565758595a3031323334350028deadbeef0c0102';
 
+const kR1 = '4ca1b2c3d4020068ec0be0007b07454d5420e29c9a';
+const kR2 = '4c0a0b0c0d110168ec0c44000000';
+const kP3 = '5001020304201b224618b6e10d380000000000fff300064b392d52657814';
+
 void main() {
+  test('role names and added roles match the radio', () {
+    final r1 = TeamRoleDef(
+      authorKey4: 'a1b2c3d4',
+      roleId: 2,
+      time: DateTime.fromMillisecondsSinceEpoch(1760300000 * 1000),
+      iconId: 123,
+      name: 'EMT ✚',
+    );
+    expect(_hex(r1.encode()), kR1);
+    final r2 = TeamRoleDef(
+      authorKey4: '0a0b0c0d',
+      roleId: 17,
+      time: DateTime.fromMillisecondsSinceEpoch(1760300100 * 1000),
+      reset: true,
+      name: 'ignored',
+    );
+    expect(_hex(r2.encode()), kR2);
+    final back = TeamRoleDef.tryParse(_unhex(kR1))!;
+    expect(back.name, 'EMT ✚');
+    expect(back.iconId, 123);
+    expect(TeamRoleDef.tryParse(_unhex(kR2))!.reset, isTrue);
+    expect(r1.beats(r2), isFalse);
+
+    final p3 = TeamPosition(
+      senderKey4: '01020304',
+      lat: 45.5231,
+      lon: -122.6765,
+      roleId: 20,
+      color: TeamColor.orange,
+      callsign: 'K9-Rex',
+    );
+    expect(_hex(p3.encode()), kP3);
+    expect(TeamPosition.tryParse(_unhex(kP3))!.roleId, 20);
+    // Roles 9-14 fit the nibble: no extra byte.
+    final p4 = TeamPosition(
+      senderKey4: '01020304',
+      lat: 1,
+      lon: 1,
+      roleId: 12,
+    );
+    expect(p4.encode().length, p3.encode().length - 1 - 6);
+    expect(TeamPosition.tryParse(p4.encode())!.roleId, 12);
+  });
+
   test('positions match the radio', () {
     final p1 = TeamPosition(
       senderKey4: '01020304',
@@ -36,7 +84,7 @@ void main() {
       headingDeg: 270.5,
       accuracyM: 8,
       batteryPct: 77,
-      role: TeamRole.medic,
+      roleId: TeamRole.medic.index,
       color: TeamColor.red,
       status: TeamStatus.ok,
       callsign: 'Jade ✨',
@@ -47,7 +95,7 @@ void main() {
       senderKey4: '01020304',
       lat: -33.8688197,
       lon: 151.2092955,
-      role: TeamRole.command,
+      roleId: TeamRole.command.index,
       color: TeamColor.green,
       status: TeamStatus.resting,
       callsign: '  Alpha-1  ',

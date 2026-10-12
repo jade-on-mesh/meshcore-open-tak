@@ -476,7 +476,7 @@ class TakService extends ChangeNotifier {
           headingDeg: e.course,
           accuracyM: (e.ce ?? 0).round().clamp(0, 255),
           batteryPct: e.battery,
-          role: teamRoleFromTak(e.groupRole),
+          roleId: teamRoleFromTak(e.groupRole).index,
           color: teamColorFromTakGroup(e.groupName),
           callsign: e.callsign ?? 'TAK',
           relayed: true,

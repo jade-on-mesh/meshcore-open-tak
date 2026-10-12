@@ -18,6 +18,13 @@
 //             [lat i32][lon i32][observed u32][vehicles u8][people u8]
 //             [place][size][activity][unit][equipment] (length-prefixed)
 //             [attachMode u8][sid4][packets][extra]
+//   role      [0x4C][key4][roleId u8][op u8][time u32][icon u16]
+//             [nameLen][name]   (a team-wide name/icon for a role; op 1 =
+//             back to the default, or removed for an added role)
+//
+// A position's role is the high nibble of its role/colour byte; roles 15 and
+// up (added roles) write 15 there, set flag 0x20 and append the role id as
+// one byte after the callsign. Older readers see an unknown role.
 //
 // Coordinates are degrees x 1e7 (about 1 cm). All integers big-endian.
 
@@ -32,6 +39,7 @@ const int teamMsgPosition = 0x50; // 'P'
 const int teamMsgAlert = 0x53; // 'S'
 const int teamMsgMarker = 0x4D; // 'M'
 const int teamMsgReport = 0x52; // 'R'
+const int teamMsgRole = 0x4C; // 'L' (role label)
 
 /// Largest GRP_DATA payload the firmware accepts.
 const int teamMaxPayload = 163;
@@ -40,6 +48,12 @@ const int teamMaxCallsignBytes = 20;
 const int teamMaxLabelBytes = 32;
 const int teamMaxNoteBytes = 60;
 const int teamMaxAlertNoteBytes = 80;
+const int teamMaxRoleNameBytes = 20;
+
+/// Role ids: 0-8 are [TeamRole]'s defaults, 9-24 roles a team added.
+const int teamFirstAddedRole = 9;
+const int teamMaxRoleId = 24;
+const int _roleEscape = 15;
 
 /// Roles, as in ATAK-style team awareness.
 enum TeamRole {
@@ -218,7 +232,8 @@ Uint8List _key4(String hex) => Uint8List.fromList([
   if (p[0] != teamMsgPosition &&
       p[0] != teamMsgAlert &&
       p[0] != teamMsgMarker &&
-      p[0] != teamMsgReport) {
+      p[0] != teamMsgReport &&
+      p[0] != teamMsgRole) {
     return null;
   }
   return (p[0], teamKey4Hex(p, 1));
@@ -234,7 +249,8 @@ class TeamPosition {
   final double? headingDeg;
   final int accuracyM;
   final int? batteryPct;
-  final TeamRole role;
+  /// 0-8 a default [TeamRole], 9-24 a role the team added.
+  final int roleId;
   final TeamColor color;
   final TeamStatus status;
   final String callsign;
@@ -253,7 +269,7 @@ class TeamPosition {
     this.headingDeg,
     this.accuracyM = 0,
     this.batteryPct,
-    this.role = TeamRole.member,
+    this.roleId = 0,
     this.color = TeamColor.cyan,
     this.status = TeamStatus.none,
     this.callsign = '',
@@ -262,7 +278,12 @@ class TeamPosition {
     this.relayed = false,
   });
 
+  /// The default role, or [TeamRole.member] for an added one.
+  TeamRole get role => TeamRole.fromIndex(roleId);
+
   Uint8List encode() {
+    final rid = roleId.clamp(0, teamMaxRoleId);
+    final extended = rid >= _roleEscape;
     final w = _W()
       ..u8(teamMsgPosition)
       ..bytes(_key4(senderKey4))
@@ -271,7 +292,8 @@ class TeamPosition {
             (speedMps != null && headingDeg != null ? 0x02 : 0) |
             (fromRadio ? 0x04 : 0) |
             (sosActive ? 0x08 : 0) |
-            (relayed ? 0x10 : 0),
+            (relayed ? 0x10 : 0) |
+            (extended ? 0x20 : 0),
       )
       ..i32(_deg(lat))
       ..i32(_deg(lon))
@@ -280,9 +302,10 @@ class TeamPosition {
       ..u8((((headingDeg ?? 0) % 360) * 256 / 360).round() & 0xFF)
       ..u8(accuracyM.clamp(0, 255))
       ..u8(batteryPct == null ? 255 : batteryPct!.clamp(0, 100))
-      ..u8((role.index << 4) | (color.index & 0x0F))
+      ..u8(((extended ? _roleEscape : rid) << 4) | (color.index & 0x0F))
       ..u8(status.index)
       ..str(callsign, teamMaxCallsignBytes);
+    if (extended) w.u8(rid);
     return w.done();
   }
 
@@ -301,6 +324,11 @@ class TeamPosition {
     final rc = r.u8();
     final status = r.u8();
     final cs = r.str() ?? '';
+    var roleId = rc >> 4;
+    if (roleId == _roleEscape) {
+      roleId = flags & 0x20 != 0 && r.has(1) ? r.u8() : 0;
+      if (roleId > teamMaxRoleId) roleId = 0;
+    }
     return TeamPosition(
       senderKey4: key,
       lat: lat,
@@ -310,7 +338,7 @@ class TeamPosition {
       headingDeg: flags & 0x02 != 0 ? heading : null,
       accuracyM: acc,
       batteryPct: batt == 255 ? null : batt,
-      role: TeamRole.fromIndex(rc >> 4),
+      roleId: roleId,
       color: TeamColor.fromIndex(rc & 0x0F),
       status: TeamStatus.fromIndex(status),
       callsign: cs,
@@ -803,6 +831,72 @@ class TeamReport {
       unit: unit,
       equipment: eq,
       attachment: att,
+    );
+  }
+}
+
+// --------------------------------------------------------------------- role
+
+/// A team-wide name and icon for a role. The newest edit of each role wins.
+class TeamRoleDef {
+  final String authorKey4;
+  final int roleId;
+
+  /// Back to the default name and icon; for an added role, removed.
+  final bool reset;
+  final DateTime time;
+
+  /// An id from the app's role icon library; 0 = the role's default icon.
+  final int iconId;
+  final String name;
+
+  const TeamRoleDef({
+    required this.authorKey4,
+    required this.roleId,
+    required this.time,
+    this.reset = false,
+    this.iconId = 0,
+    this.name = '',
+  });
+
+  /// Whether this edit should replace [other] for the same role.
+  bool beats(TeamRoleDef other) {
+    final a = time.millisecondsSinceEpoch ~/ 1000;
+    final b = other.time.millisecondsSinceEpoch ~/ 1000;
+    if (a != b) return a > b;
+    return authorKey4.compareTo(other.authorKey4) > 0;
+  }
+
+  Uint8List encode() {
+    final w = _W()
+      ..u8(teamMsgRole)
+      ..bytes(_key4(authorKey4))
+      ..u8(roleId.clamp(0, teamMaxRoleId))
+      ..u8(reset ? 1 : 0)
+      ..u32(time.millisecondsSinceEpoch ~/ 1000)
+      ..u16(iconId)
+      ..str(reset ? '' : name, teamMaxRoleNameBytes);
+    return w.done();
+  }
+
+  static TeamRoleDef? tryParse(Uint8List p) {
+    final r = _R(p);
+    if (!r.has(14) || r.u8() != teamMsgRole) return null;
+    final key = teamKey4Hex(r.take(4));
+    final id = r.u8();
+    if (id > teamMaxRoleId) return null;
+    final op = r.u8();
+    final t = r.u32();
+    final icon = r.u16();
+    final name = r.str();
+    if (name == null) return null;
+    return TeamRoleDef(
+      authorKey4: key,
+      roleId: id,
+      reset: op & 1 != 0,
+      time: DateTime.fromMillisecondsSinceEpoch(t * 1000),
+      iconId: icon,
+      name: name,
     );
   }
 }

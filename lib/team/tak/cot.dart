@@ -32,7 +32,12 @@ TeamColor teamColorFromTakGroup(String? name) {
 }
 
 /// ATAK role names (the `__group role` attribute).
-String takRoleName(TeamRole r) => switch (r) {
+/// The TAK role for a team role id (added roles are team members).
+String takRoleName(int roleId) => roleId >= teamFirstAddedRole
+    ? 'Team Member'
+    : _takRoleName(TeamRole.fromIndex(roleId));
+
+String _takRoleName(TeamRole r) => switch (r) {
   TeamRole.member => 'Team Member',
   TeamRole.lead => 'Team Lead',
   TeamRole.medic => 'Medic',
@@ -149,7 +154,7 @@ String cotForPosition(TeamPosition p, {required String uid}) => cotEvent(
     );
     b.element(
       '__group',
-      attributes: {'name': takGroupName(p.color), 'role': takRoleName(p.role)},
+      attributes: {'name': takGroupName(p.color), 'role': takRoleName(p.roleId)},
     );
     if (p.batteryPct != null) {
       b.element('status', attributes: {'battery': '${p.batteryPct}'});
