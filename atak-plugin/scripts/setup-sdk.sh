@@ -22,6 +22,8 @@ if [ ! -f "$here/local.properties" ]; then
 # Android SDK (Android Studio: File > Project Structure > SDK Location)
 sdk.dir=${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/path/to/Android/sdk}}
 takdev.plugin=$sdk/atak-gradle-takdev.jar
+# Where takdev finds ATAK's main.jar (offline SDK build)
+sdk.path=$sdk
 # Debug signing (ATAK accepts any key for development builds):
 #   keytool -genkeypair -v -keystore debug.keystore -alias androiddebugkey \\
 #     -storepass android -keypass android -keyalg RSA -validity 10000 -dname "CN=Android Debug"
@@ -31,5 +33,8 @@ takDebugKeyAlias=androiddebugkey
 takDebugKeyPassword=android
 PROPS
   echo "Wrote local.properties; check sdk.dir and the signing key."
+elif ! grep -q '^sdk\.path=' "$here/local.properties"; then
+  printf '\n# Where takdev finds ATAK'"'"'s main.jar (offline SDK build)\nsdk.path=%s\n' "$sdk" >> "$here/local.properties"
+  echo "Added sdk.path to local.properties."
 fi
 echo "Next: optional scripts/build-libaom.sh (direct-mode photos), then ./gradlew assembleCivDebug"

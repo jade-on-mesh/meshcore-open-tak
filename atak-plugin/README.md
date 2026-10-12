@@ -80,6 +80,15 @@ ATAK only loads plugins built against its exact version. This project targets
 Options: `-PwithMimi=false` leaves out ONNX Runtime (smaller APK; no Mimi in
 direct mode).
 
+**Building on GitHub instead.** The `ATAK plugin` workflow's *Plugin APK*
+job builds and tests the APK (JDK 11, NDK r21, libaom for direct-mode
+photos) and uploads it as an artifact. Because this repo is public and the
+SDK may not be redistributed, it runs only when the repo has an
+`ATAK_SDK_URL` secret: put the SDK zip somewhere private (for example a
+release asset in a private repo, using its API asset URL) and, if that needs
+auth, add an `ATAK_SDK_TOKEN` secret that can read it. Without the secret the
+job is skipped.
+
 For ATAK 5.x: unpack that SDK instead, set `ATAK_VERSION` in `app/build.gradle`
 and move the build to the Android Gradle plugin version its template uses. The
 plugin code itself only uses APIs that 5.x still has.

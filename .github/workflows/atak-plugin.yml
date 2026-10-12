@@ -59,7 +59,15 @@ jobs:
           cache: true
       - run: flutter pub get
       - name: Analyze
-        run: flutter analyze --fatal-infos --fatal-warnings
+        # Each issue also becomes an annotation, so it's readable without the log.
+        run: |
+          set -o pipefail
+          if ! flutter analyze --fatal-infos --fatal-warnings 2>&1 | tee /tmp/analyze.txt; then
+            grep -E '^\s*(info|warning|error) • ' /tmp/analyze.txt | while IFS= read -r l; do
+              echo "::error::$(echo "$l" | sed 's/^ *//')"
+            done
+            exit 1
+          fi
       - name: Format (commits dart format fixes to this branch)
         run: |
           dart format lib/team lib/main.dart test/team
@@ -98,3 +106,78 @@ jobs:
       - run: flutter pub get
       - name: Build debug APK (no libaom; photo codec skipped)
         run: flutter build apk --debug --target-platform android-arm64
+
+  plugin-apk:
+    # Builds the installable plugin APK. The ATAK-CIV SDK (tak.gov) can't be
+    # committed to this public repo, so this job runs only when the repo has
+    # an ATAK_SDK_URL secret pointing at the SDK zip somewhere private (for
+    # example a release asset in a private repo; then also set
+    # ATAK_SDK_TOKEN to a token that can read it).
+    name: Plugin APK (needs ATAK_SDK_URL secret)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ATAK_SDK_URL: ${{ secrets.ATAK_SDK_URL }}
+      ATAK_SDK_TOKEN: ${{ secrets.ATAK_SDK_TOKEN }}
+    steps:
+      - name: Check for the SDK secret
+        id: gate
+        run: |
+          if [ -z "${ATAK_SDK_URL}" ]; then
+            echo "::notice::Skipping the plugin APK: no ATAK_SDK_URL secret (see atak-plugin/README.md)"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'true'
+      - uses: actions/setup-java@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          distribution: temurin
+          java-version: "11"
+      - name: Fetch and unpack the ATAK SDK
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          hdr=()
+          if [ -n "${ATAK_SDK_TOKEN}" ]; then
+            hdr=(-H "Authorization: Bearer ${ATAK_SDK_TOKEN}" -H "Accept: application/octet-stream")
+          fi
+          curl -fsSL "${hdr[@]}" -o /tmp/atak-sdk.zip "${ATAK_SDK_URL}"
+          export ANDROID_HOME="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          mkdir -p ~/.android
+          keytool -genkeypair -keystore ~/.android/debug.keystore -alias androiddebugkey \
+            -storepass android -keypass android -keyalg RSA -validity 10000 -dname "CN=Android Debug"
+          atak-plugin/scripts/setup-sdk.sh /tmp/atak-sdk.zip
+          rm /tmp/atak-sdk.zip
+      - name: Install the 4.6 template's Android SDK parts
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platforms;android-26" "build-tools;30.0.2" "ndk;21.4.7075529" "cmake;3.10.2.4988404" > /dev/null
+      - name: Build libaom with NDK r21 (optional; photos in direct mode)
+        if: steps.gate.outputs.run == 'true'
+        continue-on-error: true
+        run: |
+          ANDROID_NDK_HOME="$ANDROID_HOME/ndk/21.4.7075529" \
+            atak-plugin/scripts/build-libaom.sh arm64-v8a armeabi-v7a
+      - uses: actions/cache@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: atak-plugin-gradle-${{ hashFiles('atak-plugin/**/*.gradle', 'atak-plugin/gradle/wrapper/gradle-wrapper.properties') }}
+      - name: Build and test
+        if: steps.gate.outputs.run == 'true'
+        working-directory: atak-plugin
+        run: ./gradlew --no-daemon assembleCivDebug testCivDebugUnitTest
+      - uses: actions/upload-artifact@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          name: atak-plugin-meshcore-civ-debug
+          path: atak-plugin/app/build/outputs/apk/civ/debug/*.apk
+          retention-days: 30
