@@ -1,8 +1,12 @@
 name: Format
 
-# Run by hand on a branch: applies `dart format` and commits the result to
-# that branch (for sessions without a local Flutter SDK).
+# Applies `dart format` and commits the result to the branch, for sessions
+# without a local Flutter SDK: push a commit whose message contains [format]
+# (or run it by hand once this file is on the default branch).
 on:
+  push:
+    branches-ignore:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -10,6 +14,7 @@ permissions:
 
 jobs:
   format:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[format]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
