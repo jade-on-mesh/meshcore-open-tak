@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - atak-plugin
+      - otp-merge
     paths:
       - "atak-plugin/**"
       - "lib/team/**"
