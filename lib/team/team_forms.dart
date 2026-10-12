@@ -268,8 +268,10 @@ class _PinEditorState extends State<_PinEditor> {
                 title: widget.existing == null
                     ? 'Drop tactical pin'
                     : 'Edit pin',
-                subtitle:
-                    context.read<TeamService>().formatCoord(widget.lat, widget.lon),
+                subtitle: context.read<TeamService>().formatCoord(
+                  widget.lat,
+                  widget.lon,
+                ),
                 onClose: () => Navigator.pop(context),
               ),
               const SizedBox(height: 10),

@@ -1194,8 +1194,9 @@ class TeamService extends ChangeNotifier {
 
   String _alertWhereLatLon(double lat, double lon) {
     final f = fix;
-    if (f == null)
+    if (f == null) {
       return '${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)}';
+    }
     return teamRangeBearing(
       teamDistanceMeters(f.lat, f.lon, lat, lon),
       teamBearingDeg(f.lat, f.lon, lat, lon),

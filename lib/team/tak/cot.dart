@@ -850,11 +850,9 @@ TeamShape? teamShapeFromCot(
   }
   if (!e.isShape) return null;
   if (e.isCircle) {
-    return make(
-      ShapeKind.circle,
-      [(e.lat, e.lon)],
-      radius: e.ellipseMajor!.round(),
-    );
+    return make(ShapeKind.circle, [
+      (e.lat, e.lon),
+    ], radius: e.ellipseMajor!.round());
   }
   final pts = e.linkPoints;
   if (pts.length < 2) return null;

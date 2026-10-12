@@ -586,102 +586,103 @@ String _duration(Duration d) => d.inHours > 0
     ? '${d.inHours} h ${d.inMinutes % 60} min'
     : '${d.inMinutes} min';
 
-Future<void> _showTrackHistory(BuildContext context) =>
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (c) {
-        final team = c.watch<TeamService>();
-        final mine = team.myTrack;
-        final trails = [
-          for (final m in team.members)
-            if (m.trail.length > 1) m,
-        ];
-        return SafeArea(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(c).size.height * 0.75,
+Future<void> _showTrackHistory(
+  BuildContext context,
+) => showModalBottomSheet<void>(
+  context: context,
+  showDragHandle: true,
+  isScrollControlled: true,
+  builder: (c) {
+    final team = c.watch<TeamService>();
+    final mine = team.myTrack;
+    final trails = [
+      for (final m in team.members)
+        if (m.trail.length > 1) m,
+    ];
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(c).size.height * 0.75,
+        ),
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const ListTile(title: Text('Track history')),
+            SwitchListTile(
+              title: const Text('Record my track'),
+              subtitle: const Text(
+                'Saved on this phone only; nothing extra is sent.',
+              ),
+              value: team.recordTrack,
+              onChanged: (v) => team.setRecordTrack(v),
             ),
-            child: ListView(
-              shrinkWrap: true,
-              children: [
-                const ListTile(title: Text('Track history')),
-                SwitchListTile(
-                  title: const Text('Record my track'),
-                  subtitle: const Text(
-                    'Saved on this phone only; nothing extra is sent.',
-                  ),
-                  value: team.recordTrack,
-                  onChanged: (v) => team.setRecordTrack(v),
-                ),
-                SwitchListTile(
-                  title: const Text('Show tracks on the map'),
-                  value: team.showTracks,
-                  onChanged: (v) => team.setShowTracks(v),
-                ),
-                const Divider(),
-                ListTile(
-                  leading: Icon(
-                    Icons.person_pin_circle,
-                    color: Color(team.color.argb),
-                  ),
-                  title: const Text('Your track'),
-                  subtitle: Text(
-                    mine.length < 2
-                        ? 'Nothing recorded yet'
-                        : '${teamFormatLength(teamTrackLength(mine))} · '
-                              '${_duration(mine.last.$3.difference(mine.first.$3))} · '
-                              'since ${teamAgo(mine.first.$3)}',
-                  ),
-                  trailing: mine.isEmpty
-                      ? null
-                      : IconButton(
-                          tooltip: 'Clear my track',
-                          icon: const Icon(Icons.delete_outline),
-                          onPressed: () => team.clearMyTrack(),
-                        ),
-                ),
-                for (final m in trails)
-                  ListTile(
-                    leading: Icon(
-                      Icons.person,
-                      color: Color(m.position.color.argb),
-                    ),
-                    title: Text(m.callsign),
-                    subtitle: Text(
-                      '${teamFormatLength(teamTrackLength(m.trail))} · '
-                      '${m.trail.length} points · heard ${teamAgo(m.heard)}',
-                    ),
-                    trailing: IconButton(
-                      tooltip: 'Clear trail',
+            SwitchListTile(
+              title: const Text('Show tracks on the map'),
+              value: team.showTracks,
+              onChanged: (v) => team.setShowTracks(v),
+            ),
+            const Divider(),
+            ListTile(
+              leading: Icon(
+                Icons.person_pin_circle,
+                color: Color(team.color.argb),
+              ),
+              title: const Text('Your track'),
+              subtitle: Text(
+                mine.length < 2
+                    ? 'Nothing recorded yet'
+                    : '${teamFormatLength(teamTrackLength(mine))} · '
+                          '${_duration(mine.last.$3.difference(mine.first.$3))} · '
+                          'since ${teamAgo(mine.first.$3)}',
+              ),
+              trailing: mine.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Clear my track',
                       icon: const Icon(Icons.delete_outline),
-                      onPressed: () => team.clearMemberTrail(m.key4),
+                      onPressed: () => team.clearMyTrack(),
                     ),
-                  ),
-                if (trails.isEmpty)
-                  const ListTile(
-                    enabled: false,
-                    title: Text('No teammate trails yet'),
-                  ),
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.ios_share),
-                    label: const Text('Export tracks and map as GPX'),
-                    onPressed: () async {
-                      final messenger = ScaffoldMessenger.of(c);
-                      if (!await shareTeamGpx(team)) {
-                        messenger.showSnackBar(
-                          const SnackBar(content: Text('Nothing to export')),
-                        );
-                      }
-                    },
-                  ),
-                ),
-              ],
             ),
-          ),
-        );
-      },
+            for (final m in trails)
+              ListTile(
+                leading: Icon(
+                  Icons.person,
+                  color: Color(m.position.color.argb),
+                ),
+                title: Text(m.callsign),
+                subtitle: Text(
+                  '${teamFormatLength(teamTrackLength(m.trail))} · '
+                  '${m.trail.length} points · heard ${teamAgo(m.heard)}',
+                ),
+                trailing: IconButton(
+                  tooltip: 'Clear trail',
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: () => team.clearMemberTrail(m.key4),
+                ),
+              ),
+            if (trails.isEmpty)
+              const ListTile(
+                enabled: false,
+                title: Text('No teammate trails yet'),
+              ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.ios_share),
+                label: const Text('Export tracks and map as GPX'),
+                onPressed: () async {
+                  final messenger = ScaffoldMessenger.of(c);
+                  if (!await shareTeamGpx(team)) {
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Nothing to export')),
+                    );
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
+  },
+);

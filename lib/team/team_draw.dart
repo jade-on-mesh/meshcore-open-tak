@@ -669,8 +669,9 @@ String routeEta(TeamShape r) {
     RouteMethod.watercraft => 20.0,
   };
   final minutes = (r.lengthM / 1000 / kmh * 60).round();
-  if (minutes < 60)
+  if (minutes < 60) {
     return '≈ $minutes min ${r.routeMethod.label.toLowerCase()}';
+  }
   return '≈ ${minutes ~/ 60} h ${minutes % 60} min '
       '${r.routeMethod.label.toLowerCase()}';
 }

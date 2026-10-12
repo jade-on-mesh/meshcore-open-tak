@@ -194,7 +194,7 @@ final RegExp _mgrsRe = RegExp(
   if (colIdx < 0) return null;
   final rowOffset = zone.isEven ? 5 : 0;
   final rowIdx = (_rows.indexOf(rowL) - rowOffset + 20) % 20;
-  if (_rows.indexOf(rowL) < 0) return null;
+  if (!_rows.contains(rowL)) return null;
   final easting = (colIdx + 1) * 100000 + e;
   var northing = rowIdx * 100000 + n;
   // Find the 2,000 km cycle that lands inside the latitude band.

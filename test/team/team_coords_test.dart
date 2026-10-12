@@ -30,8 +30,10 @@ void main() {
       final full = parseMgrs('18SUJ2348706483')!;
       expect(full.$1, closeTo(38.8895, 0.0002));
       final coarse = parseMgrs('18S UJ 234 064')!; // 100 m cell centre
-      expect(teamDistanceMeters(full.$1, full.$2, coarse.$1, coarse.$2),
-          lessThan(150));
+      expect(
+        teamDistanceMeters(full.$1, full.$2, coarse.$1, coarse.$2),
+        lessThan(150),
+      );
     });
 
     test('Norway zone exception', () {
