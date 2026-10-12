@@ -23,6 +23,9 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   android:
     runs-on: ubuntu-latest
@@ -113,6 +116,20 @@ jobs:
           ls -la build/app/outputs/flutter-apk/app-release.apk
           echo "Largest entries:"
           sort -k1 -n -r /tmp/apk.txt | head -15
+      - name: Publish APK contents report
+        if: always()
+        run: |
+          mkdir -p /tmp/apkrep && cd /tmp/apkrep
+          ls -la "$GITHUB_WORKSPACE/build/app/outputs/flutter-apk/" > apk-size.txt 2>&1 || true
+          unzip -lv "$GITHUB_WORKSPACE/build/app/outputs/flutter-apk/app-release.apk" > apk-contents.txt 2>&1 || true
+          sort -k1 -n -r apk-contents.txt | head -40 > apk-largest.txt || true
+          echo "${GITHUB_SHA}" > commit.txt
+          git init -q -b apk-report
+          git config user.name tak-ci
+          git config user.email tak-ci@users.noreply.github.com
+          git add -A
+          git commit -qm "APK report for ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" apk-report
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
