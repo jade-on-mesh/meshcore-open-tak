@@ -86,6 +86,23 @@ SDK's `atak.apk` is one.
 Options: `-PwithMimi=false` leaves out ONNX Runtime (smaller APK; no Mimi in
 direct mode).
 
+**On Windows** use PowerShell, and clone somewhere short (for example
+`C:\src`) to stay clear of the 260-character path limit:
+
+```powershell
+cd C:\src\meshcore-open-tak\atak-plugin
+powershell -ExecutionPolicy Bypass -File scripts\setup-sdk.ps1 $HOME\Downloads\ATAK-CIV-5.8.0.5-SDK.zip
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+.\gradlew.bat assembleCivDebug
+```
+
+The libaom step is bash-only; skip it (photos still work in app mode) or run
+it under WSL.
+
+Install the SDK's own `atak.apk` on the test phone: release ATAK from the
+Play Store or tak.gov only loads plugins signed through TAK's third-party
+pipeline, not development builds like this one.
+
 Toolchain (the 5.8 template's): JDK 17, Android Gradle plugin 8.13, Gradle
 8.14.3 (the wrapper downloads it), compileSdk 36, plus NDK 29.0.14206865 and
 CMake 3.22.1 for the codecs. Android Studio's SDK Manager installs these.
