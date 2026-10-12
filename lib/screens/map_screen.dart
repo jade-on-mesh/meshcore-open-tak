@@ -11,6 +11,9 @@ import 'package:meshcore_open/screens/path_trace_map.dart';
 import 'package:meshcore_open/widgets/app_bar.dart';
 import 'package:provider/provider.dart';
 
+import '../team/map_chat_pane.dart';
+import '../team/map_tools.dart';
+import '../team/team_draw.dart';
 import '../team/team_map.dart';
 import '../team/team_service.dart';
 import '../connector/meshcore_connector.dart';
@@ -89,6 +92,9 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
   Set<String> _removedMarkerIds = {};
   bool _isBuildingPathTrace = false;
   bool _isSelectingPoi = false;
+  bool _chatOpen = false;
+  final TeamDrawController _draw = TeamDrawController();
+  LatLng? _goTo;
   bool _hasInitializedMap = false;
   bool _removedMarkersLoaded = false;
   final List<int> _pathTrace = [];
@@ -154,6 +160,9 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
     _searchController.dispose();
     _searchFocus.dispose();
     _mapController.dispose();
+    _draw
+      ..removeListener(_onDrawChanged)
+      ..dispose();
     super.dispose();
   }
 
@@ -210,6 +219,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
   @override
   void initState() {
     super.initState();
+    _draw.addListener(_onDrawChanged);
     _loadRemovedMarkers();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -681,6 +691,28 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
               automaticallyImplyLeading: false,
               bottom: const SyncProgressAppBarBottom(),
               actions: [
+                MapChatButton(open: _chatOpen, onPressed: _toggleChat),
+                IconButton(
+                  tooltip: 'Tools',
+                  icon: const Icon(Icons.apps),
+                  onPressed: () => showMapTools(
+                    context,
+                    onChat: () {
+                      if (!_chatOpen) _toggleChat();
+                    },
+                    onDraw: (kind, geofence) =>
+                        _draw.start(kind, geofence: geofence),
+                    onMeasure: _startMeasure,
+                    onGoTo: (p) {
+                      setState(() => _goTo = p);
+                      _mapController.move(
+                        p,
+                        max(_mapController.camera.zoom, 15.0),
+                      );
+                    },
+                    mapCenter: _mapController.camera.center,
+                  ),
+                ),
                 PopupMenuButton(
                   itemBuilder: (context) => [
                     if (!_isBuildingPathTrace &&
@@ -780,241 +812,295 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                 ),
               ],
             ),
-            body: Stack(
-              children: [
-                FlutterMap(
-                  mapController: _mapController,
-                  options: MapOptions(
-                    initialCenter: center,
-                    initialZoom: initialZoom,
-                    minZoom: _mapMinZoom,
-                    maxZoom: _mapMaxZoom,
-                    interactionOptions: InteractionOptions(
-                      flags: ~InteractiveFlag.rotate,
-                      scrollWheelVelocity: isDesktop ? 0.012 : 0.005,
-                      cursorKeyboardRotationOptions:
-                          CursorKeyboardRotationOptions.disabled(),
-                      keyboardOptions: isDesktop
-                          ? const KeyboardOptions(
-                              enableArrowKeysPanning: true,
-                              enableWASDPanning: true,
-                              enableRFZooming: true,
-                            )
-                          : const KeyboardOptions.disabled(),
+            body: _withChatPane(
+              Stack(
+                children: [
+                  FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter: center,
+                      initialZoom: initialZoom,
+                      minZoom: _mapMinZoom,
+                      maxZoom: _mapMaxZoom,
+                      interactionOptions: InteractionOptions(
+                        flags: _draw.freehand
+                            ? InteractiveFlag.none
+                            : ~InteractiveFlag.rotate,
+                        scrollWheelVelocity: isDesktop ? 0.012 : 0.005,
+                        cursorKeyboardRotationOptions:
+                            CursorKeyboardRotationOptions.disabled(),
+                        keyboardOptions: isDesktop
+                            ? const KeyboardOptions(
+                                enableArrowKeysPanning: true,
+                                enableWASDPanning: true,
+                                enableRFZooming: true,
+                              )
+                            : const KeyboardOptions.disabled(),
+                      ),
+                      onTap: (_, latLng) {
+                        if (_draw.active) {
+                          _draw.tap(latLng);
+                          return;
+                        }
+                        if (_goTo != null) setState(() => _goTo = null);
+                        if (_isSelectingPoi) {
+                          setState(() {
+                            _isSelectingPoi = false;
+                          });
+                          _shareMarker(
+                            context: context,
+                            connector: connector,
+                            position: latLng,
+                            defaultLabel: context.l10n.map_pointOfInterest,
+                            flags: 'poi',
+                          );
+                          return;
+                        }
+                        // Tapping empty map dismisses selection + search.
+                        if (_selectedKey != null || _searchQuery.isNotEmpty) {
+                          setState(() {
+                            _selectedKey = null;
+                            _selectedGuessPos = null;
+                            _searchQuery = '';
+                            _searchController.clear();
+                            _searchFocus.unfocus();
+                          });
+                        }
+                      },
+                      onLongPress: (_, latLng) {
+                        if (_draw.active) return;
+                        _handleMapContextPress(context, connector, latLng);
+                      },
+                      onSecondaryTap: (_, latLng) {
+                        _handleMapContextPress(context, connector, latLng);
+                      },
+                      onMapEvent: (event) {
+                        if (event is MapEventMoveEnd ||
+                            event is MapEventFlingAnimationEnd) {
+                          _saveLastCamera();
+                        }
+                      },
+                      onPositionChanged: (camera, hasGesture) {
+                        // Track zoom in half-step buckets so cluster/marker
+                        // detail levels update without rebuilding every frame.
+                        final bucket = (camera.zoom * 2).roundToDouble() / 2;
+                        final shouldShow = camera.zoom >= _labelZoomThreshold;
+                        if ((bucket != _zoom ||
+                                shouldShow != _showNodeLabels) &&
+                            mounted) {
+                          setState(() {
+                            _zoom = bucket;
+                            _showNodeLabels = shouldShow;
+                          });
+                        }
+                      },
                     ),
-                    onTap: (_, latLng) {
-                      if (_isSelectingPoi) {
-                        setState(() {
-                          _isSelectingPoi = false;
-                        });
-                        _shareMarker(
-                          context: context,
-                          connector: connector,
-                          position: latLng,
-                          defaultLabel: context.l10n.map_pointOfInterest,
-                          flags: 'poi',
-                        );
-                        return;
-                      }
-                      // Tapping empty map dismisses selection + search.
-                      if (_selectedKey != null || _searchQuery.isNotEmpty) {
-                        setState(() {
-                          _selectedKey = null;
-                          _selectedGuessPos = null;
-                          _searchQuery = '';
-                          _searchController.clear();
-                          _searchFocus.unfocus();
-                        });
-                      }
-                    },
-                    onLongPress: (_, latLng) {
-                      _handleMapContextPress(context, connector, latLng);
-                    },
-                    onSecondaryTap: (_, latLng) {
-                      _handleMapContextPress(context, connector, latLng);
-                    },
-                    onMapEvent: (event) {
-                      if (event is MapEventMoveEnd ||
-                          event is MapEventFlingAnimationEnd) {
-                        _saveLastCamera();
-                      }
-                    },
-                    onPositionChanged: (camera, hasGesture) {
-                      // Track zoom in half-step buckets so cluster/marker
-                      // detail levels update without rebuilding every frame.
-                      final bucket = (camera.zoom * 2).roundToDouble() / 2;
-                      final shouldShow = camera.zoom >= _labelZoomThreshold;
-                      if ((bucket != _zoom || shouldShow != _showNodeLabels) &&
-                          mounted) {
-                        setState(() {
-                          _zoom = bucket;
-                          _showNodeLabels = shouldShow;
-                        });
-                      }
-                    },
-                  ),
-                  children: [
-                    tileCache.buildTileLayer(context),
-                    if (_polylines.isNotEmpty && _isBuildingPathTrace)
-                      PolylineLayer(polylines: _polylines),
-                    if (sharedMarkerPolylines.isNotEmpty)
-                      PolylineLayer(polylines: sharedMarkerPolylines),
-                    const TeamMapLayer(),
-                    MarkerLayer(
-                      markers: [
-                        if (highlightPosition != null)
-                          Marker(
-                            point: highlightPosition,
-                            width: 44,
-                            height: 44,
-                            child: IgnorePointer(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: MapPalette.batteryLow,
-                                  border: Border.all(
-                                    color: MapPalette.markerOutline,
-                                    width: 3,
-                                  ),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: MapPalette.markerShadow,
-                                      blurRadius: 8,
-                                      offset: Offset(0, 3),
-                                    ),
-                                  ],
+                    children: [
+                      tileCache.buildTileLayer(context),
+                      if (_polylines.isNotEmpty && _isBuildingPathTrace)
+                        PolylineLayer(polylines: _polylines),
+                      if (sharedMarkerPolylines.isNotEmpty)
+                        PolylineLayer(polylines: sharedMarkerPolylines),
+                      const TeamMapLayer(),
+                      TeamDrawLayer(controller: _draw),
+                      if (_goTo != null)
+                        MarkerLayer(
+                          markers: [
+                            Marker(
+                              point: _goTo!,
+                              width: 48,
+                              height: 48,
+                              child: GestureDetector(
+                                onTap: () => _handleMapContextPress(
+                                  context,
+                                  connector,
+                                  _goTo!,
                                 ),
                                 child: const Icon(
-                                  Icons.location_on,
-                                  color: Colors.white,
-                                  size: 25,
+                                  Icons.gps_fixed,
+                                  size: 40,
+                                  color: Color(0xFFFF6D00),
                                 ),
                               ),
                             ),
-                          ),
-                        if (!settings.mapShowOverlaps &&
-                            (_zoom >= _guessedZoomThreshold ||
-                                _isBuildingPathTrace))
-                          ..._buildGuessedMarker(
-                            guessedLocations,
-                            showLabels: _showNodeLabels,
-                          ),
-                        ..._buildNodeMarkersCached(
-                          visibleContacts,
-                          settings,
-                          connectorSnapshot.contactsSignature,
-                          connectorSnapshot.batterySignature,
-                          _freshness,
-                          settings.mapTimeFilterHours,
-                          settings.mapKeyPrefixEnabled,
-                          settings.mapKeyPrefix,
-                          settings.mapShowDiscoveryContacts,
-                          Object.hashAllUnordered(
-                            settings.batteryChemistryByRepeaterId.entries.map(
-                              (entry) => Object.hash(entry.key, entry.value),
-                            ),
-                          ),
-                          showLabels: _showNodeLabels,
-                          selectedContact: selectedContact,
+                          ],
                         ),
-                        ...sharedMarkers.map(_buildSharedMarker),
-                        if (connector.selfLatitude != null &&
-                            connector.selfLongitude != null)
-                          Marker(
-                            point: LatLng(
-                              connector.selfLatitude!,
-                              connector.selfLongitude!,
-                            ),
-                            width: 40,
-                            height: 40,
-                            child: IgnorePointer(
-                              ignoring: true,
-                              child: Container(
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: MapPalette.panelDark,
-                                  border: Border.all(
-                                    color: MapPalette.markerOutline,
-                                    width: 2.5,
-                                  ),
-                                  boxShadow: [
-                                    const BoxShadow(
-                                      color: MapPalette.markerShadow,
-                                      blurRadius: 8,
-                                      offset: Offset(0, 2),
+                      MarkerLayer(
+                        markers: [
+                          if (highlightPosition != null)
+                            Marker(
+                              point: highlightPosition,
+                              width: 44,
+                              height: 44,
+                              child: IgnorePointer(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: MapPalette.batteryLow,
+                                    border: Border.all(
+                                      color: MapPalette.markerOutline,
+                                      width: 3,
                                     ),
-                                  ],
-                                ),
-                                alignment: Alignment.center,
-                                child: const Icon(
-                                  Icons.person_pin_circle,
-                                  color: MapPalette.selected,
-                                  size: 22,
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: MapPalette.markerShadow,
+                                        blurRadius: 8,
+                                        offset: Offset(0, 3),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(
+                                    Icons.location_on,
+                                    color: Colors.white,
+                                    size: 25,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        if (_showNodeLabels &&
-                            connector.selfLatitude != null &&
-                            connector.selfLongitude != null)
-                          _buildNodeLabelMarker(
-                            point: LatLng(
-                              connector.selfLatitude!,
-                              connector.selfLongitude!,
+                          if (!settings.mapShowOverlaps &&
+                              (_zoom >= _guessedZoomThreshold ||
+                                  _isBuildingPathTrace))
+                            ..._buildGuessedMarker(
+                              guessedLocations,
+                              showLabels: _showNodeLabels,
                             ),
-                            label: context.l10n.pathTrace_you,
+                          ..._buildNodeMarkersCached(
+                            visibleContacts,
+                            settings,
+                            connectorSnapshot.contactsSignature,
+                            connectorSnapshot.batterySignature,
+                            _freshness,
+                            settings.mapTimeFilterHours,
+                            settings.mapKeyPrefixEnabled,
+                            settings.mapKeyPrefix,
+                            settings.mapShowDiscoveryContacts,
+                            Object.hashAllUnordered(
+                              settings.batteryChemistryByRepeaterId.entries.map(
+                                (entry) => Object.hash(entry.key, entry.value),
+                              ),
+                            ),
+                            showLabels: _showNodeLabels,
+                            selectedContact: selectedContact,
                           ),
-                      ],
+                          ...sharedMarkers.map(_buildSharedMarker),
+                          if (connector.selfLatitude != null &&
+                              connector.selfLongitude != null)
+                            Marker(
+                              point: LatLng(
+                                connector.selfLatitude!,
+                                connector.selfLongitude!,
+                              ),
+                              width: 40,
+                              height: 40,
+                              child: IgnorePointer(
+                                ignoring: true,
+                                child: Container(
+                                  width: 36,
+                                  height: 36,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: MapPalette.panelDark,
+                                    border: Border.all(
+                                      color: MapPalette.markerOutline,
+                                      width: 2.5,
+                                    ),
+                                    boxShadow: [
+                                      const BoxShadow(
+                                        color: MapPalette.markerShadow,
+                                        blurRadius: 8,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: const Icon(
+                                    Icons.person_pin_circle,
+                                    color: MapPalette.selected,
+                                    size: 22,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          if (_showNodeLabels &&
+                              connector.selfLatitude != null &&
+                              connector.selfLongitude != null)
+                            _buildNodeLabelMarker(
+                              point: LatLng(
+                                connector.selfLatitude!,
+                                connector.selfLongitude!,
+                              ),
+                              label: context.l10n.pathTrace_you,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  if (selectedContact == null)
+                    _buildControlRail(
+                      context,
+                      center: center,
+                      zoom: initialZoom,
+                      connector: connector,
                     ),
-                  ],
-                ),
-                if (selectedContact == null)
-                  _buildControlRail(
-                    context,
-                    center: center,
-                    zoom: initialZoom,
-                    connector: connector,
-                  ),
-                if (!_isBuildingPathTrace)
-                  _buildTopOverlay(
-                    context,
-                    connector: connector,
-                    settingsService: settingsService,
-                    allContacts: allContacts,
-                    guessedLocations: guessedLocations,
-                    visibleCount:
-                        visibleContacts.length +
-                        ((settings.mapShowGuessedLocations &&
-                                _zoom >= _guessedZoomThreshold)
-                            ? guessedLocations.length
-                            : 0),
-                    onlineCount: onlineCount,
-                    repeaterCount: repeaterCount,
-                    hiddenCount: hiddenCount,
-                    pinCount: sharedMarkers.length,
-                  ),
-                if (_isBuildingPathTrace) _buildPathTraceOverlay(),
-                if (!_isBuildingPathTrace && selectedContact == null)
-                  const TeamMapOverlay(),
-                if (contactsWithLocation.isEmpty &&
-                    selectedContact == null &&
-                    !_isBuildingPathTrace)
-                  Positioned(
-                    left: 16,
-                    right: 88,
-                    bottom: 16,
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Text(context.l10n.map_noNodesLocationHint),
+                  if (!_isBuildingPathTrace && !_draw.active)
+                    _buildTopOverlay(
+                      context,
+                      connector: connector,
+                      settingsService: settingsService,
+                      allContacts: allContacts,
+                      guessedLocations: guessedLocations,
+                      visibleCount:
+                          visibleContacts.length +
+                          ((settings.mapShowGuessedLocations &&
+                                  _zoom >= _guessedZoomThreshold)
+                              ? guessedLocations.length
+                              : 0),
+                      onlineCount: onlineCount,
+                      repeaterCount: repeaterCount,
+                      hiddenCount: hiddenCount,
+                      pinCount: sharedMarkers.length,
+                    ),
+                  if (_isBuildingPathTrace) _buildPathTraceOverlay(),
+                  if (!_isBuildingPathTrace &&
+                      selectedContact == null &&
+                      !_draw.active)
+                    const TeamMapOverlay(),
+                  if (_draw.freehand)
+                    Positioned.fill(
+                      child: TeamFreehandCapture(
+                        controller: _draw,
+                        toLatLng: (o) =>
+                            _mapController.camera.screenOffsetToLatLng(o),
                       ),
                     ),
-                  ),
-                if (selectedContact != null && !_isBuildingPathTrace)
-                  _buildSelectedNodeCard(context, selectedContact, connector),
-              ],
+                  if (_draw.active)
+                    Positioned(
+                      left: 8,
+                      right: 8,
+                      top: 8,
+                      child: TeamDrawToolbar(
+                        controller: _draw,
+                        onDone: _finishDraw,
+                      ),
+                    ),
+                  if (contactsWithLocation.isEmpty &&
+                      selectedContact == null &&
+                      !_isBuildingPathTrace)
+                    Positioned(
+                      left: 16,
+                      right: 88,
+                      bottom: 16,
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Text(context.l10n.map_noNodesLocationHint),
+                        ),
+                      ),
+                    ),
+                  if (selectedContact != null && !_isBuildingPathTrace)
+                    _buildSelectedNodeCard(context, selectedContact, connector),
+                ],
+              ),
             ),
             bottomNavigationBar: SafeArea(
               top: false,
@@ -1028,7 +1114,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
               ),
             ),
             floatingActionButton:
-                (selectedContact == null && !_isBuildingPathTrace)
+                (selectedContact == null && !_isBuildingPathTrace && !_chatOpen)
                 ? FloatingActionButton(
                     onPressed: () => _showFilterSheet(context, settingsService),
                     tooltip: context.l10n.map_filterNodes,
@@ -1036,6 +1122,69 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                   )
                 : null,
           ),
+        );
+      },
+    );
+  }
+
+  void _toggleChat() => setState(() => _chatOpen = !_chatOpen);
+
+  void _startMeasure() {
+    LatLng? from;
+    try {
+      final f = context.read<TeamService>().fix;
+      if (f != null) from = LatLng(f.lat, f.lon);
+    } on ProviderNotFoundException {
+      from = null;
+    }
+    _draw.startMeasure(from: from);
+  }
+
+  void _onDrawChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _finishDraw() {
+    final kind = _draw.tool;
+    if (kind == null || !_draw.canFinish) return;
+    final (points, radius) = _draw.geometry();
+    final geofence = _draw.geofence;
+    _draw.cancel();
+    showTeamShapeEditor(
+      context,
+      kind: kind,
+      points: points,
+      radiusM: radius,
+      geofence: geofence,
+    );
+  }
+
+  /// Docks the chat pane beside the map (landscape) or under it (portrait),
+  /// like ATAK's chat drawer.
+  Widget _withChatPane(Widget map) {
+    if (!_chatOpen) return map;
+    return LayoutBuilder(
+      builder: (context, box) {
+        final side = box.maxWidth > box.maxHeight || box.maxWidth >= 720;
+        final pane = MapChatPane(
+          side: side,
+          onClose: _toggleChat,
+          onLocate: (p) =>
+              _mapController.move(p, max(_mapController.camera.zoom, 15.0)),
+        );
+        if (side) {
+          return Row(
+            children: [
+              Expanded(child: map),
+              SizedBox(width: min(400.0, box.maxWidth * 0.42), child: pane),
+            ],
+          );
+        }
+        return Column(
+          children: [
+            Expanded(child: map),
+            SizedBox(height: box.maxHeight * 0.45, child: pane),
+          ],
         );
       },
     );

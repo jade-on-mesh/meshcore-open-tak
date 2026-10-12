@@ -17,6 +17,8 @@ import '../vox/voice_wire.dart';
 import 'role_icon_library.dart';
 import 'tak/cot.dart';
 import 'tak/tak_service.dart';
+import 'team_casevac_ui.dart';
+import 'team_draw.dart';
 import 'team_forms.dart';
 import 'team_screen.dart';
 import 'team_service.dart';
@@ -135,21 +137,58 @@ class TeamMapLayer extends StatelessWidget {
       for (final i in watch.items.take(300))
         if (i.hasPosition) i,
     ];
-    if (!team.enabled && tak.entities.isEmpty && watched.isEmpty) {
+    if (!team.enabled &&
+        tak.entities.isEmpty &&
+        watched.isEmpty &&
+        team.shapes.isEmpty) {
       return const SizedBox.shrink();
     }
+    final shapes = team.shapes;
+    final takShapes = [
+      for (final e in tak.entities)
+        if ((e.event.isShape || e.event.isRoute) &&
+            (e.event.linkPoints.isNotEmpty || e.event.isCircle))
+          e.event,
+    ];
+    final nav = team.navRoute;
     final fix = team.fix;
     final hound = team.bloodhound;
 
+    final myTrack = team.showTracks && team.enabled
+        ? team.myTrack
+        : const <(double, double, DateTime)>[];
     final lines = <Polyline>[
+      if (myTrack.length > 1)
+        Polyline(
+          points: [for (final p in myTrack) LatLng(p.$1, p.$2)],
+          color: Color(team.color.argb).withValues(alpha: 0.6),
+          strokeWidth: 3,
+          pattern: StrokePattern.dotted(spacingFactor: 2),
+        ),
       for (final m in team.members)
-        if (m.trail.length > 1)
+        if (team.showTracks && m.trail.length > 1)
           Polyline(
             points: [for (final p in m.trail) LatLng(p.$1, p.$2)],
             color: Color(
               m.position.color.argb,
             ).withValues(alpha: m.freshness == TeamFreshness.live ? 0.7 : 0.3),
             strokeWidth: 3,
+          ),
+      for (final sh in shapes)
+        if (!sh.kind.closed && sh.points.length > 1)
+          Polyline(
+            points: [for (final p in sh.points) LatLng(p.$1, p.$2)],
+            color: Color(sh.color.argb),
+            strokeWidth: sh.kind == ShapeKind.route ? 5 : 3,
+            borderColor: Colors.black54,
+            borderStrokeWidth: sh.kind == ShapeKind.route ? 1.5 : 0,
+          ),
+      for (final e in takShapes)
+        if (!e.isClosedShape && e.linkPoints.length > 1)
+          Polyline(
+            points: [for (final p in e.linkPoints) LatLng(p.$1, p.$2)],
+            color: _takStroke(e),
+            strokeWidth: e.isRoute ? 5 : 3,
           ),
       if (hound != null && fix != null)
         Polyline(
@@ -160,11 +199,59 @@ class TeamMapLayer extends StatelessWidget {
         ),
     ];
 
+    final polygons = <Polygon>[
+      for (final sh in shapes)
+        if (sh.kind.closed &&
+            sh.kind != ShapeKind.circle &&
+            sh.points.length > 2)
+          Polygon(
+            points: [for (final p in sh.points) LatLng(p.$1, p.$2)],
+            color: Color(sh.color.argb).withValues(alpha: 0.15),
+            borderColor: Color(sh.color.argb),
+            borderStrokeWidth: sh.isGeofence ? 3 : 2,
+            pattern: sh.isGeofence
+                ? StrokePattern.dashed(segments: const [14, 8])
+                : const StrokePattern.solid(),
+          ),
+      for (final e in takShapes)
+        if (e.isClosedShape && !e.isCircle && e.linkPoints.length > 2)
+          Polygon(
+            points: [for (final p in e.linkPoints) LatLng(p.$1, p.$2)],
+            color: _takStroke(e).withValues(alpha: 0.12),
+            borderColor: _takStroke(e),
+            borderStrokeWidth: 2,
+          ),
+    ];
+    final circles = <CircleMarker>[
+      for (final sh in shapes)
+        if (sh.kind == ShapeKind.circle && sh.points.isNotEmpty)
+          CircleMarker(
+            point: LatLng(sh.points.first.$1, sh.points.first.$2),
+            radius: sh.radiusM.toDouble(),
+            useRadiusInMeter: true,
+            color: Color(sh.color.argb).withValues(alpha: 0.15),
+            borderColor: Color(sh.color.argb),
+            borderStrokeWidth: sh.isGeofence ? 3 : 2,
+          ),
+      for (final e in takShapes)
+        if (e.isCircle)
+          CircleMarker(
+            point: LatLng(e.lat, e.lon),
+            radius: e.ellipseMajor!,
+            useRadiusInMeter: true,
+            color: _takStroke(e).withValues(alpha: 0.12),
+            borderColor: _takStroke(e),
+            borderStrokeWidth: 2,
+          ),
+    ];
+
     final markers = <Marker>[
+      for (final sh in shapes) ..._shapeMarkers(context, sh, nav),
       // Watch-feed reports and TAK units sit under the mesh team.
       for (final w in watched) _watchMarker(context, w),
       for (final e in tak.entities) _takMarker(context, e),
       for (final r in team.reports) _reportMarker(context, r),
+      for (final c in team.casevacs) _casevacMarker(context, c),
       for (final m in team.markers) _pinMarker(context, team, m),
       for (final m in team.members) _memberMarker(context, m),
       for (final a in team.activeAlerts)
@@ -192,11 +279,122 @@ class TeamMapLayer extends StatelessWidget {
 
     return Stack(
       children: [
+        if (polygons.isNotEmpty) PolygonLayer(polygons: polygons),
+        if (circles.isNotEmpty) CircleLayer(circles: circles),
         if (lines.isNotEmpty) PolylineLayer(polylines: lines),
         MarkerLayer(markers: markers),
       ],
     );
   }
+
+  static Color _takStroke(CotEvent e) {
+    final v = e.strokeArgb ?? e.colorArgb;
+    return v == null ? const Color(0xFFFFFFFF) : Color(v & 0xFFFFFFFF);
+  }
+
+  /// Label (and route checkpoints) for a shape.
+  List<Marker> _shapeMarkers(
+    BuildContext context,
+    TeamShape sh,
+    TeamShape? nav,
+  ) {
+    if (sh.points.isEmpty) return const [];
+    final c = Color(sh.color.argb);
+    final (alat, alon) = sh.anchor;
+    final navigating = nav != null && nav.key == sh.key;
+    return [
+      if (sh.kind == ShapeKind.route)
+        for (var i = 0; i < sh.points.length; i++)
+          Marker(
+            point: LatLng(sh.points[i].$1, sh.points[i].$2),
+            width: 24,
+            height: 24,
+            child: GestureDetector(
+              onTap: () => showTeamShapeSheet(context, sh),
+              child: Container(
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.black87,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: c, width: 2),
+                ),
+                child: Text(
+                  '${i + 1}',
+                  style: const TextStyle(color: Colors.white, fontSize: 10),
+                ),
+              ),
+            ),
+          ),
+      Marker(
+        point: LatLng(alat, alon),
+        width: 130,
+        height: 26,
+        alignment: sh.kind == ShapeKind.route
+            ? const Alignment(0, -2.2)
+            : Alignment.center,
+        child: GestureDetector(
+          onTap: () => showTeamShapeSheet(context, sh),
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: navigating ? const Color(0xFFFF6D00) : c,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    shapeKindIcon(sh.kind, geofence: sh.isGeofence),
+                    size: 12,
+                    color: c,
+                  ),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      sh.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ];
+  }
+
+  Marker _casevacMarker(BuildContext context, TeamCasevac c) => Marker(
+    point: LatLng(c.lat, c.lon),
+    width: 120,
+    height: 62,
+    child: GestureDetector(
+      onTap: () => showCasevacSheet(context, c),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: casevacColor(c), width: 3),
+            ),
+            child: Icon(Icons.local_hospital, color: casevacColor(c), size: 20),
+          ),
+          const SizedBox(height: 2),
+          _label('🚑 ${c.precedenceLabel} ${c.totalPatients}'),
+        ],
+      ),
+    ),
+  );
 
   Marker _memberMarker(BuildContext context, TeamMember m) {
     final p = m.position;
@@ -398,7 +596,15 @@ class TeamMapLayer extends StatelessWidget {
                 shape: e.isUnit ? BoxShape.rectangle : BoxShape.circle,
               ),
               child: Icon(
-                e.isAlert ? Icons.sos : (e.isUnit ? Icons.person : Icons.place),
+                e.isAlert
+                    ? Icons.sos
+                    : e.isCasevac
+                    ? Icons.local_hospital
+                    : e.isRoute
+                    ? Icons.route
+                    : e.isShape
+                    ? Icons.draw
+                    : (e.isUnit ? Icons.person : Icons.place),
                 size: 14,
                 color: Colors.black,
               ),
@@ -917,9 +1123,7 @@ Future<void> showTeamMapActions(
         mainAxisSize: MainAxisSize.min,
         children: [
           ListTile(
-            title: Text(
-              '${at.latitude.toStringAsFixed(5)}, ${at.longitude.toStringAsFixed(5)}',
-            ),
+            title: Text(team.formatCoord(at.latitude, at.longitude)),
             subtitle: Text(_rangeFromMe(team, at.latitude, at.longitude) ?? ''),
           ),
           ListTile(
@@ -936,6 +1140,14 @@ Future<void> showTeamMapActions(
             onTap: () {
               Navigator.pop(context);
               showSaluteForm(context, lat: at.latitude, lon: at.longitude);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.local_hospital, color: casevacRed),
+            title: const Text('CASEVAC 9-line here'),
+            onTap: () {
+              Navigator.pop(context);
+              showCasevacForm(context, lat: at.latitude, lon: at.longitude);
             },
           ),
           ListTile(
@@ -1032,10 +1244,29 @@ class TeamMapOverlay extends StatelessWidget {
                             : '${hound.label}\n${teamRangeBearing(teamDistanceMeters(fix.lat, fix.lon, hound.lat, hound.lon), teamBearingDeg(fix.lat, fix.lon, hound.lat, hound.lon))}${fix.heading == null ? ' (arrow: north up)' : ''}',
                       ),
                     ),
+                    if (team.navRoute != null) ...[
+                      IconButton(
+                        icon: const Icon(Icons.skip_previous),
+                        tooltip: 'Previous checkpoint',
+                        onPressed: team.navIndex > 0
+                            ? () => team.skipCheckpoint(-1)
+                            : null,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.skip_next),
+                        tooltip: 'Next checkpoint',
+                        onPressed:
+                            team.navIndex < team.navRoute!.points.length - 1
+                            ? () => team.skipCheckpoint(1)
+                            : null,
+                      ),
+                    ],
                     IconButton(
                       icon: const Icon(Icons.close),
                       onPressed: team.stopHound,
-                      tooltip: 'Stop Bloodhound',
+                      tooltip: team.navRoute != null
+                          ? 'Stop navigating'
+                          : 'Stop Bloodhound',
                     ),
                   ],
                 ),
@@ -1043,6 +1274,10 @@ class TeamMapOverlay extends StatelessWidget {
             ),
           const SizedBox(height: 6),
           _StatusPill(team: team),
+          if (fix != null) ...[
+            const SizedBox(height: 4),
+            _CoordPill(team: team, fix: fix),
+          ],
           const SizedBox(height: 8),
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -1142,6 +1377,41 @@ class TeamMapOverlay extends StatelessWidget {
     );
     if (ok == true) await team.cancelAlert();
   }
+}
+
+/// Your position in the chosen format (tap to switch Decimal/DMS/MGRS).
+class _CoordPill extends StatelessWidget {
+  final TeamService team;
+  final TeamFix fix;
+  const _CoordPill({required this.team, required this.fix});
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.black.withValues(alpha: 0.7),
+    borderRadius: BorderRadius.circular(8),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => team.setCoordFormat(team.coordFormat.next),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Text(
+          [
+            team.formatCoord(fix.lat, fix.lon),
+            if (fix.accuracy > 0) '±${fix.accuracy.round()} m',
+            if (fix.altitude != null && fix.source == TeamFixSource.phone)
+              '${fix.altitude!.round()} m',
+            if ((fix.speed ?? 0) > 0.5)
+              '${(fix.speed! * 3.6).toStringAsFixed(0)} km/h',
+          ].join(' · '),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontFeatures: [ui.FontFeature.tabularFigures()],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 /// Hold for 1.5 s to raise an alert (avoids pocket presses).

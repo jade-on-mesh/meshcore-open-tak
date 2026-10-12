@@ -93,7 +93,6 @@ WatchLevel _levelFromWord(String w) {
 }
 
 /// Parses one channel message into a feed item.
-@visibleForTesting
 WatchItem parseWatchMessage(Channel channel, ChannelMessage m) {
   var level = WatchLevel.none;
   String? status, when, place, url;

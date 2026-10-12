@@ -20,6 +20,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xml/xml.dart';
 
+import '../../models/channel_message.dart';
 import '../team_service.dart';
 import '../team_wire.dart';
 import 'cot.dart';
@@ -34,6 +35,28 @@ class TakEntity {
   bool get isStale => DateTime.now().isAfter(event.stale);
 }
 
+/// One line of TAK chat (All Chat Rooms).
+class TakChatLine {
+  final String callsign;
+  final String text;
+  final DateTime time;
+
+  /// True when sent from this phone (or relayed from the mesh by it).
+  final bool outgoing;
+  const TakChatLine(
+    this.callsign,
+    this.text,
+    this.time, {
+    this.outgoing = false,
+  });
+}
+
+/// FNV-1a of a string, for stable ids.
+int takHash(String s) => s.codeUnits.fold<int>(
+  0x811C9DC5,
+  (a, c) => ((a ^ c) * 0x01000193) & 0xFFFFFFFF,
+);
+
 class TakSettings {
   final bool serverEnabled;
   final String host;
@@ -47,6 +70,12 @@ class TakSettings {
   final bool multicastEnabled;
   final bool relayToMesh;
 
+  /// Bridge team channel text to TAK GeoChat (All Chat Rooms).
+  final bool geoChat;
+
+  /// Also post TAK chat on the team channel (costs airtime).
+  final bool chatToMesh;
+
   const TakSettings({
     this.serverEnabled = false,
     this.host = '',
@@ -59,6 +88,8 @@ class TakSettings {
     this.trustPassword = '',
     this.multicastEnabled = false,
     this.relayToMesh = false,
+    this.geoChat = true,
+    this.chatToMesh = false,
   });
 
   TakSettings copyWith({
@@ -73,6 +104,8 @@ class TakSettings {
     String? trustPassword,
     bool? multicastEnabled,
     bool? relayToMesh,
+    bool? geoChat,
+    bool? chatToMesh,
   }) => TakSettings(
     serverEnabled: serverEnabled ?? this.serverEnabled,
     host: host ?? this.host,
@@ -85,6 +118,8 @@ class TakSettings {
     trustPassword: trustPassword ?? this.trustPassword,
     multicastEnabled: multicastEnabled ?? this.multicastEnabled,
     relayToMesh: relayToMesh ?? this.relayToMesh,
+    geoChat: geoChat ?? this.geoChat,
+    chatToMesh: chatToMesh ?? this.chatToMesh,
   );
 
   Map<String, Object> toJson() => {
@@ -99,6 +134,8 @@ class TakSettings {
     'trustPassword': trustPassword,
     'multicastEnabled': multicastEnabled,
     'relayToMesh': relayToMesh,
+    'geoChat': geoChat,
+    'chatToMesh': chatToMesh,
   };
 
   static TakSettings fromJson(Map<String, dynamic> j) => TakSettings(
@@ -113,6 +150,8 @@ class TakSettings {
     trustPassword: (j['trustPassword'] as String?) ?? '',
     multicastEnabled: j['multicastEnabled'] == true,
     relayToMesh: j['relayToMesh'] == true,
+    geoChat: j['geoChat'] != false,
+    chatToMesh: j['chatToMesh'] == true,
   );
 }
 
@@ -123,7 +162,10 @@ class TakService extends ChangeNotifier {
       ..onMarkerChanged = _onMeshMarker
       ..onAlertChanged = _onMeshAlert
       ..onReportChanged = _onMeshReport
-      ..onSelfPosition = _onSelfPosition;
+      ..onSelfPosition = _onSelfPosition
+      ..onShapeChanged = _onMeshShape
+      ..onCasevacChanged = _onMeshCasevac
+      ..onTeamChat = _onMeshChat;
     unawaited(_load());
     _ticker = Timer.periodic(const Duration(seconds: 30), (_) => _onTick());
   }
@@ -360,6 +402,9 @@ class TakService extends ChangeNotifier {
 
   bool get _publishing => _state == TakState.connected || _mcast != null;
 
+  /// Connected to a server or on multicast.
+  bool get publishing => _publishing;
+
   // ------------------------------------------- mesh -> TAK (gateway out)
 
   void _onSelfPosition(TeamPosition p) {
@@ -389,6 +434,111 @@ class TakService extends ChangeNotifier {
     }
   }
 
+  void _onMeshShape(TeamShape s) {
+    if (_publishing) _write(cotForShape(s));
+  }
+
+  void _onMeshCasevac(TeamCasevac c) {
+    if (_publishing) _write(cotForCasevac(c));
+  }
+
+  // ---------------------------------------------------------- GeoChat
+
+  final List<TakChatLine> _chat = [];
+
+  /// TAK "All Chat Rooms" lines seen or sent here, oldest first.
+  List<TakChatLine> get chat => List.unmodifiable(_chat);
+
+  void _addChat(TakChatLine l) {
+    _chat.add(l);
+    if (_chat.length > 200) _chat.removeAt(0);
+    notifyListeners();
+  }
+
+  static final RegExp _voxEnvelope = RegExp(r'^V[EMI]\d:');
+
+  /// Team channel text -> TAK GeoChat.
+  void _onMeshChat(ChannelMessage m) {
+    if (!_settings.geoChat || !_publishing) return;
+    final text = m.text.trim();
+    if (text.isEmpty || text.startsWith('[TAK]')) return; // relayed from TAK
+    if (_voxEnvelope.hasMatch(text)) return; // a voice/photo reference
+    String uid, callsign;
+    double lat = 0, lon = 0;
+    if (m.isOutgoing) {
+      uid = takUidForMember(_team.selfKey4);
+      callsign = _team.callsign;
+      final f = _team.fix;
+      if (f != null) {
+        lat = f.lat;
+        lon = f.lon;
+      }
+    } else {
+      callsign = m.senderName;
+      TeamMember? member;
+      for (final mm in _team.members) {
+        if (mm.callsign == m.senderName) member = mm;
+      }
+      if (member != null) {
+        uid = takUidForMember(member.key4);
+        lat = member.position.lat;
+        lon = member.position.lon;
+      } else {
+        uid = 'VOX-CH-${takHash(m.senderName).toRadixString(16)}';
+      }
+    }
+    _write(
+      cotGeoChat(
+        senderUid: uid,
+        senderCallsign: callsign,
+        text: text,
+        messageId: 'vox-${takHash('${m.messageId}$text').toRadixString(16)}',
+        lat: lat,
+        lon: lon,
+        time: m.timestamp,
+      ),
+    );
+  }
+
+  /// Sends a chat line to TAK only (from the map chat pane).
+  void sendChat(String text) {
+    final t = text.trim();
+    if (t.isEmpty) return;
+    final f = _team.fix;
+    _write(
+      cotGeoChat(
+        senderUid: takUidForMember(_team.selfKey4),
+        senderCallsign: _team.callsign,
+        text: t,
+        messageId:
+            'vox-${DateTime.now().microsecondsSinceEpoch.toRadixString(16)}',
+        lat: f?.lat ?? 0,
+        lon: f?.lon ?? 0,
+      ),
+    );
+    _addChat(TakChatLine(_team.callsign, t, DateTime.now(), outgoing: true));
+  }
+
+  DateTime? _lastChatRelay;
+
+  void _onTakChat(CotEvent e) {
+    if (e.chatSenderUid?.startsWith('VOX-') == true) return; // our own echo
+    final text = (e.remarks ?? '').trim();
+    if (text.isEmpty) return;
+    final who = e.chatSenderCallsign ?? e.callsign ?? 'TAK';
+    _addChat(TakChatLine(who, text, e.time.toLocal()));
+    if (!_settings.chatToMesh || !_team.active) return;
+    final now = DateTime.now();
+    if (_lastChatRelay != null &&
+        now.difference(_lastChatRelay!) < const Duration(seconds: 15)) {
+      return;
+    }
+    _lastChatRelay = now;
+    var line = '[TAK] $who: $text';
+    if (line.length > 120) line = '${line.substring(0, 119)}…';
+    unawaited(_team.postTeamText(line));
+  }
+
   void _publishAll() {
     final self = _team.selfPositionForBridge;
     if (self != null) _onSelfPosition(self);
@@ -400,6 +550,12 @@ class TakService extends ChangeNotifier {
     }
     for (final r in _team.reports.take(20)) {
       _onMeshReport(r);
+    }
+    for (final s in _team.shapes) {
+      _onMeshShape(s);
+    }
+    for (final c in _team.casevacs) {
+      _onMeshCasevac(c);
     }
     final own = _team.activeOwnAlert;
     if (own != null) _onMeshAlert(own);
@@ -438,7 +594,16 @@ class TakService extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    if (e.isUnit || e.isMarker || e.isAlert) {
+    if (e.isChat) {
+      _onTakChat(e);
+      return;
+    }
+    if (e.isUnit ||
+        e.isMarker ||
+        e.isAlert ||
+        e.isShape ||
+        e.isRoute ||
+        e.isCasevac) {
       _entities[e.uid] = TakEntity(e, DateTime.now());
       notifyListeners();
     }
@@ -460,10 +625,7 @@ class TakService extends ChangeNotifier {
     }
     _lastRelay[e.uid] = now;
     _lastAnyRelay = now;
-    final h = e.uid.codeUnits.fold<int>(
-      0x811C9DC5,
-      (a, c) => ((a ^ c) * 0x01000193) & 0xFFFFFFFF,
-    );
+    final h = takHash(e.uid);
     final key4 = '7a${(h & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
     unawaited(
       _team.relayExternalPosition(

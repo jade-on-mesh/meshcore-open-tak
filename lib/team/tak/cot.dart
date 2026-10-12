@@ -301,6 +301,279 @@ String cotForAlert(TeamAlert a, {required String memberUid}) {
   );
 }
 
+// ------------------------------------------------- drawings and routes
+
+/// CoT uid for a mesh drawing/route/geofence.
+String takUidForShape(TeamShape s) =>
+    'VOX-D-${s.authorKey4}-${s.shapeId.toRadixString(16)}';
+
+String _ll(double lat, double lon) =>
+    '${lat.toStringAsFixed(7)},${lon.toStringAsFixed(7)}';
+
+/// CoT event type for a shape.
+String takShapeType(ShapeKind k) => switch (k) {
+  ShapeKind.line || ShapeKind.polygon => 'u-d-f',
+  ShapeKind.freehand => 'u-d-f-m',
+  ShapeKind.rectangle => 'u-d-r',
+  ShapeKind.circle => 'u-d-c-c',
+  ShapeKind.route => 'b-m-r',
+};
+
+String _geofenceTrigger(TeamGeofence g) => switch (g) {
+  TeamGeofence.entry => 'Entry',
+  TeamGeofence.exit => 'Exit',
+  _ => 'Both',
+};
+
+/// A drawing, route or geofence as CoT (ATAK drawing tools / route format).
+String cotForShape(TeamShape sh) {
+  final uid = takUidForShape(sh);
+  if (sh.deleted) return cotDelete(uid);
+  final (alat, alon) = sh.anchor;
+  final stroke = '${_signed32(sh.color.argb)}';
+  final fill = '${_signed32((sh.color.argb & 0x00FFFFFF) | 0x40000000)}';
+  return cotEvent(
+    uid: uid,
+    type: takShapeType(sh.kind),
+    how: 'h-e',
+    lat: alat,
+    lon: alon,
+    time: sh.time,
+    staleAfter: const Duration(days: 1),
+    detail: (b) {
+      b.element('contact', attributes: {'callsign': sh.title});
+      if (sh.kind == ShapeKind.route) {
+        for (var i = 0; i < sh.points.length; i++) {
+          final (lat, lon) = sh.points[i];
+          b.element(
+            'link',
+            attributes: {
+              'uid': '$uid-cp${i + 1}',
+              'callsign': 'CP${i + 1}',
+              'type': 'b-m-p-w',
+              'point': _ll(lat, lon),
+              'remarks': '',
+              'relation': 'c',
+            },
+          );
+        }
+        b.element(
+          'link_attr',
+          attributes: {
+            'color': stroke,
+            'method': sh.routeMethod.label,
+            'prefix': 'CP',
+            'type': sh.routeMethod == RouteMethod.driving
+                ? 'Vehicle'
+                : 'On Foot',
+            'order': 'Ascending Check Points',
+            'routetype': 'Primary',
+            'direction': 'Infil',
+            'planningmethod': 'Infil',
+            'stroke': '3',
+          },
+        );
+        b.element('__routeinfo', nest: () => b.element('__navcues'));
+      } else if (sh.kind == ShapeKind.circle) {
+        b.element(
+          'shape',
+          nest: () => b.element(
+            'ellipse',
+            attributes: {
+              'major': '${sh.radiusM}',
+              'minor': '${sh.radiusM}',
+              'angle': '360',
+            },
+          ),
+        );
+      } else {
+        for (final (lat, lon) in sh.points) {
+          b.element('link', attributes: {'point': _ll(lat, lon)});
+        }
+        if (sh.kind == ShapeKind.polygon && sh.points.isNotEmpty) {
+          // ATAK closes a freeform shape by repeating the first vertex.
+          b.element(
+            'link',
+            attributes: {'point': _ll(sh.points.first.$1, sh.points.first.$2)},
+          );
+        }
+      }
+      b.element('strokeColor', attributes: {'value': stroke});
+      b.element('strokeWeight', attributes: {'value': '3.0'});
+      if (sh.kind.closed) {
+        b.element('fillColor', attributes: {'value': fill});
+      }
+      b.element('labels_on', attributes: {'value': 'true'});
+      if (sh.isGeofence) {
+        b.element(
+          '__geofence',
+          attributes: {
+            'trigger': _geofenceTrigger(sh.geofence),
+            'monitor': 'All',
+            'tracking': 'true',
+            'elevationMonitored': 'false',
+            'minElevation': '',
+            'maxElevation': '',
+          },
+        );
+      }
+      b.element(
+        'link',
+        attributes: {
+          'uid': takUidForMember(sh.authorKey4),
+          'relation': 'p-p',
+          'type': 'a-f-G-U-C',
+        },
+      );
+      b.element('archive');
+    },
+  );
+}
+
+// ---------------------------------------------------------------- MEDEVAC
+
+/// A CASEVAC / MEDEVAC 9-line as an ATAK MEDEVAC (`b-r-f-h-c`) event.
+String cotForCasevac(TeamCasevac c) {
+  final uid = 'VOX-C-${c.authorKey4}-${c.requestId.toRadixString(16)}';
+  if (c.deleted) return cotDelete(uid);
+  String flag(bool v) => v ? 'true' : 'false';
+  return cotEvent(
+    uid: uid,
+    type: 'b-r-f-h-c',
+    how: 'h-g-i-g-o',
+    lat: c.lat,
+    lon: c.lon,
+    time: c.time,
+    staleAfter: const Duration(hours: 12),
+    detail: (b) {
+      b.element(
+        'contact',
+        attributes: {
+          'callsign':
+              'MED.${c.callsign.isEmpty ? c.authorKey4.toUpperCase() : c.callsign}'
+              '.${c.time.toUtc().toIso8601String().substring(11, 16).replaceAll(':', '')}',
+        },
+      );
+      b.element(
+        '_medevac_',
+        attributes: {
+          'title': c.place.isEmpty ? 'CASEVAC' : c.place,
+          'casevac': 'true',
+          'freq': c.frequency,
+          'urgent': '${c.urgent}',
+          'urgent_surgical': '${c.urgentSurgical}',
+          'priority': '${c.priority}',
+          'routine': '${c.routine}',
+          'convenience': '${c.convenience}',
+          'equipment_none': flag(
+            c.equipment.isEmpty || c.equipment.contains(CasevacEquipment.none),
+          ),
+          'hoist': flag(c.equipment.contains(CasevacEquipment.hoist)),
+          'extraction_equipment': flag(
+            c.equipment.contains(CasevacEquipment.extraction),
+          ),
+          'ventilator': flag(c.equipment.contains(CasevacEquipment.ventilator)),
+          'equipment_other': flag(c.equipment.contains(CasevacEquipment.other)),
+          'litter': '${c.litter}',
+          'ambulatory': '${c.ambulatory}',
+          'security': '${c.security.index}',
+          'hlz_marking': '${c.marking.index}',
+          'hlz_other': c.markingDetail,
+          'us_military': '${c.usMilitary}',
+          'us_civilian': '${c.usCivilian}',
+          'nonus_military': '${c.nonUsMilitary}',
+          'nonus_civilian': '${c.nonUsCivilian}',
+          'epw': '${c.epw}',
+          'child': '${c.child}',
+          'terrain_none': flag(
+            c.terrain.isEmpty || c.terrain.contains(CasevacTerrain.none),
+          ),
+          'terrain_slope': flag(c.terrain.contains(CasevacTerrain.slope)),
+          'terrain_rough': flag(c.terrain.contains(CasevacTerrain.rough)),
+          'terrain_loose': flag(c.terrain.contains(CasevacTerrain.loose)),
+          'terrain_other': flag(c.terrain.contains(CasevacTerrain.other)),
+          'medline_remarks': c.remarks,
+        },
+      );
+      b.element(
+        'link',
+        attributes: {
+          'uid': takUidForMember(c.authorKey4),
+          'relation': 'p-p',
+          'type': 'a-f-G-U-C',
+        },
+      );
+      b.element('archive');
+      b.element(
+        'remarks',
+        nest:
+            '9-LINE ${c.nineLines().join(' | ')}'
+            '${c.remarks.isNotEmpty ? ' | ${c.remarks}' : ''}',
+      );
+    },
+  );
+}
+
+// ---------------------------------------------------------------- GeoChat
+
+const String takAllChatRooms = 'All Chat Rooms';
+
+/// A chat line for TAK's "All Chat Rooms" (GeoChat).
+String cotGeoChat({
+  required String senderUid,
+  required String senderCallsign,
+  required String text,
+  required String messageId,
+  double lat = 0,
+  double lon = 0,
+  DateTime? time,
+}) {
+  final now = time ?? DateTime.now();
+  return cotEvent(
+    uid: 'GeoChat.$senderUid.$takAllChatRooms.$messageId',
+    type: 'b-t-f',
+    how: 'h-g-i-g-o',
+    lat: lat,
+    lon: lon,
+    time: now,
+    staleAfter: const Duration(days: 1),
+    detail: (b) {
+      b.element(
+        '__chat',
+        attributes: {
+          'parent': 'RootContactGroup',
+          'groupOwner': 'false',
+          'messageId': messageId,
+          'chatroom': takAllChatRooms,
+          'id': takAllChatRooms,
+          'senderCallsign': senderCallsign,
+        },
+        nest: () => b.element(
+          'chatgrp',
+          attributes: {
+            'uid0': senderUid,
+            'uid1': takAllChatRooms,
+            'id': takAllChatRooms,
+          },
+        ),
+      );
+      b.element(
+        'link',
+        attributes: {'uid': senderUid, 'type': 'a-f-G-U-C', 'relation': 'p-p'},
+      );
+      b.element(
+        'remarks',
+        attributes: {
+          'source': 'BAO.F.ATAK.$senderUid',
+          'to': takAllChatRooms,
+          'time': _iso(now),
+        },
+        nest: text,
+      );
+    },
+  );
+}
+
 /// Deletes [uid] on TAK clients.
 String cotDelete(String uid) => cotEvent(
   uid: '$uid-delete',
@@ -347,6 +620,19 @@ class CotEvent {
   final String? linkUid;
   final int? colorArgb;
 
+  /// Vertices of a drawing or route (`<link point="lat,lon"/>`).
+  final List<(double, double)> linkPoints;
+
+  /// Circle/ellipse radius in metres.
+  final double? ellipseMajor;
+  final int? strokeArgb, fillArgb;
+
+  /// GeoChat fields.
+  final String? chatSenderCallsign, chatSenderUid, chatroom;
+
+  /// ATAK geofence trigger ("Entry", "Exit", "Both"), if any.
+  final String? geofenceTrigger;
+
   const CotEvent({
     required this.uid,
     required this.type,
@@ -367,6 +653,14 @@ class CotEvent {
     this.emergencyCancel = false,
     this.linkUid,
     this.colorArgb,
+    this.linkPoints = const [],
+    this.ellipseMajor,
+    this.strokeArgb,
+    this.fillArgb,
+    this.chatSenderCallsign,
+    this.chatSenderUid,
+    this.chatroom,
+    this.geofenceTrigger,
   });
 
   bool get isUnit => type.startsWith('a-');
@@ -376,6 +670,17 @@ class CotEvent {
   bool get isDelete => type == 't-x-d-d';
   bool get isPing => type.startsWith('t-x-c-t');
   bool get isChat => type == 'b-t-f';
+  bool get isShape => type.startsWith('u-d-');
+  bool get isRoute => type == 'b-m-r';
+  bool get isCasevac => type.startsWith('b-r-f-h-c');
+  bool get isCircle => type.startsWith('u-d-c') && ellipseMajor != null;
+
+  /// Closed shapes (polygons, rectangles, circles).
+  bool get isClosedShape =>
+      type.startsWith('u-d-r') ||
+      isCircle ||
+      (linkPoints.length > 2 && linkPoints.first == linkPoints.last) ||
+      fillArgb != null;
 }
 
 double? _d(String? s) {
@@ -401,6 +706,15 @@ CotEvent? parseCot(String xml) {
     final emergency = d?.getElement('emergency');
     final link = d?.getElement('link');
     final color = d?.getElement('color');
+    final pts = <(double, double)>[];
+    for (final l in d?.findElements('link') ?? const <XmlElement>[]) {
+      final pt = l.getAttribute('point')?.split(',');
+      if (pt == null || pt.length < 2) continue;
+      final a = double.tryParse(pt[0]), o = double.tryParse(pt[1]);
+      if (a != null && o != null) pts.add((a, o));
+    }
+    final ellipse = d?.getElement('shape')?.getElement('ellipse');
+    final chat = d?.getElement('__chat');
     return CotEvent(
       uid: e.getAttribute('uid') ?? '',
       type: e.getAttribute('type') ?? '',
@@ -423,6 +737,18 @@ CotEvent? parseCot(String xml) {
       emergencyCancel: emergency?.getAttribute('cancel') == 'true',
       linkUid: link?.getAttribute('uid'),
       colorArgb: int.tryParse(color?.getAttribute('argb') ?? ''),
+      linkPoints: pts,
+      ellipseMajor: _d(ellipse?.getAttribute('major')),
+      strokeArgb: int.tryParse(
+        d?.getElement('strokeColor')?.getAttribute('value') ?? '',
+      ),
+      fillArgb: int.tryParse(
+        d?.getElement('fillColor')?.getAttribute('value') ?? '',
+      ),
+      chatSenderCallsign: chat?.getAttribute('senderCallsign'),
+      chatSenderUid: chat?.getElement('chatgrp')?.getAttribute('uid0'),
+      chatroom: chat?.getAttribute('chatroom'),
+      geofenceTrigger: d?.getElement('__geofence')?.getAttribute('trigger'),
     );
   } catch (_) {
     return null;
@@ -448,4 +774,106 @@ List<String> takSplitEvents(StringBuffer buffer) {
     ..clear()
     ..write(s.substring(start));
   return out;
+}
+
+// ------------------------------------------------ CoT -> team items
+
+/// The team colour nearest to an ARGB value.
+TeamColor teamColorNearest(int argb) {
+  final r = (argb >> 16) & 0xFF, g = (argb >> 8) & 0xFF, b = argb & 0xFF;
+  var best = TeamColor.yellow;
+  var bestD = 1 << 30;
+  for (final c in TeamColor.values) {
+    final dr = ((c.argb >> 16) & 0xFF) - r;
+    final dg = ((c.argb >> 8) & 0xFF) - g;
+    final db = (c.argb & 0xFF) - b;
+    final d = dr * dr + dg * dg + db * db;
+    if (d < bestD) {
+      bestD = d;
+      best = c;
+    }
+  }
+  return best;
+}
+
+/// A TAK point (spot marker or unit) as a team pin.
+TeamMarker? teamMarkerFromCot(
+  CotEvent e, {
+  required String authorKey4,
+  required int markerId,
+}) {
+  if (!e.isMarker && !e.isUnit) return null;
+  var kind = MarkerKind.point;
+  final c = e.colorArgb;
+  if (c != null) {
+    for (final k in MarkerKind.values) {
+      if ((takMarkerArgb(k) & 0xFFFFFF) == (c & 0xFFFFFF)) kind = k;
+    }
+  }
+  if (e.type.startsWith('a-h')) kind = MarkerKind.hazard;
+  return TeamMarker(
+    authorKey4: authorKey4,
+    markerId: markerId,
+    kind: kind,
+    lat: e.lat,
+    lon: e.lon,
+    time: DateTime.now(),
+    label: e.callsign ?? '',
+    note: e.remarks ?? '',
+  );
+}
+
+/// A TAK drawing or route as a team shape.
+TeamShape? teamShapeFromCot(
+  CotEvent e, {
+  required String authorKey4,
+  required int shapeId,
+}) {
+  final color = teamColorNearest(e.strokeArgb ?? e.colorArgb ?? 0xFFFFEB3B);
+  final geo = switch ((e.geofenceTrigger ?? '').toLowerCase()) {
+    'entry' => TeamGeofence.entry,
+    'exit' => TeamGeofence.exit,
+    'both' => TeamGeofence.both,
+    _ => TeamGeofence.off,
+  };
+  TeamShape make(
+    ShapeKind kind,
+    List<(double, double)> pts, {
+    int radius = 0,
+  }) => TeamShape(
+    authorKey4: authorKey4,
+    shapeId: shapeId,
+    kind: kind,
+    time: DateTime.now(),
+    points: pts,
+    color: color,
+    label: e.callsign ?? '',
+    geofence: kind.closed ? geo : TeamGeofence.off,
+    radiusM: radius,
+  ).fitted();
+
+  if (e.isRoute && e.linkPoints.length >= 2) {
+    return make(ShapeKind.route, e.linkPoints);
+  }
+  if (!e.isShape) return null;
+  if (e.isCircle) {
+    return make(ShapeKind.circle, [
+      (e.lat, e.lon),
+    ], radius: e.ellipseMajor!.round());
+  }
+  final pts = e.linkPoints;
+  if (pts.length < 2) return null;
+  if (e.type.startsWith('u-d-r') && pts.length >= 4) {
+    return make(ShapeKind.rectangle, pts.sublist(0, 4));
+  }
+  if (e.isClosedShape && pts.length >= 3) {
+    final open = pts.length > 3 && pts.first == pts.last
+        ? pts.sublist(0, pts.length - 1)
+        : pts;
+    return make(ShapeKind.polygon, open);
+  }
+  return make(
+    e.type.startsWith('u-d-f-m') ? ShapeKind.freehand : ShapeKind.line,
+    pts,
+  );
 }

@@ -21,6 +21,11 @@
 //   role      [0x4C][key4][roleId u8][op u8][time u32][icon u16]
 //             [nameLen][name]   (a team-wide name/icon for a role; op 1 =
 //             back to the default, or removed for an added role)
+//   shape     [0x44][key4][shapeId u32][op u8][kind u8][colour u8][time u32]
+//             [labelLen][label][geofence u8][param varint][nPoints u8]
+//             [lat0 i32][lon0 i32][zigzag varint deltas...] (1e-5 degrees)
+//   casevac   [0x43][key4][id u32][op u8][lat i32][lon i32][time u32] then
+//             the 9 lines (see team_casevac_wire.dart)
 //
 // A position's role is the high nibble of its role/colour byte; roles 15 and
 // up (added roles) write 15 there, set flag 0x20 and append the role id as
@@ -32,6 +37,11 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'team_coords.dart';
+
+part 'team_shape_wire.dart';
+part 'team_casevac_wire.dart';
+
 /// GRP_DATA data type for team traffic ('VT').
 const int teamChannelDataType = 0x5654;
 
@@ -40,6 +50,8 @@ const int teamMsgAlert = 0x53; // 'S'
 const int teamMsgMarker = 0x4D; // 'M'
 const int teamMsgReport = 0x52; // 'R'
 const int teamMsgRole = 0x4C; // 'L' (role label)
+const int teamMsgShape = 0x44; // 'D' (drawings, routes, geofences)
+const int teamMsgCasevac = 0x43; // 'C' (CASEVAC / MEDEVAC 9-line)
 
 /// Largest GRP_DATA payload the firmware accepts.
 const int teamMaxPayload = 163;
@@ -158,6 +170,19 @@ class _W {
   void i32(int v) => u32(v & 0xFFFFFFFF);
   void i16(int v) => u16(v & 0xFFFF);
   void bytes(List<int> v) => b.add(v);
+
+  /// Unsigned LEB128.
+  void varint(int v) {
+    var x = v;
+    while (x >= 0x80) {
+      u8((x & 0x7F) | 0x80);
+      x >>= 7;
+    }
+    u8(x);
+  }
+
+  /// Zigzag signed varint.
+  void svarint(int v) => varint(v >= 0 ? v << 1 : ((-v) << 1) - 1);
   void str(String s, int maxBytes) {
     final enc = teamTruncateUtf8(s, maxBytes);
     u8(enc.length);
@@ -183,6 +208,24 @@ class _R {
   int i16() {
     final v = u16();
     return v >= 0x8000 ? v - 0x10000 : v;
+  }
+
+  /// Unsigned LEB128, or null if truncated.
+  int? varint() {
+    var v = 0, shift = 0;
+    while (true) {
+      if (!has(1) || shift > 35) return null;
+      final b = u8();
+      v |= (b & 0x7F) << shift;
+      if (b < 0x80) return v;
+      shift += 7;
+    }
+  }
+
+  int? svarint() {
+    final z = varint();
+    if (z == null) return null;
+    return z.isEven ? z >> 1 : -((z + 1) >> 1);
   }
 
   Uint8List take(int n) {
@@ -233,7 +276,9 @@ Uint8List _key4(String hex) => Uint8List.fromList([
       p[0] != teamMsgAlert &&
       p[0] != teamMsgMarker &&
       p[0] != teamMsgReport &&
-      p[0] != teamMsgRole) {
+      p[0] != teamMsgRole &&
+      p[0] != teamMsgShape &&
+      p[0] != teamMsgCasevac) {
     return null;
   }
   return (p[0], teamKey4Hex(p, 1));

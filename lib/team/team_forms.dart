@@ -98,6 +98,98 @@ class TeamAttachmentField extends StatelessWidget {
   }
 }
 
+/// Title row for the team form sheets: title, optional subtitle and a close
+/// button, so a sheet can always be left without sending anything.
+class TeamSheetHeader extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final VoidCallback onClose;
+  const TeamSheetHeader({
+    super.key,
+    required this.title,
+    this.subtitle,
+    required this.onClose,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: t.titleMedium),
+              if (subtitle != null) Text(subtitle!, style: t.bodySmall),
+            ],
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.close),
+          tooltip: 'Close',
+          onPressed: onClose,
+        ),
+      ],
+    );
+  }
+}
+
+/// Cancel + primary action, side by side.
+class TeamSheetActions extends StatelessWidget {
+  final VoidCallback onCancel;
+  final VoidCallback? onSubmit;
+  final String submitLabel;
+  final IconData submitIcon;
+  const TeamSheetActions({
+    super.key,
+    required this.onCancel,
+    required this.onSubmit,
+    required this.submitLabel,
+    this.submitIcon = Icons.send,
+  });
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Expanded(
+        child: OutlinedButton(onPressed: onCancel, child: const Text('Cancel')),
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        flex: 2,
+        child: FilledButton.icon(
+          icon: Icon(submitIcon),
+          label: Text(submitLabel),
+          onPressed: onSubmit,
+        ),
+      ),
+    ],
+  );
+}
+
+/// Asks before throwing away a partly filled form.
+Future<bool> confirmTeamDiscard(BuildContext context, String what) async {
+  final r = await showDialog<bool>(
+    context: context,
+    builder: (c) => AlertDialog(
+      title: Text('Discard $what?'),
+      content: const Text('Nothing has been sent.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(c, false),
+          child: const Text('Keep editing'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(c, true),
+          child: const Text('Discard'),
+        ),
+      ],
+    ),
+  );
+  return r == true;
+}
+
 // --------------------------------------------------------------- pin editor
 
 Future<void> showTeamPinEditor(
@@ -108,6 +200,8 @@ Future<void> showTeamPinEditor(
 }) => showModalBottomSheet<void>(
   context: context,
   isScrollControlled: true,
+  useSafeArea: true,
+  showDragHandle: true,
   builder: (_) => _PinEditor(lat: lat, lon: lon, existing: existing),
 );
 
@@ -170,13 +264,15 @@ class _PinEditorState extends State<_PinEditor> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                widget.existing == null ? 'Drop tactical pin' : 'Edit pin',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              Text(
-                '${widget.lat.toStringAsFixed(5)}, ${widget.lon.toStringAsFixed(5)}',
-                style: Theme.of(context).textTheme.bodySmall,
+              TeamSheetHeader(
+                title: widget.existing == null
+                    ? 'Drop tactical pin'
+                    : 'Edit pin',
+                subtitle: context.read<TeamService>().formatCoord(
+                  widget.lat,
+                  widget.lon,
+                ),
+                onClose: () => Navigator.pop(context),
               ),
               const SizedBox(height: 10),
               Wrap(
@@ -213,12 +309,12 @@ class _PinEditorState extends State<_PinEditor> {
                 onChanged: (a) => setState(() => _attachment = a),
               ),
               const SizedBox(height: 12),
-              FilledButton.icon(
-                icon: const Icon(Icons.send),
-                label: Text(
-                  widget.existing == null ? 'Share with team' : 'Update',
-                ),
-                onPressed: _sending ? null : _save,
+              TeamSheetActions(
+                onCancel: () => Navigator.pop(context),
+                submitLabel: widget.existing == null
+                    ? 'Share with team'
+                    : 'Update',
+                onSubmit: _sending ? null : _save,
               ),
             ],
           ),
@@ -237,6 +333,8 @@ Future<void> showSaluteForm(
 }) => showModalBottomSheet<void>(
   context: context,
   isScrollControlled: true,
+  useSafeArea: true,
+  showDragHandle: true,
   builder: (_) => _SaluteForm(lat: lat, lon: lon),
 );
 
@@ -326,6 +424,23 @@ class _SaluteFormState extends State<_SaluteForm> {
     if (mounted) Navigator.pop(context);
   }
 
+  bool get _dirty =>
+      _vehicles > 0 ||
+      _people > 0 ||
+      _attachment != null ||
+      [
+        _place,
+        _size,
+        _activity,
+        _unit,
+        _equipment,
+      ].any((c) => c.text.trim().isNotEmpty);
+
+  Future<void> _close() async {
+    if (_dirty && !await confirmTeamDiscard(context, 'this report')) return;
+    if (mounted) Navigator.pop(context);
+  }
+
   Widget _counter(
     String label,
     String emoji,
@@ -350,136 +465,142 @@ class _SaluteFormState extends State<_SaluteForm> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 12,
-          bottom: 12 + MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('SALUTE report', style: t.titleMedium),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                children: [
-                  for (final u in TeamUrgency.values.reversed)
-                    ChoiceChip(
-                      label: Text('${u.dot} ${u.label}'),
-                      selected: _urgency == u,
-                      onSelected: (_) => setState(() => _urgency = u),
+    return PopScope(
+      canPop: !_dirty || _sending,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) unawaited(_close());
+      },
+      child: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 12,
+            bottom: 12 + MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TeamSheetHeader(title: 'SALUTE report', onClose: _close),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  children: [
+                    for (final u in TeamUrgency.values.reversed)
+                      ChoiceChip(
+                        label: Text('${u.dot} ${u.label}'),
+                        selected: _urgency == u,
+                        onSelected: (_) => setState(() => _urgency = u),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                SegmentedButton<TeamAffiliation>(
+                  segments: [
+                    for (final a in TeamAffiliation.values)
+                      ButtonSegment(value: a, label: Text(a.label)),
+                  ],
+                  selected: {_aff},
+                  onSelectionChanged: (s) => setState(() => _aff = s.first),
+                ),
+                const Divider(),
+                Text('S · Size', style: t.labelLarge),
+                Wrap(
+                  children: [
+                    _counter(
+                      'Vehicles',
+                      '🚗',
+                      _vehicles,
+                      (v) => setState(() => _vehicles = v),
                     ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              SegmentedButton<TeamAffiliation>(
-                segments: [
-                  for (final a in TeamAffiliation.values)
-                    ButtonSegment(value: a, label: Text(a.label)),
-                ],
-                selected: {_aff},
-                onSelectionChanged: (s) => setState(() => _aff = s.first),
-              ),
-              const Divider(),
-              Text('S · Size', style: t.labelLarge),
-              Wrap(
-                children: [
-                  _counter(
-                    'Vehicles',
-                    '🚗',
-                    _vehicles,
-                    (v) => setState(() => _vehicles = v),
+                    _counter(
+                      'Personnel',
+                      '🥾',
+                      _people,
+                      (v) => setState(() => _people = v),
+                    ),
+                  ],
+                ),
+                TextField(
+                  controller: _size,
+                  maxLength: teamMaxSaluteSizeBytes,
+                  decoration: const InputDecoration(
+                    labelText: 'Other size note (optional)',
                   ),
-                  _counter(
-                    'Personnel',
-                    '🥾',
-                    _people,
-                    (v) => setState(() => _people = v),
+                  onChanged: (_) => setState(() {}),
+                ),
+                TextField(
+                  controller: _activity,
+                  maxLength: teamMaxSaluteActivityBytes,
+                  decoration: const InputDecoration(labelText: 'A · Activity'),
+                  onChanged: (_) => setState(() {}),
+                ),
+                TextField(
+                  controller: _place,
+                  maxLength: teamMaxSalutePlaceBytes,
+                  decoration: InputDecoration(
+                    labelText: 'L · Location name (e.g. Auburn E Main St)',
+                    helperText:
+                        'Map point ${context.read<TeamService>().formatCoord(widget.lat, widget.lon)}',
                   ),
-                ],
-              ),
-              TextField(
-                controller: _size,
-                maxLength: teamMaxSaluteSizeBytes,
-                decoration: const InputDecoration(
-                  labelText: 'Other size note (optional)',
+                  onChanged: (_) => setState(() {}),
                 ),
-                onChanged: (_) => setState(() {}),
-              ),
-              TextField(
-                controller: _activity,
-                maxLength: teamMaxSaluteActivityBytes,
-                decoration: const InputDecoration(labelText: 'A · Activity'),
-                onChanged: (_) => setState(() {}),
-              ),
-              TextField(
-                controller: _place,
-                maxLength: teamMaxSalutePlaceBytes,
-                decoration: InputDecoration(
-                  labelText: 'L · Location name (e.g. Auburn E Main St)',
-                  helperText:
-                      'Map point ${widget.lat.toStringAsFixed(5)}, ${widget.lon.toStringAsFixed(5)}',
+                TextField(
+                  controller: _unit,
+                  maxLength: teamMaxSaluteUnitBytes,
+                  decoration: const InputDecoration(
+                    labelText: 'U · Unit / uniform',
+                  ),
+                  onChanged: (_) => setState(() {}),
                 ),
-                onChanged: (_) => setState(() {}),
-              ),
-              TextField(
-                controller: _unit,
-                maxLength: teamMaxSaluteUnitBytes,
-                decoration: const InputDecoration(
-                  labelText: 'U · Unit / uniform',
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.schedule),
+                  title: Text('T · Time observed: ${_preview.timeLabel}'),
+                  trailing: TextButton(
+                    onPressed: _pickTime,
+                    child: const Text('Change'),
+                  ),
                 ),
-                onChanged: (_) => setState(() {}),
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.schedule),
-                title: Text('T · Time observed: ${_preview.timeLabel}'),
-                trailing: TextButton(
-                  onPressed: _pickTime,
-                  child: const Text('Change'),
+                TextField(
+                  controller: _equipment,
+                  maxLength: teamMaxSaluteEquipmentBytes,
+                  decoration: const InputDecoration(labelText: 'E · Equipment'),
+                  onChanged: (_) => setState(() {}),
                 ),
-              ),
-              TextField(
-                controller: _equipment,
-                maxLength: teamMaxSaluteEquipmentBytes,
-                decoration: const InputDecoration(labelText: 'E · Equipment'),
-                onChanged: (_) => setState(() {}),
-              ),
-              TeamAttachmentField(
-                value: _attachment,
-                label: 'SALUTE report',
-                onChanged: (a) => setState(() => _attachment = a),
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Also post as text'),
-                subtitle: const Text(
-                  'For teammates on other MeshCore apps. Costs one more '
-                  'channel message.',
+                TeamAttachmentField(
+                  value: _attachment,
+                  label: 'SALUTE report',
+                  onChanged: (a) => setState(() => _attachment = a),
                 ),
-                value: _alsoText,
-                onChanged: (v) => setState(() => _alsoText = v),
-              ),
-              const SizedBox(height: 6),
-              Text('Preview', style: t.labelLarge),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: TeamReportCard(report: _preview),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Also post as text'),
+                  subtitle: const Text(
+                    'For teammates on other MeshCore apps. Costs one more '
+                    'channel message.',
+                  ),
+                  value: _alsoText,
+                  onChanged: (v) => setState(() => _alsoText = v),
                 ),
-              ),
-              const SizedBox(height: 8),
-              FilledButton.icon(
-                icon: const Icon(Icons.send),
-                label: const Text('Send report'),
-                onPressed: _sending ? null : _send,
-              ),
-            ],
+                const SizedBox(height: 6),
+                Text('Preview', style: t.labelLarge),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: TeamReportCard(report: _preview),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TeamSheetActions(
+                  onCancel: _close,
+                  submitLabel: 'Send report',
+                  onSubmit: _sending ? null : _send,
+                ),
+              ],
+            ),
           ),
         ),
       ),
