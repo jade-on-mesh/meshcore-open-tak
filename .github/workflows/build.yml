@@ -42,6 +42,8 @@ jobs:
           docker-images: true
           swap-storage: false
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 20 # recent commits for the release notes
       - uses: actions/setup-java@v4
         with:
           distribution: "temurin"
@@ -136,3 +138,32 @@ jobs:
           name: meshcore-open-tak-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30
+      - name: Publish to the "Latest build" release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          cp build/app/outputs/flutter-apk/app-release.apk meshcore-open-tak.apk
+          build=$((1000 + GITHUB_RUN_NUMBER))
+          signed="debug key (uninstall the old app before installing)"
+          [ -f android/key.properties ] && signed="permanent release key (installs over the previous build)"
+          {
+            echo "**Build $build** · $(date -u '+%Y-%m-%d %H:%M UTC') · commit ${GITHUB_SHA::7}"
+            echo
+            echo "Signed with the $signed."
+            echo
+            echo "Download **meshcore-open-tak.apk** below and open it on your phone."
+            echo
+            echo "Recent changes:"
+            git log -8 --no-merges --pretty='- %s' 2>/dev/null || true
+          } > notes.md
+          # Move the tag to this commit, then create or update the release.
+          git tag -f latest-build "$GITHUB_SHA"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" refs/tags/latest-build
+          if gh release view latest-build >/dev/null 2>&1; then
+            gh release edit latest-build --title "Latest build ($build)" --notes-file notes.md --latest
+          else
+            gh release create latest-build --title "Latest build ($build)" --notes-file notes.md --latest
+          fi
+          gh release upload latest-build meshcore-open-tak.apk --clobber
