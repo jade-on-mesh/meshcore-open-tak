@@ -11,6 +11,8 @@ import 'package:meshcore_open/screens/path_trace_map.dart';
 import 'package:meshcore_open/widgets/app_bar.dart';
 import 'package:provider/provider.dart';
 
+import '../team/map_chat_pane.dart';
+import '../team/map_tools.dart';
 import '../team/team_map.dart';
 import '../team/team_service.dart';
 import '../connector/meshcore_connector.dart';
@@ -83,6 +85,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
   Set<String> _removedMarkerIds = {};
   bool _isBuildingPathTrace = false;
   bool _isSelectingPoi = false;
+  bool _chatOpen = false;
   bool _hasInitializedMap = false;
   bool _removedMarkersLoaded = false;
   final List<int> _pathTrace = [];
@@ -672,6 +675,18 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
               automaticallyImplyLeading: false,
               bottom: const SyncProgressAppBarBottom(),
               actions: [
+                MapChatButton(open: _chatOpen, onPressed: _toggleChat),
+                IconButton(
+                  tooltip: 'Tools',
+                  icon: const Icon(Icons.apps),
+                  onPressed: () => showMapTools(
+                    context,
+                    onChat: () {
+                      if (!_chatOpen) _toggleChat();
+                    },
+                    mapCenter: _mapController.camera.center,
+                  ),
+                ),
                 PopupMenuButton(
                   itemBuilder: (context) => [
                     if (!_isBuildingPathTrace &&
@@ -771,7 +786,8 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                 ),
               ],
             ),
-            body: Stack(
+            body: _withChatPane(
+              Stack(
               children: [
                 FlutterMap(
                   mapController: _mapController,
@@ -1007,6 +1023,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                   _buildSelectedNodeCard(context, selectedContact, connector),
               ],
             ),
+            ),
             bottomNavigationBar: SafeArea(
               top: false,
               child: QuickSwitchBar(
@@ -1019,7 +1036,9 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
               ),
             ),
             floatingActionButton:
-                (selectedContact == null && !_isBuildingPathTrace)
+                (selectedContact == null &&
+                    !_isBuildingPathTrace &&
+                    !_chatOpen)
                 ? FloatingActionButton(
                     onPressed: () => _showFilterSheet(context, settingsService),
                     tooltip: context.l10n.map_filterNodes,
@@ -1027,6 +1046,41 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                   )
                 : null,
           ),
+        );
+      },
+    );
+  }
+
+  void _toggleChat() => setState(() => _chatOpen = !_chatOpen);
+
+  /// Docks the chat pane beside the map (landscape) or under it (portrait),
+  /// like ATAK's chat drawer.
+  Widget _withChatPane(Widget map) {
+    if (!_chatOpen) return map;
+    return LayoutBuilder(
+      builder: (context, box) {
+        final side = box.maxWidth > box.maxHeight || box.maxWidth >= 720;
+        final pane = MapChatPane(
+          side: side,
+          onClose: _toggleChat,
+          onLocate: (p) => _mapController.move(
+            p,
+            max(_mapController.camera.zoom, 15.0),
+          ),
+        );
+        if (side) {
+          return Row(
+            children: [
+              Expanded(child: map),
+              SizedBox(width: min(400.0, box.maxWidth * 0.42), child: pane),
+            ],
+          );
+        }
+        return Column(
+          children: [
+            Expanded(child: map),
+            SizedBox(height: box.maxHeight * 0.45, child: pane),
+          ],
         );
       },
     );
