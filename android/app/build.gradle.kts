@@ -62,6 +62,22 @@ android {
         }
     }
 
+    packaging {
+        jniLibs {
+            // Plugin AARs (ONNX Runtime, ML Kit) bring every ABI along even
+            // with abiFilters set; keep only arm64-v8a, as described above.
+            excludes += listOf(
+                "lib/x86_64/**",
+                "lib/x86/**",
+                "lib/armeabi-v7a/**",
+                "lib/armeabi/**",
+            )
+            // Compress native libraries: a far smaller APK to download and
+            // sideload, at the cost of extracting them once at install.
+            useLegacyPackaging = true
+        }
+    }
+
     signingConfigs {
         create("release") {
             val storeFilePath = keystoreProperties["storeFile"] as String?
