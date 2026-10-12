@@ -2477,7 +2477,12 @@ class MeshCoreConnector extends ChangeNotifier {
     if (pad == null || !pad.enabled) {
       return const (handled: false, displayText: null);
     }
-    final hex = OtpService.extractCiphertextHex(rawText);
+    // DMs carry framed ciphertext only (an ack is 10 bytes, a part at least
+    // 13), as bare hex: nothing shorter, nothing with other text around it.
+    final hex = OtpService.looksLikeCiphertextHex(rawText) &&
+            rawText.length >= OtpService.minFramedDmHexChars
+        ? rawText
+        : null;
     if (hex == null) return const (handled: false, displayText: null);
 
     // Covers EVERY already-decrypted hex — acks and non-final chunk pieces
@@ -2504,24 +2509,31 @@ class MeshCoreConnector extends ChangeNotifier {
 
     final cipherByteLen = hex.length ~/ 2;
     Uint8List plainBytes;
+    ({Uint8List keyBytes, OtpPad updated}) consumption;
     try {
       final freshPad = getContactOtpPad(contactKeyHex)!;
-      final consumption = _consumePadForReceive(freshPad, cipherByteLen);
+      consumption = _consumePadForReceive(freshPad, cipherByteLen);
       plainBytes = OtpService.decryptBytesFromHex(hex, consumption.keyBytes);
-      _contactOtpPads[contactKeyHex] = consumption.updated;
-      unawaited(_otpPadStore.saveContactPad(contactKeyHex, consumption.updated));
-      _requestPromptContactSyncCheck(contactKeyHex);
     } catch (e) {
-      appLogger.warn('OTP decrypt failed for contact $contactKeyHex: $e');
-      _sendContactNack(contact, 'D');
+      // Not enough pad left for this length: not ours to read. Leave it as
+      // an ordinary message and let a sync check sort out any drift.
       _requestPromptContactSyncCheck(contactKeyHex);
-      return (
-        handled: true,
-        displayText: '🔒 Could not decrypt — pad may be out of sync',
-      );
+      return const (handled: false, displayText: null);
     }
 
     final parsed = OtpChunkService.parse(plainBytes);
+    if (parsed is! ParsedAckFrame && parsed is! ParsedChunkFrame) {
+      // Decrypted to something unframed: a plain DM that happens to be hex
+      // (a key, a hash, "cafe"...), or a real one sent against pad bytes we
+      // are out of step with. Either way the pad is untouched and the text
+      // shows as sent; a sync check repairs a genuine drift.
+      _requestPromptContactSyncCheck(contactKeyHex);
+      return const (handled: false, displayText: null);
+    }
+    _contactOtpPads[contactKeyHex] = consumption.updated;
+    unawaited(_otpPadStore.saveContactPad(contactKeyHex, consumption.updated));
+    _requestPromptContactSyncCheck(contactKeyHex);
+
     if (parsed is ParsedAckFrame) {
       _rememberOtpDecrypt(hex, '');
       _handleIncomingOtpAck(contactKeyHex, parsed.tid, parsed.idx);
@@ -2587,8 +2599,13 @@ class MeshCoreConnector extends ChangeNotifier {
       currentOffset: pad.offset,
     );
 
-    final hex = OtpService.extractCiphertextHex(text);
-    if (hex == null) return const (handled: false, displayText: null);
+    // Channel ciphertext always carries its claimed offset ("z2<b36>|hex"),
+    // from this app, OTP_3_RC1.lua and Wadamesh alike. Without it the post is
+    // ordinary text, however hex-like it looks.
+    if (offsetFramed == null || !OtpService.looksLikeCiphertextHex(text)) {
+      return const (handled: false, displayText: null);
+    }
+    final hex = text;
 
     final cached = _otpDecryptCache[hex];
     if (cached != null) {
@@ -6331,10 +6348,12 @@ class MeshCoreConnector extends ChangeNotifier {
 
     if (reactionInfo == null && isContactOtpEnabled(contact.publicKeyHex)) {
       final plainBytes = Uint8List.fromList(utf8.encode(text));
-      if (plainBytes.length > OtpService.maxPlaintextBytesForContact()) {
-        // Doesn't fit in one packet — hand off to the multi-chunk sender,
-        // which adds its own local message bubble and drives its own
-        // send/retry/ack state machine (see the "OTP chunk send" section).
+      // Every OTP DM goes out framed (MSGCHNK parts, each acked), even when
+      // it fits one packet, exactly as OTP_3_RC1.lua and Wadamesh's OTP
+      // Messenger send. That is what lets a receiver tell ciphertext from a
+      // plain DM that merely looks like hex ("cafe", "1234"): only a framed
+      // message is ever decrypted, so plain words never burn pad.
+      {
         await _sendChunkedContactMessage(
           contact,
           text,

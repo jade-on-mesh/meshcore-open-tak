@@ -231,6 +231,10 @@ class OtpService {
   /// happens to look hex-ish.
   static bool looksLikeCiphertextHex(String text) => _isPureHex(text);
 
+  /// Shortest OTP DM on the air: an encrypted ack, "\x01MSGACK\x02" + tid +
+  /// index, 10 bytes as 20 hex digits. Shorter all-hex DMs are plain text.
+  static const int minFramedDmHexChars = 20;
+
   static bool _isPureHex(String text) =>
       text.isNotEmpty &&
       text.length % 2 == 0 &&
