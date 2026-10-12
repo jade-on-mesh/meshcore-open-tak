@@ -787,6 +787,23 @@
   "channels_createPrivateChannelDesc": "Secured with a secret key.",
   "channels_joinPrivateChannel": "Join a Private Channel",
   "channels_joinPrivateChannelDesc": "Manually enter a secret key.",
+  "channels_shareQr": "Share as QR code",
+  "channels_shareQrTitle": "Share {name}",
+  "@channels_shareQrTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "channels_shareQrInstructions": "Scan with MeshCore Open TAK (Add channel > Join a Private Channel > Scan QR code) to join this channel.",
+  "channels_shareQrWarning": "Anyone who scans this code can read and post in this channel. Only show it to people you trust.",
+  "channels_copyLink": "Copy link",
+  "channels_linkCopied": "Channel link copied",
+  "channels_scanChannelQr": "Scan QR code",
+  "channels_scanChannelQrTitle": "Scan Channel QR",
+  "channels_scanChannelQrInstructions": "Point the camera at a channel QR code",
+  "channels_invalidChannelQr": "Not a MeshCore channel QR code",
   "channels_joinPublicChannel": "Join the Public Channel",
   "channels_joinPublicChannelDesc": "Anyone can join this channel.",
   "channels_joinHashtagChannel": "Join a Hashtag Channel",

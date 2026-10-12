@@ -31,7 +31,7 @@ IconData teamRoleIcon(TeamRole r) => switch (r) {
   TeamRole.navigator => Icons.explore,
   TeamRole.comms => Icons.cell_tower,
   TeamRole.driver => Icons.directions_car,
-  TeamRole.k9 => Icons.pets,
+  TeamRole.security => Icons.shield_outlined,
   TeamRole.observer => Icons.visibility,
   TeamRole.command => Icons.account_balance,
 };

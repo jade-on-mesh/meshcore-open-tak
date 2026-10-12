@@ -39,7 +39,7 @@ String takRoleName(TeamRole r) => switch (r) {
   TeamRole.navigator => 'Team Member',
   TeamRole.comms => 'RTO',
   TeamRole.driver => 'Team Member',
-  TeamRole.k9 => 'K9',
+  TeamRole.security => 'Team Member',
   TeamRole.observer => 'Forward Observer',
   TeamRole.command => 'HQ',
 };
@@ -48,7 +48,6 @@ TeamRole teamRoleFromTak(String? role) => switch ((role ?? '').toLowerCase()) {
   'team lead' => TeamRole.lead,
   'medic' => TeamRole.medic,
   'rto' => TeamRole.comms,
-  'k9' => TeamRole.k9,
   'forward observer' || 'sniper' => TeamRole.observer,
   'hq' => TeamRole.command,
   _ => TeamRole.member,

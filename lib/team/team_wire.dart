@@ -49,7 +49,7 @@ enum TeamRole {
   navigator('Navigator'),
   comms('Comms'),
   driver('Driver / vehicle'),
-  k9('K9'),
+  security('Security'),
   observer('Observer'),
   command('Command / HQ');
 
