@@ -75,6 +75,21 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- Makes this app visible to ATAK (Android 11+ package visibility), so
+             the MeshCore ATAK plugin, which runs inside ATAK, can find and bind
+             TakBridgeService. ATAK declares <queries> only for its plugins and
+             for VIEW handlers of any MIME type; this private type matches the
+             latter. Nothing sends it; if something does, it just opens the app. -->
+        <activity-alias
+            android:name=".AtakVisibility"
+            android:targetActivity=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/vnd.jadeonmesh.meshcore-tak" />
+            </intent-filter>
+        </activity-alias>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
