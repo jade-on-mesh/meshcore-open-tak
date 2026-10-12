@@ -143,9 +143,19 @@ class TeamMapLayer extends StatelessWidget {
     final fix = team.fix;
     final hound = team.bloodhound;
 
+    final myTrack = team.showTracks && team.enabled
+        ? team.myTrack
+        : const <(double, double, DateTime)>[];
     final lines = <Polyline>[
+      if (myTrack.length > 1)
+        Polyline(
+          points: [for (final p in myTrack) LatLng(p.$1, p.$2)],
+          color: Color(team.color.argb).withValues(alpha: 0.6),
+          strokeWidth: 3,
+          pattern: StrokePattern.dotted(spacingFactor: 2),
+        ),
       for (final m in team.members)
-        if (m.trail.length > 1)
+        if (team.showTracks && m.trail.length > 1)
           Polyline(
             points: [for (final p in m.trail) LatLng(p.$1, p.$2)],
             color: Color(
@@ -1099,9 +1109,7 @@ Future<void> showTeamMapActions(
         mainAxisSize: MainAxisSize.min,
         children: [
           ListTile(
-            title: Text(
-              '${at.latitude.toStringAsFixed(5)}, ${at.longitude.toStringAsFixed(5)}',
-            ),
+            title: Text(team.formatCoord(at.latitude, at.longitude)),
             subtitle: Text(_rangeFromMe(team, at.latitude, at.longitude) ?? ''),
           ),
           ListTile(
@@ -1252,6 +1260,10 @@ class TeamMapOverlay extends StatelessWidget {
             ),
           const SizedBox(height: 6),
           _StatusPill(team: team),
+          if (fix != null) ...[
+            const SizedBox(height: 4),
+            _CoordPill(team: team, fix: fix),
+          ],
           const SizedBox(height: 8),
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -1351,6 +1363,41 @@ class TeamMapOverlay extends StatelessWidget {
     );
     if (ok == true) await team.cancelAlert();
   }
+}
+
+/// Your position in the chosen format (tap to switch Decimal/DMS/MGRS).
+class _CoordPill extends StatelessWidget {
+  final TeamService team;
+  final TeamFix fix;
+  const _CoordPill({required this.team, required this.fix});
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.black.withValues(alpha: 0.7),
+    borderRadius: BorderRadius.circular(8),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => team.setCoordFormat(team.coordFormat.next),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Text(
+          [
+            team.formatCoord(fix.lat, fix.lon),
+            if (fix.accuracy > 0) '±${fix.accuracy.round()} m',
+            if (fix.altitude != null && fix.source == TeamFixSource.phone)
+              '${fix.altitude!.round()} m',
+            if ((fix.speed ?? 0) > 0.5)
+              '${(fix.speed! * 3.6).toStringAsFixed(0)} km/h',
+          ].join(' · '),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontFeatures: [ui.FontFeature.tabularFigures()],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 /// Hold for 1.5 s to raise an alert (avoids pocket presses).

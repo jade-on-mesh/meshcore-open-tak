@@ -30,6 +30,7 @@ IconData shapeKindIcon(ShapeKind k, {bool geofence = false}) {
 class TeamDrawController extends ChangeNotifier {
   ShapeKind? _tool;
   bool _geofence = false;
+  bool _measure = false;
   final List<LatLng> points = [];
 
   ShapeKind? get tool => _tool;
@@ -37,15 +38,62 @@ class TeamDrawController extends ChangeNotifier {
   bool get freehand => _tool == ShapeKind.freehand;
   bool get geofence => _geofence;
 
-  void start(ShapeKind kind, {bool geofence = false}) {
+  /// Range & bearing: a line that is only measured, not shared (unless the
+  /// user saves it).
+  bool get measure => _measure;
+
+  void start(ShapeKind kind, {bool geofence = false, bool measure = false}) {
     _tool = kind;
     _geofence = geofence && kind.closed;
+    _measure = measure && kind == ShapeKind.line;
     points.clear();
     notifyListeners();
   }
 
+  /// Starts Range & Bearing, optionally from a point (e.g. your position).
+  void startMeasure({LatLng? from}) {
+    start(ShapeKind.line, measure: true);
+    if (from != null) {
+      points.add(from);
+      notifyListeners();
+    }
+  }
+
+  /// Each leg as (metres, bearing degrees).
+  List<(double, double)> get legs => [
+    for (var i = 1; i < points.length; i++)
+      (
+        teamDistanceMeters(
+          points[i - 1].latitude,
+          points[i - 1].longitude,
+          points[i].latitude,
+          points[i].longitude,
+        ),
+        teamBearingDeg(
+          points[i - 1].latitude,
+          points[i - 1].longitude,
+          points[i].latitude,
+          points[i].longitude,
+        ),
+      ),
+  ];
+
+  /// "1.2 km total · last leg 350 m 045° NE"
+  String get measureSummary {
+    final l = legs;
+    if (l.isEmpty) {
+      return points.isEmpty ? 'Tap the start point' : 'Tap the next point';
+    }
+    final total = l.fold<double>(0, (a, b) => a + b.$1);
+    final last = l.last;
+    if (l.length == 1) return teamRangeBearing(last.$1, last.$2);
+    return '${teamFormatLength(total)} total · last '
+        '${teamRangeBearing(last.$1, last.$2)}';
+  }
+
   void cancel() {
     _tool = null;
+    _measure = false;
     points.clear();
     notifyListeners();
   }
@@ -91,7 +139,9 @@ class TeamDrawController extends ChangeNotifier {
     _ => points.length >= 2,
   };
 
-  String get hint => switch (_tool) {
+  String get hint => _measure
+      ? measureSummary
+      : switch (_tool) {
     null => '',
     ShapeKind.line => 'Tap to add points',
     ShapeKind.freehand =>
@@ -153,7 +203,9 @@ class TeamDrawLayer extends StatelessWidget {
       final t = controller.tool;
       final pts = controller.points;
       if (t == null || pts.isEmpty) return const SizedBox.shrink();
-      const color = Color(0xFFFFEB3B);
+      final color = controller.measure
+          ? const Color(0xFFFF6D00)
+          : const Color(0xFFFFEB3B);
       final (geo, radius) = controller.geometry();
       final ll = [for (final p in geo) LatLng(p.$1, p.$2)];
       return Stack(
@@ -190,6 +242,44 @@ class TeamDrawLayer extends StatelessWidget {
                   color: color,
                   strokeWidth: t == ShapeKind.route ? 4 : 3,
                 ),
+              ],
+            ),
+          if (controller.measure)
+            MarkerLayer(
+              markers: [
+                for (var i = 1; i < pts.length; i++)
+                  Marker(
+                    point: LatLng(
+                      (pts[i - 1].latitude + pts[i].latitude) / 2,
+                      (pts[i - 1].longitude + pts[i].longitude) / 2,
+                    ),
+                    width: 130,
+                    height: 22,
+                    child: IgnorePointer(
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black87,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            teamRangeBearing(
+                              controller.legs[i - 1].$1,
+                              controller.legs[i - 1].$2,
+                            ),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           if (!controller.freehand)
@@ -291,7 +381,9 @@ class TeamDrawToolbar extends StatelessWidget {
             child: Row(
               children: [
                 Icon(
-                  shapeKindIcon(t, geofence: controller.geofence),
+                  controller.measure
+                      ? Icons.straighten
+                      : shapeKindIcon(t, geofence: controller.geofence),
                   color: scheme.primary,
                 ),
                 const SizedBox(width: 10),
@@ -301,7 +393,9 @@ class TeamDrawToolbar extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        controller.geofence
+                        controller.measure
+                            ? 'Range & bearing'
+                            : controller.geofence
                             ? 'Geofence (${t.label.toLowerCase()})'
                             : t.label,
                         style: Theme.of(context).textTheme.titleSmall,
@@ -319,13 +413,15 @@ class TeamDrawToolbar extends StatelessWidget {
                   onPressed: controller.points.isEmpty ? null : controller.undo,
                 ),
                 IconButton(
-                  tooltip: 'Cancel drawing',
+                  tooltip: controller.measure ? 'Close' : 'Cancel drawing',
                   icon: const Icon(Icons.close),
                   onPressed: controller.cancel,
                 ),
                 IconButton.filled(
-                  tooltip: 'Done',
-                  icon: const Icon(Icons.check),
+                  tooltip: controller.measure ? 'Share as a line' : 'Done',
+                  icon: Icon(
+                    controller.measure ? Icons.ios_share : Icons.check,
+                  ),
                   onPressed: controller.canFinish ? onDone : null,
                 ),
               ],

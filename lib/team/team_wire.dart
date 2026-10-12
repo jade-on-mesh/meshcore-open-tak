@@ -30,6 +30,8 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'team_coords.dart';
+
 part 'team_shape_wire.dart';
 part 'team_casevac_wire.dart';
 

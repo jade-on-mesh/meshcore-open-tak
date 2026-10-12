@@ -269,7 +269,7 @@ class _PinEditorState extends State<_PinEditor> {
                     ? 'Drop tactical pin'
                     : 'Edit pin',
                 subtitle:
-                    '${widget.lat.toStringAsFixed(5)}, ${widget.lon.toStringAsFixed(5)}',
+                    context.read<TeamService>().formatCoord(widget.lat, widget.lon),
                 onClose: () => Navigator.pop(context),
               ),
               const SizedBox(height: 10),
@@ -541,7 +541,7 @@ class _SaluteFormState extends State<_SaluteForm> {
                   decoration: InputDecoration(
                     labelText: 'L · Location name (e.g. Auburn E Main St)',
                     helperText:
-                        'Map point ${widget.lat.toStringAsFixed(5)}, ${widget.lon.toStringAsFixed(5)}',
+                        'Map point ${context.read<TeamService>().formatCoord(widget.lat, widget.lon)}',
                   ),
                   onChanged: (_) => setState(() {}),
                 ),

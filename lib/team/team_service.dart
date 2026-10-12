@@ -15,6 +15,7 @@ import '../models/channel_message.dart';
 import '../services/image_chunk_transport.dart'
     show parseChannelDataFrame, respCodeChannelDataRecv;
 import '../services/notification_service.dart';
+import 'team_coords.dart';
 import 'team_wire.dart';
 
 /// One teammate (or this phone), as last heard.
@@ -110,6 +111,10 @@ class TeamService extends ChangeNotifier {
   static const _kShare = 'team_share_position';
   static const _kStatus = 'team_status';
   static const _kMarkers = 'team_markers_v1';
+  static const _kCoordFormat = 'team_coord_format';
+  static const _kRecordTrack = 'team_record_track';
+  static const _kShowTracks = 'team_show_tracks';
+  static const _kMyTrack = 'team_my_track_v1';
 
   bool _enabled = false;
   int? _channelIndex;
@@ -173,6 +178,10 @@ class TeamService extends ChangeNotifier {
       _color = TeamColor.fromIndex(p.getInt(_kColor) ?? 0);
       _sharePosition = p.getBool(_kShare) ?? true;
       _status = TeamStatus.fromIndex(p.getInt(_kStatus) ?? 0);
+      _coordFormat = CoordFormat.fromIndex(p.getInt(_kCoordFormat) ?? 0);
+      _recordTrack = p.getBool(_kRecordTrack) ?? true;
+      _showTracks = p.getBool(_kShowTracks) ?? true;
+      _myTrack.addAll(decodeTeamTrack(p.getString(_kMyTrack) ?? ''));
       for (final b64 in p.getStringList(_kMarkers) ?? const <String>[]) {
         final m = TeamMarker.tryParse(base64Decode(b64));
         if (m != null) _markers[m.key] = m;
@@ -233,6 +242,92 @@ class TeamService extends ChangeNotifier {
     });
     _updateGps();
     if (identityChanged) _forceBeacon = true;
+  }
+
+  // ------------------------------------------------- display preferences
+
+  CoordFormat _coordFormat = CoordFormat.decimal;
+  CoordFormat get coordFormat => _coordFormat;
+
+  /// Formats a position in the chosen coordinate format.
+  String formatCoord(double lat, double lon) =>
+      teamFormatCoord(lat, lon, _coordFormat);
+
+  Future<void> setCoordFormat(CoordFormat f) async {
+    _coordFormat = f;
+    notifyListeners();
+    await _save((p) => p.setInt(_kCoordFormat, f.index));
+  }
+
+  // -------------------------------------------------------- track history
+
+  bool _recordTrack = true;
+  bool _showTracks = true;
+  final List<(double, double, DateTime)> _myTrack = [];
+  bool _trackDirty = false;
+  DateTime _trackSaved = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// Record this phone's track while team mode is on.
+  bool get recordTrack => _recordTrack;
+
+  /// Draw tracks (mine and teammates') on the map.
+  bool get showTracks => _showTracks;
+
+  /// This phone's recorded track, oldest first.
+  List<(double, double, DateTime)> get myTrack => List.unmodifiable(_myTrack);
+
+  static const int _myTrackMax = 5000;
+
+  Future<void> setRecordTrack(bool v) async {
+    _recordTrack = v;
+    notifyListeners();
+    await _save((p) => p.setBool(_kRecordTrack, v));
+  }
+
+  Future<void> setShowTracks(bool v) async {
+    _showTracks = v;
+    notifyListeners();
+    await _save((p) => p.setBool(_kShowTracks, v));
+  }
+
+  Future<void> clearMyTrack() async {
+    _myTrack.clear();
+    notifyListeners();
+    await _save((p) => p.remove(_kMyTrack));
+  }
+
+  /// Forgets a teammate's trail (and position).
+  void clearMemberTrail(String key4) {
+    final m = _members[key4];
+    if (m == null) return;
+    _members[key4] = TeamMember(
+      key4: m.key4,
+      position: m.position,
+      heard: m.heard,
+    );
+    notifyListeners();
+  }
+
+  void _recordSelf() {
+    if (!_enabled || !_recordTrack) return;
+    final f = fix;
+    if (f == null || f.source != TeamFixSource.phone) return;
+    if (f.accuracy > 50) return; // too rough to be worth keeping
+    final last = _myTrack.isEmpty ? null : _myTrack.last;
+    if (last != null &&
+        teamDistanceMeters(last.$1, last.$2, f.lat, f.lon) <
+            max(10.0, f.accuracy)) {
+      return;
+    }
+    _myTrack.add((f.lat, f.lon, f.time));
+    if (_myTrack.length > _myTrackMax) _myTrack.removeAt(0);
+    _trackDirty = true;
+    if (DateTime.now().difference(_trackSaved) > const Duration(seconds: 30)) {
+      _trackSaved = DateTime.now();
+      _trackDirty = false;
+      final enc = encodeTeamTrack(_myTrack);
+      unawaited(_save((p) => p.setString(_kMyTrack, enc)));
+    }
   }
 
   Future<void> setStatus(TeamStatus s) async {
@@ -526,6 +621,7 @@ class TeamService extends ChangeNotifier {
   }
 
   void _onSelfMoved() {
+    _recordSelf();
     _advanceRoute();
     final f = fix;
     if (f != null) _checkGeofences(selfKey4, 'You', f.lat, f.lon);
@@ -927,6 +1023,13 @@ class TeamService extends ChangeNotifier {
     if (isMyShape(s)) await _send(d.encode());
   }
 
+  /// Adds a shape that came from outside the mesh (a TAK data package),
+  /// without sending it.
+  void putExternalShape(TeamShape s) => _onShape(s);
+
+  /// A fresh random id for imported items.
+  int newItemId() => _rng.nextInt(1 << 32);
+
   /// Re-sends my drawings, e.g. for someone who joined late.
   Future<int> resendMyShapes() async {
     var n = 0;
@@ -1242,10 +1345,44 @@ class TeamService extends ChangeNotifier {
 
   @override
   void dispose() {
+    if (_trackDirty) {
+      final enc = encodeTeamTrack(_myTrack);
+      unawaited(_save((p) => p.setString(_kMyTrack, enc)));
+    }
     _tick.cancel();
     unawaited(_sub.cancel());
     unawaited(_gpsSub?.cancel());
     _connector.removeListener(_onConnectorChanged);
     super.dispose();
   }
+}
+
+/// Compact text form of a track: "lat,lon,epochSeconds;..." (5 decimals).
+String encodeTeamTrack(List<(double, double, DateTime)> t) => [
+  for (final p in t)
+    '${p.$1.toStringAsFixed(5)},${p.$2.toStringAsFixed(5)},'
+        '${p.$3.millisecondsSinceEpoch ~/ 1000}',
+].join(';');
+
+List<(double, double, DateTime)> decodeTeamTrack(String s) {
+  final out = <(double, double, DateTime)>[];
+  if (s.isEmpty) return out;
+  for (final part in s.split(';')) {
+    final f = part.split(',');
+    if (f.length != 3) continue;
+    final a = double.tryParse(f[0]), b = double.tryParse(f[1]);
+    final t = int.tryParse(f[2]);
+    if (a == null || b == null || t == null) continue;
+    out.add((a, b, DateTime.fromMillisecondsSinceEpoch(t * 1000)));
+  }
+  return out;
+}
+
+/// Length of a track in metres.
+double teamTrackLength(List<(double, double, DateTime)> t) {
+  var d = 0.0;
+  for (var i = 1; i < t.length; i++) {
+    d += teamDistanceMeters(t[i - 1].$1, t[i - 1].$2, t[i].$1, t[i].$2);
+  }
+  return d;
 }

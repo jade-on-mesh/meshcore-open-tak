@@ -11,7 +11,10 @@ import '../vox/voice_service.dart';
 import 'team_casevac_ui.dart';
 import 'team_draw.dart';
 import 'team_forms.dart';
+import 'team_coords.dart';
 import 'team_gpx.dart';
+import 'team_map.dart' show teamAgo;
+import 'team_packages.dart';
 import 'team_screen.dart';
 import 'team_service.dart';
 import 'team_wire.dart';
@@ -50,6 +53,8 @@ Future<void> showMapTools(
   BuildContext context, {
   required VoidCallback onChat,
   required void Function(ShapeKind kind, bool geofence) onDraw,
+  required VoidCallback onMeasure,
+  required ValueChanged<LatLng> onGoTo,
   required LatLng mapCenter,
 }) {
   final team = context.read<TeamService>();
@@ -100,6 +105,9 @@ Future<void> showMapTools(
       final k = await _pickFenceShape(c);
       if (k != null) onDraw(k, true);
     }, needsTeam: true),
+    _Tool(Icons.straighten, 'Range & Bearing', (_) => onMeasure()),
+    _Tool(Icons.my_location, 'Go To', (c) => _showGoTo(c, team, onGoTo)),
+    _Tool(Icons.timeline, 'Track History', (c) => _showTrackHistory(c)),
     _Tool(
       Icons.track_changes,
       'Bloodhound',
@@ -119,6 +127,11 @@ Future<void> showMapTools(
       'Status',
       (c) => _showStatusPicker(c, team),
       needsTeam: true,
+    ),
+    _Tool(
+      Icons.inventory_2_outlined,
+      'Data Package',
+      (c) => showDataPackageSheet(c),
     ),
     _Tool(Icons.ios_share, 'Export GPX', (c) async {
       final messenger = ScaffoldMessenger.of(c);
@@ -477,4 +490,198 @@ Future<void> _showStatusPicker(BuildContext context, TeamService team) =>
           ),
         ),
       ),
+    );
+
+// ------------------------------------------------------------------ Go To
+
+Future<void> _showGoTo(
+  BuildContext context,
+  TeamService team,
+  ValueChanged<LatLng> onGoTo,
+) async {
+  final p = await showDialog<LatLng>(
+    context: context,
+    builder: (_) => _GoToDialog(team: team),
+  );
+  if (p != null) onGoTo(p);
+}
+
+class _GoToDialog extends StatefulWidget {
+  final TeamService team;
+  const _GoToDialog({required this.team});
+  @override
+  State<_GoToDialog> createState() => _GoToDialogState();
+}
+
+class _GoToDialogState extends State<_GoToDialog> {
+  final _text = TextEditingController();
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  (double, double)? get _parsed => parseTeamCoord(_text.text);
+
+  @override
+  Widget build(BuildContext context) {
+    final p = _parsed;
+    final fix = widget.team.fix;
+    return AlertDialog(
+      title: const Text('Go to coordinates'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: _text,
+            autofocus: true,
+            decoration: const InputDecoration(
+              hintText: '10T DT 48591 73682  or  47.6062, -122.3321',
+            ),
+            onChanged: (_) => setState(() {}),
+            onSubmitted: (_) {
+              if (p != null) Navigator.pop(context, LatLng(p.$1, p.$2));
+            },
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _text.text.trim().isEmpty
+                ? 'MGRS, decimal degrees or DMS.'
+                : p == null
+                ? 'Not a position I can read yet.'
+                : [
+                    for (final f in CoordFormat.values)
+                      teamFormatCoord(p.$1, p.$2, f),
+                    if (fix != null)
+                      teamRangeBearing(
+                        teamDistanceMeters(fix.lat, fix.lon, p.$1, p.$2),
+                        teamBearingDeg(fix.lat, fix.lon, p.$1, p.$2),
+                      ),
+                  ].join('\n'),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: p == null
+              ? null
+              : () => Navigator.pop(context, LatLng(p.$1, p.$2)),
+          child: const Text('Go'),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------- track history
+
+String _duration(Duration d) => d.inHours > 0
+    ? '${d.inHours} h ${d.inMinutes % 60} min'
+    : '${d.inMinutes} min';
+
+Future<void> _showTrackHistory(BuildContext context) =>
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (c) {
+        final team = c.watch<TeamService>();
+        final mine = team.myTrack;
+        final trails = [
+          for (final m in team.members)
+            if (m.trail.length > 1) m,
+        ];
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(c).size.height * 0.75,
+            ),
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                const ListTile(title: Text('Track history')),
+                SwitchListTile(
+                  title: const Text('Record my track'),
+                  subtitle: const Text(
+                    'Saved on this phone only; nothing extra is sent.',
+                  ),
+                  value: team.recordTrack,
+                  onChanged: (v) => team.setRecordTrack(v),
+                ),
+                SwitchListTile(
+                  title: const Text('Show tracks on the map'),
+                  value: team.showTracks,
+                  onChanged: (v) => team.setShowTracks(v),
+                ),
+                const Divider(),
+                ListTile(
+                  leading: Icon(
+                    Icons.person_pin_circle,
+                    color: Color(team.color.argb),
+                  ),
+                  title: const Text('Your track'),
+                  subtitle: Text(
+                    mine.length < 2
+                        ? 'Nothing recorded yet'
+                        : '${teamFormatLength(teamTrackLength(mine))} · '
+                              '${_duration(mine.last.$3.difference(mine.first.$3))} · '
+                              'since ${teamAgo(mine.first.$3)}',
+                  ),
+                  trailing: mine.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'Clear my track',
+                          icon: const Icon(Icons.delete_outline),
+                          onPressed: () => team.clearMyTrack(),
+                        ),
+                ),
+                for (final m in trails)
+                  ListTile(
+                    leading: Icon(
+                      Icons.person,
+                      color: Color(m.position.color.argb),
+                    ),
+                    title: Text(m.callsign),
+                    subtitle: Text(
+                      '${teamFormatLength(teamTrackLength(m.trail))} · '
+                      '${m.trail.length} points · heard ${teamAgo(m.heard)}',
+                    ),
+                    trailing: IconButton(
+                      tooltip: 'Clear trail',
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () => team.clearMemberTrail(m.key4),
+                    ),
+                  ),
+                if (trails.isEmpty)
+                  const ListTile(
+                    enabled: false,
+                    title: Text('No teammate trails yet'),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.ios_share),
+                    label: const Text('Export tracks and map as GPX'),
+                    onPressed: () async {
+                      final messenger = ScaffoldMessenger.of(c);
+                      if (!await shareTeamGpx(team)) {
+                        messenger.showSnackBar(
+                          const SnackBar(content: Text('Nothing to export')),
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );

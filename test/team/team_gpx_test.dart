@@ -77,4 +77,21 @@ void main() {
     expect(camp.type, 'Geofence');
     expect(camp.trksegs.single.trkpts.length, greaterThan(40));
   });
+
+  test('my track survives encoding and gets into GPX', () {
+    final t = DateTime.fromMillisecondsSinceEpoch(1760000000 * 1000);
+    final track = [
+      (47.1, -122.1, t),
+      (47.101, -122.1, t.add(const Duration(minutes: 1))),
+    ];
+    final back = decodeTeamTrack(encodeTeamTrack(track));
+    expect(back.length, 2);
+    expect(back[1].$1, closeTo(47.101, 1e-6));
+    expect(back[1].$3, track[1].$3);
+    expect(teamTrackLength(back), closeTo(111, 2));
+    final g = GpxReader().fromString(
+      buildTeamGpx(myTrack: back, myName: 'JADE'),
+    );
+    expect(g.trks.single.name, 'JADE track');
+  });
 }

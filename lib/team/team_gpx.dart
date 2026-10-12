@@ -18,6 +18,8 @@ String buildTeamGpx({
   List<TeamCasevac> casevacs = const [],
   List<TeamShape> shapes = const [],
   List<TeamMember> members = const [],
+  List<(double, double, DateTime)> myTrack = const [],
+  String myName = 'My',
   DateTime? now,
 }) {
   final gpx = Gpx()
@@ -95,6 +97,19 @@ String buildTeamGpx({
             ),
           ],
         ),
+    if (myTrack.length > 1)
+      Trk(
+        name: '$myName track',
+        type: 'Track',
+        trksegs: [
+          Trkseg(
+            trkpts: [
+              for (final p in myTrack)
+                Wpt(lat: p.$1, lon: p.$2, time: p.$3.toUtc()),
+            ],
+          ),
+        ],
+      ),
     for (final m in members)
       if (m.trail.length > 1)
         Trk(
@@ -121,6 +136,7 @@ Future<bool> shareTeamGpx(TeamService team) async {
       team.reports.isEmpty &&
       team.casevacs.isEmpty &&
       team.shapes.isEmpty &&
+      team.myTrack.length < 2 &&
       team.members.every((m) => m.trail.length < 2)) {
     return false;
   }
@@ -130,6 +146,8 @@ Future<bool> shareTeamGpx(TeamService team) async {
     casevacs: team.casevacs,
     shapes: team.shapes,
     members: team.members,
+    myTrack: team.myTrack,
+    myName: team.callsign,
   );
   final stamp = DateTime.now()
       .toIso8601String()

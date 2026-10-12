@@ -228,7 +228,7 @@ class TeamCasevac {
         ? 'Flat / none'
         : terrain.map((t) => t.label).join(', ');
     return [
-      '1 ${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)}'
+      '1 ${toMgrs(lat, lon) ?? '${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)}'}'
           '${place.isNotEmpty ? ' $place' : ''}',
       '2 ${[if (frequency.isNotEmpty) frequency, if (callsign.isNotEmpty) callsign].join(' / ').ifEmpty('-')}',
       '3 ${_counts([('A', urgent), ('B', urgentSurgical), ('C', priority), ('D', routine), ('E', convenience)]).ifEmpty('-')}',

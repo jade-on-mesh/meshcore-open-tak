@@ -88,6 +88,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
   bool _isSelectingPoi = false;
   bool _chatOpen = false;
   final TeamDrawController _draw = TeamDrawController();
+  LatLng? _goTo;
   bool _hasInitializedMap = false;
   bool _removedMarkersLoaded = false;
   final List<int> _pathTrace = [];
@@ -692,6 +693,14 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                     },
                     onDraw: (kind, geofence) =>
                         _draw.start(kind, geofence: geofence),
+                    onMeasure: _startMeasure,
+                    onGoTo: (p) {
+                      setState(() => _goTo = p);
+                      _mapController.move(
+                        p,
+                        max(_mapController.camera.zoom, 15.0),
+                      );
+                    },
                     mapCenter: _mapController.camera.center,
                   ),
                 ),
@@ -824,6 +833,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                           _draw.tap(latLng);
                           return;
                         }
+                        if (_goTo != null) setState(() => _goTo = null);
                         if (_isSelectingPoi) {
                           setState(() {
                             _isSelectingPoi = false;
@@ -884,6 +894,28 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                         PolylineLayer(polylines: sharedMarkerPolylines),
                       const TeamMapLayer(),
                       TeamDrawLayer(controller: _draw),
+                      if (_goTo != null)
+                        MarkerLayer(
+                          markers: [
+                            Marker(
+                              point: _goTo!,
+                              width: 48,
+                              height: 48,
+                              child: GestureDetector(
+                                onTap: () => _handleMapContextPress(
+                                  context,
+                                  connector,
+                                  _goTo!,
+                                ),
+                                child: const Icon(
+                                  Icons.gps_fixed,
+                                  size: 40,
+                                  color: Color(0xFFFF6D00),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       MarkerLayer(
                         markers: [
                           if (highlightPosition != null)
@@ -1087,6 +1119,17 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
   }
 
   void _toggleChat() => setState(() => _chatOpen = !_chatOpen);
+
+  void _startMeasure() {
+    LatLng? from;
+    try {
+      final f = context.read<TeamService>().fix;
+      if (f != null) from = LatLng(f.lat, f.lon);
+    } on ProviderNotFoundException {
+      from = null;
+    }
+    _draw.startMeasure(from: from);
+  }
 
   void _onDrawChanged() {
     if (mounted) setState(() {});

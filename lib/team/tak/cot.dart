@@ -623,6 +623,9 @@ class CotEvent {
   /// GeoChat fields.
   final String? chatSenderCallsign, chatSenderUid, chatroom;
 
+  /// ATAK geofence trigger ("Entry", "Exit", "Both"), if any.
+  final String? geofenceTrigger;
+
   const CotEvent({
     required this.uid,
     required this.type,
@@ -650,6 +653,7 @@ class CotEvent {
     this.chatSenderCallsign,
     this.chatSenderUid,
     this.chatroom,
+    this.geofenceTrigger,
   });
 
   bool get isUnit => type.startsWith('a-');
@@ -737,6 +741,7 @@ CotEvent? parseCot(String xml) {
       chatSenderCallsign: chat?.getAttribute('senderCallsign'),
       chatSenderUid: chat?.getElement('chatgrp')?.getAttribute('uid0'),
       chatroom: chat?.getAttribute('chatroom'),
+      geofenceTrigger: d?.getElement('__geofence')?.getAttribute('trigger'),
     );
   } catch (_) {
     return null;
@@ -762,4 +767,108 @@ List<String> takSplitEvents(StringBuffer buffer) {
     ..clear()
     ..write(s.substring(start));
   return out;
+}
+
+// ------------------------------------------------ CoT -> team items
+
+/// The team colour nearest to an ARGB value.
+TeamColor teamColorNearest(int argb) {
+  final r = (argb >> 16) & 0xFF, g = (argb >> 8) & 0xFF, b = argb & 0xFF;
+  var best = TeamColor.yellow;
+  var bestD = 1 << 30;
+  for (final c in TeamColor.values) {
+    final dr = ((c.argb >> 16) & 0xFF) - r;
+    final dg = ((c.argb >> 8) & 0xFF) - g;
+    final db = (c.argb & 0xFF) - b;
+    final d = dr * dr + dg * dg + db * db;
+    if (d < bestD) {
+      bestD = d;
+      best = c;
+    }
+  }
+  return best;
+}
+
+/// A TAK point (spot marker or unit) as a team pin.
+TeamMarker? teamMarkerFromCot(
+  CotEvent e, {
+  required String authorKey4,
+  required int markerId,
+}) {
+  if (!e.isMarker && !e.isUnit) return null;
+  var kind = MarkerKind.point;
+  final c = e.colorArgb;
+  if (c != null) {
+    for (final k in MarkerKind.values) {
+      if ((takMarkerArgb(k) & 0xFFFFFF) == (c & 0xFFFFFF)) kind = k;
+    }
+  }
+  if (e.type.startsWith('a-h')) kind = MarkerKind.hazard;
+  return TeamMarker(
+    authorKey4: authorKey4,
+    markerId: markerId,
+    kind: kind,
+    lat: e.lat,
+    lon: e.lon,
+    time: DateTime.now(),
+    label: e.callsign ?? '',
+    note: e.remarks ?? '',
+  );
+}
+
+/// A TAK drawing or route as a team shape.
+TeamShape? teamShapeFromCot(
+  CotEvent e, {
+  required String authorKey4,
+  required int shapeId,
+}) {
+  final color = teamColorNearest(e.strokeArgb ?? e.colorArgb ?? 0xFFFFEB3B);
+  final geo = switch ((e.geofenceTrigger ?? '').toLowerCase()) {
+    'entry' => TeamGeofence.entry,
+    'exit' => TeamGeofence.exit,
+    'both' => TeamGeofence.both,
+    _ => TeamGeofence.off,
+  };
+  TeamShape make(
+    ShapeKind kind,
+    List<(double, double)> pts, {
+    int radius = 0,
+  }) => TeamShape(
+    authorKey4: authorKey4,
+    shapeId: shapeId,
+    kind: kind,
+    time: DateTime.now(),
+    points: pts,
+    color: color,
+    label: e.callsign ?? '',
+    geofence: kind.closed ? geo : TeamGeofence.off,
+    radiusM: radius,
+  ).fitted();
+
+  if (e.isRoute && e.linkPoints.length >= 2) {
+    return make(ShapeKind.route, e.linkPoints);
+  }
+  if (!e.isShape) return null;
+  if (e.isCircle) {
+    return make(
+      ShapeKind.circle,
+      [(e.lat, e.lon)],
+      radius: e.ellipseMajor!.round(),
+    );
+  }
+  final pts = e.linkPoints;
+  if (pts.length < 2) return null;
+  if (e.type.startsWith('u-d-r') && pts.length >= 4) {
+    return make(ShapeKind.rectangle, pts.sublist(0, 4));
+  }
+  if (e.isClosedShape && pts.length >= 3) {
+    final open = pts.length > 3 && pts.first == pts.last
+        ? pts.sublist(0, pts.length - 1)
+        : pts;
+    return make(ShapeKind.polygon, open);
+  }
+  return make(
+    e.type.startsWith('u-d-f-m') ? ShapeKind.freehand : ShapeKind.line,
+    pts,
+  );
 }

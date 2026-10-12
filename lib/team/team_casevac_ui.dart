@@ -221,8 +221,10 @@ class _CasevacFormState extends State<_CasevacForm> {
               ),
               _line('1', 'Pickup location', [
                 Text(
-                  '${widget.lat.toStringAsFixed(5)}, '
-                  '${widget.lon.toStringAsFixed(5)}',
+                  context.read<TeamService>().formatCoord(
+                    widget.lat,
+                    widget.lon,
+                  ),
                 ),
                 TextField(
                   controller: _place,
