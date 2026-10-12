@@ -1,0 +1,193 @@
+name: Upstream sync
+
+# Keeps MeshCore Open TAK current with MeshCore Open (zjs81/meshcore-open)
+# releases while keeping this fork's changes.
+#
+# Once a day it looks for upstream's newest release. If `main` doesn't have it
+# yet, it merges the release into a branch `upstream-sync/<release>`, runs the
+# Check workflow (analyzer + tests) on the result and, if that passes,
+# fast-forwards `main` and starts the Build (which republishes "Latest build").
+# A release that conflicts with this fork's changes, or fails Check, is left
+# as a pull request (and an issue) for a person to finish.
+#
+# Pushes made with the default token can't change files under
+# .github/workflows. When an upstream release touches those, add a repo secret
+# SYNC_TOKEN (a fine-grained token with Contents and Workflows: read/write on
+# this repo) and the sync uses it instead.
+
+on:
+  schedule:
+    - cron: "17 13 * * *" # daily, 06:17 Pacific (daylight time)
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Upstream tag to sync to (blank = newest release)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+env:
+  UPSTREAM: zjs81/meshcore-open
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.find.outputs.release }}
+      state: ${{ steps.merge.outputs.state }}
+      branch: ${{ steps.merge.outputs.branch }}
+      conflicts: ${{ steps.merge.outputs.conflicts }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.SYNC_TOKEN || github.token }}
+
+      - name: Find upstream's newest release
+        id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WANT: ${{ inputs.release }}
+        run: |
+          set -euo pipefail
+          git fetch --quiet --no-tags "https://github.com/$UPSTREAM" '+refs/tags/*:refs/upstream-tags/*'
+          rel="$WANT"
+          if [ -z "$rel" ]; then
+            # Published GitHub releases first (drafts skipped), newest tag otherwise.
+            rel=$(gh api "repos/$UPSTREAM/releases?per_page=20" \
+                    --jq '[.[] | select(.draft | not)][0].tag_name // empty' 2>/dev/null || true)
+          fi
+          if [ -z "$rel" ] || ! git rev-parse -q --verify "refs/upstream-tags/$rel" >/dev/null; then
+            rel=$(git for-each-ref --sort=-creatordate --count=1 --format='%(refname:lstrip=2)' refs/upstream-tags)
+          fi
+          echo "Upstream release: $rel"
+          echo "release=$rel" >> "$GITHUB_OUTPUT"
+
+      - name: Merge it into a sync branch
+        id: merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REL: ${{ steps.find.outputs.release }}
+        run: |
+          set -euo pipefail
+          up="refs/upstream-tags/$REL"
+          if git merge-base --is-ancestor "$up" HEAD; then
+            echo "main already has $REL."
+            echo "state=current" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          safe=$(printf '%s' "$REL" | sed 's/[^A-Za-z0-9._-]/-/g')
+          branch="upstream-sync/$safe"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          open=$(gh api "repos/$GITHUB_REPOSITORY/issues?state=open&per_page=100" \
+                   --jq "[.[] | select(.title == \"Upstream MeshCore Open $REL needs a hand\")] | length")
+          if [ "$open" != 0 ] || git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            echo "$REL is waiting on its pull request or issue."
+            echo "state=waiting" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -q -b "$branch"
+          if git merge --no-ff --no-edit -m "Merge MeshCore Open $REL" "$up"; then
+            if git push -q origin "$branch"; then
+              echo "state=merged" >> "$GITHUB_OUTPUT"
+            else
+              echo "state=blocked" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            files=$(git diff --name-only --diff-filter=U | sed 's/^/- `/; s/$/`/' | tr '\n' '|')
+            git merge --abort
+            # Leave upstream's release itself as the branch; the pull request
+            # then shows exactly what conflicts with this fork.
+            git checkout -q -B "$branch" "$up"
+            echo "conflicts=$files" >> "$GITHUB_OUTPUT"
+            if git push -q origin "$branch"; then
+              echo "state=conflict" >> "$GITHUB_OUTPUT"
+            else
+              echo "state=blocked" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+  check:
+    needs: prepare
+    if: needs.prepare.outputs.state == 'merged'
+    uses: ./.github/workflows/check.yml
+    with:
+      ref: ${{ needs.prepare.outputs.branch }}
+
+  promote:
+    needs: [prepare, check]
+    if: needs.prepare.outputs.state == 'merged' && needs.check.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.branch }}
+          fetch-depth: 0
+          token: ${{ secrets.SYNC_TOKEN || github.token }}
+      - name: Fast-forward main and build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ needs.prepare.outputs.branch }}
+          REL: ${{ needs.prepare.outputs.release }}
+        run: |
+          set -euo pipefail
+          # Only if main hasn't moved meanwhile; otherwise the next run redoes it.
+          if ! git push origin "HEAD:refs/heads/main"; then
+            git push -q origin --delete "$BRANCH"
+            echo "::warning::main moved during the sync; the next run tries again."
+            exit 1
+          fi
+          git push -q origin --delete "$BRANCH"
+          gh workflow run build.yml --ref main
+          echo "### Synced MeshCore Open $REL into main" >> "$GITHUB_STEP_SUMMARY"
+
+  hand-off:
+    needs: [prepare, check]
+    if: >-
+      always() &&
+      (needs.prepare.outputs.state == 'conflict' ||
+       needs.prepare.outputs.state == 'blocked' ||
+       (needs.prepare.outputs.state == 'merged' && needs.check.result != 'success'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open a pull request and an issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          STATE: ${{ needs.prepare.outputs.state }}
+          BRANCH: ${{ needs.prepare.outputs.branch }}
+          REL: ${{ needs.prepare.outputs.release }}
+          FILES: ${{ needs.prepare.outputs.conflicts }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          if [ "$STATE" = blocked ]; then
+            why="MeshCore Open **$REL** changes files under \`.github/workflows\`, which the default Actions token may not push. Add a repo secret \`SYNC_TOKEN\` (fine-grained token with Contents and Workflows read/write on this repo) and run the Upstream sync workflow again, or sync this release by hand."
+            if [ -n "$FILES" ]; then
+              why="$why"$'\n\n'"It also conflicts with this fork in:"$'\n\n'"$(echo "$FILES" | tr '|' '\n')"
+            fi
+            gh api "repos/$REPO/issues" -f title="Upstream MeshCore Open $REL needs a hand" \
+              -f body="$why"$'\n\n'"From the [upstream sync]($RUN)." --jq .html_url
+            exit 0
+          elif [ "$STATE" = conflict ]; then
+            why="MeshCore Open **$REL** conflicts with this fork's changes in:"$'\n\n'"$(echo "$FILES" | tr '|' '\n')"$'\n\n'"The branch \`$BRANCH\` is upstream's release as published. Merge it into \`main\`, resolving the conflicts, keeping this fork's features."
+          else
+            why="MeshCore Open **$REL** merges cleanly into \`$BRANCH\`, but the Check workflow (analyzer and tests) failed on the result, so \`main\` was left alone. Fix the branch, then merge this pull request."
+          fi
+          body="$why"$'\n\n'"Opened by the [upstream sync]($RUN). When this is merged, deleting the branch lets the next release sync on its own again."
+          pr=$(gh api "repos/$REPO/pulls" -f title="Sync MeshCore Open $REL" -f head="$BRANCH" -f base=main \
+                 -f body="$body" --jq .html_url)
+          gh api "repos/$REPO/issues" -f title="Upstream MeshCore Open $REL needs a hand" \
+            -f body="$why"$'\n\n'"Pull request: $pr" --jq .html_url
