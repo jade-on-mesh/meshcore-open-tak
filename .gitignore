@@ -95,3 +95,5 @@ keystore.properties
 # Claude Code local working dir (worktrees, jobs, settings)
 .claude/
 third_party/aom-android/
+android/key.properties
+android/app/release.jks

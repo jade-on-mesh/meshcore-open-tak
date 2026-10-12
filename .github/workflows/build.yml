@@ -85,7 +85,22 @@ jobs:
           cp /tmp/aom/aom/*.h "$OUT/include/aom/"
           ls -la "$OUT/lib"
       - run: flutter pub get
-      - run: flutter build apk --release --no-pub --target-platform android-arm64
+      - name: Release signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > android/app/release.jks
+            printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+              "$KEYSTORE_PASSWORD" "${KEY_ALIAS:-meshcore-open-tak}" "$KEYSTORE_PASSWORD" > android/key.properties
+            echo "Signing with the permanent release key"
+          else
+            echo "::warning::No ANDROID_KEYSTORE_BASE64 secret: this APK is signed with a throwaway key and will not install over an earlier build"
+          fi
+      # Build number always increases, so every APK installs as an update.
+      - run: flutter build apk --release --no-pub --target-platform android-arm64 --build-number=$((1000 + GITHUB_RUN_NUMBER))
       - name: Check VOX native libraries and models are in the APK
         run: |
           unzip -l build/app/outputs/flutter-apk/app-release.apk > /tmp/apk.txt
@@ -95,6 +110,9 @@ jobs:
             grep -q "$f" /tmp/apk.txt || { echo "missing from APK: $f"; exit 1; }
           done
           grep -E "libvox_av1|libcodec2|assets/vox" /tmp/apk.txt
+          ls -la build/app/outputs/flutter-apk/app-release.apk
+          echo "Largest entries:"
+          sort -k1 -n -r /tmp/apk.txt | head -15
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
