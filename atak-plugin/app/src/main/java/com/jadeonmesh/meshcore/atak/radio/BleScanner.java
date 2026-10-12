@@ -83,8 +83,13 @@ public final class BleScanner {
         List<ScanFilter> filters = new ArrayList<>();
         filters.add(new ScanFilter.Builder()
                 .setServiceUuid(new ParcelUuid(BleTransport.SERVICE)).build());
-        scanner.startScan(filters, new ScanSettings.Builder()
-                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build(), cb);
+        try {
+            scanner.startScan(filters, new ScanSettings.Builder()
+                    .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build(), cb);
+        } catch (SecurityException e) {
+            out.onResults(list(), true, BleTransport.PERMISSION_HINT);
+            return;
+        }
         out.onResults(list(), false, null);
         main.postDelayed(() -> {
             stop();

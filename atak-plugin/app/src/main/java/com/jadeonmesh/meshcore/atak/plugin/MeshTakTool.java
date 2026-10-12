@@ -3,7 +3,7 @@ package com.jadeonmesh.meshcore.atak.plugin;
 import android.content.Context;
 
 import com.atak.plugins.impl.AbstractPluginTool;
-import com.atakmap.util.Disposable;
+import gov.tak.api.util.Disposable;
 
 import com.jadeonmesh.meshcore.atak.R;
 import com.jadeonmesh.meshcore.atak.ui.MeshDropDown;

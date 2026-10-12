@@ -135,7 +135,7 @@ jobs:
         if: steps.gate.outputs.run == 'true'
         with:
           distribution: temurin
-          java-version: "11"
+          java-version: "17"
       - name: Fetch and unpack the ATAK SDK
         if: steps.gate.outputs.run == 'true'
         run: |
@@ -145,24 +145,21 @@ jobs:
             hdr=(-H "Authorization: Bearer ${ATAK_SDK_TOKEN}" -H "Accept: application/octet-stream")
           fi
           curl -fsSL "${hdr[@]}" -o /tmp/atak-sdk.zip "${ATAK_SDK_URL}"
-          export ANDROID_HOME="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
-          mkdir -p ~/.android
-          keytool -genkeypair -keystore ~/.android/debug.keystore -alias androiddebugkey \
-            -storepass android -keypass android -keyalg RSA -validity 10000 -dname "CN=Android Debug"
           atak-plugin/scripts/setup-sdk.sh /tmp/atak-sdk.zip
+          sed -i "s|^sdk.dir=.*|sdk.dir=${ANDROID_HOME:-$ANDROID_SDK_ROOT}|" atak-plugin/local.properties
           rm /tmp/atak-sdk.zip
-      - name: Install the 4.6 template's Android SDK parts
+      - name: Install the Android SDK parts the plugin uses
         if: steps.gate.outputs.run == 'true'
         run: |
           set -euo pipefail
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
-            "platforms;android-26" "build-tools;30.0.2" "ndk;21.4.7075529" "cmake;3.10.2.4988404" > /dev/null
-      - name: Build libaom with NDK r21 (optional; photos in direct mode)
+            "platforms;android-36" "ndk;29.0.14206865" "cmake;3.22.1" > /dev/null
+      - name: Build libaom (optional; photos in direct mode)
         if: steps.gate.outputs.run == 'true'
         continue-on-error: true
         run: |
-          ANDROID_NDK_HOME="$ANDROID_HOME/ndk/21.4.7075529" \
+          ANDROID_NDK_HOME="$ANDROID_HOME/ndk/29.0.14206865" \
             atak-plugin/scripts/build-libaom.sh arm64-v8a armeabi-v7a
       - uses: actions/cache@v4
         if: steps.gate.outputs.run == 'true'

@@ -2,11 +2,7 @@
 <!-- if you change this file, bump the version in app/build.gradle. -->
 <plugin>
     <extension
-        type="transapps.maps.plugin.lifecycle.Lifecycle"
+        type="gov.tak.api.plugin.IPlugin"
         impl="com.jadeonmesh.meshcore.atak.plugin.MeshTakLifecycle"
-        singleton="true" />
-    <extension
-        type="transapps.maps.plugin.tool.ToolDescriptor"
-        impl="com.jadeonmesh.meshcore.atak.plugin.MeshTakTool"
         singleton="true" />
 </plugin>

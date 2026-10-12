@@ -51,22 +51,28 @@ Radios need companion firmware 1.15 or newer (channel data, ver code 11).
 
 ## Building
 
-ATAK only loads plugins built against its exact version. This project targets
-**ATAK-CIV 4.6.0** with the SDK from tak.gov (it can't be committed here).
+ATAK only loads plugins built against its version. This project targets
+**ATAK-CIV 5.8.0** (its sources are checked against the 5.8.0.5 SDK from
+tak.gov, which can't be committed here). Install the matching ATAK on the phone: the
+SDK's `atak.apk` is one.
 
-1. Unpack the SDK and the Gradle wrapper:
+1. Unpack the SDK and the Gradle wrapper. Pass the SDK `.zip` or the
+   unpacked `ATAK-CIV-5.8.0.5-SDK` folder (if you have it as a `.7z`,
+   extract that with 7-Zip first):
 
    ```bash
    cd atak-plugin
-   scripts/setup-sdk.sh ~/Downloads/atak-civ-sdk-4_6_0_5.zip
+   scripts/setup-sdk.sh ~/Downloads/ATAK-CIV-5.8.0.5-SDK.zip
    ```
 
-   This writes `local.properties` (Android SDK path, takdev plugin, debug
-   signing key); check it.
+   This copies the SDK (minus its 400 MB `atak.apk`) to `sdk/atak-civ` and
+   writes `local.properties`: set `sdk.dir` to your Android SDK if it says
+   `/path/to/Android/sdk`. Debug builds are signed with the SDK's
+   development key, which ATAK accepts.
 2. Optional, for direct-mode photos: build libaom for Android once
-   (`ANDROID_NDK_HOME=… scripts/build-libaom.sh arm64-v8a armeabi-v7a`). Without
-   it the plugin builds fine; direct mode just can't encode or show photos
-   (app mode still can).
+   (`ANDROID_NDK_HOME=<sdk>/ndk/29.0.14206865 scripts/build-libaom.sh arm64-v8a armeabi-v7a`).
+   Without it the plugin builds fine; direct mode just can't encode or show
+   photos (app mode still can).
 3. Build and install:
 
    ```bash
@@ -80,22 +86,25 @@ ATAK only loads plugins built against its exact version. This project targets
 Options: `-PwithMimi=false` leaves out ONNX Runtime (smaller APK; no Mimi in
 direct mode).
 
+Toolchain (the 5.8 template's): JDK 17, Android Gradle plugin 8.13, Gradle
+8.14.3 (the wrapper downloads it), compileSdk 36, plus NDK 29.0.14206865 and
+CMake 3.22.1 for the codecs. Android Studio's SDK Manager installs these.
+
 **Building on GitHub instead.** The `ATAK plugin` workflow's *Plugin APK*
-job builds and tests the APK (JDK 11, NDK r21, libaom for direct-mode
-photos) and uploads it as an artifact. Because this repo is public and the
-SDK may not be redistributed, it runs only when the repo has an
-`ATAK_SDK_URL` secret: put the SDK zip somewhere private (for example a
-release asset in a private repo, using its API asset URL) and, if that needs
-auth, add an `ATAK_SDK_TOKEN` secret that can read it. Without the secret the
-job is skipped.
+job builds and tests the APK (with libaom for direct-mode photos) and uploads
+it as an artifact. Because this repo is public and the SDK may not be
+redistributed, it runs only when the repo has an `ATAK_SDK_URL` secret: put
+the SDK `.zip` somewhere private (for example a release asset in a private
+repo, using its API asset URL) and, if that needs auth, add an
+`ATAK_SDK_TOKEN` secret that can read it. Without the secret the job is
+skipped.
 
-For ATAK 5.x: unpack that SDK instead, set `ATAK_VERSION` in `app/build.gradle`
-and move the build to the Android Gradle plugin version its template uses. The
-plugin code itself only uses APIs that 5.x still has.
-
-Toolchain the 4.6 template expects: JDK 11, Android Gradle plugin 4.2.2,
-Gradle 6.9.1, compileSdk 26, NDK r21 with CMake 3.10 (Android Studio's SDK
-Manager installs these).
+**Other ATAK versions.** Run `setup-sdk.sh` with that version's SDK (it
+handles the 4.x and 5.x layouts and warns on a mismatch), set `ATAK_VERSION`
+in `app/build.gradle`, and follow that SDK's `samples/plugintemplate` for
+Gradle and Android plugin versions. ATAK 4.x needs the older 4.x entry point
+(`transapps` Lifecycle/ToolDescriptor in `plugin.xml`), which this branch no
+longer carries; see the git history before the 5.8 port.
 
 ## Using it
 
@@ -142,7 +151,7 @@ Tests: `./gradlew testCivDebugUnitTest`, or without the SDK, the
 
 ## Limitations
 
-- Built against ATAK-CIV 4.6.0; other ATAK versions need a rebuild with their
+- Built against ATAK-CIV 5.8.0; other ATAK versions need a rebuild with their
   SDK.
 - Direct-mode raw-data voice/photo transfers need 1-byte path hashes (a
   firmware limit); clips still arrive over the team channel otherwise.

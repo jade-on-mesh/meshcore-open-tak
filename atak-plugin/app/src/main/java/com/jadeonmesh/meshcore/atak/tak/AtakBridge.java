@@ -50,7 +50,6 @@ public final class AtakBridge implements TakSink,
 
     public void attach(MeshTakEngine engine) {
         this.engine = engine;
-        // There is no unregister in 4.6; dispose() makes this a no-op.
         CommsMapComponent.getInstance().registerPreSendProcessor(this);
     }
 
@@ -61,6 +60,13 @@ public final class AtakBridge implements TakSink,
     public void dispose() {
         disposed = true;
         engine = null;
+        try {
+            CommsMapComponent c = CommsMapComponent.getInstance();
+            if (c != null)
+                c.unregisterPreSendProcessor(this);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "could not unregister the pre-send processor", e);
+        }
     }
 
     // ------------------------------------------------------- ATAK -> mesh

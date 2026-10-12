@@ -23,8 +23,9 @@ import android.os.Looper;
  * notification on TX is one frame; each write to RX is one frame.
  *
  * The plugin runs inside ATAK's process, so it uses ATAK's Bluetooth
- * permissions (ATAK 4.6 targets SDK 30 and holds BLUETOOTH/BLUETOOTH_ADMIN
- * and location, which is what scanning and connecting need).
+ * permissions (ATAK 5.8 targets SDK 35 and holds BLUETOOTH_SCAN,
+ * BLUETOOTH_CONNECT and location, which is what scanning and connecting
+ * need).
  */
 @SuppressLint("MissingPermission")
 public final class BleTransport implements FrameTransport {
@@ -35,6 +36,10 @@ public final class BleTransport implements FrameTransport {
             .fromString("6e400002-b5a3-f393-e0a9-e50e24dcca9e");
     public static final UUID TX = UUID
             .fromString("6e400003-b5a3-f393-e0a9-e50e24dcca9e");
+    /** Shown when Android refuses ATAK the Bluetooth runtime permission. */
+    static final String PERMISSION_HINT = "ATAK isn't allowed to use Bluetooth:"
+            + " Android Settings > Apps > ATAK > Permissions > Nearby devices";
+
     static final UUID CCCD = UUID
             .fromString("00002902-0000-1000-8000-00805f9b34fb");
 
@@ -84,11 +89,16 @@ public final class BleTransport implements FrameTransport {
             down("Bad Bluetooth address " + address);
             return;
         }
-        if (Build.VERSION.SDK_INT >= 23)
-            gatt = dev.connectGatt(context, false, cb,
-                    BluetoothDevice.TRANSPORT_LE);
-        else
-            gatt = dev.connectGatt(context, false, cb);
+        try {
+            if (Build.VERSION.SDK_INT >= 23)
+                gatt = dev.connectGatt(context, false, cb,
+                        BluetoothDevice.TRANSPORT_LE);
+            else
+                gatt = dev.connectGatt(context, false, cb);
+        } catch (SecurityException e) {
+            down(PERMISSION_HINT);
+            return;
+        }
         if (gatt == null)
             down("Could not start a Bluetooth connection");
     }
@@ -159,14 +169,26 @@ public final class BleTransport implements FrameTransport {
             ready();
         }
 
+        // Android 13+ hands the bytes to the three-argument callback; older
+        // versions only call this one. Each frame is delivered exactly once.
         @Override
         public void onCharacteristicChanged(BluetoothGatt g,
                 BluetoothGattCharacteristic c) {
-            if (TX.equals(c.getUuid())) {
-                byte[] v = c.getValue();
-                if (v != null && v.length > 0 && listener != null)
-                    listener.onFrame(v.clone());
-            }
+            if (Build.VERSION.SDK_INT >= 33)
+                return;
+            frame(c, c.getValue());
+        }
+
+        @Override
+        public void onCharacteristicChanged(BluetoothGatt g,
+                BluetoothGattCharacteristic c, byte[] value) {
+            frame(c, value);
+        }
+
+        private void frame(BluetoothGattCharacteristic c, byte[] v) {
+            if (TX.equals(c.getUuid()) && v != null && v.length > 0
+                    && listener != null)
+                listener.onFrame(v.clone());
         }
 
         @Override
