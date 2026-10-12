@@ -142,21 +142,23 @@ class TeamDrawController extends ChangeNotifier {
   String get hint => _measure
       ? measureSummary
       : switch (_tool) {
-    null => '',
-    ShapeKind.line => 'Tap to add points',
-    ShapeKind.freehand =>
-      points.isEmpty ? 'Draw with your finger' : 'Draw again to replace',
-    ShapeKind.polygon =>
-      _geofence ? 'Tap the corners of the geofence' : 'Tap the corners',
-    ShapeKind.rectangle =>
-      points.isEmpty ? 'Tap one corner' : 'Tap the opposite corner',
-    ShapeKind.circle =>
-      points.isEmpty
-          ? (_geofence ? 'Tap the centre of the geofence' : 'Tap the centre')
-          : 'Tap the edge',
-    ShapeKind.route =>
-      points.isEmpty ? 'Tap the start' : 'Tap the next checkpoint',
-  };
+          null => '',
+          ShapeKind.line => 'Tap to add points',
+          ShapeKind.freehand =>
+            points.isEmpty ? 'Draw with your finger' : 'Draw again to replace',
+          ShapeKind.polygon =>
+            _geofence ? 'Tap the corners of the geofence' : 'Tap the corners',
+          ShapeKind.rectangle =>
+            points.isEmpty ? 'Tap one corner' : 'Tap the opposite corner',
+          ShapeKind.circle =>
+            points.isEmpty
+                ? (_geofence
+                      ? 'Tap the centre of the geofence'
+                      : 'Tap the centre')
+                : 'Tap the edge',
+          ShapeKind.route =>
+            points.isEmpty ? 'Tap the start' : 'Tap the next checkpoint',
+        };
 
   /// The finished geometry: vertices and (for circles) the radius.
   (List<(double, double)>, int) geometry() {

@@ -161,15 +161,8 @@ Future<void> _import(BuildContext context) async {
       builder: (c) => AlertDialog(
         title: Text(pkg.name ?? 'Data package'),
         content: Text(
-          '${[
-            if (markers.isNotEmpty)
-              '${markers.length} point${markers.length == 1 ? '' : 's'}',
-            if (shapes.isNotEmpty)
-              '${shapes.length} drawing${shapes.length == 1 ? '' : 's'} '
-                  'or route${shapes.length == 1 ? '' : 's'}',
-            if (skipped > 0)
-              '$skipped other item${skipped == 1 ? '' : 's'} skipped',
-          ].join(', ')}.\n\nSharing sends one team message per item, '
+          '${[if (markers.isNotEmpty) '${markers.length} point${markers.length == 1 ? '' : 's'}', if (shapes.isNotEmpty) '${shapes.length} drawing${shapes.length == 1 ? '' : 's'} '
+                'or route${shapes.length == 1 ? '' : 's'}', if (skipped > 0) '$skipped other item${skipped == 1 ? '' : 's'} skipped'].join(', ')}.\n\nSharing sends one team message per item, '
           'about 3 s apart.',
         ),
         actions: [

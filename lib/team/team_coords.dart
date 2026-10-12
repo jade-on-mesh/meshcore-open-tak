@@ -75,7 +75,9 @@ Utm toUtm(double lat, double lon, {int? zone}) {
           n *
           (aa +
               (1 - tt + cc) * pow(aa, 3) / 6 +
-              (5 - 18 * tt + tt * tt + 72 * cc - 58 * _ep2) * pow(aa, 5) / 120) +
+              (5 - 18 * tt + tt * tt + 72 * cc - 58 * _ep2) *
+                  pow(aa, 5) /
+                  120) +
       500000;
   var y =
       _k0 *
@@ -129,12 +131,7 @@ Utm toUtm(double lat, double lon, {int? zone}) {
       lon0 +
       (d -
               (1 + 2 * t1 + c1) * pow(d, 3) / 6 +
-              (5 -
-                      2 * c1 +
-                      28 * t1 -
-                      3 * c1 * c1 +
-                      8 * _ep2 +
-                      24 * t1 * t1) *
+              (5 - 2 * c1 + 28 * t1 - 3 * c1 * c1 + 8 * _ep2 + 24 * t1 * t1) *
                   pow(d, 5) /
                   120) /
           c;
@@ -236,15 +233,12 @@ String _dms(double v, String pos, String neg) {
 }
 
 /// Formats a position.
-String teamFormatCoord(double lat, double lon, CoordFormat f) =>
-    switch (f) {
-      CoordFormat.decimal =>
-        '${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)}',
-      CoordFormat.dms => '${_dms(lat, 'N', 'S')} ${_dms(lon, 'E', 'W')}',
-      CoordFormat.mgrs =>
-        toMgrs(lat, lon) ??
-            '${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)}',
-    };
+String teamFormatCoord(double lat, double lon, CoordFormat f) => switch (f) {
+  CoordFormat.decimal => '${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)}',
+  CoordFormat.dms => '${_dms(lat, 'N', 'S')} ${_dms(lon, 'E', 'W')}',
+  CoordFormat.mgrs =>
+    toMgrs(lat, lon) ?? '${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)}',
+};
 
 final RegExp _decRe = RegExp(
   r'^\s*([-+]?\d{1,3}(?:\.\d+)?)\s*[°]?\s*([NS])?\s*[,;\s]\s*([-+]?\d{1,3}(?:\.\d+)?)\s*[°]?\s*([EW])?\s*$',
