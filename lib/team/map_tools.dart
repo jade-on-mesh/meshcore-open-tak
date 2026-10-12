@@ -62,10 +62,16 @@ Future<void> showMapTools(
       color: Colors.red,
       needsTeam: true,
     ),
-    _Tool(Icons.local_hospital_outlined, 'CASEVAC', (c) {
-      final (lat, lon, _) = _here(team, mapCenter);
-      showCasevacForm(c, lat: lat, lon: lon);
-    }, color: casevacRed, needsTeam: true),
+    _Tool(
+      Icons.local_hospital_outlined,
+      'CASEVAC',
+      (c) {
+        final (lat, lon, _) = _here(team, mapCenter);
+        showCasevacForm(c, lat: lat, lon: lon);
+      },
+      color: casevacRed,
+      needsTeam: true,
+    ),
     _Tool(Icons.add_location_alt_outlined, 'Drop Pin', (c) {
       final (lat, lon, _) = _here(team, mapCenter);
       showTeamPinEditor(c, lat: lat, lon: lon);
@@ -138,55 +144,55 @@ Future<void> showMapTools(
       return SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Text('Tools', style: Theme.of(sheet).textTheme.titleMedium),
-                  const Spacer(),
-                  if (!team.enabled)
-                    Text(
-                      'Team mode off',
-                      style: TextStyle(color: scheme.onSurfaceVariant),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              GridView.extent(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                maxCrossAxisExtent: 96,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                children: [
-                  for (final t in tools)
-                    _ToolTile(
-                      tool: t,
-                      dimmed: t.needsTeam && !team.enabled,
-                      onTap: () {
-                        Navigator.pop(sheet);
-                        if (t.needsTeam && !team.enabled) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Turn on team mode first (Setup tab).',
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Text('Tools', style: Theme.of(sheet).textTheme.titleMedium),
+                    const Spacer(),
+                    if (!team.enabled)
+                      Text(
+                        'Team mode off',
+                        style: TextStyle(color: scheme.onSurfaceVariant),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                GridView.extent(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  maxCrossAxisExtent: 96,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  children: [
+                    for (final t in tools)
+                      _ToolTile(
+                        tool: t,
+                        dimmed: t.needsTeam && !team.enabled,
+                        onTap: () {
+                          Navigator.pop(sheet);
+                          if (t.needsTeam && !team.enabled) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Turn on team mode first (Setup tab).',
+                                ),
                               ),
-                            ),
-                          );
-                          _openTactical(context, 4);
-                          return;
-                        }
-                        t.run(context);
-                      },
-                    ),
-                ],
-              ),
-            ],
+                            );
+                            _openTactical(context, 4);
+                            return;
+                          }
+                          t.run(context);
+                        },
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
         ),
       );
     },

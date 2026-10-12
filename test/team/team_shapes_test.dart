@@ -102,9 +102,10 @@ void main() {
     });
 
     test('delete flag round-trips', () {
-      final s = _shape(ShapeKind.line, [(1, 1), (2, 2)]).copyWith(
-        deleted: true,
-      );
+      final s = _shape(ShapeKind.line, [
+        (1, 1),
+        (2, 2),
+      ]).copyWith(deleted: true);
       expect(TeamShape.tryParse(s.encode())!.deleted, isTrue);
     });
 

@@ -92,8 +92,7 @@ enum CasevacNbc {
       i >= 0 && i < values.length ? values[i] : none;
 }
 
-int _flags<T extends Enum>(Set<T> s) =>
-    s.fold(0, (a, e) => a | (1 << e.index));
+int _flags<T extends Enum>(Set<T> s) => s.fold(0, (a, e) => a | (1 << e.index));
 
 Set<T> _unflags<T extends Enum>(int f, List<T> values) => {
   for (final v in values)

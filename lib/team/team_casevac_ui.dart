@@ -356,16 +356,8 @@ class _CasevacFormState extends State<_CasevacForm> {
                   children: [
                     _counter('A US military', _usMil, (v) => _usMil = v),
                     _counter('B US civilian', _usCiv, (v) => _usCiv = v),
-                    _counter(
-                      'C Non-US mil.',
-                      _nonUsMil,
-                      (v) => _nonUsMil = v,
-                    ),
-                    _counter(
-                      'D Non-US civ.',
-                      _nonUsCiv,
-                      (v) => _nonUsCiv = v,
-                    ),
+                    _counter('C Non-US mil.', _nonUsMil, (v) => _nonUsMil = v),
+                    _counter('D Non-US civ.', _nonUsCiv, (v) => _nonUsCiv = v),
                     _counter('E EPW', _epw, (v) => _epw = v),
                     _counter('F Child', _child, (v) => _child = v),
                   ],

@@ -377,7 +377,12 @@ class TeamService extends ChangeNotifier {
       trail: trail,
     );
     onRemotePosition?.call(_members[p.senderKey4]!);
-    _checkGeofences(p.senderKey4, _members[p.senderKey4]!.callsign, p.lat, p.lon);
+    _checkGeofences(
+      p.senderKey4,
+      _members[p.senderKey4]!.callsign,
+      p.lat,
+      p.lon,
+    );
     notifyListeners();
   }
 
@@ -453,9 +458,7 @@ class TeamService extends ChangeNotifier {
     if (k == null) return null;
     final s = _shapes[k];
     if (s == null || s.deleted || s.points.isEmpty) return null;
-    return _routeReverse
-        ? s.copyWith(points: s.points.reversed.toList())
-        : s;
+    return _routeReverse ? s.copyWith(points: s.points.reversed.toList()) : s;
   }
 
   bool _routeReverse = false;
@@ -861,9 +864,7 @@ class TeamService extends ChangeNotifier {
   final Map<String, TeamShape> _shapes = {};
 
   List<TeamShape> get shapes =>
-      _shapes.values
-          .where((s) => !s.deleted)
-          .toList()
+      _shapes.values.where((s) => !s.deleted).toList()
         ..sort((a, b) => b.time.compareTo(a.time));
 
   bool isMyShape(TeamShape s) => s.authorKey4 == selfKey4;
@@ -1007,7 +1008,8 @@ class TeamService extends ChangeNotifier {
       unawaited(
         NotificationService().showTeamAlert(
           id: c.key.hashCode,
-          title: '🚑 ${c.precedenceLabel} CASEVAC'
+          title:
+              '🚑 ${c.precedenceLabel} CASEVAC'
               '${c.place.isNotEmpty ? ' @${c.place}' : ''}',
           body: [
             '${c.totalPatients} patient${c.totalPatients == 1 ? '' : 's'}',
@@ -1089,7 +1091,8 @@ class TeamService extends ChangeNotifier {
 
   String _alertWhereLatLon(double lat, double lon) {
     final f = fix;
-    if (f == null) return '${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)}';
+    if (f == null)
+      return '${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)}';
     return teamRangeBearing(
       teamDistanceMeters(f.lat, f.lon, lat, lon),
       teamBearingDeg(f.lat, f.lon, lat, lon),

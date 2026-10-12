@@ -66,7 +66,10 @@ void main() {
     );
     final g = GpxReader().fromString(xml);
     expect(g.wpts.map((w) => w.name), contains('LZ Paradise'));
-    expect(g.wpts.any((w) => (w.name ?? '').startsWith('CASEVAC URGENT')), isTrue);
+    expect(
+      g.wpts.any((w) => (w.name ?? '').startsWith('CASEVAC URGENT')),
+      isTrue,
+    );
     expect(g.rtes.single.name, 'Wonderland');
     expect(g.rtes.single.rtepts.length, 3);
     expect(g.trks.map((t) => t.name), containsAll(['Camp', 'ROVER track']));

@@ -43,7 +43,12 @@ class TakChatLine {
 
   /// True when sent from this phone (or relayed from the mesh by it).
   final bool outgoing;
-  const TakChatLine(this.callsign, this.text, this.time, {this.outgoing = false});
+  const TakChatLine(
+    this.callsign,
+    this.text,
+    this.time, {
+    this.outgoing = false,
+  });
 }
 
 /// FNV-1a of a string, for stable ids.

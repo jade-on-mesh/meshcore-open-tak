@@ -125,8 +125,7 @@ class _MapChatPaneState extends State<MapChatPane> {
     } on ProviderNotFoundException {
       tak = null;
     }
-    final takAvailable =
-        tak != null && (tak.publishing || tak.chat.isNotEmpty);
+    final takAvailable = tak != null && (tak.publishing || tak.chat.isNotEmpty);
     if (_takMode && !takAvailable) _takMode = false;
     if (_takMode) return _buildTak(context, connector, team, tak!);
     final scheme = Theme.of(context).colorScheme;

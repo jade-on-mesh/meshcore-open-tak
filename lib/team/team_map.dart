@@ -180,7 +180,9 @@ class TeamMapLayer extends StatelessWidget {
 
     final polygons = <Polygon>[
       for (final sh in shapes)
-        if (sh.kind.closed && sh.kind != ShapeKind.circle && sh.points.length > 2)
+        if (sh.kind.closed &&
+            sh.kind != ShapeKind.circle &&
+            sh.points.length > 2)
           Polygon(
             points: [for (final p in sh.points) LatLng(p.$1, p.$2)],
             color: Color(sh.color.argb).withValues(alpha: 0.15),

@@ -52,9 +52,10 @@ String buildTeamGpx({
         lat: c.lat,
         lon: c.lon,
         name: 'CASEVAC ${c.precedenceLabel} ${c.timeLabel}',
-        desc: [...c.nineLines(), if (c.remarks.isNotEmpty) c.remarks].join(
-          '\n',
-        ),
+        desc: [
+          ...c.nineLines(),
+          if (c.remarks.isNotEmpty) c.remarks,
+        ].join('\n'),
         type: 'CASEVAC',
         time: c.time.toUtc(),
       ),
@@ -68,11 +69,7 @@ String buildTeamGpx({
           desc: '${s.routeMethod.label} · ${teamFormatLength(s.lengthM)}',
           rtepts: [
             for (var i = 0; i < s.points.length; i++)
-              Wpt(
-                lat: s.points[i].$1,
-                lon: s.points[i].$2,
-                name: 'CP${i + 1}',
-              ),
+              Wpt(lat: s.points[i].$1, lon: s.points[i].$2, name: 'CP${i + 1}'),
           ],
         ),
   ];
@@ -86,9 +83,13 @@ String buildTeamGpx({
           trksegs: [
             Trkseg(
               trkpts: [
-                for (final p in s.kind.closed
-                    ? [...s.outline(), if (s.kind != ShapeKind.circle) s.points.first]
-                    : s.points)
+                for (final p
+                    in s.kind.closed
+                        ? [
+                            ...s.outline(),
+                            if (s.kind != ShapeKind.circle) s.points.first,
+                          ]
+                        : s.points)
                   Wpt(lat: p.$1, lon: p.$2),
               ],
             ),

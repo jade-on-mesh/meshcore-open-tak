@@ -459,8 +459,7 @@ String cotForCasevac(TeamCasevac c) {
           'routine': '${c.routine}',
           'convenience': '${c.convenience}',
           'equipment_none': flag(
-            c.equipment.isEmpty ||
-                c.equipment.contains(CasevacEquipment.none),
+            c.equipment.isEmpty || c.equipment.contains(CasevacEquipment.none),
           ),
           'hoist': flag(c.equipment.contains(CasevacEquipment.hoist)),
           'extraction_equipment': flag(
@@ -500,7 +499,8 @@ String cotForCasevac(TeamCasevac c) {
       b.element('archive');
       b.element(
         'remarks',
-        nest: '9-LINE ${c.nineLines().join(' | ')}'
+        nest:
+            '9-LINE ${c.nineLines().join(' | ')}'
             '${c.remarks.isNotEmpty ? ' | ${c.remarks}' : ''}',
       );
     },

@@ -281,59 +281,57 @@ class TeamDrawToolbar extends StatelessWidget {
       if (t == null) return const SizedBox.shrink();
       final scheme = Theme.of(context).colorScheme;
       return SafeArea(
-          bottom: false,
-          child: Material(
-            elevation: 6,
-            color: scheme.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(14),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
-              child: Row(
-                children: [
-                  Icon(
-                    shapeKindIcon(t, geofence: controller.geofence),
-                    color: scheme.primary,
+        bottom: false,
+        child: Material(
+          elevation: 6,
+          color: scheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+            child: Row(
+              children: [
+                Icon(
+                  shapeKindIcon(t, geofence: controller.geofence),
+                  color: scheme.primary,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        controller.geofence
+                            ? 'Geofence (${t.label.toLowerCase()})'
+                            : t.label,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      Text(
+                        controller.hint,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          controller.geofence
-                              ? 'Geofence (${t.label.toLowerCase()})'
-                              : t.label,
-                          style: Theme.of(context).textTheme.titleSmall,
-                        ),
-                        Text(
-                          controller.hint,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Undo',
-                    icon: const Icon(Icons.undo),
-                    onPressed: controller.points.isEmpty
-                        ? null
-                        : controller.undo,
-                  ),
-                  IconButton(
-                    tooltip: 'Cancel drawing',
-                    icon: const Icon(Icons.close),
-                    onPressed: controller.cancel,
-                  ),
-                  IconButton.filled(
-                    tooltip: 'Done',
-                    icon: const Icon(Icons.check),
-                    onPressed: controller.canFinish ? onDone : null,
-                  ),
-                ],
-              ),
+                ),
+                IconButton(
+                  tooltip: 'Undo',
+                  icon: const Icon(Icons.undo),
+                  onPressed: controller.points.isEmpty ? null : controller.undo,
+                ),
+                IconButton(
+                  tooltip: 'Cancel drawing',
+                  icon: const Icon(Icons.close),
+                  onPressed: controller.cancel,
+                ),
+                IconButton.filled(
+                  tooltip: 'Done',
+                  icon: const Icon(Icons.check),
+                  onPressed: controller.canFinish ? onDone : null,
+                ),
+              ],
             ),
           ),
+        ),
       );
     },
   );
@@ -382,9 +380,7 @@ class _ShapeEditor extends StatefulWidget {
 }
 
 class _ShapeEditorState extends State<_ShapeEditor> {
-  late final _label = TextEditingController(
-    text: widget.existing?.label ?? '',
-  );
+  late final _label = TextEditingController(text: widget.existing?.label ?? '');
   late TeamColor _color =
       widget.existing?.color ??
       (widget.geofence
@@ -447,8 +443,7 @@ class _ShapeEditorState extends State<_ShapeEditor> {
         '${widget.kind.closed ? 'Perimeter' : 'Length'} '
             '${teamFormatLength(p.lengthM)}',
       if (widget.kind.closed) 'Area ${teamFormatArea(p.areaM2)}',
-      if (widget.kind == ShapeKind.route)
-        '${widget.points.length} checkpoints',
+      if (widget.kind == ShapeKind.route) '${widget.points.length} checkpoints',
     ].join(' · ');
     final title = widget.existing != null
         ? 'Edit ${widget.kind.label.toLowerCase()}'
@@ -578,7 +573,8 @@ String routeEta(TeamShape r) {
     RouteMethod.watercraft => 20.0,
   };
   final minutes = (r.lengthM / 1000 / kmh * 60).round();
-  if (minutes < 60) return '≈ $minutes min ${r.routeMethod.label.toLowerCase()}';
+  if (minutes < 60)
+    return '≈ $minutes min ${r.routeMethod.label.toLowerCase()}';
   return '≈ ${minutes ~/ 60} h ${minutes % 60} min '
       '${r.routeMethod.label.toLowerCase()}';
 }
@@ -615,7 +611,9 @@ Future<void> showTeamShapeSheet(BuildContext context, TeamShape s) =>
                   title: Text(s.title),
                   subtitle: Text(
                     [
-                      s.isGeofence ? 'Geofence · ${s.geofence.label}' : s.kind.label,
+                      s.isGeofence
+                          ? 'Geofence · ${s.geofence.label}'
+                          : s.kind.label,
                       author,
                       _ago(s.time),
                     ].join(' · '),
