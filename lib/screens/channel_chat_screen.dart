@@ -2106,6 +2106,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                   ),
                   VoxMicButton(
                     recipientLabel: widget.channel.name,
+                    codecTarget: VoxVoiceService.channelTarget(widget.channel),
                     onSend: (clip) => context
                         .read<VoxVoiceService>()
                         .sendClipToChannel(widget.channel, clip),

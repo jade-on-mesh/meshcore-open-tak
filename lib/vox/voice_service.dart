@@ -152,6 +152,37 @@ class VoxVoiceService extends ChangeNotifier {
   VoxVoiceMode get sendMode =>
       _preferMimi && mimi.isReady ? VoxVoiceMode.mimi : voxDefaultVoiceMode;
 
+  // ----------------------------------- per-chat codec: Codec2 for radios
+
+  static const _kCodec2Targets = 'vox_codec2_targets';
+  Set<String> _codec2Targets = {};
+
+  /// Key for a contact's per-chat voice settings.
+  static String contactTarget(Contact c) => 'c:${c.publicKeyHex}';
+
+  /// Key for a channel's per-chat voice settings.
+  static String channelTarget(Channel ch) => 'ch:${ch.pskHex}';
+
+  /// Whether clips to [target] are always sent with Codec2, so radios that
+  /// can't run Mimi (Wadamesh on a T-Deck, say) can play them.
+  bool forcesCodec2(String? target) =>
+      target != null && _codec2Targets.contains(target);
+
+  Future<void> setForcesCodec2(String target, bool v) async {
+    final next = {..._codec2Targets};
+    v ? next.add(target) : next.remove(target);
+    _codec2Targets = next;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_kCodec2Targets, next.toList());
+    } catch (_) {}
+  }
+
+  /// The codec the next recording to [target] will be sent with.
+  VoxVoiceMode sendModeFor(String? target) =>
+      forcesCodec2(target) ? voxDefaultVoiceMode : sendMode;
+
   Future<void> setPreferMimi(bool v) async {
     _preferMimi = v;
     notifyListeners();
@@ -202,6 +233,8 @@ class VoxVoiceService extends ChangeNotifier {
       _forceRepeaterRoute = prefs.getBool(_kForceRoute) ?? false;
       _forcedRepeaterKeys = prefs.getStringList(_kForceRouteKeys) ?? const [];
       _preferMimi = prefs.getBool(_kPreferMimi) ?? true;
+      _codec2Targets = (prefs.getStringList(_kCodec2Targets) ?? const [])
+          .toSet();
       _autoPlay = prefs.getBool(_kAutoPlay) ?? true;
       _autoDownloadChannels = prefs.getBool(_kAutoChannels) ?? false;
       notifyListeners();
@@ -316,14 +349,18 @@ class VoxVoiceService extends ChangeNotifier {
 
   // ---------------------------------------------------------------- sending
 
-  /// Encodes a 48 kHz recording with [sendMode] (Mimi or Codec2).
-  Future<VoxEncodedClip> encodeRecording(Int16List pcm48k) async {
+  /// Encodes a 48 kHz recording with [sendModeFor] [target] (Mimi or
+  /// Codec2).
+  Future<VoxEncodedClip> encodeRecording(
+    Int16List pcm48k, {
+    String? target,
+  }) async {
     final maxIn = maxClipLength.inMilliseconds * voxRecordSampleRate ~/ 1000;
     final clipped = pcm48k.length > maxIn
         ? Int16List.sublistView(pcm48k, 0, maxIn)
         : pcm48k;
     final seconds = max(1, (clipped.length / voxRecordSampleRate).ceil());
-    final mode = sendMode;
+    final mode = sendModeFor(target);
     if (mode.isMimi) {
       final audio24 = await compute(_decimateJob, (clipped, 2));
       final bits = await mimi.encode(audio24);

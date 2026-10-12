@@ -504,6 +504,9 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               VoxMicButton(
                 recipientLabel: _resolveContact(connector).name,
+                codecTarget: VoxVoiceService.contactTarget(
+                  _resolveContact(connector),
+                ),
                 onSend: (clip) => context
                     .read<VoxVoiceService>()
                     .sendClipToContact(_resolveContact(connector), clip),

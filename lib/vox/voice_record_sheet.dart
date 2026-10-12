@@ -18,7 +18,16 @@ class VoxMicButton extends StatelessWidget {
   final Future<void> Function(VoxEncodedClip clip) onSend;
   final String? recipientLabel;
 
-  const VoxMicButton({super.key, required this.onSend, this.recipientLabel});
+  /// [VoxVoiceService.contactTarget] / [VoxVoiceService.channelTarget]: lets
+  /// this chat always use Codec2 (for radios that can't play Mimi).
+  final String? codecTarget;
+
+  const VoxMicButton({
+    super.key,
+    required this.onSend,
+    this.recipientLabel,
+    this.codecTarget,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -30,8 +39,11 @@ class VoxMicButton extends StatelessWidget {
       onPressed: () => showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,
-        builder: (_) =>
-            VoxRecordSheet(onSend: onSend, recipientLabel: recipientLabel),
+        builder: (_) => VoxRecordSheet(
+          onSend: onSend,
+          recipientLabel: recipientLabel,
+          codecTarget: codecTarget,
+        ),
       ),
     );
   }
@@ -40,8 +52,14 @@ class VoxMicButton extends StatelessWidget {
 class VoxRecordSheet extends StatefulWidget {
   final Future<void> Function(VoxEncodedClip clip) onSend;
   final String? recipientLabel;
+  final String? codecTarget;
 
-  const VoxRecordSheet({super.key, required this.onSend, this.recipientLabel});
+  const VoxRecordSheet({
+    super.key,
+    required this.onSend,
+    this.recipientLabel,
+    this.codecTarget,
+  });
 
   @override
   State<VoxRecordSheet> createState() => _VoxRecordSheetState();
@@ -58,6 +76,7 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
   _Phase _phase = _Phase.idle;
   Duration _elapsed = Duration.zero;
   VoxEncodedClip? _clip;
+  Int16List? _pcm;
   bool _previewing = false;
   String? _error;
 
@@ -117,9 +136,21 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
       return;
     }
     if (!mounted) return;
+    _pcm = pcm;
+    await _encode();
+  }
+
+  /// Encodes the recording with the codec this chat uses (again when the
+  /// per-chat Codec2 switch changes after recording).
+  Future<void> _encode() async {
+    final pcm = _pcm;
+    if (pcm == null) return;
     setState(() => _phase = _Phase.encoding);
     try {
-      final clip = await context.read<VoxVoiceService>().encodeRecording(pcm);
+      final clip = await context.read<VoxVoiceService>().encodeRecording(
+        pcm,
+        target: widget.codecTarget,
+      );
       if (!mounted) return;
       // Start decoding the preview now so Play is instant.
       _previewWav = context.read<VoxVoiceService>().previewWav(clip)..ignore();
@@ -187,7 +218,7 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final voice = context.watch<VoxVoiceService>();
-    final mode = _clip?.mode ?? voice.sendMode;
+    final mode = _clip?.mode ?? voice.sendModeFor(widget.codecTarget);
     final recording = _phase == _Phase.recording;
     final clip = _clip;
     final packets = clip == null
@@ -227,7 +258,9 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
                       'Testing: forced via ${voice.forcedRouteLabel()}',
                     ),
                   ),
-                if (voice.preferMimi && !voice.mimi.isReady)
+                if (voice.preferMimi &&
+                    !voice.mimi.isReady &&
+                    !voice.forcesCodec2(widget.codecTarget))
                   ActionChip(
                     avatar: const Icon(Icons.graphic_eq, size: 16),
                     label: Text(
@@ -245,6 +278,27 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
                 ),
               ],
             ),
+            if (widget.codecTarget != null && voice.preferMimi)
+              SwitchListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                secondary: const Icon(Icons.router_outlined),
+                title: const Text('Codec2 for this chat'),
+                subtitle: const Text(
+                  'Plays on radios without Mimi, like Wadamesh on a T-Deck',
+                ),
+                value: voice.forcesCodec2(widget.codecTarget),
+                onChanged:
+                    _phase == _Phase.idle || _phase == _Phase.recorded
+                    ? (v) async {
+                        await voice.setForcesCodec2(widget.codecTarget!, v);
+                        if (_clip != null && mounted) {
+                          _previewWav = null;
+                          await _encode();
+                        }
+                      }
+                    : null,
+              ),
             const SizedBox(height: 12),
             Text(
               recording

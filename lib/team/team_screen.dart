@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../screens/map_screen.dart';
 import 'tak/tak_service.dart';
 import 'team_forms.dart';
 import 'team_map.dart';
@@ -205,8 +206,7 @@ class _WatchTabState extends State<WatchTab> {
               Icon(Icons.visibility_outlined, size: 64, color: scheme.primary),
               const SizedBox(height: 12),
               const Text(
-                'Watch other channels, like #icewatch or #dronewatch, as a '
-                'compact report feed. Reports with coordinates also show on '
+                'Watch other channels as a compact report feed. Reports with coordinates also show on '
                 'the map.',
                 textAlign: TextAlign.center,
               ),
@@ -634,11 +634,32 @@ class _PinsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final team = context.watch<TeamService>();
     final fix = team.fix;
+    final mapButton = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: FilledButton.tonalIcon(
+          icon: const Icon(Icons.map_outlined),
+          label: const Text('Open map'),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const MapScreen()),
+          ),
+        ),
+      ),
+    );
     return Scaffold(
       body: team.markers.isEmpty
-          ? const _Empty('No pins yet. Long-press the map to drop one.')
+          ? Column(
+              children: [
+                mapButton,
+                const Expanded(
+                  child: _Empty('No pins yet. Long-press the map to drop one.'),
+                ),
+              ],
+            )
           : ListView(
               children: [
+                mapButton,
                 for (final m in team.markers)
                   ListTile(
                     leading: Icon(
