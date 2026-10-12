@@ -265,7 +265,9 @@ class _PinEditorState extends State<_PinEditor> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TeamSheetHeader(
-                title: widget.existing == null ? 'Drop tactical pin' : 'Edit pin',
+                title: widget.existing == null
+                    ? 'Drop tactical pin'
+                    : 'Edit pin',
                 subtitle:
                     '${widget.lat.toStringAsFixed(5)}, ${widget.lon.toStringAsFixed(5)}',
                 onClose: () => Navigator.pop(context),
@@ -467,138 +469,138 @@ class _SaluteFormState extends State<_SaluteForm> {
         if (!didPop) unawaited(_close());
       },
       child: SafeArea(
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 12,
-          bottom: 12 + MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TeamSheetHeader(title: 'SALUTE report', onClose: _close),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                children: [
-                  for (final u in TeamUrgency.values.reversed)
-                    ChoiceChip(
-                      label: Text('${u.dot} ${u.label}'),
-                      selected: _urgency == u,
-                      onSelected: (_) => setState(() => _urgency = u),
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 12,
+            bottom: 12 + MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TeamSheetHeader(title: 'SALUTE report', onClose: _close),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  children: [
+                    for (final u in TeamUrgency.values.reversed)
+                      ChoiceChip(
+                        label: Text('${u.dot} ${u.label}'),
+                        selected: _urgency == u,
+                        onSelected: (_) => setState(() => _urgency = u),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                SegmentedButton<TeamAffiliation>(
+                  segments: [
+                    for (final a in TeamAffiliation.values)
+                      ButtonSegment(value: a, label: Text(a.label)),
+                  ],
+                  selected: {_aff},
+                  onSelectionChanged: (s) => setState(() => _aff = s.first),
+                ),
+                const Divider(),
+                Text('S · Size', style: t.labelLarge),
+                Wrap(
+                  children: [
+                    _counter(
+                      'Vehicles',
+                      '🚗',
+                      _vehicles,
+                      (v) => setState(() => _vehicles = v),
                     ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              SegmentedButton<TeamAffiliation>(
-                segments: [
-                  for (final a in TeamAffiliation.values)
-                    ButtonSegment(value: a, label: Text(a.label)),
-                ],
-                selected: {_aff},
-                onSelectionChanged: (s) => setState(() => _aff = s.first),
-              ),
-              const Divider(),
-              Text('S · Size', style: t.labelLarge),
-              Wrap(
-                children: [
-                  _counter(
-                    'Vehicles',
-                    '🚗',
-                    _vehicles,
-                    (v) => setState(() => _vehicles = v),
+                    _counter(
+                      'Personnel',
+                      '🥾',
+                      _people,
+                      (v) => setState(() => _people = v),
+                    ),
+                  ],
+                ),
+                TextField(
+                  controller: _size,
+                  maxLength: teamMaxSaluteSizeBytes,
+                  decoration: const InputDecoration(
+                    labelText: 'Other size note (optional)',
                   ),
-                  _counter(
-                    'Personnel',
-                    '🥾',
-                    _people,
-                    (v) => setState(() => _people = v),
+                  onChanged: (_) => setState(() {}),
+                ),
+                TextField(
+                  controller: _activity,
+                  maxLength: teamMaxSaluteActivityBytes,
+                  decoration: const InputDecoration(labelText: 'A · Activity'),
+                  onChanged: (_) => setState(() {}),
+                ),
+                TextField(
+                  controller: _place,
+                  maxLength: teamMaxSalutePlaceBytes,
+                  decoration: InputDecoration(
+                    labelText: 'L · Location name (e.g. Auburn E Main St)',
+                    helperText:
+                        'Map point ${widget.lat.toStringAsFixed(5)}, ${widget.lon.toStringAsFixed(5)}',
                   ),
-                ],
-              ),
-              TextField(
-                controller: _size,
-                maxLength: teamMaxSaluteSizeBytes,
-                decoration: const InputDecoration(
-                  labelText: 'Other size note (optional)',
+                  onChanged: (_) => setState(() {}),
                 ),
-                onChanged: (_) => setState(() {}),
-              ),
-              TextField(
-                controller: _activity,
-                maxLength: teamMaxSaluteActivityBytes,
-                decoration: const InputDecoration(labelText: 'A · Activity'),
-                onChanged: (_) => setState(() {}),
-              ),
-              TextField(
-                controller: _place,
-                maxLength: teamMaxSalutePlaceBytes,
-                decoration: InputDecoration(
-                  labelText: 'L · Location name (e.g. Auburn E Main St)',
-                  helperText:
-                      'Map point ${widget.lat.toStringAsFixed(5)}, ${widget.lon.toStringAsFixed(5)}',
+                TextField(
+                  controller: _unit,
+                  maxLength: teamMaxSaluteUnitBytes,
+                  decoration: const InputDecoration(
+                    labelText: 'U · Unit / uniform',
+                  ),
+                  onChanged: (_) => setState(() {}),
                 ),
-                onChanged: (_) => setState(() {}),
-              ),
-              TextField(
-                controller: _unit,
-                maxLength: teamMaxSaluteUnitBytes,
-                decoration: const InputDecoration(
-                  labelText: 'U · Unit / uniform',
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.schedule),
+                  title: Text('T · Time observed: ${_preview.timeLabel}'),
+                  trailing: TextButton(
+                    onPressed: _pickTime,
+                    child: const Text('Change'),
+                  ),
                 ),
-                onChanged: (_) => setState(() {}),
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.schedule),
-                title: Text('T · Time observed: ${_preview.timeLabel}'),
-                trailing: TextButton(
-                  onPressed: _pickTime,
-                  child: const Text('Change'),
+                TextField(
+                  controller: _equipment,
+                  maxLength: teamMaxSaluteEquipmentBytes,
+                  decoration: const InputDecoration(labelText: 'E · Equipment'),
+                  onChanged: (_) => setState(() {}),
                 ),
-              ),
-              TextField(
-                controller: _equipment,
-                maxLength: teamMaxSaluteEquipmentBytes,
-                decoration: const InputDecoration(labelText: 'E · Equipment'),
-                onChanged: (_) => setState(() {}),
-              ),
-              TeamAttachmentField(
-                value: _attachment,
-                label: 'SALUTE report',
-                onChanged: (a) => setState(() => _attachment = a),
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Also post as text'),
-                subtitle: const Text(
-                  'For teammates on other MeshCore apps. Costs one more '
-                  'channel message.',
+                TeamAttachmentField(
+                  value: _attachment,
+                  label: 'SALUTE report',
+                  onChanged: (a) => setState(() => _attachment = a),
                 ),
-                value: _alsoText,
-                onChanged: (v) => setState(() => _alsoText = v),
-              ),
-              const SizedBox(height: 6),
-              Text('Preview', style: t.labelLarge),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: TeamReportCard(report: _preview),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Also post as text'),
+                  subtitle: const Text(
+                    'For teammates on other MeshCore apps. Costs one more '
+                    'channel message.',
+                  ),
+                  value: _alsoText,
+                  onChanged: (v) => setState(() => _alsoText = v),
                 ),
-              ),
-              const SizedBox(height: 8),
-              TeamSheetActions(
-                onCancel: _close,
-                submitLabel: 'Send report',
-                onSubmit: _sending ? null : _send,
-              ),
-            ],
+                const SizedBox(height: 6),
+                Text('Preview', style: t.labelLarge),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: TeamReportCard(report: _preview),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TeamSheetActions(
+                  onCancel: _close,
+                  submitLabel: 'Send report',
+                  onSubmit: _sending ? null : _send,
+                ),
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }

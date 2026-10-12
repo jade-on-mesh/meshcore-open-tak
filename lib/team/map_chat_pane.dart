@@ -29,10 +29,7 @@ int? _lastChannelIndex;
 
 /// Picks the channel the pane opens on: the last one used, else the team
 /// channel, else the first named channel.
-Channel? mapChatDefaultChannel(
-  MeshCoreConnector connector,
-  TeamService? team,
-) {
+Channel? mapChatDefaultChannel(MeshCoreConnector connector, TeamService? team) {
   final named = [
     for (final c in connector.channels)
       if (c.name.isNotEmpty) c,

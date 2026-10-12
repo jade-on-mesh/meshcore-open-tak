@@ -204,7 +204,9 @@ Future<void> _showAlertPicker(BuildContext context, TeamService team) async {
   if (team.activeOwnAlert != null) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Your alert is already active. Tap the red banner to cancel it.'),
+        content: Text(
+          'Your alert is already active. Tap the red banner to cancel it.',
+        ),
       ),
     );
     return;
@@ -222,8 +224,16 @@ Future<void> _showAlertPicker(BuildContext context, TeamService team) async {
           ),
           for (final (t, icon, sub) in [
             (TeamAlertType.sos, Icons.sos, 'Emergency, I need help now'),
-            (TeamAlertType.inContact, Icons.warning_amber, 'Under threat, in contact'),
-            (TeamAlertType.ringTheBell, Icons.notifications_active, 'Everyone check in'),
+            (
+              TeamAlertType.inContact,
+              Icons.warning_amber,
+              'Under threat, in contact',
+            ),
+            (
+              TeamAlertType.ringTheBell,
+              Icons.notifications_active,
+              'Everyone check in',
+            ),
           ])
             ListTile(
               leading: Icon(icon, color: Colors.red),
