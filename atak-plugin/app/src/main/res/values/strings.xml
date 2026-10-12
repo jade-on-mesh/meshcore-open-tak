@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MeshCore</string>
+    <string name="app_desc">Shares ATAK positions, chat, markers, shapes, routes, alerts, voice and photos over a MeshCore LoRa mesh, directly or through the MeshCore Open TAK app.</string>
+</resources>

@@ -31,6 +31,13 @@
 // up (added roles) write 15 there, set flag 0x20 and append the role id as
 // one byte after the callsign. Older readers see an unknown role.
 //
+// Added with the ATAK plugin (atak-plugin/), which also speaks position,
+// alert, marker and report; formats in team_wire_atak.dart:
+//   point     [0x4F] any single-point CoT item (spot marker, 2525 unit...)
+//   ATAK shape [0x47] routes, lines, polygons, rectangles and circles as
+//             ATAK draws them (the app's own drawings are 0x44 above)
+//   chunk     [0x58] chunked, compressed CoT or a small file
+//
 // Coordinates are degrees x 1e7 (about 1 cm). All integers big-endian.
 
 import 'dart:convert';
@@ -269,6 +276,12 @@ Uint8List _key4(String hex) => Uint8List.fromList([
     int.parse(hex.substring(i * 2, i * 2 + 2), radix: 16),
 ]);
 
+// From the ATAK plugin (team_wire_atak.dart). Its point moved from 0x43,
+// which CASEVAC took first.
+const int teamMsgPoint = 0x4F; // 'O'
+const int teamMsgAtakShape = 0x47; // 'G'
+const int teamMsgChunk = 0x58; // 'X'
+
 /// Message type and sender of a team payload, or null if it isn't one.
 (int, String)? teamPeek(Uint8List p) {
   if (p.length < 5) return null;
@@ -278,7 +291,10 @@ Uint8List _key4(String hex) => Uint8List.fromList([
       p[0] != teamMsgReport &&
       p[0] != teamMsgRole &&
       p[0] != teamMsgShape &&
-      p[0] != teamMsgCasevac) {
+      p[0] != teamMsgCasevac &&
+      p[0] != teamMsgPoint &&
+      p[0] != teamMsgAtakShape &&
+      p[0] != teamMsgChunk) {
     return null;
   }
   return (p[0], teamKey4Hex(p, 1));

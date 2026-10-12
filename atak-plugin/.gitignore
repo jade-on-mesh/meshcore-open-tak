@@ -1,0 +1,10 @@
+local.properties
+sdk/
+build/
+app/build/
+.gradle/
+.cxx/
+app/.cxx/
+*.keystore
+*.jks
+gradle/wrapper/gradle-wrapper.jar

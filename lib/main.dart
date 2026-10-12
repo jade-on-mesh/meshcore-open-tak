@@ -35,6 +35,7 @@ import 'storage/prefs_manager.dart';
 import 'theme/mesh_theme.dart';
 import 'utils/app_logger.dart';
 import 'widgets/image_send_codec_binding.dart';
+import 'team/tak/atak_plugin_bridge.dart';
 import 'team/tak/tak_service.dart';
 import 'team/team_alert_host.dart';
 import 'team/team_service.dart';
@@ -380,10 +381,16 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
   late final TeamService _teamService = TeamService(widget.connector);
   late final TakService _takService = TakService(_teamService);
   late final WatchFeedService _watchFeed = WatchFeedService(widget.connector);
+  late final AtakPluginBridge _atakBridge;
 
   @override
   void initState() {
     super.initState();
+    _atakBridge = AtakPluginBridge(
+      widget.connector,
+      _teamService,
+      _voxVoiceService,
+    );
     WidgetsBinding.instance.addObserver(this);
     _imageSweepTimer = Timer.periodic(
       _kImageSweepInterval,
@@ -393,6 +400,7 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _atakBridge.dispose();
     _imageSweepTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -450,6 +458,7 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
         ChangeNotifierProvider<TeamService>.value(value: _teamService),
         ChangeNotifierProvider<TakService>.value(value: _takService),
         ChangeNotifierProvider<WatchFeedService>.value(value: _watchFeed),
+        Provider<AtakPluginBridge>.value(value: _atakBridge),
       ],
       child: Consumer<AppSettingsService>(
         builder: (context, settingsService, child) {

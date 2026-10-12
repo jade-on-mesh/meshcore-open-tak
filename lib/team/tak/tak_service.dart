@@ -23,6 +23,7 @@ import 'package:xml/xml.dart';
 import '../../models/channel_message.dart';
 import '../team_service.dart';
 import '../team_wire.dart';
+import '../team_wire_atak.dart';
 import 'cot.dart';
 
 enum TakState { off, connecting, connected, error }
@@ -165,7 +166,10 @@ class TakService extends ChangeNotifier {
       ..onSelfPosition = _onSelfPosition
       ..onShapeChanged = _onMeshShape
       ..onCasevacChanged = _onMeshCasevac
-      ..onTeamChat = _onMeshChat;
+      ..onTeamChat = _onMeshChat
+      ..onPointChanged = _onMeshPoint
+      ..onAtakShapeChanged = _onMeshAtakShape
+      ..onRawCot = _onMeshRawCot;
     unawaited(_load());
     _ticker = Timer.periodic(const Duration(seconds: 30), (_) => _onTick());
   }
@@ -428,6 +432,20 @@ class TakService extends ChangeNotifier {
     if (_publishing) _write(cotForReport(r));
   }
 
+  // Items shared from ATAK over the mesh by the ATAK plugin.
+  void _onMeshPoint(TeamPoint p) {
+    if (_publishing) _write(cotForPoint(p));
+  }
+
+  void _onMeshAtakShape(TeamAtakShape s) {
+    if (_publishing) _write(cotForAtakShape(s));
+  }
+
+  void _onMeshRawCot(String xml, String senderKey4) {
+    // Relayed whole by an ATAK plugin; pass it on as it came.
+    if (_publishing && parseCot(xml) != null) _write(xml);
+  }
+
   void _onMeshAlert(TeamAlert a) {
     if (_publishing) {
       _write(cotForAlert(a, memberUid: takUidForMember(a.senderKey4)));
@@ -556,6 +574,12 @@ class TakService extends ChangeNotifier {
     }
     for (final c in _team.casevacs) {
       _onMeshCasevac(c);
+    }
+    for (final p in _team.points) {
+      _onMeshPoint(p);
+    }
+    for (final s in _team.atakShapes) {
+      _onMeshAtakShape(s);
     }
     final own = _team.activeOwnAlert;
     if (own != null) _onMeshAlert(own);
