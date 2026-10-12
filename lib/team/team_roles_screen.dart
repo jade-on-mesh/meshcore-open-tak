@@ -95,7 +95,9 @@ class TeamRolesScreen extends StatelessWidget {
           if (added.isEmpty)
             const Padding(
               padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: Text('None yet. Add a role for anything the defaults miss.'),
+              child: Text(
+                'None yet. Add a role for anything the defaults miss.',
+              ),
             ),
           for (final r in added) tile(r),
         ],
@@ -158,10 +160,7 @@ class _RoleEditorScreenState extends State<RoleEditorScreen> {
   }
 
   static final int _badgeId = roleIconLibrary
-      .firstWhere(
-        (i) => i.name == 'badge',
-        orElse: () => roleIconLibrary.first,
-      )
+      .firstWhere((i) => i.name == 'badge', orElse: () => roleIconLibrary.first)
       .id;
 
   @override
@@ -194,8 +193,7 @@ class _RoleEditorScreenState extends State<RoleEditorScreen> {
 
   Future<void> _save() async {
     final messenger = ScaffoldMessenger.of(context);
-    void toast(String m) =>
-        messenger.showSnackBar(SnackBar(content: Text(m)));
+    void toast(String m) => messenger.showSnackBar(SnackBar(content: Text(m)));
     final name = _name.text.trim();
     if (_isAdded && name.isEmpty) {
       toast('Give the role a name.');

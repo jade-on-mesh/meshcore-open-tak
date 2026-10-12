@@ -249,6 +249,7 @@ class TeamPosition {
   final double? headingDeg;
   final int accuracyM;
   final int? batteryPct;
+
   /// 0-8 a default [TeamRole], 9-24 a role the team added.
   final int roleId;
   final TeamColor color;

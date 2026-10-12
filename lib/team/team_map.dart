@@ -247,10 +247,7 @@ class TeamMapLayer extends StatelessWidget {
                         ),
                       ),
                       child: Icon(
-                        teamRoleIconFor(
-                          context.read<TeamService>(),
-                          p.roleId,
-                        ),
+                        teamRoleIconFor(context.read<TeamService>(), p.roleId),
                         size: 16,
                         color: color.computeLuminance() > 0.5
                             ? Colors.black

@@ -154,7 +154,10 @@ String cotForPosition(TeamPosition p, {required String uid}) => cotEvent(
     );
     b.element(
       '__group',
-      attributes: {'name': takGroupName(p.color), 'role': takRoleName(p.roleId)},
+      attributes: {
+        'name': takGroupName(p.color),
+        'role': takRoleName(p.roleId),
+      },
     );
     if (p.batteryPct != null) {
       b.element('status', attributes: {'battery': '${p.batteryPct}'});
