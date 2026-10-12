@@ -45,4 +45,4 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          grep -E "\[E\]|Expected:|  Actual:|Which:|Error:|error:" test.log | head -40 | while IFS= read -r l; do echo "::error::${l}"; done || true
+          grep -A14 "\[E\]" test.log | head -60 | while IFS= read -r l; do echo "::error::${l}"; done || true
