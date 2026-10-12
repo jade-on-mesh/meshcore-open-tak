@@ -609,8 +609,9 @@ String cotForShape(TeamShape s) {
         );
       } else {
         final pts = [...s.points];
-        if (s.kind == TeamShapeKind.polygon && pts.length > 2)
+        if (s.kind == TeamShapeKind.polygon && pts.length > 2) {
           pts.add(pts.first);
+        }
         for (final p in pts) {
           b.element('link', attributes: {'point': pt(p)});
         }

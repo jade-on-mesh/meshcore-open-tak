@@ -232,8 +232,9 @@ class AtakPluginBridge {
           return {'ok': true};
         case 'sendDirectText':
           final c = _contactByKey(a['key']! as Uint8List);
-          if (c == null)
+          if (c == null) {
             return {'ok': false, 'msg': 'Not in the radio contacts'};
+          }
           await _connector.sendMessage(c, a['text']! as String);
           return {'ok': true};
         case 'sendTeam':
