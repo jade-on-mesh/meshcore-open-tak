@@ -62,7 +62,7 @@ class OtpChunkService {
   }
 
   /// Same as [maxChunkedPlaintextBytesForContact] but for a channel, whose
-  /// single-packet budget also has to make room for the "<name>: " prefix.
+  /// single-packet budget also has to make room for the `"<name>: "` prefix.
   static int maxChunkedPlaintextBytesForChannel(String? senderName) {
     final perChunk =
         OtpService.maxPlaintextBytesForChannel(senderName) - chunkOverheadBytes;

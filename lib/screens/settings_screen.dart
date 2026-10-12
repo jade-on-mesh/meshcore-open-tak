@@ -77,7 +77,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// App version plus the OTP patch-series build id (see build_info.dart),
   /// e.g. "9.5.0 · OTP 0026-pad-consumption-fix" — mirrors the Lua app's
-  /// "Build: <BUILD_ID>" line on its Settings screen, so you can tell which
+  /// "Build: `<BUILD_ID>`" line on its Settings screen, so you can tell which
   /// numbered OTP patches actually landed on this install.
   String get _appVersionWithOtpBuild =>
       _appVersion.isEmpty ? '' : '$_appVersion  ·  OTP $otpBuildId';

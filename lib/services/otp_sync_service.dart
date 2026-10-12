@@ -27,8 +27,8 @@ import '../models/otp_pad.dart';
 /// character: the sender's own resolved [OtpPadRole] for this two-party pad
 /// (shared/channel pads have no role split, so they carry none).
 ///
-/// This is v3 of the format. v2 (`z1`) was shrunk from v1's `OTPSYNC1|2P|
-/// <flag>|<myOffset>:<theirOffset>` / `OTPSYNC1|SS|<flag>|<offset>`
+/// This is v3 of the format. v2 (`z1`) was shrunk from v1's
+/// `OTPSYNC1|2P|<flag>|<myOffset>:<theirOffset>` / `OTPSYNC1|SS|<flag>|<offset>`
 /// (pipe-delimited decimal, ~17-21 bytes per message) down to ~4-8 bytes:
 /// the mode and reply-flag are folded into a single case-coded letter
 /// (`p`/`P`, `s`/`S`) instead of a 2-char mode token plus a separate `0`/`1`
@@ -87,13 +87,10 @@ class OtpSyncPayload {
 
   const OtpSyncPayload.twoParty({
     required this.isReply,
-    required int myOffset,
-    required int theirOffset,
-    required OtpPadRole role,
+    required int this.myOffset,
+    required int this.theirOffset,
+    required OtpPadRole this.role,
   }) : isSharedSequential = false,
-       myOffset = myOffset,
-       theirOffset = theirOffset,
-       role = role,
        offset = null;
 
   const OtpSyncPayload.shared({required this.isReply, required int offset})

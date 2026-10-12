@@ -254,7 +254,7 @@ class OtpService {
   }
 
   /// Max plaintext bytes that fit in one single-packet OTP-encrypted
-  /// channel message, after reserving space for the "<name>: " prefix the
+  /// channel message, after reserving space for the `"<name>: "` prefix the
   /// firmware adds and doubling for hex encoding.
   static int maxPlaintextBytesForChannel(String? senderName) {
     final budget = maxChannelMessageBytes(senderName);
