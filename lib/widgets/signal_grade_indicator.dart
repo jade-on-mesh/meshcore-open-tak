@@ -44,8 +44,9 @@ int? marginForStats(CompanionRadioStats? stats) {
 /// Thresholds only - unchanged from the original port, and exactly
 /// matching both Lua builds' sig_grade_for_margin.
 SignalGrade gradeForMargin(num margin) {
-  if (margin >= 20)
+  if (margin >= 20) {
     return const SignalGrade('excellent', Color(sigGreenBright));
+  }
   if (margin >= 12) return const SignalGrade('good', Color(sigGreen));
   if (margin >= 6) return const SignalGrade('fair', Color(sigYellow));
   if (margin >= 0) return const SignalGrade('poor', Color(sigOrange));
