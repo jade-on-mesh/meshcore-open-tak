@@ -13,7 +13,7 @@ import 'team_draw.dart';
 import 'team_forms.dart';
 import 'team_coords.dart';
 import 'team_gpx.dart';
-import 'team_map.dart' show teamAgo;
+import 'team_map.dart' show teamAgo, teamRoleIconFor;
 import 'team_packages.dart';
 import 'team_screen.dart';
 import 'team_service.dart';
