@@ -1,0 +1,246 @@
+////////////////////////////////////////////////////////////////////////////////
+// MeshCore ATAK plugin. Based on the ATAK-CIV 5.8 plugin template.
+//
+// PLUGIN_VERSION is the plugin's own version.
+// ATAK_VERSION   must match the ATAK the plugin will run in: ATAK only loads
+//                plugins built against its API version. To target another
+//                ATAK, unpack that version's SDK (scripts/setup-sdk.sh) and
+//                change this.
+//
+// Optional: -PwithMimi=false leaves out ONNX Runtime (~15 MB per ABI). The
+// plugin then sends Codec2 voice in direct mode and can't play Mimi clips
+// unless the MeshCore Open TAK app does the decoding (app mode).
+////////////////////////////////////////////////////////////////////////////////
+
+buildscript {
+    ext.PLUGIN_VERSION = "1.1.0"
+    ext.ATAK_VERSION = "5.8.0"
+
+    def takdevVersion = '3.+'
+
+    def getValueFromPropertiesFile = { propFile, key ->
+        if (!propFile.isFile() || !propFile.canRead())
+            return null
+        def prop = new Properties()
+        def reader = propFile.newReader()
+        try {
+            prop.load(reader)
+        } finally {
+            reader.close()
+        }
+        return prop.get(key)
+    }
+
+    def getProperty = { name, defValue ->
+        def prop = project.properties[name] ?:
+                getValueFromPropertiesFile(project.rootProject.file('local.properties'), name)
+        return (null == prop) ? defValue : prop
+    }
+
+    def urlKey = 'takrepo.url'
+
+    ext.isDevKitEnabled = { ->
+        return getProperty(urlKey, null) != null
+    }
+
+    ext.takrepoUrl = getProperty(urlKey, 'https://localhost/')
+    ext.takrepoUser = getProperty('takrepo.user', 'invalid')
+    ext.takrepoPassword = getProperty('takrepo.password', 'invalid')
+    // Path to atak-gradle-takdev.jar from the SDK (setup-sdk.sh writes it to
+    // local.properties; this default is where it unpacks the SDK).
+    ext.takdevPlugin = getProperty('takdev.plugin', "${rootDir}/sdk/atak-civ/atak-gradle-takdev.jar")
+
+    repositories {
+        google()
+        mavenCentral()
+        mavenLocal()
+        maven {
+            url = takrepoUrl
+            credentials {
+                username = takrepoUser
+                password = takrepoPassword
+            }
+        }
+    }
+    dependencies {
+        if (isDevKitEnabled()) {
+            classpath "com.atakmap.gradle:atak-gradle-takdev:${takdevVersion}"
+        } else {
+            classpath files(takdevPlugin)
+        }
+    }
+}
+
+plugins {
+    id("com.android.application")
+}
+apply plugin: 'atak-takdev-plugin'
+
+def withMimi = !(project.findProperty('withMimi') ?: 'true').toString().equalsIgnoreCase('false')
+
+def localProp = { key ->
+    def f = project.rootProject.file('local.properties')
+    if (!f.isFile())
+        return null
+    def p = new Properties()
+    f.withReader { p.load(it) }
+    return p.getProperty(key)
+}
+
+def supportedFlavors = [
+    [ name : 'civ', default: true ],
+    [ name : 'mil' ],
+    [ name : 'gov' ],
+]
+
+android {
+    compileSdk 36
+    namespace 'com.jadeonmesh.meshcore.atak'
+    // Same NDK as the app (android/app/build.gradle.kts): same codec code.
+    ndkVersion "29.0.14206865"
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // Required by ATAK: without these the inner signing check fails or
+    // native libraries can't be loaded.
+    bundle {
+        storeArchive {
+            enable = false
+        }
+    }
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+        resources {
+            excludes += ['META-INF/INDEX.LIST']
+        }
+    }
+
+    signingConfigs {
+        // Debug builds use the SDK's development key, which takdev copies
+        // into build/ (as the 5.8 template does). Set takDebugKeyFile etc. in
+        // local.properties to use your own.
+        debug {
+            def kf = localProp('takDebugKeyFile')
+            if (kf != null) {
+                storeFile file(kf)
+                storePassword localProp('takDebugKeyFilePassword')
+                keyAlias localProp('takDebugKeyAlias')
+                keyPassword localProp('takDebugKeyPassword')
+            } else {
+                storeFile file("${buildDir}/android_keystore")
+                storePassword "tnttnt"
+                keyAlias "wintec_mapping"
+                keyPassword "tnttnt"
+            }
+        }
+        release {
+            def kf = localProp('takReleaseKeyFile')
+            if (kf != null) {
+                storeFile file(kf)
+                storePassword localProp('takReleaseKeyFilePassword')
+                keyAlias localProp('takReleaseKeyAlias')
+                keyPassword localProp('takReleaseKeyPassword')
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+            matchingFallbacks = ['sdk']
+        }
+        release {
+            minifyEnabled true
+            proguardFiles 'proguard-gradle.txt', 'proguard-gradle-repackage.txt'
+            signingConfig signingConfigs.release
+            matchingFallbacks = ['odk']
+        }
+    }
+
+    flavorDimensions "application"
+
+    productFlavors {
+        supportedFlavors.each { flav ->
+            "${flav.name}" {
+                getIsDefault().set(flav.default ?: false)
+                dimension "application"
+                if (!flav.name.equals("civ") && !flav.name.equals("mil")) {
+                    applicationIdSuffix = ".${flav.name}"
+                }
+                matchingFallbacks = ['civ']
+                def pluginApiFlavor = flav.name.equals('gov') ? 'CIV' : "${flav.name.toUpperCase()}"
+                manifestPlaceholders = [atakApiVersion: "com.atakmap.app@" + ATAK_VERSION + ".${pluginApiFlavor}"]
+            }
+        }
+    }
+
+    sourceSets {
+        main {
+            // Template convention: keep the archive and version naming.
+            setProperty("archivesBaseName", "ATAK-Plugin-" + rootProject.name + "-" + PLUGIN_VERSION + "-" + getVersionName() + "-" + ATAK_VERSION)
+            defaultConfig.versionCode = getVersionCode()
+            defaultConfig.versionName = PLUGIN_VERSION + " (" + getVersionName() + ") - [" + ATAK_VERSION + "]"
+            java.srcDir(withMimi ? 'src/mimi/java' : 'src/nomimi/java')
+        }
+        debug.setRoot('build-types/debug')
+        release.setRoot('build-types/release')
+    }
+
+    defaultConfig {
+        minSdkVersion 21
+        targetSdkVersion 34
+        ndk {
+            abiFilters "arm64-v8a", "armeabi-v7a"
+        }
+        externalNativeBuild {
+            cmake {
+                arguments "-DANDROID_STL=none"
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+        }
+    }
+
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds true
+    }
+}
+
+afterEvaluate {
+    project.file('proguard-gradle-repackage.txt').text = "-repackageclasses atakplugin.${rootProject.getName()}"
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: '*.jar')
+    if (withMimi) {
+        implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.16.3'
+    }
+    testImplementation 'junit:junit:4.13.2'
+}
+
+// ATAK already provides these at runtime; bundling a second copy breaks
+// plugins (same exclusions as the SDK template).
+configurations.implementation {
+    exclude group: 'androidx.core', module: 'core-ktx'
+    exclude group: 'androidx.core', module: 'core'
+    exclude group: 'androidx.fragment', module: 'fragment'
+    exclude group: 'androidx.lifecycle', module: 'lifecycle'
+    exclude group: 'androidx.lifecycle', module: 'lifecycle-process'
+    exclude group: 'com.squareup.okhttp3', module: 'okhttp'
+    exclude group: 'com.squareup.okio', module: 'okio'
+    exclude group: 'org.jetbrains.kotlinx', module: 'kotlinx-serialization-core'
+}

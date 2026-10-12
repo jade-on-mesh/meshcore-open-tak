@@ -35,6 +35,7 @@ import 'storage/prefs_manager.dart';
 import 'theme/mesh_theme.dart';
 import 'utils/app_logger.dart';
 import 'widgets/image_send_codec_binding.dart';
+import 'team/tak/atak_plugin_bridge.dart';
 import 'team/tak/tak_service.dart';
 import 'team/team_alert_host.dart';
 import 'team/team_service.dart';
@@ -157,6 +158,10 @@ void main() async {
     // store together with the channel index (which ImageChunkOutcome itself
     // does not carry), so onImageChunk would be a second, channel-blind path.
     onImageSenderPrefix: (prefix) => imageReassembler.selfPrefix = prefix,
+    // OTP DM image transfer (see otp_image_transport.dart) reuses this same
+    // store for its receive-side state/decode-queue/eviction rather than
+    // duplicating it for the DM-only path.
+    receivedImageStore: receivedImageStore,
   );
 
   // MeshCore Open TAK: on-demand Codec2 voice messages (VE3).
@@ -376,10 +381,16 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
   late final TeamService _teamService = TeamService(widget.connector);
   late final TakService _takService = TakService(_teamService);
   late final WatchFeedService _watchFeed = WatchFeedService(widget.connector);
+  late final AtakPluginBridge _atakBridge;
 
   @override
   void initState() {
     super.initState();
+    _atakBridge = AtakPluginBridge(
+      widget.connector,
+      _teamService,
+      _voxVoiceService,
+    );
     WidgetsBinding.instance.addObserver(this);
     _imageSweepTimer = Timer.periodic(
       _kImageSweepInterval,
@@ -389,6 +400,7 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _atakBridge.dispose();
     _imageSweepTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -398,6 +410,13 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     widget.receivedImageStore.setForeground(state == AppLifecycleState.resumed);
+    if (state == AppLifecycleState.resumed) {
+      // See MeshCoreConnector.resumeStalledOtpChunkSends: a backgrounded
+      // app can have its OTP chunk-send retry Timers suspended well past
+      // their nominal 12s, leaving a transfer (and the send guard for
+      // that contact/channel) stuck until this runs.
+      widget.connector.resumeStalledOtpChunkSends();
+    }
     // ~2.7 GiB resident in a backgrounded app is a low-memory-killer kill, so
     // unlike the translation stack the graph is dropped on background rather
     // than held until the radio disconnects.
@@ -439,6 +458,7 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
         ChangeNotifierProvider<TeamService>.value(value: _teamService),
         ChangeNotifierProvider<TakService>.value(value: _takService),
         ChangeNotifierProvider<WatchFeedService>.value(value: _watchFeed),
+        Provider<AtakPluginBridge>.value(value: _atakBridge),
       ],
       child: Consumer<AppSettingsService>(
         builder: (context, settingsService, child) {

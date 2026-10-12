@@ -13,7 +13,7 @@ import 'team_draw.dart';
 import 'team_forms.dart';
 import 'team_coords.dart';
 import 'team_gpx.dart';
-import 'team_map.dart' show teamAgo;
+import 'team_map.dart' show teamAgo, teamRoleIconFor;
 import 'team_packages.dart';
 import 'team_screen.dart';
 import 'team_service.dart';
@@ -423,10 +423,13 @@ Future<void> _showHoundPicker(
               ListTile(
                 leading: CircleAvatar(
                   backgroundColor: Color(m.position.color.argb),
-                  child: const Icon(Icons.person, color: Colors.white),
+                  child: Icon(
+                    teamRoleIconFor(team, m.position.roleId),
+                    color: Colors.white,
+                  ),
                 ),
                 title: Text(m.callsign),
-                subtitle: Text(m.position.role.label),
+                subtitle: Text(team.roleName(m.position.roleId)),
                 onTap: () {
                   team.houndMember(m.key4);
                   Navigator.pop(c);

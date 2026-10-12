@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- if you change this file, bump the version in app/build.gradle. -->
+<plugin>
+    <extension
+        type="gov.tak.api.plugin.IPlugin"
+        impl="com.jadeonmesh.meshcore.atak.plugin.MeshTakLifecycle"
+        singleton="true" />
+</plugin>

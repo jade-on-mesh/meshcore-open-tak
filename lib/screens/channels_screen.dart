@@ -16,6 +16,7 @@ import '../services/received_image_store.dart';
 import '../services/ui_view_state_service.dart';
 import '../models/channel.dart';
 import '../models/community.dart';
+import '../utils/channel_qr.dart';
 import '../storage/community_store.dart';
 import '../theme/mesh_theme.dart';
 import '../utils/dialog_utils.dart';
@@ -31,6 +32,7 @@ import '../widgets/unread_badge.dart';
 import '../helpers/gif_helper.dart';
 import '../helpers/snack_bar_builder.dart';
 import 'channel_chat_screen.dart';
+import 'channel_qr_scanner_screen.dart';
 import 'community_qr_scanner_screen.dart';
 import 'contacts_screen.dart';
 import 'map_screen.dart';
@@ -997,6 +999,28 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                 return Column(
                   children: [
                     Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.qr_code_scanner),
+                          label: Text(sheetContext.l10n.channels_scanChannelQr),
+                          onPressed: () async {
+                            final scanned = await Navigator.of(sheetContext)
+                                .push<ScannedChannel>(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const ChannelQrScannerScreen(),
+                                  ),
+                                );
+                            if (scanned == null) return;
+                            nameController.text = scanned.name;
+                            pskController.text = scanned.secretHex;
+                          },
+                        ),
+                      ),
+                    ),
+                    Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 8,
@@ -1541,6 +1565,77 @@ class _ChannelsScreenState extends State<ChannelsScreen>
     );
   }
 
+  /// Shows the channel as a QR code (and copyable link) so others can join
+  /// it, which matters most for private channels whose key can't be guessed.
+  void _showChannelShareQr(BuildContext context, String name, String pskHex) {
+    final link = channelShareLink(name, pskHex);
+    if (link == null) {
+      showDismissibleSnackBar(
+        context,
+        content: Text(context.l10n.channels_pskMustBe32Hex),
+      );
+      return;
+    }
+    final title = name.trim().isEmpty ? '#' : name.trim();
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final scheme = Theme.of(dialogContext).colorScheme;
+        return AlertDialog(
+          scrollable: true,
+          contentPadding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              QrCodeDisplay(
+                data: link,
+                size: 240,
+                padding: EdgeInsets.zero,
+                title: dialogContext.l10n.channels_shareQrTitle(title),
+                instructions: dialogContext.l10n.channels_shareQrInstructions,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.lock_outline, size: 18, color: scheme.tertiary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      dialogContext.l10n.channels_shareQrWarning,
+                      style: Theme.of(
+                        dialogContext,
+                      ).textTheme.bodySmall?.copyWith(color: scheme.tertiary),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton.icon(
+              icon: const Icon(Icons.copy, size: 18),
+              label: Text(dialogContext.l10n.channels_copyLink),
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: link));
+                if (dialogContext.mounted) {
+                  showDismissibleSnackBar(
+                    dialogContext,
+                    content: Text(dialogContext.l10n.channels_linkCopied),
+                  );
+                }
+              },
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(dialogContext.l10n.common_close),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _showEditChannelDialog(
     BuildContext context,
     MeshCoreConnector connector,
@@ -1601,6 +1696,19 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                             final bytes = randomBytes(16);
                             pskController.text = Channel.formatPskHex(bytes);
                           },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.qr_code_2),
+                        label: Text(sheetContext.l10n.channels_shareQr),
+                        onPressed: () => _showChannelShareQr(
+                          sheetContext,
+                          nameController.text,
+                          pskController.text,
                         ),
                       ),
                     ),

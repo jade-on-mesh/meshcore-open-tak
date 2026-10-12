@@ -25,14 +25,17 @@ import '../l10n/l10n.dart';
 import '../models/channel.dart';
 import '../models/channel_message.dart';
 import '../models/image_codec_support.dart' show aeicRatePointForUi;
+import '../models/otp_theme.dart';
 import '../models/translation_support.dart';
 import '../services/app_settings_service.dart';
 import '../services/chat_text_scale_service.dart';
 import '../services/image_chunk_transport.dart';
 import '../services/image_codec_service.dart';
+import '../services/otp_service.dart';
 import '../services/received_image_store.dart';
 import '../services/translation_service.dart';
 import '../utils/image_save.dart';
+import 'otp_pad_screen.dart';
 import '../utils/lora_airtime.dart';
 import '../widgets/received_image_message.dart';
 import '../widgets/byte_count_input.dart';
@@ -48,10 +51,12 @@ import '../widgets/image_send_preview_sheet.dart';
 import '../widgets/message_translation_button.dart';
 import '../widgets/message_status_icon.dart';
 import '../widgets/radio_stats_entry.dart';
+import '../widgets/signal_grade_indicator.dart';
 import '../widgets/sync_progress_overlay.dart';
 import '../widgets/translated_message_content.dart';
 import '../widgets/unread_divider.dart';
 import '../theme/mesh_theme.dart';
+import '../theme/otp_bubble_colors.dart';
 import '../widgets/mesh_ui.dart';
 import 'app_settings_screen.dart';
 import 'channel_message_path_screen.dart';
@@ -105,12 +110,24 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   bool _channelSkipNextBottomSnap = false;
   String? _unreadDividerMessageId;
 
+  // Participant sync strip (see _buildParticipantStrip): purely cosmetic
+  // periodic rebuild so a participant who's gone quiet actually drops out
+  // of the strip within a reasonable time of the 10-minute cutoff, rather
+  // than only whenever some unrelated event happens to call
+  // notifyListeners() next. No network activity, no pad bytes touched.
+  Timer? _participantStripPruneTimer;
+
   @override
   void initState() {
     super.initState();
     _textFieldFocusNode.addListener(_onTextFieldFocusChange);
     _scrollController.onScrollNearTop = _loadOlderMessages;
     _scrollController.showJumpToBottom.addListener(_clearDividerAtBottom);
+    _participantStripPruneTimer = Timer.periodic(const Duration(seconds: 30), (
+      _,
+    ) {
+      if (mounted) setState(() {});
+    });
     SchedulerBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final connector = context.read<MeshCoreConnector>();
@@ -184,6 +201,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   void _onTextFieldFocusChange() {
     if (_textFieldFocusNode.hasFocus && mounted) {
       _scrollController.handleKeyboardOpen();
+      // About to send into this channel's pad — check it's still in
+      // sync now, before any bytes get spent.
+      _connector?.notifyComposeStartedForChannel(widget.channel.index);
     }
   }
 
@@ -201,6 +221,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
 
   @override
   void dispose() {
+    _participantStripPruneTimer?.cancel();
     _connector?.setActiveChannel(null);
     _scrollController.showJumpToBottom.removeListener(_clearDividerAtBottom);
     _textFieldFocusNode.removeListener(_onTextFieldFocusChange);
@@ -299,6 +320,82 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     );
   }
 
+  // ── Participant sync strip ──────────────────────────────────────────
+  // Per-person request: show who's in this channel and whether their pad
+  // offset currently matches ours, right in the chat screen (not just the
+  // OTP Pad settings screen's all-time sync-status list). A name here is
+  // greyed out while its last-known status shows drift (still valid,
+  // heard from recently, just not caught up right now) and disappears
+  // entirely once nothing has been heard from them at all in the last 10
+  // minutes — likely means they've stepped away or gone out of range,
+  // not that they're still around but perpetually behind.
+  //
+  // Reuses the connector's existing per-channel-per-sender OtpSyncStatus
+  // tracking (originally built for the OTP Pad screen's "Check sync"
+  // card) rather than inventing separate state — this session also wired
+  // ordinary offset-bearing chat messages (not just explicit sync-check
+  // replies) into that same tracking, so the strip updates from normal
+  // conversation, not only after a manual/periodic sync-check.
+  static const Duration _participantStripMaxAge = Duration(minutes: 10);
+
+  Widget _buildParticipantStrip(MeshCoreConnector connector) {
+    if (!connector.isChannelOtpEnabled(widget.channel.index)) {
+      return const SizedBox.shrink();
+    }
+    // Visibility toggle (see the app bar's "People" IconButton) — ports
+    // OTP_3_RC1.lua's show_participant_strip. Defaults OFF per an explicit
+    // follow-up request, matching Lua's own default there.
+    if (!context
+        .watch<AppSettingsService>()
+        .settings
+        .channelParticipantStripEnabled) {
+      return const SizedBox.shrink();
+    }
+    final participants = connector.getActiveChannelParticipants(
+      widget.channel.index,
+      maxAge: _participantStripMaxAge,
+    );
+    if (participants.isEmpty) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    final entries = participants.entries.toList()
+      ..sort((a, b) => a.key.toLowerCase().compareTo(b.key.toLowerCase()));
+    return SizedBox(
+      height: 36,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        scrollDirection: Axis.horizontal,
+        itemCount: entries.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 6),
+        itemBuilder: (context, i) {
+          final name = entries[i].key;
+          final synced = entries[i].value.inSync == true;
+          final color = synced ? MeshPalette.blue : scheme.onSurfaceVariant;
+          return Chip(
+            visualDensity: VisualDensity.compact,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            avatar: Icon(
+              synced ? Icons.check_circle : Icons.circle_outlined,
+              size: 14,
+              color: color,
+            ),
+            label: Text(
+              name,
+              style: TextStyle(
+                fontSize: 11,
+                color: synced ? null : scheme.onSurfaceVariant,
+              ),
+            ),
+            backgroundColor: synced
+                ? MeshPalette.blue.withValues(alpha: 0.12)
+                : scheme.surfaceContainerHighest,
+            side: BorderSide(color: color.withValues(alpha: 0.4)),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -390,7 +487,79 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             icon: const Icon(Icons.landscape),
             onPressed: () => openRegionSelectDialog(widget.channel),
           ),
+          const SignalGradeIndicator(),
           const RadioStatsIconButton(),
+          Consumer<MeshCoreConnector>(
+            builder: (context, connector, _) {
+              final otpEnabled = connector.isChannelOtpEnabled(
+                widget.channel.index,
+              );
+              if (!otpEnabled) return const SizedBox.shrink();
+              // Ports OTP_3_RC1.lua's chat-screen "ReSync" button for a
+              // channel target — see resyncChannel's own doc comment.
+              return IconButton(
+                tooltip: 'ReSync',
+                icon: const Icon(Icons.sync),
+                onPressed: () {
+                  final ok = connector.resyncChannel(widget.channel.index);
+                  showDismissibleSnackBar(
+                    context,
+                    content: Text(
+                      ok
+                          ? 'Pad reloaded — sync check sent'
+                          : 'No OTP pad for this channel',
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+          Consumer<MeshCoreConnector>(
+            builder: (context, connector, _) {
+              final otpEnabled = connector.isChannelOtpEnabled(
+                widget.channel.index,
+              );
+              if (!otpEnabled) return const SizedBox.shrink();
+              // Ports OTP_3_RC1.lua's participant-strip visibility toggle —
+              // shown only where the strip itself could ever appear
+              // (channel + OTP enabled), same gating as _buildParticipantStrip.
+              final shown = context
+                  .watch<AppSettingsService>()
+                  .settings
+                  .channelParticipantStripEnabled;
+              return IconButton(
+                tooltip: shown
+                    ? 'Hide participant sync strip'
+                    : 'Show participant sync strip',
+                icon: Icon(shown ? Icons.people : Icons.people_outline),
+                onPressed: () {
+                  context
+                      .read<AppSettingsService>()
+                      .setChannelParticipantStripEnabled(!shown);
+                },
+              );
+            },
+          ),
+          Consumer<MeshCoreConnector>(
+            builder: (context, connector, _) {
+              final otpEnabled = connector.isChannelOtpEnabled(
+                widget.channel.index,
+              );
+              return IconButton(
+                tooltip: otpEnabled ? 'OTP Pad (encrypting)' : 'OTP Pad',
+                icon: Icon(
+                  otpEnabled ? Icons.lock : Icons.lock_open,
+                  color: otpEnabled ? MeshPalette.blue : null,
+                ),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => OtpPadScreen.forChannel(widget.channel),
+                  ),
+                ),
+              );
+            },
+          ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: (value) {
@@ -426,6 +595,10 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         top: false,
         child: Column(
           children: [
+            Consumer<MeshCoreConnector>(
+              builder: (context, connector, _) =>
+                  _buildParticipantStrip(connector),
+            ),
             Expanded(
               child: Consumer<MeshCoreConnector>(
                 builder: (context, connector, child) {
@@ -579,11 +752,78 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                 },
               ),
             ),
+            _buildPadStatusBar(),
             _buildInputBar(),
           ],
         ),
       ),
     );
+  }
+
+  // Matches the Wadamesh/Lua app's live "N bytes available" line just above
+  // the compose box (see refresh_chat_bytes() in OTP_3_RC1.lua) — this app
+  // otherwise only surfaces the pad budget on a separate screen (the lock
+  // icon → OtpPadScreen), one tap away and not visible while actually
+  // composing. Only shown for an OTP-enabled channel; hidden entirely
+  // otherwise, unlike Lua where the whole app is OTP-only. For a channel's
+  // shared-sequential pad there's one counter for everyone, same as the
+  // "Group usage" meter on OtpPadScreen — myBytesRemaining is that counter.
+  static const int _padLowBytesThreshold = 100;
+
+  Widget _buildPadStatusBar() {
+    final connector = context.watch<MeshCoreConnector>();
+    if (!connector.isChannelOtpEnabled(widget.channel.index)) {
+      return const SizedBox.shrink();
+    }
+    final pad = connector.getChannelOtpPad(widget.channel.index);
+    if (pad == null) return const SizedBox.shrink();
+    final remaining = pad.myBytesRemaining;
+    final scheme = Theme.of(context).colorScheme;
+    // Text matches Lua's refresh_chat_bytes() byte-for-byte ("%d bytes
+    // available" + " - pad exhausted"/" - running low") so a screenshot from
+    // either app reads identically — see the matching note in
+    // chat_screen.dart's _buildPadStatusBar.
+    final String label;
+    final Color color;
+    if (remaining <= 0) {
+      label = '$remaining bytes available - pad exhausted';
+      color = scheme.error;
+    } else if (remaining < _padLowBytesThreshold) {
+      label = '$remaining bytes available - running low';
+      color = scheme.tertiary;
+    } else {
+      label = '$remaining bytes available';
+      color = scheme.onSurfaceVariant;
+    }
+    return Container(
+      color: scheme.surface,
+      padding: const EdgeInsets.fromLTRB(14, 3, 14, 3),
+      alignment: Alignment.centerLeft,
+      child: Text(label, style: TextStyle(fontSize: 11, color: color)),
+    );
+  }
+
+  // Mirrors OTP_3_RC1.lua's compose_counter_text() format, same as
+  // ChatScreen's _otpComposeCounterText — see the note there. No chunking
+  // ever applies to a channel send (OTP chunking is DM-only), so [max] here
+  // is already the single-packet cap and there's no "(N chunks)" suffix.
+  String _otpComposeCounterText(
+    MeshCoreConnector connector,
+    int used,
+    int max,
+  ) {
+    final pad = connector.getChannelOtpPad(widget.channel.index);
+    final avail = pad?.myBytesRemaining ?? 0;
+    final headroom = (max - used).clamp(0, max);
+    return '$headroom | $used/$avail';
+  }
+
+  Color _otpComposeCounterColor(MeshCoreConnector connector, int used) {
+    final pad = connector.getChannelOtpPad(widget.channel.index);
+    final avail = pad?.myBytesRemaining ?? 0;
+    return used > avail
+        ? Theme.of(context).colorScheme.error
+        : Theme.of(context).colorScheme.onSurfaceVariant;
   }
 
   void _markAsUnread(ChannelMessage message) {
@@ -606,18 +846,31 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     final settingsService = context.watch<AppSettingsService>();
     final enableTracing = settingsService.settings.enableMessageTracing;
     final isOutgoing = message.isOutgoing;
+    // In an OTP-active channel, bubble SIDE is mirrored (own messages on the
+    // left, others' on the right) so an OTP conversation reads visually
+    // distinct from a normal one; everything about a message's real
+    // identity (color, sender-name visibility, status ticks, swipe-to-reply
+    // eligibility) stays keyed to isOutgoing. See _MessageBubble in
+    // chat_screen.dart for the DM-side twin of this.
+    final otpActive = context.select<MeshCoreConnector, bool>(
+      (connector) => connector.isChannelOtpEnabled(widget.channel.index),
+    );
+    final layoutOutgoing = otpActive ? !isOutgoing : isOutgoing;
     final scheme = Theme.of(context).colorScheme;
-    final voxEnvelope = VoxVoiceEnvelope.tryParse(message.text);
+    final voxEnvelope = VoxVoiceEnvelope.tryParse(message.displayText);
     final gifId = voxEnvelope != null ? null : GifHelper.parseGif(message.text);
     final poi = voxEnvelope != null ? null : parseMarkerText(message.text);
+    // displayText: the sender's own plaintext for an outgoing OTP message
+    // (message.text is the ciphertext on the wire); otherwise the text.
+    final baseDisplayText = message.displayText;
     final translatedDisplayText =
         message.translatedText != null &&
             message.translatedText!.trim().isNotEmpty
         ? message.translatedText!.trim()
-        : message.text;
+        : baseDisplayText;
     final originalDisplayText = message.isOutgoing
         ? message.originalText
-        : (translatedDisplayText != message.text ? message.text : null);
+        : (translatedDisplayText != baseDisplayText ? baseDisplayText : null);
     final displayPath = message.pathBytes.isNotEmpty
         ? message.pathBytes
         : (message.pathVariants.isNotEmpty
@@ -632,14 +885,36 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       message.pathLength,
     );
 
-    // Bubble colors — outgoing uses MeshPalette.me / meBorder / meInk.
-    final bubbleColor = isOutgoing
-        ? MeshPalette.me
-        : scheme.surfaceContainerLow;
-    final bubbleBorder = isOutgoing
-        ? MeshPalette.meBorder
-        : scheme.outlineVariant;
-    final textColor = isOutgoing ? MeshPalette.meInk : scheme.onSurface;
+    // Bubble colors — outgoing uses MeshPalette.me / meBorder / meInk,
+    // unless OTP is active for this channel: then every bubble is colored
+    // by the chosen OTP theme and the message's own state — same mapping
+    // as chat_screen.dart's DM bubble, minus the delivered/waiting/retry
+    // states a channel broadcast never has (ChannelMessageStatus has no
+    // equivalent - see otp_bubble_colors.dart).
+    final otpColors = otpActive
+        ? (isOutgoing
+              ? otpOutgoingBubbleColors(
+                  theme: OtpTheme.all[settingsService.settings.otpThemeIndex],
+                  textMode: settingsService.settings.otpTextMode,
+                  failed: message.status == ChannelMessageStatus.failed,
+                  pending: message.status == ChannelMessageStatus.pending,
+                )
+              : otpReceivedBubbleColors(
+                  theme: OtpTheme.all[settingsService.settings.otpThemeIndex],
+                  textMode: settingsService.settings.otpTextMode,
+                  senderName: message.senderName,
+                  failed: message.status == ChannelMessageStatus.failed,
+                ))
+        : null;
+
+    final bubbleColor =
+        otpColors?.fill ??
+        (isOutgoing ? MeshPalette.me : scheme.surfaceContainerLow);
+    final bubbleBorder =
+        otpColors?.outline ??
+        (isOutgoing ? MeshPalette.meBorder : scheme.outlineVariant);
+    final textColor =
+        otpColors?.text ?? (isOutgoing ? MeshPalette.meInk : scheme.onSurface);
     final metaColor = textColor.withValues(alpha: 0.65);
     const bodyFontSize = 14.0;
 
@@ -671,7 +946,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     }
 
     // Asymmetric radius matching chat_screen bubbles.
-    final borderRadius = isOutgoing
+    final borderRadius = layoutOutgoing
         ? const BorderRadius.only(
             topLeft: Radius.circular(MeshRadii.lg),
             topRight: Radius.circular(MeshRadii.lg),
@@ -689,17 +964,17 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     const replySwipeThreshold = 64.0;
     final messageBody = LayoutBuilder(
       builder: (context, constraints) => Column(
-        crossAxisAlignment: isOutgoing
+        crossAxisAlignment: layoutOutgoing
             ? CrossAxisAlignment.end
             : CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: isOutgoing
+            mainAxisAlignment: layoutOutgoing
                 ? MainAxisAlignment.end
                 : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (!isOutgoing) ...[
+              if (!layoutOutgoing) ...[
                 _buildAvatar(message.senderName, textScale),
                 const SizedBox(width: 6),
               ],
@@ -803,7 +1078,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                                         vertical: 4,
                                       ),
                                       child: Align(
-                                        alignment: isOutgoing
+                                        alignment: layoutOutgoing
                                             ? Alignment.centerRight
                                             : Alignment.centerLeft,
                                         child: MessageUrlImagePreview(
@@ -967,6 +1242,22 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                               ],
                               if (isOutgoing) ...[
                                 const SizedBox(width: 4),
+                                // Slick-UI: mirrors chat_screen.dart's DM
+                                // bubble — see Message.chunkIndex/chunkTotal
+                                // (ChannelMessage carries the same fields).
+                                if (message.status ==
+                                        ChannelMessageStatus.pending &&
+                                    message.chunkTotal != null &&
+                                    message.chunkTotal! > 1) ...[
+                                  Text(
+                                    '${(message.chunkIndex ?? 0) + 1}/${message.chunkTotal}',
+                                    style: MeshTheme.mono(
+                                      fontSize: 9.5 * textScale,
+                                      color: metaColor,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 2),
+                                ],
                                 MessageStatusIcon(
                                   size: 16 * textScale,
                                   isAcked: false,
@@ -1000,7 +1291,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           if (message.reactions.isNotEmpty) ...[
             const SizedBox(height: 4),
             Padding(
-              padding: EdgeInsets.only(left: isOutgoing ? 0 : 42),
+              padding: EdgeInsets.only(left: layoutOutgoing ? 0 : 42),
               child: _buildReactionsDisplay(message),
             ),
           ],
@@ -1668,18 +1959,50 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   Widget _buildImageBubble(ReceivedImageEntry entry, double textScale) {
     final scheme = Theme.of(context).colorScheme;
     final isOutgoing = entry.isOutgoing;
-    final textColor = isOutgoing ? MeshPalette.meInk : scheme.onSurface;
+    // Same OTP-mode side-mirroring as _buildMessageBubble above.
+    final otpActive = context.select<MeshCoreConnector, bool>(
+      (connector) => connector.isChannelOtpEnabled(widget.channel.index),
+    );
+    final layoutOutgoing = otpActive ? !isOutgoing : isOutgoing;
+    // Same OTP-theme recoloring as _buildMessageBubble above. An AEIC
+    // image's state machine (receiving/decoding/decoded/...) has no
+    // delivered/retrying/waiting equivalent to carry over, so this only
+    // distinguishes sent (outgoing) from failed-to-reassemble-or-decode.
+    final otpTheme = otpActive
+        ? OtpTheme.all[context
+              .watch<AppSettingsService>()
+              .settings
+              .otpThemeIndex]
+        : null;
+    final otpTextMode = context
+        .watch<AppSettingsService>()
+        .settings
+        .otpTextMode;
+    final otpColors = otpTheme == null
+        ? null
+        : (isOutgoing
+              ? otpOutgoingBubbleColors(theme: otpTheme, textMode: otpTextMode)
+              : otpReceivedBubbleColors(
+                  theme: otpTheme,
+                  textMode: otpTextMode,
+                  senderName: _imageSenderLabel(entry),
+                  failed:
+                      entry.state == ReceivedImageState.failedIncomplete ||
+                      entry.state == ReceivedImageState.failedCorrupt,
+                ));
+    final textColor =
+        otpColors?.text ?? (isOutgoing ? MeshPalette.meInk : scheme.onSurface);
     final metaColor = textColor.withValues(alpha: 0.65);
 
     final bubble = Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
-        mainAxisAlignment: isOutgoing
+        mainAxisAlignment: layoutOutgoing
             ? MainAxisAlignment.end
             : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          if (!isOutgoing) ...[
+          if (!layoutOutgoing) ...[
             _buildAvatar(_imageSenderLabel(entry), textScale),
             const SizedBox(width: 6),
           ],
@@ -1687,12 +2010,16 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: isOutgoing ? MeshPalette.me : scheme.surfaceContainerLow,
+                color:
+                    otpColors?.fill ??
+                    (isOutgoing ? MeshPalette.me : scheme.surfaceContainerLow),
                 borderRadius: BorderRadius.circular(MeshRadii.lg),
                 border: Border.all(
-                  color: isOutgoing
-                      ? MeshPalette.meBorder
-                      : scheme.outlineVariant,
+                  color:
+                      otpColors?.outline ??
+                      (isOutgoing
+                          ? MeshPalette.meBorder
+                          : scheme.outlineVariant),
                   width: 1,
                 ),
               ),
@@ -2030,7 +2357,15 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
 
   Widget _buildInputBar() {
     final connector = context.watch<MeshCoreConnector>();
-    final maxBytes = maxChannelMessageBytes(connector.selfName);
+    final maxBytes = connector.isChannelOtpEnabled(widget.channel.index)
+        // Chunked OTP sends are DM-only (see sendChannelMessage) - a
+        // channel pad is one shared-sequential counter every participant
+        // must agree on, and a stuck/lost chunk mid-transfer desyncs
+        // everyone on the channel, not just the two people talking. So
+        // the compose-box limit here is the single-packet cap, same as
+        // a non-OTP channel message.
+        ? OtpService.maxPlaintextBytesForChannel(connector.selfName)
+        : maxChannelMessageBytes(connector.selfName);
     final settings = context.watch<AppSettingsService>().settings;
     final showImageAction = settings.imageMessagesEnabled;
     final scheme = Theme.of(context).colorScheme;
@@ -2106,6 +2441,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                   ),
                   VoxMicButton(
                     recipientLabel: widget.channel.name,
+                    codecTarget: VoxVoiceService.channelTarget(widget.channel),
                     onSend: (clip) => context
                         .read<VoxVoiceService>()
                         .sendClipToChannel(widget.channel, clip),
@@ -2164,12 +2500,23 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                             ),
                           );
                         }
+                        final otpEnabled = connector.isChannelOtpEnabled(
+                          widget.channel.index,
+                        );
                         return ByteCountedTextField(
                           maxBytes: maxBytes,
                           controller: _textController,
                           focusNode: _textFieldFocusNode,
                           hintText: context.l10n.chat_typeMessage,
                           onSubmitted: (_) => _sendMessage(),
+                          counterTextBuilder: otpEnabled
+                              ? (used, max) =>
+                                    _otpComposeCounterText(connector, used, max)
+                              : null,
+                          counterColorBuilder: otpEnabled
+                              ? (used, max, defaultColor) =>
+                                    _otpComposeCounterColor(connector, used)
+                              : null,
                           encoder:
                               (connector.isChannelSmazEnabled(
                                     widget.channel.index,
@@ -2317,27 +2664,47 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     }
     final replyRegion = _useReplyRegion ? _replyingToMessage?.region : null;
 
-    final maxBytes = maxChannelMessageBytes(connector.selfName);
-    final outboundText = connector.prepareChannelOutboundText(
-      widget.channel.index,
-      messageText,
-    );
-    if (utf8.encode(outboundText).length > maxBytes) {
-      showDismissibleSnackBar(
-        context,
-        content: Text(context.l10n.chat_messageTooLong(maxBytes)),
-      );
-      return;
-    }
+    final otpEnabled = connector.isChannelOtpEnabled(widget.channel.index);
 
-    // When messageText is transformed with cyr2lat, it (generally) hasn't visual differences,
-    // but we getting messages doubles in chat screen (source text and transformed).
-    // To prevent, we'll perform transform of source before pass to main sender logic.
-    // We can pass whole text, senderName will be kept intact
-    if (connector.isChannelCyr2LatEnabled(widget.channel.index)) {
-      messageText = Cyr2Lat.encode(messageText);
+    if (otpEnabled) {
+      // Chunked OTP sends are DM-only - see the note on _buildInputBar's
+      // maxBytes above. A channel message over one packet's worth of
+      // plaintext is refused outright rather than split.
+      final maxPlainBytes = OtpService.maxPlaintextBytesForChannel(
+        connector.selfName,
+      );
+      if (OtpService.plaintextByteLength(messageText) > maxPlainBytes) {
+        showDismissibleSnackBar(
+          context,
+          content: Text(context.l10n.chat_messageTooLong(maxPlainBytes)),
+        );
+        return;
+      }
+      // Skip Cyr2Lat — it would transliterate the plaintext that's about
+      // to be encrypted, corrupting what the recipient decrypts to.
+    } else {
+      final maxBytes = maxChannelMessageBytes(connector.selfName);
+      final outboundText = connector.prepareChannelOutboundText(
+        widget.channel.index,
+        messageText,
+      );
+      if (utf8.encode(outboundText).length > maxBytes) {
+        showDismissibleSnackBar(
+          context,
+          content: Text(context.l10n.chat_messageTooLong(maxBytes)),
+        );
+        return;
+      }
+
+      // When messageText is transformed with cyr2lat, it (generally) hasn't visual differences,
+      // but we getting messages doubles in chat screen (source text and transformed).
+      // To prevent, we'll perform transform of source before pass to main sender logic.
+      // We can pass whole text, senderName will be kept intact
+      if (connector.isChannelCyr2LatEnabled(widget.channel.index)) {
+        messageText = Cyr2Lat.encode(messageText);
+      }
+      // end transform
     }
-    // end transform
 
     final replyTo = _replyingToMessage;
     _textController.clear();
@@ -2381,9 +2748,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             BottomSheetHeader(
-              title: message.text.characters.length > 40
-                  ? '${message.text.characters.take(40)}…'
-                  : message.text,
+              title: message.displayText.characters.length > 40
+                  ? '${message.displayText.characters.take(40)}…'
+                  : message.displayText,
               subtitle: message.senderName.isNotEmpty
                   ? message.senderName
                   : null,
@@ -2436,7 +2803,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
               title: Text(context.l10n.common_copy),
               onTap: () {
                 Navigator.pop(sheetContext);
-                _copyMessageText(message.text);
+                _copyMessageText(message.displayText);
               },
             ),
             if (canTranslateMessage)

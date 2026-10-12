@@ -18,7 +18,7 @@ void main() {
         headingDeg: 90,
         accuracyM: 4,
         batteryPct: 81,
-        role: TeamRole.medic,
+        roleId: 2, // TeamRole.medic
         color: TeamColor.darkGreen,
         status: TeamStatus.needHelp,
         callsign: 'JADE',
@@ -247,7 +247,7 @@ void main() {
         speedMps: 2,
         headingDeg: 180,
         batteryPct: 50,
-        role: TeamRole.lead,
+        roleId: 1, // TeamRole.lead
         color: TeamColor.blue,
         callsign: 'JADE',
       );

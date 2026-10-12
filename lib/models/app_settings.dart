@@ -91,6 +91,14 @@ class AppSettings {
   final bool mapShowGuessedLocations;
   final bool mapClusterNodes;
   final bool enableMessageTracing;
+  // Index into OtpTheme.all - one global choice, applied to every OTP-active
+  // chat's bubble colors, matching OTP_3_RC1.lua's single app-wide theme
+  // (there is no per-contact/channel theme there either). See
+  // otp_theme.dart for the actual palette data (ported byte-for-byte from
+  // the Lua THEME_DATA table) and otp_pad_screen.dart for the picker.
+  final int otpThemeIndex;
+  // 0 = auto contrast, 1 = white, 2 = black text on OTP bubbles.
+  final int otpTextMode;
   final Map<String, double>? mapCacheBounds;
   final int mapCacheMinZoom;
   final int mapCacheMaxZoom;
@@ -124,6 +132,14 @@ class AppSettings {
   final int tcpServerPort;
   final bool jumpToOldestUnread;
   final bool imageMessagesEnabled;
+
+  /// Whether the channel chat screen's participant sync strip (patch 0010 —
+  /// per-participant "who's synced" chips above the message list) is shown
+  /// at all. Defaults OFF per an explicit follow-up request (matching Lua's
+  /// `show_participant_strip`, which defaults off the same way as of that
+  /// same request) — it costs real vertical space on every channel screen,
+  /// so someone has to opt in rather than opt out.
+  final bool channelParticipantStripEnabled;
 
   /// Whether a received image is decoded as soon as it is reassembled.
   ///
@@ -197,6 +213,8 @@ class AppSettings {
     this.mapShowGuessedLocations = true,
     this.mapClusterNodes = true,
     this.enableMessageTracing = false,
+    this.otpThemeIndex = 0,
+    this.otpTextMode = 0,
     this.mapCacheBounds,
     this.mapCacheMinZoom = 10,
     this.mapCacheMaxZoom = 15,
@@ -229,6 +247,7 @@ class AppSettings {
     this.tcpServerAddress = '',
     this.tcpServerPort = 0,
     this.jumpToOldestUnread = false,
+    this.channelParticipantStripEnabled = false,
     this.imageMessagesEnabled = false,
     this.imageProcessAutomatically = false,
     this.imageCodecEnabled = false,
@@ -275,6 +294,9 @@ class AppSettings {
       'map_show_guessed_locations': mapShowGuessedLocations,
       'map_cluster_nodes': mapClusterNodes,
       'enable_message_tracing': enableMessageTracing,
+      'otp_theme_index': otpThemeIndex,
+      'otp_text_mode': otpTextMode,
+      'otp_theme_schema': 2,
       'map_cache_bounds': mapCacheBounds,
       'map_cache_min_zoom': mapCacheMinZoom,
       'map_cache_max_zoom': mapCacheMaxZoom,
@@ -308,6 +330,7 @@ class AppSettings {
       'tcp_server_address': tcpServerAddress,
       'tcp_server_port': tcpServerPort,
       'jump_to_oldest_unread': jumpToOldestUnread,
+      'channel_participant_strip_enabled': channelParticipantStripEnabled,
       'image_messages_enabled': imageMessagesEnabled,
       'image_process_automatically': imageProcessAutomatically,
       'image_codec_enabled': imageCodecEnabled,
@@ -356,6 +379,20 @@ class AppSettings {
           json['map_show_guessed_locations'] as bool? ?? true,
       mapClusterNodes: json['map_cluster_nodes'] as bool? ?? true,
       enableMessageTracing: json['enable_message_tracing'] as bool? ?? false,
+      otpThemeIndex: (json['otp_theme_schema'] as int? ?? 1) >= 2
+          ? (json['otp_theme_index'] as int? ?? 0)
+          : const [
+              0,
+              1,
+              2,
+              3,
+              0,
+              4,
+              0,
+              5,
+              0,
+            ][((json['otp_theme_index'] as int? ?? 0)).clamp(0, 8)],
+      otpTextMode: json['otp_text_mode'] as int? ?? 0,
       mapCacheBounds: (json['map_cache_bounds'] as Map?)?.map(
         (key, value) => MapEntry(key.toString(), (value as num).toDouble()),
       ),
@@ -410,6 +447,8 @@ class AppSettings {
       tcpServerAddress: json['tcp_server_address'] as String? ?? '',
       tcpServerPort: json['tcp_server_port'] as int? ?? 0,
       jumpToOldestUnread: json['jump_to_oldest_unread'] as bool? ?? false,
+      channelParticipantStripEnabled:
+          json['channel_participant_strip_enabled'] as bool? ?? false,
       imageMessagesEnabled: json['image_messages_enabled'] as bool? ?? false,
       imageProcessAutomatically:
           json['image_process_automatically'] as bool? ?? false,
@@ -495,6 +534,8 @@ class AppSettings {
     bool? mapShowGuessedLocations,
     bool? mapClusterNodes,
     bool? enableMessageTracing,
+    int? otpThemeIndex,
+    int? otpTextMode,
     Object? mapCacheBounds = _unset,
     int? mapCacheMinZoom,
     int? mapCacheMaxZoom,
@@ -527,6 +568,7 @@ class AppSettings {
     String? tcpServerAddress,
     int? tcpServerPort,
     bool? jumpToOldestUnread,
+    bool? channelParticipantStripEnabled,
     bool? imageMessagesEnabled,
     bool? imageProcessAutomatically,
     bool? imageCodecEnabled,
@@ -558,6 +600,8 @@ class AppSettings {
           mapShowGuessedLocations ?? this.mapShowGuessedLocations,
       mapClusterNodes: mapClusterNodes ?? this.mapClusterNodes,
       enableMessageTracing: enableMessageTracing ?? this.enableMessageTracing,
+      otpThemeIndex: otpThemeIndex ?? this.otpThemeIndex,
+      otpTextMode: otpTextMode ?? this.otpTextMode,
       mapCacheBounds: mapCacheBounds == _unset
           ? this.mapCacheBounds
           : mapCacheBounds as Map<String, double>?,
@@ -607,6 +651,8 @@ class AppSettings {
       tcpServerAddress: tcpServerAddress ?? this.tcpServerAddress,
       tcpServerPort: tcpServerPort ?? this.tcpServerPort,
       jumpToOldestUnread: jumpToOldestUnread ?? this.jumpToOldestUnread,
+      channelParticipantStripEnabled:
+          channelParticipantStripEnabled ?? this.channelParticipantStripEnabled,
       imageMessagesEnabled: imageMessagesEnabled ?? this.imageMessagesEnabled,
       imageProcessAutomatically:
           imageProcessAutomatically ?? this.imageProcessAutomatically,

@@ -17,6 +17,7 @@ import '../services/image_chunk_transport.dart'
 import '../services/notification_service.dart';
 import 'team_coords.dart';
 import 'team_wire.dart';
+import 'team_wire_atak.dart';
 
 /// One teammate (or this phone), as last heard.
 class TeamMember {
@@ -48,7 +49,7 @@ class TeamMember {
 enum TeamFreshness { live, stale, lost }
 
 /// Where this phone's position comes from right now.
-enum TeamFixSource { none, phone, radio }
+enum TeamFixSource { none, phone, radio, atak }
 
 class TeamFix {
   final double lat, lon;
@@ -120,7 +121,7 @@ class TeamService extends ChangeNotifier {
   int? _channelIndex;
   String? _channelName;
   String _callsign = '';
-  TeamRole _role = TeamRole.member;
+  int _roleId = 0;
   TeamColor _color = TeamColor.cyan;
   bool _sharePosition = true;
   TeamStatus _status = TeamStatus.none;
@@ -129,7 +130,7 @@ class TeamService extends ChangeNotifier {
   String get callsign =>
       _callsign.isNotEmpty ? _callsign : (_connector.selfName ?? 'Me');
   String get callsignSetting => _callsign;
-  TeamRole get role => _role;
+  int get roleId => _roleId;
   TeamColor get color => _color;
   bool get sharePosition => _sharePosition;
   TeamStatus get status => _status;
@@ -174,7 +175,11 @@ class TeamService extends ChangeNotifier {
       _channelIndex = p.getInt(_kChannelIdx);
       _channelName = p.getString(_kChannelName);
       _callsign = p.getString(_kCallsign) ?? '';
-      _role = TeamRole.fromIndex(p.getInt(_kRole) ?? 0);
+      _roleId = (p.getInt(_kRole) ?? 0).clamp(0, teamMaxRoleId);
+      for (final b64 in p.getStringList(_kRoles) ?? const <String>[]) {
+        final d = TeamRoleDef.tryParse(base64Decode(b64));
+        if (d != null) _roleDefs[d.roleId] = d;
+      }
       _color = TeamColor.fromIndex(p.getInt(_kColor) ?? 0);
       _sharePosition = p.getBool(_kShare) ?? true;
       _status = TeamStatus.fromIndex(p.getInt(_kStatus) ?? 0);
@@ -189,6 +194,14 @@ class TeamService extends ChangeNotifier {
       for (final b64 in p.getStringList(_kReports) ?? const <String>[]) {
         final r = TeamReport.tryParse(base64Decode(b64));
         if (r != null) _reports[r.key] = r;
+      }
+      for (final b64 in p.getStringList(_kPoints) ?? const <String>[]) {
+        final pt = TeamPoint.tryParse(base64Decode(b64));
+        if (pt != null) _points[pt.key] = pt;
+      }
+      for (final b64 in p.getStringList(_kAtakShapes) ?? const <String>[]) {
+        final sh = TeamAtakShape.tryParse(base64Decode(b64));
+        if (sh != null) _atakShapes[sh.key] = sh;
       }
       for (final b64 in p.getStringList(_kShapes) ?? const <String>[]) {
         final sh = TeamShape.tryParse(base64Decode(b64));
@@ -215,19 +228,19 @@ class TeamService extends ChangeNotifier {
     bool? enabled,
     Channel? channel,
     String? callsign,
-    TeamRole? role,
+    int? roleId,
     TeamColor? color,
     bool? sharePosition,
   }) async {
     final identityChanged =
-        callsign != null || role != null || color != null || channel != null;
+        callsign != null || roleId != null || color != null || channel != null;
     if (enabled != null) _enabled = enabled;
     if (channel != null) {
       _channelIndex = channel.index;
       _channelName = channel.name;
     }
     if (callsign != null) _callsign = callsign.trim();
-    if (role != null) _role = role;
+    if (roleId != null) _roleId = roleId.clamp(0, teamMaxRoleId);
     if (color != null) _color = color;
     if (sharePosition != null) _sharePosition = sharePosition;
     notifyListeners();
@@ -236,7 +249,7 @@ class TeamService extends ChangeNotifier {
       if (_channelIndex != null) p.setInt(_kChannelIdx, _channelIndex!);
       if (_channelName != null) p.setString(_kChannelName, _channelName!);
       p.setString(_kCallsign, _callsign);
-      p.setInt(_kRole, _role.index);
+      p.setInt(_kRole, _roleId);
       p.setInt(_kColor, _color.index);
       p.setBool(_kShare, _sharePosition);
     });
@@ -419,6 +432,20 @@ class TeamService extends ChangeNotifier {
   /// This phone's best current position: phone GPS if fresh, else the
   /// radio's own position.
   TeamFix? get fix {
+    final a = _atakSelf;
+    if (a != null &&
+        DateTime.now().difference(_atakSelfAt!) < const Duration(minutes: 2)) {
+      return TeamFix(
+        lat: a.lat,
+        lon: a.lon,
+        altitude: a.altitudeM?.toDouble(),
+        speed: a.speedMps,
+        heading: a.headingDeg,
+        accuracy: a.accuracyM.toDouble(),
+        time: _atakSelfAt!,
+        source: TeamFixSource.atak,
+      );
+    }
     final p = _phoneFix;
     if (p != null &&
         DateTime.now().difference(p.timestamp) < const Duration(minutes: 2)) {
@@ -459,6 +486,7 @@ class TeamService extends ChangeNotifier {
 
   void _onPosition(TeamPosition p) {
     final prev = _members[p.senderKey4];
+    if (prev == null) _newcomerHeard();
     final trail = [...?prev?.trail];
     if (trail.isEmpty ||
         teamDistanceMeters(trail.last.$1, trail.last.$2, p.lat, p.lon) > 3) {
@@ -707,6 +735,7 @@ class TeamService extends ChangeNotifier {
   TeamPosition? _selfPosition() {
     final f = fix;
     if (f == null) return null;
+    final atak = atakLinked ? _atakSelf : null;
     final mv = _connector.batteryMillivolts;
     int? batt;
     if (mv != null && mv > 0) {
@@ -721,10 +750,12 @@ class TeamService extends ChangeNotifier {
       headingDeg: f.heading,
       accuracyM: f.accuracy.round(),
       batteryPct: batt,
-      role: _role,
-      color: _color,
+      roleId: atak?.roleId ?? _roleId,
+      color: atak?.color ?? _color,
       status: _status,
-      callsign: callsign,
+      callsign: atak != null && atak.callsign.isNotEmpty
+          ? atak.callsign
+          : callsign,
       fromRadio: f.source == TeamFixSource.radio,
       sosActive: _activeOwnAlert != null,
     );
@@ -754,16 +785,155 @@ class TeamService extends ChangeNotifier {
     final ch = teamChannel;
     if (ch == null || !_connector.supportsChannelData) return false;
     try {
-      return await _connector.sendChannelDataBlobs(
+      final ok = await _connector.sendChannelDataBlobs(
         [payload],
         channelIndex: ch.index,
         dataType: teamChannelDataType,
         interChunkDelay: Duration.zero,
       );
+      if (ok) onTeamPayload?.call(payload, true);
+      return ok;
     } catch (e) {
       debugPrint('Team send failed: $e');
       return false;
     }
+  }
+
+  // ---------------------------------------------------- ATAK plugin bridge
+
+  /// Every team payload heard (own: false) or sent by this app (own: true),
+  /// for the ATAK plugin bridge.
+  void Function(Uint8List payload, bool own)? onTeamPayload;
+
+  TeamPosition? _atakSelf;
+  DateTime? _atakSelfAt;
+
+  /// ATAK (through the plugin) is giving this phone's identity and position.
+  bool get atakLinked =>
+      _atakSelfAt != null &&
+      DateTime.now().difference(_atakSelfAt!) < const Duration(minutes: 2);
+
+  /// The ATAK user's callsign, team and fix, used for this radio's beacons
+  /// while the plugin keeps sending it.
+  void setAtakIdentity(TeamPosition p) {
+    final wasLinked = atakLinked;
+    _atakSelf = p;
+    _atakSelfAt = DateTime.now();
+    if (!wasLinked) {
+      _forceBeacon = true;
+      notifyListeners();
+    }
+  }
+
+  /// Sends team payloads built by the ATAK plugin, and records the items
+  /// among them as this phone's own (so the map shows them and they're
+  /// re-sent with the rest).
+  Future<bool> sendExternal(List<Uint8List> blobs, Duration gap) async {
+    final ch = teamChannel;
+    if (ch == null || !_connector.supportsChannelData) return false;
+    for (final b in blobs) {
+      final peek = teamPeek(b);
+      if (peek == null) continue;
+      switch (peek.$1) {
+        case teamMsgMarker:
+          final m = TeamMarker.tryParse(b);
+          if (m != null) _onMarker(m);
+        case teamMsgReport:
+          final r = TeamReport.tryParse(b);
+          if (r != null && !_reports.containsKey(r.key)) {
+            _reports[r.key] = r;
+            unawaited(_persistReports());
+            onReportChanged?.call(r);
+          }
+        case teamMsgAlert:
+          final a = TeamAlert.tryParse(b);
+          if (a != null && a.senderKey4 == selfKey4) {
+            _activeOwnAlert = a.active ? a : null;
+            onAlertChanged?.call(a);
+          }
+        case teamMsgPoint:
+          final pt = TeamPoint.tryParse(b);
+          if (pt != null) _onPoint(pt);
+        case teamMsgAtakShape:
+          final sh = TeamAtakShape.tryParse(b);
+          if (sh != null) _onAtakShape(sh);
+      }
+    }
+    notifyListeners();
+    try {
+      return await _connector.sendChannelDataBlobs(
+        blobs,
+        channelIndex: ch.index,
+        dataType: teamChannelDataType,
+        interChunkDelay: gap,
+      );
+    } catch (e) {
+      debugPrint('Team send (ATAK) failed: $e');
+      return false;
+    }
+  }
+
+  // ------------------------------------------------- shared ATAK items
+
+  static const _kPoints = 'team_points_v1';
+  static const _kAtakShapes = 'team_atak_shapes_v1';
+  final Map<String, TeamPoint> _points = {};
+  final Map<String, TeamAtakShape> _atakShapes = {};
+  final TeamChunkReassembler _chunks = TeamChunkReassembler();
+
+  void Function(TeamPoint p)? onPointChanged;
+  void Function(TeamAtakShape s)? onAtakShapeChanged;
+
+  /// Whole CoT events relayed over the mesh by the ATAK plugin.
+  void Function(String xml, String senderKey4)? onRawCot;
+
+  /// Small files sent by the ATAK plugin.
+  void Function(TeamBlob file)? onFileReceived;
+
+  List<TeamPoint> get points =>
+      _points.values.where((p) => !p.deleted).toList();
+
+  /// Shapes and routes shared from ATAK (the app's own drawings are [shapes]).
+  List<TeamAtakShape> get atakShapes =>
+      _atakShapes.values.where((s) => !s.deleted).toList();
+
+  void _onPoint(TeamPoint p) {
+    final cur = _points[p.key];
+    if (cur != null && p.time.isBefore(cur.time)) return;
+    _points[p.key] = p;
+    unawaited(
+      _save(
+        (sp) => sp.setStringList(_kPoints, [
+          for (final x in _points.values)
+            if (!x.deleted) base64Encode(x.encode()),
+        ]),
+      ),
+    );
+    onPointChanged?.call(p);
+    notifyListeners();
+  }
+
+  void _onAtakShape(TeamAtakShape s) {
+    final cur = _atakShapes[s.key];
+    if (cur != null && s.time.isBefore(cur.time)) return;
+    _atakShapes[s.key] = s;
+    unawaited(
+      _save(
+        (sp) => sp.setStringList(_kAtakShapes, [
+          for (final x in _atakShapes.values)
+            if (!x.deleted) base64Encode(x.encode()),
+        ]),
+      ),
+    );
+    onAtakShapeChanged?.call(s);
+    notifyListeners();
+  }
+
+  /// Removes a shared ATAK item from this phone's map (not from the team).
+  void dismissItem(String key) {
+    _points.remove(key);
+    _atakShapes.remove(key);
+    notifyListeners();
   }
 
   /// Sends a position from outside the mesh (a TAK user) to the team.
@@ -865,6 +1035,145 @@ class TeamService extends ChangeNotifier {
 
   /// Adds a marker that came from outside the mesh (TAK), without sending.
   void putExternalMarker(TeamMarker m) => _onMarker(m);
+
+  // ---------------------------------------------------------------- roles
+  //
+  // The team can rename the nine default roles, give any role an icon, and
+  // add up to 16 roles of its own. Each role's newest edit wins and is shared
+  // on the team channel, so every phone (and a T-Deck's roster) agrees.
+
+  static const _kRoles = 'team_roles_v1';
+  final Map<int, TeamRoleDef> _roleDefs = {};
+  Timer? _roleShareTimer;
+  DateTime? _lastRoleShare;
+
+  /// Roles to choose from: the nine defaults, then the team's added roles.
+  List<int> get roleIds => [
+    for (var i = 0; i < teamFirstAddedRole; i++) i,
+    for (var i = teamFirstAddedRole; i <= teamMaxRoleId; i++)
+      if (_roleDefs[i] != null && !_roleDefs[i]!.reset) i,
+  ];
+
+  bool get canAddRole => roleIds.length < teamMaxRoleId + 1;
+
+  /// The team's edit of role [id], if any is in force.
+  TeamRoleDef? roleEdit(int id) {
+    final d = _roleDefs[id];
+    return d == null || d.reset ? null : d;
+  }
+
+  bool isAddedRole(int id) => id >= teamFirstAddedRole;
+
+  String defaultRoleName(int id) =>
+      id < teamFirstAddedRole ? TeamRole.fromIndex(id).label : 'Role $id';
+
+  String roleName(int id) {
+    final d = roleEdit(id);
+    if (d != null && d.name.trim().isNotEmpty) return d.name.trim();
+    return defaultRoleName(id);
+  }
+
+  /// The role's icon from the icon library, or 0 for its default icon.
+  int roleIconId(int id) => roleEdit(id)?.iconId ?? 0;
+
+  Future<void> _persistRoles() => _save(
+    (p) => p.setStringList(_kRoles, [
+      for (final d in _roleDefs.values) base64Encode(d.encode()),
+    ]),
+  );
+
+  void _onRoleDef(TeamRoleDef d) {
+    // Someone else is already sharing the table with a newcomer.
+    _roleShareTimer?.cancel();
+    _roleShareTimer = null;
+    final cur = _roleDefs[d.roleId];
+    if (cur != null && !d.beats(cur)) return;
+    _roleDefs[d.roleId] = d;
+    unawaited(_persistRoles());
+    notifyListeners();
+  }
+
+  Future<void> _putRoleDef(TeamRoleDef d) async {
+    _roleDefs[d.roleId] = d;
+    unawaited(_persistRoles());
+    notifyListeners();
+    await _send(d.encode());
+  }
+
+  /// Renames role [id] and/or gives it an icon, for the whole team.
+  Future<void> editRole(int id, {required String name, required int iconId}) =>
+      _putRoleDef(
+        TeamRoleDef(
+          authorKey4: selfKey4,
+          roleId: id,
+          time: _editTime(id),
+          iconId: iconId,
+          name: name.trim(),
+        ),
+      );
+
+  /// A default role back to its own name and icon; an added role removed.
+  Future<void> resetRole(int id) async {
+    await _putRoleDef(
+      TeamRoleDef(
+        authorKey4: selfKey4,
+        roleId: id,
+        time: _editTime(id),
+        reset: true,
+      ),
+    );
+    if (isAddedRole(id) && _roleId == id) await configure(roleId: 0);
+  }
+
+  /// Adds a role (the next free id), or null when all 16 are in use.
+  Future<int?> addRole({required String name, required int iconId}) async {
+    for (var i = teamFirstAddedRole; i <= teamMaxRoleId; i++) {
+      if (roleEdit(i) != null) continue;
+      await editRole(i, name: name, iconId: iconId);
+      return i;
+    }
+    return null;
+  }
+
+  /// A time that beats the current edit even if a clock runs behind.
+  DateTime _editTime(int id) {
+    final now = DateTime.now();
+    final cur = _roleDefs[id]?.time;
+    if (cur != null && !now.isAfter(cur)) {
+      return cur.add(const Duration(seconds: 1));
+    }
+    return now;
+  }
+
+  /// Sends the team's role names and icons, e.g. for someone who joined late.
+  Future<int> shareRoles() async {
+    _roleShareTimer?.cancel();
+    _roleShareTimer = null;
+    _lastRoleShare = DateTime.now();
+    var n = 0;
+    final defs = _roleDefs.values.toList()
+      ..sort((a, b) => a.roleId.compareTo(b.roleId));
+    for (final d in defs) {
+      if (n > 0) await Future<void>.delayed(const Duration(seconds: 3));
+      if (await _send(d.encode())) n++;
+    }
+    return n;
+  }
+
+  /// A teammate we have not heard before: after a random wait, share the
+  /// role table unless someone else does first (or we did recently).
+  void _newcomerHeard() {
+    if (_roleDefs.isEmpty || !active || _roleShareTimer != null) return;
+    final last = _lastRoleShare;
+    if (last != null &&
+        DateTime.now().difference(last) < const Duration(minutes: 10)) {
+      return;
+    }
+    _roleShareTimer = Timer(Duration(seconds: 20 + _rng.nextInt(100)), () {
+      _roleShareTimer = null;
+      if (active) unawaited(shareRoles());
+    });
+  }
 
   // -------------------------------------------------------------- reports
 
@@ -1322,6 +1631,7 @@ class TeamService extends ChangeNotifier {
     if (peek == null) return;
     final (type, sender) = peek;
     if (sender == selfKey4) return;
+    onTeamPayload?.call(p, false);
     switch (type) {
       case teamMsgPosition:
         final pos = TeamPosition.tryParse(p);
@@ -1335,12 +1645,29 @@ class TeamService extends ChangeNotifier {
       case teamMsgReport:
         final r = TeamReport.tryParse(p);
         if (r != null) _onReport(r);
+      case teamMsgRole:
+        final d = TeamRoleDef.tryParse(p);
+        if (d != null) _onRoleDef(d);
       case teamMsgShape:
         final sh = TeamShape.tryParse(p);
         if (sh != null) _onShape(sh);
       case teamMsgCasevac:
         final c = TeamCasevac.tryParse(p);
         if (c != null) _onCasevac(c);
+      case teamMsgPoint:
+        final pt = TeamPoint.tryParse(p);
+        if (pt != null) _onPoint(pt);
+      case teamMsgAtakShape:
+        final ash = TeamAtakShape.tryParse(p);
+        if (ash != null) _onAtakShape(ash);
+      case teamMsgChunk:
+        final blob = _chunks.accept(p);
+        if (blob == null) return;
+        if (blob.isCot) {
+          onRawCot?.call(blob.text, blob.senderKey4);
+        } else {
+          onFileReceived?.call(blob);
+        }
     }
   }
 
@@ -1351,6 +1678,7 @@ class TeamService extends ChangeNotifier {
       unawaited(_save((p) => p.setString(_kMyTrack, enc)));
     }
     _tick.cancel();
+    _roleShareTimer?.cancel();
     unawaited(_sub.cancel());
     unawaited(_gpsSub?.cancel());
     _connector.removeListener(_onConnectorChanged);

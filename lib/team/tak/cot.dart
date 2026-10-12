@@ -5,6 +5,7 @@
 import 'package:xml/xml.dart';
 
 import '../team_wire.dart';
+import '../team_wire_atak.dart';
 
 /// ATAK team colour names (the `__group name` attribute).
 String takGroupName(TeamColor c) => switch (c) {
@@ -32,14 +33,19 @@ TeamColor teamColorFromTakGroup(String? name) {
 }
 
 /// ATAK role names (the `__group role` attribute).
-String takRoleName(TeamRole r) => switch (r) {
+/// The TAK role for a team role id (added roles are team members).
+String takRoleName(int roleId) => roleId >= teamFirstAddedRole
+    ? 'Team Member'
+    : _takRoleName(TeamRole.fromIndex(roleId));
+
+String _takRoleName(TeamRole r) => switch (r) {
   TeamRole.member => 'Team Member',
   TeamRole.lead => 'Team Lead',
   TeamRole.medic => 'Medic',
   TeamRole.navigator => 'Team Member',
   TeamRole.comms => 'RTO',
   TeamRole.driver => 'Team Member',
-  TeamRole.k9 => 'K9',
+  TeamRole.security => 'Team Member',
   TeamRole.observer => 'Forward Observer',
   TeamRole.command => 'HQ',
 };
@@ -48,7 +54,6 @@ TeamRole teamRoleFromTak(String? role) => switch ((role ?? '').toLowerCase()) {
   'team lead' => TeamRole.lead,
   'medic' => TeamRole.medic,
   'rto' => TeamRole.comms,
-  'k9' => TeamRole.k9,
   'forward observer' || 'sniper' => TeamRole.observer,
   'hq' => TeamRole.command,
   _ => TeamRole.member,
@@ -150,7 +155,10 @@ String cotForPosition(TeamPosition p, {required String uid}) => cotEvent(
     );
     b.element(
       '__group',
-      attributes: {'name': takGroupName(p.color), 'role': takRoleName(p.role)},
+      attributes: {
+        'name': takGroupName(p.color),
+        'role': takRoleName(p.roleId),
+      },
     );
     if (p.batteryPct != null) {
       b.element('status', attributes: {'battery': '${p.batteryPct}'});
@@ -868,5 +876,193 @@ TeamShape? teamShapeFromCot(
   return make(
     e.type.startsWith('u-d-f-m') ? ShapeKind.freehand : ShapeKind.line,
     pts,
+  );
+}
+
+// ------------------------------------------------- ATAK plugin item types
+
+/// A point shared from ATAK (spot marker, waypoint, 2525 unit...), with the
+/// same uid the ATAK plugin gives it so the two gateways never duplicate.
+String cotForPoint(TeamPoint p) {
+  final uid = 'VOX-C-${p.authorKey4}-${p.itemId.toRadixString(16)}';
+  if (p.deleted) return cotDelete(uid);
+  return cotEvent(
+    uid: uid,
+    type: p.cotType.isEmpty ? 'b-m-p-s-m' : p.cotType,
+    how: 'h-g-i-g-o',
+    lat: p.lat,
+    lon: p.lon,
+    hae: p.haeM?.toDouble(),
+    time: p.time,
+    staleAfter: const Duration(days: 1),
+    detail: (b) {
+      b.element(
+        'contact',
+        attributes: {
+          'callsign': p.callsign.isEmpty ? 'Mesh point' : p.callsign,
+        },
+      );
+      if (p.argb != null) {
+        b.element('color', attributes: {'argb': '${p.argb}'});
+      }
+      if (p.iconset.isNotEmpty) {
+        b.element('usericon', attributes: {'iconsetpath': p.iconset});
+      }
+      b.element(
+        'link',
+        attributes: {
+          'uid': takUidForMember(p.authorKey4),
+          'relation': 'p-p',
+          'type': 'a-f-G-U-C',
+        },
+      );
+      b.element('archive');
+      final r = [
+        if (p.remarks.isNotEmpty) p.remarks,
+        if (p.attachment != null) '[attachment on the mesh]',
+      ].join(' ');
+      if (r.isNotEmpty) b.element('remarks', nest: r);
+    },
+  );
+}
+
+String _kmlColor(int argb) {
+  final a = (argb >> 24) & 0xFF, r = (argb >> 16) & 0xFF;
+  final g = (argb >> 8) & 0xFF, bl = argb & 0xFF;
+  String h(int v) => v.toRadixString(16).padLeft(2, '0');
+  return '${h(a)}${h(bl)}${h(g)}${h(r)}';
+}
+
+/// A shape or route shared from ATAK, as ATAK draws it.
+String cotForAtakShape(TeamAtakShape s) {
+  final uid = 'VOX-G-${s.authorKey4}-${s.itemId.toRadixString(16)}';
+  if (s.deleted) return cotDelete(uid);
+  var clat = 0.0, clon = 0.0;
+  for (final p in s.points) {
+    clat += p.$1;
+    clon += p.$2;
+  }
+  if (s.points.isNotEmpty) {
+    clat /= s.points.length;
+    clon /= s.points.length;
+  }
+  final type = switch (s.kind) {
+    TeamShapeKind.rectangle => 'u-d-r',
+    TeamShapeKind.circle => 'u-d-c-c',
+    TeamShapeKind.route => 'b-m-r',
+    _ => 'u-d-f',
+  };
+  final label = s.label.isEmpty ? s.kind.label : s.label;
+  String pt((double, double) p) =>
+      '${p.$1.toStringAsFixed(7)},${p.$2.toStringAsFixed(7)}';
+  return cotEvent(
+    uid: uid,
+    type: type,
+    how: 'h-e',
+    lat: clat,
+    lon: clon,
+    time: s.time,
+    staleAfter: const Duration(days: 1),
+    detail: (b) {
+      if (s.kind == TeamShapeKind.route) {
+        for (var i = 0; i < s.points.length; i++) {
+          final end = i == 0 || i == s.points.length - 1;
+          b.element(
+            'link',
+            attributes: {
+              'uid': '$uid-$i',
+              'callsign': i == 0
+                  ? '$label SP'
+                  : (i == s.points.length - 1 ? 'VDO' : 'CP$i'),
+              'type': end ? 'b-m-p-w' : 'b-m-p-c',
+              'point': pt(s.points[i]),
+              'remarks': '',
+              'relation': 'c',
+            },
+          );
+        }
+        b.element(
+          'link_attr',
+          attributes: {
+            'planningmethod': 'Infil',
+            'color': '${s.strokeArgb}',
+            'method': 'Walking',
+            'prefix': 'CP',
+            'type': 'On Foot',
+            'stroke': '${s.strokeWidth.round().clamp(1, 20)}',
+            'direction': 'Infil',
+            'routetype': 'Primary',
+            'order': 'Ascending Check Points',
+          },
+        );
+        b.element('__routeinfo', nest: () => b.element('__navcues'));
+      } else if (s.kind == TeamShapeKind.circle) {
+        b.element(
+          'shape',
+          nest: () {
+            b.element(
+              'ellipse',
+              attributes: {
+                'major': '${s.radiusM}',
+                'minor': '${s.radiusM}',
+                'angle': '360',
+              },
+            );
+            b.element(
+              'link',
+              attributes: {
+                'uid': '$uid.Style',
+                'type': 'b-x-KmlStyle',
+                'relation': 'p-c',
+              },
+              nest: () => b.element(
+                'Style',
+                nest: () {
+                  b.element(
+                    'LineStyle',
+                    nest: () {
+                      b.element('color', nest: _kmlColor(s.strokeArgb));
+                      b.element(
+                        'width',
+                        nest: s.strokeWidth.toStringAsFixed(1),
+                      );
+                    },
+                  );
+                  b.element(
+                    'PolyStyle',
+                    nest: () => b.element(
+                      'color',
+                      nest: _kmlColor(
+                        s.fillArgb ?? (s.strokeArgb & 0x00FFFFFF),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        );
+      } else {
+        final pts = [...s.points];
+        if (s.kind == TeamShapeKind.polygon && pts.length > 2) {
+          pts.add(pts.first);
+        }
+        for (final p in pts) {
+          b.element('link', attributes: {'point': pt(p)});
+        }
+      }
+      b.element('strokeColor', attributes: {'value': '${s.strokeArgb}'});
+      b.element(
+        'strokeWeight',
+        attributes: {'value': s.strokeWidth.toStringAsFixed(1)},
+      );
+      if (s.fillArgb != null) {
+        b.element('fillColor', attributes: {'value': '${s.fillArgb}'});
+      }
+      b.element('contact', attributes: {'callsign': label});
+      if (s.note.isNotEmpty) b.element('remarks', nest: s.note);
+      b.element('labels_on', attributes: {'value': 'true'});
+      b.element('archive');
+    },
   );
 }

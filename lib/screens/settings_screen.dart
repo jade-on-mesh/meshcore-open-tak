@@ -6,6 +6,7 @@ import 'package:meshcore_open/widgets/elements_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../build_info.dart';
 import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
 import '../l10n/l10n.dart';
@@ -73,6 +74,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _appVersion = packageInfo.version;
     });
   }
+
+  /// App version plus the OTP patch-series build id (see build_info.dart),
+  /// e.g. "9.5.0 · OTP 0026-pad-consumption-fix" — mirrors the Lua app's
+  /// "Build: `<BUILD_ID>`" line on its Settings screen, so you can tell which
+  /// numbered OTP patches actually landed on this install.
+  String get _appVersionWithOtpBuild =>
+      _appVersion.isEmpty ? '' : '$_appVersion  ·  OTP $otpBuildId';
 
   @override
   Widget build(BuildContext context) {
@@ -162,7 +170,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     icon: Icons.info_outline,
                     title: l10n.settings_about,
                     subtitle: l10n.settings_aboutVersion(
-                      _appVersion.isEmpty ? l10n.common_loading : _appVersion,
+                      _appVersion.isEmpty
+                          ? l10n.common_loading
+                          : _appVersionWithOtpBuild,
                     ),
                     showChevron: false,
                   ),
@@ -1171,7 +1181,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       applicationName: l10n.appTitle,
       applicationVersion: _appVersion.isEmpty
           ? l10n.common_loading
-          : _appVersion,
+          : _appVersionWithOtpBuild,
       applicationLegalese: l10n.settings_aboutLegalese,
       children: [
         const SizedBox(height: 16),

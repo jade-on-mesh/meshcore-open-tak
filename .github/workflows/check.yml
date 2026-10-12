@@ -1,0 +1,48 @@
+name: Check
+
+# Fast compile check for work branches: analyzer errors and unit tests,
+# without the full APK build.
+on:
+  push:
+    branches-ignore:
+      - main
+      - apk-report
+  workflow_dispatch:
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          cache: true
+      - run: flutter pub get
+      - name: Analyze (errors fail, warnings are listed)
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter analyze --no-fatal-infos --no-fatal-warnings | tee analyze.log
+      - name: Analyzer findings as annotations
+        if: always()
+        shell: bash
+        run: |
+          grep -E "^ *(error|warning|info) " analyze.log | head -100 | while IFS= read -r l; do echo "::warning::${l}"; done || true
+          echo "::notice::analyzer: $(grep -E 'issues? found|No issues found' analyze.log | tail -1)"
+          dart format --output=none --set-exit-if-changed lib test 2>&1 | grep -E "^Changed" | head -20 | while IFS= read -r l; do echo "::warning::format: ${l}"; done || true
+      - name: Unit tests
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter test --reporter=expanded 2>&1 | tee test.log
+      - name: Test failures as annotations
+        if: failure()
+        shell: bash
+        run: |
+          grep -A14 "\[E\]" test.log | head -60 | while IFS= read -r l; do echo "::error::${l}"; done || true

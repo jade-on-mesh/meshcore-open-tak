@@ -1,1 +1,222 @@
-{}
+{
+  "bg": [
+    "channels_shareQr",
+    "channels_shareQrTitle",
+    "channels_shareQrInstructions",
+    "channels_shareQrWarning",
+    "channels_copyLink",
+    "channels_linkCopied",
+    "channels_scanChannelQr",
+    "channels_scanChannelQrTitle",
+    "channels_scanChannelQrInstructions",
+    "channels_invalidChannelQr"
+  ],
+
+  "de": [
+    "channels_shareQr",
+    "channels_shareQrTitle",
+    "channels_shareQrInstructions",
+    "channels_shareQrWarning",
+    "channels_copyLink",
+    "channels_linkCopied",
+    "channels_scanChannelQr",
+    "channels_scanChannelQrTitle",
+    "channels_scanChannelQrInstructions",
+    "channels_invalidChannelQr"
+  ],
+
+  "es": [
+    "channels_shareQr",
+    "channels_shareQrTitle",
+    "channels_shareQrInstructions",
+    "channels_shareQrWarning",
+    "channels_copyLink",
+    "channels_linkCopied",
+    "channels_scanChannelQr",
+    "channels_scanChannelQrTitle",
+    "channels_scanChannelQrInstructions",
+    "channels_invalidChannelQr"
+  ],
+
+  "fr": [
+    "channels_shareQr",
+    "channels_shareQrTitle",
+    "channels_shareQrInstructions",
+    "channels_shareQrWarning",
+    "channels_copyLink",
+    "channels_linkCopied",
+    "channels_scanChannelQr",
+    "channels_scanChannelQrTitle",
+    "channels_scanChannelQrInstructions",
+    "channels_invalidChannelQr"
+  ],
+
+  "hu": [
+    "channels_shareQr",
+    "channels_shareQrTitle",
+    "channels_shareQrInstructions",
+    "channels_shareQrWarning",
+    "channels_copyLink",
+    "channels_linkCopied",
+    "channels_scanChannelQr",
+    "channels_scanChannelQrTitle",
+    "channels_scanChannelQrInstructions",
+    "channels_invalidChannelQr"
+  ],
+
+  "it": [
+    "channels_shareQr",
+    "channels_shareQrTitle",
+    "channels_shareQrInstructions",
+    "channels_shareQrWarning",
+    "channels_copyLink",
+    "channels_linkCopied",
+    "channels_scanChannelQr",
+    "channels_scanChannelQrTitle",
+    "channels_scanChannelQrInstructions",
+    "channels_invalidChannelQr"
+  ],
+
+  "ja": [
+    "channels_shareQr",
+    "channels_shareQrTitle",
+    "channels_shareQrInstructions",
+    "channels_shareQrWarning",
+    "channels_copyLink",
+    "channels_linkCopied",
+    "channels_scanChannelQr",
+    "channels_scanChannelQrTitle",
+    "channels_scanChannelQrInstructions",
+    "channels_invalidChannelQr"
+  ],
+
+  "ko": [
+    "channels_shareQr",
+    "channels_shareQrTitle",
+    "channels_shareQrInstructions",
+    "channels_shareQrWarning",
+    "channels_copyLink",
+    "channels_linkCopied",
+    "channels_scanChannelQr",
+    "channels_scanChannelQrTitle",
+    "channels_scanChannelQrInstructions",
+    "channels_invalidChannelQr"
+  ],
+
+  "nl": [
+    "channels_shareQr",
+    "channels_shareQrTitle",
+    "channels_shareQrInstructions",
+    "channels_shareQrWarning",
+    "channels_copyLink",
+    "channels_linkCopied",
+    "channels_scanChannelQr",
+    "channels_scanChannelQrTitle",
+    "channels_scanChannelQrInstructions",
+    "channels_invalidChannelQr"
+  ],
+
+  "pl": [
+    "channels_shareQr",
+    "channels_shareQrTitle",
+    "channels_shareQrInstructions",
+    "channels_shareQrWarning",
+    "channels_copyLink",
+    "channels_linkCopied",
+    "channels_scanChannelQr",
+    "channels_scanChannelQrTitle",
+    "channels_scanChannelQrInstructions",
+    "channels_invalidChannelQr"
+  ],
+
+  "pt": [
+    "channels_shareQr",
+    "channels_shareQrTitle",
+    "channels_shareQrInstructions",
+    "channels_shareQrWarning",
+    "channels_copyLink",
+    "channels_linkCopied",
+    "channels_scanChannelQr",
+    "channels_scanChannelQrTitle",
+    "channels_scanChannelQrInstructions",
+    "channels_invalidChannelQr"
+  ],
+
+  "ru": [
+    "channels_shareQr",
+    "channels_shareQrTitle",
+    "channels_shareQrInstructions",
+    "channels_shareQrWarning",
+    "channels_copyLink",
+    "channels_linkCopied",
+    "channels_scanChannelQr",
+    "channels_scanChannelQrTitle",
+    "channels_scanChannelQrInstructions",
+    "channels_invalidChannelQr"
+  ],
+
+  "sk": [
+    "channels_shareQr",
+    "channels_shareQrTitle",
+    "channels_shareQrInstructions",
+    "channels_shareQrWarning",
+    "channels_copyLink",
+    "channels_linkCopied",
+    "channels_scanChannelQr",
+    "channels_scanChannelQrTitle",
+    "channels_scanChannelQrInstructions",
+    "channels_invalidChannelQr"
+  ],
+
+  "sl": [
+    "channels_shareQr",
+    "channels_shareQrTitle",
+    "channels_shareQrInstructions",
+    "channels_shareQrWarning",
+    "channels_copyLink",
+    "channels_linkCopied",
+    "channels_scanChannelQr",
+    "channels_scanChannelQrTitle",
+    "channels_scanChannelQrInstructions",
+    "channels_invalidChannelQr"
+  ],
+
+  "sv": [
+    "channels_shareQr",
+    "channels_shareQrTitle",
+    "channels_shareQrInstructions",
+    "channels_shareQrWarning",
+    "channels_copyLink",
+    "channels_linkCopied",
+    "channels_scanChannelQr",
+    "channels_scanChannelQrTitle",
+    "channels_scanChannelQrInstructions",
+    "channels_invalidChannelQr"
+  ],
+
+  "uk": [
+    "channels_shareQr",
+    "channels_shareQrTitle",
+    "channels_shareQrInstructions",
+    "channels_shareQrWarning",
+    "channels_copyLink",
+    "channels_linkCopied",
+    "channels_scanChannelQr",
+    "channels_scanChannelQrTitle",
+    "channels_scanChannelQrInstructions",
+    "channels_invalidChannelQr"
+  ],
+
+  "zh": [
+    "channels_shareQr",
+    "channels_shareQrTitle",
+    "channels_shareQrInstructions",
+    "channels_shareQrWarning",
+    "channels_copyLink",
+    "channels_linkCopied",
+    "channels_scanChannelQr",
+    "channels_scanChannelQrTitle",
+    "channels_scanChannelQrInstructions",
+    "channels_invalidChannelQr"
+  ]
+}

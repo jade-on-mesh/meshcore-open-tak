@@ -1550,6 +1550,41 @@ class AppLocalizationsSl extends AppLocalizations {
   String get channels_joinPrivateChannelDesc => 'Ročno vnesite zaporni ključ.';
 
   @override
+  String get channels_shareQr => 'Share as QR code';
+
+  @override
+  String channels_shareQrTitle(String name) {
+    return 'Share $name';
+  }
+
+  @override
+  String get channels_shareQrInstructions =>
+      'Scan with MeshCore Open TAK (Add channel > Join a Private Channel > Scan QR code) to join this channel.';
+
+  @override
+  String get channels_shareQrWarning =>
+      'Anyone who scans this code can read and post in this channel. Only show it to people you trust.';
+
+  @override
+  String get channels_copyLink => 'Copy link';
+
+  @override
+  String get channels_linkCopied => 'Channel link copied';
+
+  @override
+  String get channels_scanChannelQr => 'Scan QR code';
+
+  @override
+  String get channels_scanChannelQrTitle => 'Scan Channel QR';
+
+  @override
+  String get channels_scanChannelQrInstructions =>
+      'Point the camera at a channel QR code';
+
+  @override
+  String get channels_invalidChannelQr => 'Not a MeshCore channel QR code';
+
+  @override
   String get channels_joinPublicChannel => 'Pridružite se javnemu kanalu';
 
   @override

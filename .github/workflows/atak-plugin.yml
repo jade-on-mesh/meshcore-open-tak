@@ -1,0 +1,181 @@
+name: ATAK plugin
+
+# Checks the MeshCore ATAK plugin's protocol core and the app-side bridge.
+# The plugin APK itself needs the ATAK-CIV SDK from tak.gov, which can't be
+# committed here, so it is built locally (see atak-plugin/README.md).
+
+on:
+  push:
+    branches:
+      - atak-plugin
+      - otp-merge
+    paths:
+      - "atak-plugin/**"
+      - "lib/team/**"
+      - "lib/main.dart"
+      - "test/team/**"
+      - "android/app/src/main/**"
+      - ".github/workflows/atak-plugin.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: atak-plugin-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  plugin-core:
+    name: Plugin protocol core (JUnit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Compile and test the pure-Java core
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/lib /tmp/out
+          curl -sSLo /tmp/lib/junit.jar https://repo1.maven.org/maven2/junit/junit/4.13.2/junit-4.13.2.jar
+          curl -sSLo /tmp/lib/hamcrest.jar https://repo1.maven.org/maven2/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar
+          CP=/tmp/lib/junit.jar:/tmp/lib/hamcrest.jar
+          SRC=atak-plugin/app/src
+          javac -source 8 -target 8 -nowarn -d /tmp/out -cp $CP \
+            $(find $SRC/main/java -path '*/core/*.java') $(find $SRC/test/java -name '*.java')
+          TESTS=$(cd $SRC/test/java && find . -name '*Test.java' | sed 's|^\./||;s|\.java$||;s|/|.|g')
+          java -cp /tmp/out:$CP org.junit.runner.JUnitCore $TESTS
+
+  app:
+    name: App analyze + team tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Analyze
+        # Each issue also becomes an annotation, so it's readable without the log.
+        run: |
+          set -o pipefail
+          if ! flutter analyze --fatal-infos --fatal-warnings 2>&1 | tee /tmp/analyze.txt; then
+            grep -E '^\s*(info|warning|error) • ' /tmp/analyze.txt | while IFS= read -r l; do
+              echo "::error::$(echo "$l" | sed 's/^ *//')"
+            done
+            exit 1
+          fi
+      - name: Format (commits dart format fixes to this branch)
+        run: |
+          dart format lib/team lib/main.dart test/team
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -am "dart format"
+            git push
+          fi
+      - name: Team tests
+        run: flutter test test/team
+
+  app-android:
+    name: App Android compile (Kotlin bridge)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          android: false
+          tool-cache: false
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: false
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Build debug APK (no libaom; photo codec skipped)
+        run: flutter build apk --debug --target-platform android-arm64
+
+  plugin-apk:
+    # Builds the installable plugin APK. The ATAK-CIV SDK (tak.gov) can't be
+    # committed to this public repo, so this job runs only when the repo has
+    # an ATAK_SDK_URL secret pointing at the SDK zip somewhere private (for
+    # example a release asset in a private repo; then also set
+    # ATAK_SDK_TOKEN to a token that can read it).
+    name: Plugin APK (needs ATAK_SDK_URL secret)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ATAK_SDK_URL: ${{ secrets.ATAK_SDK_URL }}
+      ATAK_SDK_TOKEN: ${{ secrets.ATAK_SDK_TOKEN }}
+    steps:
+      - name: Check for the SDK secret
+        id: gate
+        run: |
+          if [ -z "${ATAK_SDK_URL}" ]; then
+            echo "::notice::Skipping the plugin APK: no ATAK_SDK_URL secret (see atak-plugin/README.md)"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'true'
+      - uses: actions/setup-java@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Fetch and unpack the ATAK SDK
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          hdr=()
+          if [ -n "${ATAK_SDK_TOKEN}" ]; then
+            hdr=(-H "Authorization: Bearer ${ATAK_SDK_TOKEN}" -H "Accept: application/octet-stream")
+          fi
+          curl -fsSL "${hdr[@]}" -o /tmp/atak-sdk.zip "${ATAK_SDK_URL}"
+          atak-plugin/scripts/setup-sdk.sh /tmp/atak-sdk.zip
+          sed -i "s|^sdk.dir=.*|sdk.dir=${ANDROID_HOME:-$ANDROID_SDK_ROOT}|" atak-plugin/local.properties
+          rm /tmp/atak-sdk.zip
+      - name: Install the Android SDK parts the plugin uses
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platforms;android-36" "ndk;29.0.14206865" "cmake;3.22.1" > /dev/null
+      - name: Build libaom (optional; photos in direct mode)
+        if: steps.gate.outputs.run == 'true'
+        continue-on-error: true
+        run: |
+          ANDROID_NDK_HOME="$ANDROID_HOME/ndk/29.0.14206865" \
+            atak-plugin/scripts/build-libaom.sh arm64-v8a armeabi-v7a
+      - uses: actions/cache@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: atak-plugin-gradle-${{ hashFiles('atak-plugin/**/*.gradle', 'atak-plugin/gradle/wrapper/gradle-wrapper.properties') }}
+      - name: Build and test
+        if: steps.gate.outputs.run == 'true'
+        working-directory: atak-plugin
+        run: ./gradlew --no-daemon assembleCivDebug testCivDebugUnitTest
+      - uses: actions/upload-artifact@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          name: atak-plugin-meshcore-civ-debug
+          path: atak-plugin/app/build/outputs/apk/civ/debug/*.apk
+          retention-days: 30

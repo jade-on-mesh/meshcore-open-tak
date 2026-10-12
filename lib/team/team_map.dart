@@ -14,6 +14,7 @@ import '../vox/image_message_bubble.dart' show voxRgbToUiImage;
 import '../vox/voice_message_bubble.dart';
 import '../vox/voice_service.dart';
 import '../vox/voice_wire.dart';
+import 'role_icon_library.dart';
 import 'tak/cot.dart';
 import 'tak/tak_service.dart';
 import 'team_casevac_ui.dart';
@@ -22,6 +23,7 @@ import 'team_forms.dart';
 import 'team_screen.dart';
 import 'team_service.dart';
 import 'team_wire.dart';
+import 'team_wire_atak.dart';
 import 'watch_feed.dart';
 
 // ------------------------------------------------------------------ styling
@@ -33,10 +35,20 @@ IconData teamRoleIcon(TeamRole r) => switch (r) {
   TeamRole.navigator => Icons.explore,
   TeamRole.comms => Icons.cell_tower,
   TeamRole.driver => Icons.directions_car,
-  TeamRole.k9 => Icons.pets,
+  TeamRole.security => Icons.shield_outlined,
   TeamRole.observer => Icons.visibility,
   TeamRole.command => Icons.account_balance,
 };
+
+/// Role [roleId]'s icon: the team's choice from the icon library, else the
+/// role's own (a badge for an added role).
+IconData teamRoleIconFor(TeamService team, int roleId) {
+  final chosen = roleIconById(team.roleIconId(roleId));
+  if (chosen != null) return chosen.icon;
+  return roleId < teamFirstAddedRole
+      ? teamRoleIcon(TeamRole.fromIndex(roleId))
+      : Icons.badge_outlined;
+}
 
 IconData markerKindIcon(MarkerKind k) => switch (k) {
   MarkerKind.point => Icons.place,
@@ -97,6 +109,9 @@ String? _rangeFromMe(TeamService t, double lat, double lon) {
   );
 }
 
+/// Signed 32-bit ARGB (as CoT and the wire carry it) to a Color.
+Color _argb(int v) => Color(v & 0xFFFFFFFF);
+
 Widget _label(String text, {Color? color}) => Container(
   padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
   decoration: BoxDecoration(
@@ -126,10 +141,14 @@ class TeamMapLayer extends StatelessWidget {
       for (final i in watch.items.take(300))
         if (i.hasPosition) i,
     ];
+    final shared = team.points;
+    final atakShapes = team.atakShapes;
     if (!team.enabled &&
         tak.entities.isEmpty &&
         watched.isEmpty &&
-        team.shapes.isEmpty) {
+        team.shapes.isEmpty &&
+        shared.isEmpty &&
+        atakShapes.isEmpty) {
       return const SizedBox.shrink();
     }
     final shapes = team.shapes;
@@ -179,6 +198,21 @@ class TeamMapLayer extends StatelessWidget {
             color: _takStroke(e),
             strokeWidth: e.isRoute ? 5 : 3,
           ),
+      for (final s in atakShapes)
+        if (s.kind == TeamShapeKind.polyline)
+          Polyline(
+            points: [for (final p in s.points) LatLng(p.$1, p.$2)],
+            color: _argb(s.strokeArgb).withValues(alpha: 0.9),
+            strokeWidth: s.strokeWidth.clamp(2, 8).toDouble(),
+          ),
+      for (final s in atakShapes)
+        if (s.kind == TeamShapeKind.route)
+          Polyline(
+            points: [for (final p in s.points) LatLng(p.$1, p.$2)],
+            color: _argb(s.strokeArgb).withValues(alpha: 0.9),
+            strokeWidth: s.strokeWidth.clamp(2, 8).toDouble(),
+            pattern: StrokePattern.dashed(segments: const [10, 6]),
+          ),
       if (hound != null && fix != null)
         Polyline(
           points: [LatLng(fix.lat, fix.lon), LatLng(hound.lat, hound.lon)],
@@ -210,6 +244,18 @@ class TeamMapLayer extends StatelessWidget {
             borderColor: _takStroke(e),
             borderStrokeWidth: 2,
           ),
+      for (final s in atakShapes)
+        if ((s.kind == TeamShapeKind.polygon ||
+                s.kind == TeamShapeKind.rectangle) &&
+            s.points.length > 2)
+          Polygon(
+            points: [for (final p in s.points) LatLng(p.$1, p.$2)],
+            color: s.fillArgb != null
+                ? _argb(s.fillArgb!)
+                : _argb(s.strokeArgb).withValues(alpha: 0.15),
+            borderColor: _argb(s.strokeArgb),
+            borderStrokeWidth: s.strokeWidth.clamp(1, 8).toDouble(),
+          ),
     ];
     final circles = <CircleMarker>[
       for (final sh in shapes)
@@ -232,12 +278,36 @@ class TeamMapLayer extends StatelessWidget {
             borderColor: _takStroke(e),
             borderStrokeWidth: 2,
           ),
+      for (final s in atakShapes)
+        if (s.kind == TeamShapeKind.circle && s.points.isNotEmpty)
+          CircleMarker(
+            point: LatLng(s.points.first.$1, s.points.first.$2),
+            radius: s.radiusM.toDouble(),
+            useRadiusInMeter: true,
+            color: s.fillArgb != null
+                ? _argb(s.fillArgb!)
+                : _argb(s.strokeArgb).withValues(alpha: 0.15),
+            borderColor: _argb(s.strokeArgb),
+            borderStrokeWidth: s.strokeWidth.clamp(1, 8).toDouble(),
+          ),
     ];
 
     final markers = <Marker>[
       for (final sh in shapes) ..._shapeMarkers(context, sh, nav),
       // Watch-feed reports and TAK units sit under the mesh team.
       for (final w in watched) _watchMarker(context, w),
+      for (final s in atakShapes)
+        if (s.label.isNotEmpty && s.points.isNotEmpty)
+          Marker(
+            point: LatLng(s.points.first.$1, s.points.first.$2),
+            width: 110,
+            height: 22,
+            child: GestureDetector(
+              onTap: () => showSharedShapeSheet(context, s),
+              child: Center(child: _label(s.label)),
+            ),
+          ),
+      for (final p in shared) _sharedPointMarker(context, p),
       for (final e in tak.entities) _takMarker(context, e),
       for (final r in team.reports) _reportMarker(context, r),
       for (final c in team.casevacs) _casevacMarker(context, c),
@@ -385,6 +455,54 @@ class TeamMapLayer extends StatelessWidget {
     ),
   );
 
+  Marker _sharedPointMarker(BuildContext context, TeamPoint p) {
+    final color = switch (p.affiliationLetter) {
+      'h' => const Color(0xFFE53935),
+      'n' => const Color(0xFF43A047),
+      'u' => const Color(0xFFFDD835),
+      'f' => const Color(0xFF1E88E5),
+      _ => p.argb != null ? _argb(p.argb!) : Colors.white,
+    };
+    final env = p.attachment == null
+        ? null
+        : teamAttachmentEnvelope(p.attachment!);
+    final unit = p.cotType.startsWith('a-');
+    return Marker(
+      point: LatLng(p.lat, p.lon),
+      width: 110,
+      height: env != null && env.isImage ? 116 : 58,
+      alignment: Alignment.topCenter,
+      child: GestureDetector(
+        onTap: () => showSharedPointSheet(context, p),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            if (env != null && env.isImage)
+              _PinThumb(envelope: env, authorKey4: p.authorKey4),
+            Transform.rotate(
+              angle: unit && p.affiliationLetter == 'h' ? pi / 4 : 0,
+              child: Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: color,
+                  border: Border.all(color: Colors.black87, width: 2),
+                  shape: unit ? BoxShape.rectangle : BoxShape.circle,
+                ),
+                child: unit
+                    ? null
+                    : const Icon(Icons.place, size: 14, color: Colors.black),
+              ),
+            ),
+            const SizedBox(height: 2),
+            _label(p.callsign.isEmpty ? 'ATAK point' : p.callsign),
+          ],
+        ),
+      ),
+    );
+  }
+
   Marker _memberMarker(BuildContext context, TeamMember m) {
     final p = m.position;
     final color = Color(p.color.argb);
@@ -434,7 +552,7 @@ class TeamMapLayer extends StatelessWidget {
                         ),
                       ),
                       child: Icon(
-                        teamRoleIcon(p.role),
+                        teamRoleIconFor(context.read<TeamService>(), p.roleId),
                         size: 16,
                         color: color.computeLuminance() > 0.5
                             ? Colors.black
@@ -815,7 +933,10 @@ Future<void> showTeamMemberSheet(
               children: [
                 CircleAvatar(
                   backgroundColor: Color(p.color.argb),
-                  child: Icon(teamRoleIcon(p.role), color: Colors.black),
+                  child: Icon(
+                    teamRoleIconFor(team, p.roleId),
+                    color: Colors.black,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -827,7 +948,7 @@ Future<void> showTeamMemberSheet(
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       Text(
-                        '${p.role.label} · ${p.color.label} team'
+                        '${team.roleName(p.roleId)} · ${p.color.label} team'
                         '${p.relayed ? ' · via TAK' : ''}',
                       ),
                     ],
@@ -1540,6 +1661,8 @@ class _StatusPill extends StatelessWidget {
         'no GPS'
       else if (fix.source == TeamFixSource.phone)
         'GPS ±${fix.accuracy.round()} m'
+      else if (fix.source == TeamFixSource.atak)
+        'ATAK'
       else
         'radio GPS',
       if (watch.unseenCount > 0) '${watch.unseenCount} new',
@@ -1581,3 +1704,131 @@ class _StatusPill extends StatelessWidget {
     );
   }
 }
+
+// ------------------------------------------------- shared ATAK item sheets
+
+Future<void> showSharedPointSheet(BuildContext context, TeamPoint p) =>
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (context) {
+        final team = context.read<TeamService>();
+        final author =
+            team.memberByKey(p.authorKey4)?.callsign ??
+            p.authorKey4.toUpperCase();
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  p.callsign.isEmpty ? 'ATAK point' : p.callsign,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 4),
+                Text('${p.cotType} · shared by $author · ${teamAgo(p.time)}'),
+                Text(
+                  '${p.lat.toStringAsFixed(5)}, ${p.lon.toStringAsFixed(5)}'
+                  '${p.haeM != null ? ' · ${p.haeM} m' : ''}',
+                ),
+                if (p.remarks.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(p.remarks),
+                ],
+                if (p.attachment != null) ...[
+                  const SizedBox(height: 8),
+                  _attachmentView(context, p.attachment!, p.authorKey4),
+                ],
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    _houndButton(
+                      context,
+                      () => team.houndPoint(
+                        p.lat,
+                        p.lon,
+                        p.callsign.isEmpty ? 'ATAK point' : p.callsign,
+                      ),
+                    ),
+                    TextButton.icon(
+                      icon: const Icon(Icons.visibility_off),
+                      label: const Text('Hide on this phone'),
+                      onPressed: () {
+                        team.dismissItem(p.key);
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+Future<void> showSharedShapeSheet(
+  BuildContext context,
+  TeamAtakShape s,
+) => showModalBottomSheet<void>(
+  context: context,
+  builder: (context) {
+    final team = context.read<TeamService>();
+    final author =
+        team.memberByKey(s.authorKey4)?.callsign ?? s.authorKey4.toUpperCase();
+    var length = 0.0;
+    for (var i = 1; i < s.points.length; i++) {
+      length += teamDistanceMeters(
+        s.points[i - 1].$1,
+        s.points[i - 1].$2,
+        s.points[i].$1,
+        s.points[i].$2,
+      );
+    }
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              s.label.isEmpty ? s.kind.label : s.label,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              [
+                s.kind.label,
+                if (s.kind == TeamShapeKind.circle)
+                  'radius ${s.radiusM} m'
+                else
+                  '${s.points.length} points',
+                if (length > 0 &&
+                    (s.kind == TeamShapeKind.route ||
+                        s.kind == TeamShapeKind.polyline))
+                  length >= 1000
+                      ? '${(length / 1000).toStringAsFixed(1)} km'
+                      : '${length.round()} m',
+                'shared by $author',
+                teamAgo(s.time),
+              ].join(' · '),
+            ),
+            if (s.note.isNotEmpty) ...[const SizedBox(height: 8), Text(s.note)],
+            const SizedBox(height: 12),
+            TextButton.icon(
+              icon: const Icon(Icons.visibility_off),
+              label: const Text('Hide on this phone'),
+              onPressed: () {
+                team.dismissItem(s.key);
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  },
+);

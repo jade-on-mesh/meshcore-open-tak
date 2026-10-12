@@ -59,6 +59,14 @@ class ByteCountedTextField extends StatelessWidget {
   final int? softLimitBytes;
   final String? softLimitNote;
 
+  /// Optional override for the counter text, given the used byte count and
+  /// [maxBytes] (OTP chats show "remaining | typed/avail (N chunks)").
+  final String Function(int usedBytes, int maxBytes)? counterTextBuilder;
+
+  /// Optional override for the counter color.
+  final Color Function(int usedBytes, int maxBytes, Color defaultColor)?
+  counterColorBuilder;
+
   const ByteCountedTextField({
     super.key,
     required this.maxBytes,
@@ -76,6 +84,8 @@ class ByteCountedTextField extends StatelessWidget {
     this.encoder,
     this.softLimitBytes,
     this.softLimitNote,
+    this.counterTextBuilder,
+    this.counterColorBuilder,
   });
 
   @override
@@ -94,11 +104,21 @@ class ByteCountedTextField extends StatelessWidget {
             softLimitBytes != null &&
             usedBytes > softLimitBytes!;
 
-        final counterColor = ratio > errorThreshold
+        final defaultCounterColor = ratio > errorThreshold
             ? Theme.of(context).colorScheme.error
             : ratio > warningThreshold
             ? Theme.of(context).colorScheme.tertiary
             : Theme.of(context).colorScheme.onSurfaceVariant;
+        final counterColor =
+            counterColorBuilder?.call(
+              usedBytes,
+              maxBytes,
+              defaultCounterColor,
+            ) ??
+            defaultCounterColor;
+        final counterText =
+            counterTextBuilder?.call(usedBytes, maxBytes) ??
+            '$usedBytes / $maxBytes';
 
         return Column(
           mainAxisSize: MainAxisSize.min,
@@ -148,7 +168,7 @@ class ByteCountedTextField extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '$usedBytes / $maxBytes',
+                      counterText,
                       style: TextStyle(fontSize: 11, color: counterColor),
                     ),
                   ],
