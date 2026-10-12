@@ -37,4 +37,12 @@ jobs:
           echo "::notice::analyzer: $(grep -E 'issues? found|No issues found' analyze.log | tail -1)"
           dart format --output=none --set-exit-if-changed lib test 2>&1 | grep -E "^Changed" | head -20 | while IFS= read -r l; do echo "::warning::format: ${l}"; done || true
       - name: Unit tests
-        run: flutter test --reporter=compact
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter test --reporter=expanded 2>&1 | tee test.log
+      - name: Test failures as annotations
+        if: failure()
+        shell: bash
+        run: |
+          grep -E "\[E\]|Expected:|  Actual:|Which:|Error:|error:" test.log | head -40 | while IFS= read -r l; do echo "::error::${l}"; done || true
