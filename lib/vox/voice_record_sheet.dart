@@ -288,8 +288,7 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
                   'Plays on radios without Mimi, like Wadamesh on a T-Deck',
                 ),
                 value: voice.forcesCodec2(widget.codecTarget),
-                onChanged:
-                    _phase == _Phase.idle || _phase == _Phase.recorded
+                onChanged: _phase == _Phase.idle || _phase == _Phase.recorded
                     ? (v) async {
                         await voice.setForcesCodec2(widget.codecTarget!, v);
                         if (_clip != null && mounted) {

@@ -14,11 +14,14 @@ import 'package:meshcore_open/models/otp_pad.dart';
 // cross-check the exact byte positions, not just "doesn't crash".
 void main() {
   // 16 bytes: 0x00..0x0f, as lowercase hex.
-  const padHex =
-      '000102030405060708090a0b0c0d0e0f';
+  const padHex = '000102030405060708090a0b0c0d0e0f';
   final importedAt = DateTime(2026, 1, 1);
 
-  OtpPad pad({required OtpPadRole role, int myOffset = 0, int theirOffset = 0}) {
+  OtpPad pad({
+    required OtpPadRole role,
+    int myOffset = 0,
+    int theirOffset = 0,
+  }) {
     return OtpPad(
       padHex: padHex,
       mode: OtpPadMode.twoPartyHalfSplit,
@@ -51,10 +54,13 @@ void main() {
       expect(p.takeMyKeyBytes(3), [0x0d, 0x0e, 0x0f]);
     });
 
-    test('Party B\'s own sends continue backward after some have been sent', () {
-      final p = pad(role: OtpPadRole.b, myOffset: 3);
-      expect(p.takeMyKeyBytes(3), [0x0a, 0x0b, 0x0c]);
-    });
+    test(
+      'Party B\'s own sends continue backward after some have been sent',
+      () {
+        final p = pad(role: OtpPadRole.b, myOffset: 3);
+        expect(p.takeMyKeyBytes(3), [0x0a, 0x0b, 0x0c]);
+      },
+    );
 
     test('Party B decrypting Party A reads from the front of the buffer', () {
       final p = pad(role: OtpPadRole.b);

@@ -133,7 +133,9 @@ class OtpTheme {
       plaintext: Color(0xFFFFFFFF),
       newpad: Color(0xFFFBBF24), // sunset amber
       channel: Color(0xFF15803D), // forest green (unchanged - "mine")
-      resultOk: Color(0xFF84CC16), // moss/lime green - distinct shade from channel
+      resultOk: Color(
+        0xFF84CC16,
+      ), // moss/lime green - distinct shade from channel
       keyphrase: Color(0xFFFFFFFF), // white (replaces huckleberry pink)
       padinfo: Color(0xFF22C55E),
       ready: Color(0xFFCBD5E1),

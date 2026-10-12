@@ -2812,6 +2812,66 @@ abstract class AppLocalizations {
   /// **'Manually enter a secret key.'**
   String get channels_joinPrivateChannelDesc;
 
+  /// No description provided for @channels_shareQr.
+  ///
+  /// In en, this message translates to:
+  /// **'Share as QR code'**
+  String get channels_shareQr;
+
+  /// No description provided for @channels_shareQrTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share {name}'**
+  String channels_shareQrTitle(String name);
+
+  /// No description provided for @channels_shareQrInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan with MeshCore Open TAK (Add channel > Join a Private Channel > Scan QR code) to join this channel.'**
+  String get channels_shareQrInstructions;
+
+  /// No description provided for @channels_shareQrWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone who scans this code can read and post in this channel. Only show it to people you trust.'**
+  String get channels_shareQrWarning;
+
+  /// No description provided for @channels_copyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get channels_copyLink;
+
+  /// No description provided for @channels_linkCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Channel link copied'**
+  String get channels_linkCopied;
+
+  /// No description provided for @channels_scanChannelQr.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan QR code'**
+  String get channels_scanChannelQr;
+
+  /// No description provided for @channels_scanChannelQrTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan Channel QR'**
+  String get channels_scanChannelQrTitle;
+
+  /// No description provided for @channels_scanChannelQrInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Point the camera at a channel QR code'**
+  String get channels_scanChannelQrInstructions;
+
+  /// No description provided for @channels_invalidChannelQr.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a MeshCore channel QR code'**
+  String get channels_invalidChannelQr;
+
   /// No description provided for @channels_joinPublicChannel.
   ///
   /// In en, this message translates to:

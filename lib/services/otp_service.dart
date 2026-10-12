@@ -2,10 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import '../connector/meshcore_protocol.dart'
-    show
-        hex2Uint8List,
-        maxContactMessageBytes,
-        maxChannelMessageBytes;
+    show hex2Uint8List, maxContactMessageBytes, maxChannelMessageBytes;
 
 /// Thrown when a message can't be OTP-encrypted because the sender's half
 /// of the shared pad doesn't have enough unused bytes left to cover it.

@@ -1004,9 +1004,7 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                         width: double.infinity,
                         child: OutlinedButton.icon(
                           icon: const Icon(Icons.qr_code_scanner),
-                          label: Text(
-                            sheetContext.l10n.channels_scanChannelQr,
-                          ),
+                          label: Text(sheetContext.l10n.channels_scanChannelQr),
                           onPressed: () async {
                             final scanned = await Navigator.of(sheetContext)
                                 .push<ScannedChannel>(
@@ -1605,8 +1603,9 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                   Expanded(
                     child: Text(
                       dialogContext.l10n.channels_shareQrWarning,
-                      style: Theme.of(dialogContext).textTheme.bodySmall
-                          ?.copyWith(color: scheme.tertiary),
+                      style: Theme.of(
+                        dialogContext,
+                      ).textTheme.bodySmall?.copyWith(color: scheme.tertiary),
                     ),
                   ),
                 ],

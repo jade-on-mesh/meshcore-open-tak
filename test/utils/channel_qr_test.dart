@@ -13,8 +13,10 @@ void main() {
   });
 
   test('accepts spaced hex when building', () {
-    expect(channelShareLink('a', '0123 4567 89ab cdef 0123 4567 89ab cdef'),
-        isNotNull);
+    expect(
+      channelShareLink('a', '0123 4567 89ab cdef 0123 4567 89ab cdef'),
+      isNotNull,
+    );
   });
 
   test('rejects bad secrets and other links', () {

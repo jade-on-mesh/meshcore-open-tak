@@ -42,10 +42,7 @@ class _TeamMiniMapState extends State<TeamMiniMap> {
 
   List<LatLng> _frame(TeamService team) {
     final fix = team.fix;
-    return [
-      ...widget.points,
-      if (fix != null) LatLng(fix.lat, fix.lon),
-    ];
+    return [...widget.points, if (fix != null) LatLng(fix.lat, fix.lon)];
   }
 
   ({LatLng center, double zoom}) _fallback() {

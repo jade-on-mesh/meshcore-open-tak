@@ -56,7 +56,8 @@ class OtpChunkService {
   /// a contact DM, in plaintext UTF-8 bytes — 255 chunks (tid/idx/totCh are
   /// single bytes, matching Lua) at the per-chunk data capacity.
   static int maxChunkedPlaintextBytesForContact() {
-    final perChunk = OtpService.maxPlaintextBytesForContact() - chunkOverheadBytes;
+    final perChunk =
+        OtpService.maxPlaintextBytesForContact() - chunkOverheadBytes;
     if (perChunk <= 0) return 0;
     return perChunk * 255;
   }

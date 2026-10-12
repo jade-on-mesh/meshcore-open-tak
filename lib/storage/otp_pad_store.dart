@@ -114,7 +114,10 @@ class OtpPadStore {
   }
 
   Future<void> _save(String key, OtpPad pad) async {
-    await PrefsManager.instance.setString(key, _encode(jsonEncode(pad.toJson())));
+    await PrefsManager.instance.setString(
+      key,
+      _encode(jsonEncode(pad.toJson())),
+    );
   }
 
   /// Wraps [jsonString] in an encrypted envelope when [sessionKey] is set,
@@ -171,9 +174,12 @@ class OtpPadStore {
     if (publicKeyHex.isEmpty || key == null) return;
     final contactPrefix = '$_contactKeyPrefix${publicKeyHex}_';
     final channelPrefix = '$_channelKeyPrefix${publicKeyHex}_';
-    final keys = PrefsManager.instance.getKeys().where(
-      (k) => k.startsWith(contactPrefix) || k.startsWith(channelPrefix),
-    ).toList();
+    final keys = PrefsManager.instance
+        .getKeys()
+        .where(
+          (k) => k.startsWith(contactPrefix) || k.startsWith(channelPrefix),
+        )
+        .toList();
     for (final storageKey in keys) {
       final raw = PrefsManager.instance.getString(storageKey);
       if (raw == null || raw.isEmpty || raw.startsWith(_encPrefix)) continue;
@@ -197,9 +203,14 @@ class OtpPadStore {
   /// method here uses, because a panic wipe should err on the side of
   /// destroying too much rather than leaving some pad behind.
   Future<void> wipeAllPads() async {
-    final keys = PrefsManager.instance.getKeys().where(
-      (k) => k.startsWith(_contactKeyPrefix) || k.startsWith(_channelKeyPrefix),
-    ).toList();
+    final keys = PrefsManager.instance
+        .getKeys()
+        .where(
+          (k) =>
+              k.startsWith(_contactKeyPrefix) ||
+              k.startsWith(_channelKeyPrefix),
+        )
+        .toList();
     for (final storageKey in keys) {
       await PrefsManager.instance.remove(storageKey);
     }

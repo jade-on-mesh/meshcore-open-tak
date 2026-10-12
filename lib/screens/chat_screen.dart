@@ -466,10 +466,7 @@ class _ChatScreenState extends State<ChatScreen> {
       color: scheme.surface,
       padding: const EdgeInsets.fromLTRB(14, 3, 14, 3),
       alignment: Alignment.centerLeft,
-      child: Text(
-        label,
-        style: TextStyle(fontSize: 11, color: color),
-      ),
+      child: Text(label, style: TextStyle(fontSize: 11, color: color)),
     );
   }
 
@@ -659,7 +656,9 @@ class _ChatScreenState extends State<ChatScreen> {
     // OTP chunk-send pipeline (see the note at the top of this file), which
     // has nothing to encrypt with otherwise.
     final showImageAction =
-        otpEnabled && !_sendingOtpImage && connector.canSendOtpImageToContact(contactKeyHex);
+        otpEnabled &&
+        !_sendingOtpImage &&
+        connector.canSendOtpImageToContact(contactKeyHex);
     return Container(
       decoration: BoxDecoration(
         color: scheme.surface,
@@ -1127,7 +1126,8 @@ class _ChatScreenState extends State<ChatScreen> {
       // OtpService.maxPlaintextBytesForContact() figure — checking
       // prepareContactOutboundText() here would be checking the wrong thing
       // (that only transforms plaintext with Smaz/Cyr2Lat).
-      final maxPlainBytes = OtpChunkService.maxChunkedPlaintextBytesForContact();
+      final maxPlainBytes =
+          OtpChunkService.maxChunkedPlaintextBytesForContact();
       if (OtpService.plaintextByteLength(outgoingText) > maxPlainBytes) {
         showDismissibleSnackBar(
           context,
@@ -2046,15 +2046,14 @@ class _MessageBubble extends StatelessWidget {
                               isOutgoing: isOutgoing,
                               fallbackTextColor: textColor,
                               strings: _receivedImageStrings(context),
-                              onOpenCodecSettings: () => Navigator.of(
-                                context,
-                              ).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => const AppSettingsScreen(
-                                    focusImageMessages: true,
+                              onOpenCodecSettings: () =>
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => const AppSettingsScreen(
+                                        focusImageMessages: true,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
                             )
                           else if (urlImagesEnabled)
                             MessageUrlImageFutureBuilder(

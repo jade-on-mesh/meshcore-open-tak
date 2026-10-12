@@ -72,14 +72,10 @@ class OtpSyncStatus {
   }) {
     return OtpSyncStatus(
       checkedAt: checkedAt ?? this.checkedAt,
-      repliedAt: repliedAt == _unset
-          ? this.repliedAt
-          : repliedAt as DateTime?,
+      repliedAt: repliedAt == _unset ? this.repliedAt : repliedAt as DateTime?,
       timedOut: timedOut ?? this.timedOut,
       inSync: inSync == _unset ? this.inSync : inSync as bool?,
-      driftBytes: driftBytes == _unset
-          ? this.driftBytes
-          : driftBytes as int?,
+      driftBytes: driftBytes == _unset ? this.driftBytes : driftBytes as int?,
       driftDirection: driftDirection == _unset
           ? this.driftDirection
           : driftDirection as String?,

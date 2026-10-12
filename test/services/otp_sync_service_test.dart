@@ -25,22 +25,16 @@ void main() {
     });
 
     test('recognizes the original v1 pipe-delimited format', () {
-      expect(
-        OtpSyncService.looksLikeSyncMessage('OTPSYNC1|2P|0|5:3'),
-        isTrue,
-      );
+      expect(OtpSyncService.looksLikeSyncMessage('OTPSYNC1|2P|0|5:3'), isTrue);
     });
 
-    test(
-      'does NOT treat z2 as a legacy sync marker - it is permanently '
-      'OtpChannelOffsetService\'s own channel-offset marker, and real '
-      'channel ciphertext legitimately starts with it',
-      () {
-        // A plausible real z2-framed channel message: offset "5" then a
-        // pipe then hex ciphertext - must NOT be swallowed as a sync-check.
-        expect(OtpSyncService.looksLikeSyncMessage('z25|a1b2c3d4'), isFalse);
-      },
-    );
+    test('does NOT treat z2 as a legacy sync marker - it is permanently '
+        'OtpChannelOffsetService\'s own channel-offset marker, and real '
+        'channel ciphertext legitimately starts with it', () {
+      // A plausible real z2-framed channel message: offset "5" then a
+      // pipe then hex ciphertext - must NOT be swallowed as a sync-check.
+      expect(OtpSyncService.looksLikeSyncMessage('z25|a1b2c3d4'), isFalse);
+    });
 
     test('ordinary chat text and ciphertext are never flagged', () {
       expect(OtpSyncService.looksLikeSyncMessage('hello there'), isFalse);

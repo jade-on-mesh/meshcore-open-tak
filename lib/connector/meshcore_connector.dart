@@ -487,10 +487,12 @@ class MeshCoreConnector extends ChangeNotifier {
   // knowable before an unseen competing message actually arrives) — see
   // the Lua-side constant of the same name for the full reasoning.
   Duration _channelJitterDelay() {
-    final spanMs = _channelJitterMax.inMilliseconds - _channelJitterMin.inMilliseconds;
+    final spanMs =
+        _channelJitterMax.inMilliseconds - _channelJitterMin.inMilliseconds;
     return _channelJitterMin +
         Duration(milliseconds: _channelJitterRandom.nextInt(spanMs + 1));
   }
+
   // Inbound reassembly state, keyed by (contact-or-channel, tid) — unlike
   // Lua's single global `imt`, this app can have multiple contacts (and a
   // channel) each with their own in-flight inbound transfer concurrently.
@@ -1168,9 +1170,7 @@ class MeshCoreConnector extends ChangeNotifier {
   /// channel from being named "Public" too). False if [channelIndex]
   /// isn't a currently known channel at all.
   bool _isPublicChannel(int channelIndex) {
-    return _channels.any(
-      (c) => c.index == channelIndex && c.isPublicChannel,
-    );
+    return _channels.any((c) => c.index == channelIndex && c.isPublicChannel);
   }
 
   /// Returns null unconditionally for the Public channel, regardless of
@@ -1185,9 +1185,7 @@ class MeshCoreConnector extends ChangeNotifier {
   OtpPad? getChannelOtpPad(int channelIndex) {
     if (_isPublicChannel(channelIndex)) return null;
     if (!_channelOtpPads.containsKey(channelIndex)) {
-      _channelOtpPads[channelIndex] = _otpPadStore.loadChannelPad(
-        channelIndex,
-      );
+      _channelOtpPads[channelIndex] = _otpPadStore.loadChannelPad(channelIndex);
     }
     return _channelOtpPads[channelIndex];
   }
@@ -1545,9 +1543,7 @@ class MeshCoreConnector extends ChangeNotifier {
     _armOtpSyncTimeout('c:$contactKeyHex', () {
       final status = _contactOtpSyncStatus[contactKeyHex];
       if (status != null && status.isPending) {
-        _contactOtpSyncStatus[contactKeyHex] = status.copyWith(
-          timedOut: true,
-        );
+        _contactOtpSyncStatus[contactKeyHex] = status.copyWith(timedOut: true);
         notifyListeners();
       }
     });
@@ -1703,9 +1699,7 @@ class MeshCoreConnector extends ChangeNotifier {
               (cur) => cur.copyWith(status: ChannelMessageStatus.pending),
             );
             Timer(
-              Duration(
-                milliseconds: 2000 + _channelJitterRandom.nextInt(4000),
-              ),
+              Duration(milliseconds: 2000 + _channelJitterRandom.nextInt(4000)),
               () {
                 final list = _channelMessages[channelIndex];
                 if (list != null) {
@@ -1756,9 +1750,7 @@ class MeshCoreConnector extends ChangeNotifier {
     // handle_sync_message spot.
     _flushWaitingQueue(contact.publicKeyHex);
     final pad = getContactOtpPad(contact.publicKeyHex);
-    if (pad != null &&
-        !pad.isSharedSequential &&
-        !payload.isSharedSequential) {
+    if (pad != null && !pad.isSharedSequential && !payload.isSharedSequential) {
       // Explicit role-verification handshake (wire v3, "z3"): each side now
       // states its own resolved role directly on the wire, so a same-role
       // collision (both devices independently resolving to "A", say) can
@@ -2203,9 +2195,7 @@ class MeshCoreConnector extends ChangeNotifier {
   // range.
   void _startWaitingQueueTicker() {
     _waitingQueueTickTimer?.cancel();
-    _waitingQueueTickTimer = Timer.periodic(_waitingQueueTickInterval, (
-      timer,
-    ) {
+    _waitingQueueTickTimer = Timer.periodic(_waitingQueueTickInterval, (timer) {
       if (!isConnected) {
         timer.cancel();
         return;
@@ -2246,8 +2236,7 @@ class MeshCoreConnector extends ChangeNotifier {
     if (channelIndex != null &&
         !_channelSyncBackoff.contains(channelIndex) &&
         !_pendingChannelChunkSends.containsKey(channelIndex) &&
-        (_channelChunkReassembly[channelIndex]?.isNotEmpty ?? false) ==
-            false &&
+        (_channelChunkReassembly[channelIndex]?.isNotEmpty ?? false) == false &&
         getChannelOtpPad(channelIndex)?.enabled == true) {
       checkChannelPadSync(channelIndex);
       _armSyncBackoffTimer(
@@ -2467,7 +2456,8 @@ class MeshCoreConnector extends ChangeNotifier {
     }
     // DMs carry framed ciphertext only (an ack is 10 bytes, a part at least
     // 13), as bare hex: nothing shorter, nothing with other text around it.
-    final hex = OtpService.looksLikeCiphertextHex(rawText) &&
+    final hex =
+        OtpService.looksLikeCiphertextHex(rawText) &&
             rawText.length >= OtpService.minFramedDmHexChars
         ? rawText
         : null;
@@ -2768,7 +2758,9 @@ class MeshCoreConnector extends ChangeNotifier {
     // non-final chunk.
     final imagePayload = OtpImageTransport.parse(joined);
     if (imagePayload != null) {
-      unawaited(_completeIncomingContactImage(contact, imagePayload, frame.tid));
+      unawaited(
+        _completeIncomingContactImage(contact, imagePayload, frame.tid),
+      );
       return null;
     }
 
@@ -2965,14 +2957,18 @@ class MeshCoreConnector extends ChangeNotifier {
     String? translationModelId,
   }) async {
     final capacity =
-        OtpService.maxPlaintextBytesForContact() - OtpChunkService.chunkOverheadBytes;
+        OtpService.maxPlaintextBytesForContact() -
+        OtpChunkService.chunkOverheadBytes;
     if (capacity <= 0) {
       appLogger.warn(
         'sendMessage: no room for chunk framing overhead on this contact',
       );
       return;
     }
-    final dataChunks = OtpChunkService.splitPlaintextBytes(plainBytes, capacity);
+    final dataChunks = OtpChunkService.splitPlaintextBytes(
+      plainBytes,
+      capacity,
+    );
     if (dataChunks.length > 255) {
       appLogger.warn(
         'sendMessage: message too long even for chunking '
@@ -2981,12 +2977,15 @@ class MeshCoreConnector extends ChangeNotifier {
       return;
     }
 
-    final message = Message.outgoing(contact.publicKey, plaintext,
-        originalText: originalText,
-        translatedLanguageCode: translatedLanguageCode,
-        translationModelId: translationModelId,
-        chunkIndex: 0,
-        chunkTotal: dataChunks.length);
+    final message = Message.outgoing(
+      contact.publicKey,
+      plaintext,
+      originalText: originalText,
+      translatedLanguageCode: translatedLanguageCode,
+      translationModelId: translationModelId,
+      chunkIndex: 0,
+      chunkTotal: dataChunks.length,
+    );
     _addMessage(contact.publicKeyHex, message);
     notifyListeners();
 
@@ -3061,12 +3060,18 @@ class MeshCoreConnector extends ChangeNotifier {
     required Uint8List previewPng,
   }) async {
     final capacity =
-        OtpService.maxPlaintextBytesForContact() - OtpChunkService.chunkOverheadBytes;
+        OtpService.maxPlaintextBytesForContact() -
+        OtpChunkService.chunkOverheadBytes;
     if (capacity <= 0) {
-      appLogger.warn('sendOtpImage: no room for chunk framing overhead on this contact');
+      appLogger.warn(
+        'sendOtpImage: no room for chunk framing overhead on this contact',
+      );
       return false;
     }
-    final dataChunks = OtpChunkService.splitPlaintextBytes(plainBytes, capacity);
+    final dataChunks = OtpChunkService.splitPlaintextBytes(
+      plainBytes,
+      capacity,
+    );
     if (dataChunks.length > 255) {
       appLogger.warn(
         'sendOtpImage: image too large even for chunking '
@@ -3147,7 +3152,10 @@ class MeshCoreConnector extends ChangeNotifier {
       );
       try {
         final consumption = _consumePadForSend(pad, frame.length);
-        final cipherBytes = OtpService.encryptBytes(frame, consumption.keyBytes);
+        final cipherBytes = OtpService.encryptBytes(
+          frame,
+          consumption.keyBytes,
+        );
         _contactOtpPads[state.contact.publicKeyHex] = consumption.updated;
         await _otpPadStore.saveContactPad(
           state.contact.publicKeyHex,
@@ -3177,7 +3185,8 @@ class MeshCoreConnector extends ChangeNotifier {
     _updateStoredContactMessage(
       state.contact.publicKeyHex,
       state.localMessageId,
-      (m) => m.copyWith(chunkIndex: state.sctr, chunkTotal: state.chunks.length),
+      (m) =>
+          m.copyWith(chunkIndex: state.sctr, chunkTotal: state.chunks.length),
     );
     await _transmitContactChunkCipher(state.contact, state.currentCipherHex!);
     state.lastAttemptAt = DateTime.now();
@@ -3275,7 +3284,10 @@ class MeshCoreConnector extends ChangeNotifier {
       );
       try {
         final consumption = _consumePadForSend(pad, frame.length);
-        final cipherBytes = OtpService.encryptBytes(frame, consumption.keyBytes);
+        final cipherBytes = OtpService.encryptBytes(
+          frame,
+          consumption.keyBytes,
+        );
         _channelOtpPads[state.channel.index] = consumption.updated;
         await _otpPadStore.saveChannelPad(
           state.channel.index,
@@ -3307,7 +3319,8 @@ class MeshCoreConnector extends ChangeNotifier {
     _updateStoredChannelMessage(
       state.channel.index,
       state.localMessageId,
-      (m) => m.copyWith(chunkIndex: state.sctr, chunkTotal: state.chunks.length),
+      (m) =>
+          m.copyWith(chunkIndex: state.sctr, chunkTotal: state.chunks.length),
     );
     await _transmitChannelChunkCipher(state.channel, state.currentCipherHex!);
     state.lastAttemptAt = DateTime.now();
@@ -3404,7 +3417,9 @@ class MeshCoreConnector extends ChangeNotifier {
       state.channel.index,
       state.localMessageId,
       (m) => m.copyWith(
-        status: success ? ChannelMessageStatus.sent : ChannelMessageStatus.failed,
+        status: success
+            ? ChannelMessageStatus.sent
+            : ChannelMessageStatus.failed,
       ),
     );
     if (success) {
@@ -10391,7 +10406,8 @@ class MeshCoreConnector extends ChangeNotifier {
     // actually wrong. There's no legitimate reason two different senders on
     // the same OTP channel would share our exact self-name, so this can't
     // drop someone else's real message.
-    if (channelIndex != null && getChannelOtpPad(channelIndex)?.enabled == true) {
+    if (channelIndex != null &&
+        getChannelOtpPad(channelIndex)?.enabled == true) {
       return true;
     }
 
@@ -11395,4 +11411,3 @@ class _OtpChannelChunkSend extends _OtpChunkSend {
     required super.localMessageId,
   });
 }
-

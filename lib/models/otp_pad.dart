@@ -178,9 +178,8 @@ class OtpPad {
   int get myBytesRemaining => _combinedRemaining;
   int get theirBytesRemaining => _combinedRemaining;
 
-  double get myUsageFraction => totalBytes == 0
-      ? 1.0
-      : (_myOffsetEffective / totalBytes).clamp(0.0, 1.0);
+  double get myUsageFraction =>
+      totalBytes == 0 ? 1.0 : (_myOffsetEffective / totalBytes).clamp(0.0, 1.0);
   double get theirUsageFraction => totalBytes == 0
       ? 1.0
       : (_theirOffsetEffective / totalBytes).clamp(0.0, 1.0);
@@ -208,8 +207,7 @@ class OtpPad {
   }
 
   /// Role A's own sends grow forward from byte 0 (true only for B).
-  bool get _myGrowsBackFromEnd =>
-      !isSharedSequential && role == OtpPadRole.b;
+  bool get _myGrowsBackFromEnd => !isSharedSequential && role == OtpPadRole.b;
 
   /// The next unused slice of THIS device's own sending stream, [length]
   /// bytes long ([OtpPadMode.twoPartyHalfSplit] only). Does not mutate

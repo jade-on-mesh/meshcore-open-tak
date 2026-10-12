@@ -123,12 +123,11 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     _textFieldFocusNode.addListener(_onTextFieldFocusChange);
     _scrollController.onScrollNearTop = _loadOlderMessages;
     _scrollController.showJumpToBottom.addListener(_clearDividerAtBottom);
-    _participantStripPruneTimer = Timer.periodic(
-      const Duration(seconds: 30),
-      (_) {
-        if (mounted) setState(() {});
-      },
-    );
+    _participantStripPruneTimer = Timer.periodic(const Duration(seconds: 30), (
+      _,
+    ) {
+      if (mounted) setState(() {});
+    });
     SchedulerBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final connector = context.read<MeshCoreConnector>();
@@ -529,12 +528,14 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                   .settings
                   .channelParticipantStripEnabled;
               return IconButton(
-                tooltip: shown ? 'Hide participant sync strip' : 'Show participant sync strip',
+                tooltip: shown
+                    ? 'Hide participant sync strip'
+                    : 'Show participant sync strip',
                 icon: Icon(shown ? Icons.people : Icons.people_outline),
                 onPressed: () {
-                  context.read<AppSettingsService>().setChannelParticipantStripEnabled(
-                    !shown,
-                  );
+                  context
+                      .read<AppSettingsService>()
+                      .setChannelParticipantStripEnabled(!shown);
                 },
               );
             },
@@ -798,10 +799,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       color: scheme.surface,
       padding: const EdgeInsets.fromLTRB(14, 3, 14, 3),
       alignment: Alignment.centerLeft,
-      child: Text(
-        label,
-        style: TextStyle(fontSize: 11, color: color),
-      ),
+      child: Text(label, style: TextStyle(fontSize: 11, color: color)),
     );
   }
 
@@ -809,7 +807,11 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   // ChatScreen's _otpComposeCounterText — see the note there. No chunking
   // ever applies to a channel send (OTP chunking is DM-only), so [max] here
   // is already the single-packet cap and there's no "(N chunks)" suffix.
-  String _otpComposeCounterText(MeshCoreConnector connector, int used, int max) {
+  String _otpComposeCounterText(
+    MeshCoreConnector connector,
+    int used,
+    int max,
+  ) {
     final pad = connector.getChannelOtpPad(widget.channel.index);
     final avail = pad?.myBytesRemaining ?? 0;
     final headroom = (max - used).clamp(0, max);
@@ -912,8 +914,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         otpColors?.outline ??
         (isOutgoing ? MeshPalette.meBorder : scheme.outlineVariant);
     final textColor =
-        otpColors?.text ??
-        (isOutgoing ? MeshPalette.meInk : scheme.onSurface);
+        otpColors?.text ?? (isOutgoing ? MeshPalette.meInk : scheme.onSurface);
     final metaColor = textColor.withValues(alpha: 0.65);
     const bodyFontSize = 14.0;
 
@@ -1980,10 +1981,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     final otpColors = otpTheme == null
         ? null
         : (isOutgoing
-              ? otpOutgoingBubbleColors(
-                  theme: otpTheme,
-                  textMode: otpTextMode,
-                )
+              ? otpOutgoingBubbleColors(theme: otpTheme, textMode: otpTextMode)
               : otpReceivedBubbleColors(
                   theme: otpTheme,
                   textMode: otpTextMode,
@@ -1993,8 +1991,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                       entry.state == ReceivedImageState.failedCorrupt,
                 ));
     final textColor =
-        otpColors?.text ??
-        (isOutgoing ? MeshPalette.meInk : scheme.onSurface);
+        otpColors?.text ?? (isOutgoing ? MeshPalette.meInk : scheme.onSurface);
     final metaColor = textColor.withValues(alpha: 0.65);
 
     final bubble = Padding(

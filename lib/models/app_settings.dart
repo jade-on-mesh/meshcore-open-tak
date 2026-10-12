@@ -381,8 +381,17 @@ class AppSettings {
       enableMessageTracing: json['enable_message_tracing'] as bool? ?? false,
       otpThemeIndex: (json['otp_theme_schema'] as int? ?? 1) >= 2
           ? (json['otp_theme_index'] as int? ?? 0)
-          : const [0, 1, 2, 3, 0, 4, 0, 5, 0][
-              ((json['otp_theme_index'] as int? ?? 0)).clamp(0, 8)],
+          : const [
+              0,
+              1,
+              2,
+              3,
+              0,
+              4,
+              0,
+              5,
+              0,
+            ][((json['otp_theme_index'] as int? ?? 0)).clamp(0, 8)],
       otpTextMode: json['otp_text_mode'] as int? ?? 0,
       mapCacheBounds: (json['map_cache_bounds'] as Map?)?.map(
         (key, value) => MapEntry(key.toString(), (value as num).toDouble()),

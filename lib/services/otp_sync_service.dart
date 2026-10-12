@@ -132,7 +132,8 @@ class OtpSyncService {
     required int myOffset,
     required int theirOffset,
     required OtpPadRole role,
-  }) => '$marker'
+  }) =>
+      '$marker'
       '${isReply ? 'P' : 'p'}'
       '${role.label}'
       '${myOffset.toRadixString(36)}:${theirOffset.toRadixString(36)}';

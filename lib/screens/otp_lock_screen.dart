@@ -96,9 +96,9 @@ class _OtpLockScreenState extends State<OtpLockScreen> {
                 'There is no "forgot passphrase" recovery — if you lose it, '
                 'the only way back in is the panic wipe, which destroys '
                 'every pad along with the lock.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: MeshPalette.warn,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: MeshPalette.warn),
               ),
             ],
           ),
@@ -117,7 +117,9 @@ class _OtpLockScreenState extends State<OtpLockScreen> {
                   ),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                      _obscure
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
                     ),
                     onPressed: () => setState(() => _obscure = !_obscure),
                   ),
@@ -194,9 +196,9 @@ class _OtpLockScreenState extends State<OtpLockScreen> {
     _passphraseController.clear();
     _confirmController.clear();
     setState(() => _busy = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('OTP protection enabled')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('OTP protection enabled')));
   }
 
   // ── Locked ───────────────────────────────────────────────────────────
@@ -251,7 +253,9 @@ class _OtpLockScreenState extends State<OtpLockScreen> {
                   errorText: _error,
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                      _obscure
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
                     ),
                     onPressed: () => setState(() => _obscure = !_obscure),
                   ),
@@ -317,9 +321,9 @@ class _OtpLockScreenState extends State<OtpLockScreen> {
               Expanded(
                 child: Text(
                   'Protection is on and unlocked',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
             ],

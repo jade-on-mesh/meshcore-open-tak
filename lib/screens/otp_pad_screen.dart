@@ -136,13 +136,11 @@ class _OtpPadScreenState extends State<OtpPadScreen> {
               icon: Icon(
                 !connector.otpProtectionEnabled
                     ? Icons.shield_outlined
-                    : (connector.otpLocked
-                          ? Icons.lock
-                          : Icons.lock_open),
+                    : (connector.otpLocked ? Icons.lock : Icons.lock_open),
               ),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const OtpLockScreen()),
-              ),
+              onPressed: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const OtpLockScreen())),
             ),
           ),
         ],
@@ -172,7 +170,11 @@ class _OtpPadScreenState extends State<OtpPadScreen> {
                 _buildManageCard(context, connector, pad),
               ] else ...[
                 const SectionHeader('Set up encryption'),
-                _buildSetupCard(context, connector, _autoResolvedRole(connector)),
+                _buildSetupCard(
+                  context,
+                  connector,
+                  _autoResolvedRole(connector),
+                ),
               ],
             ],
           );
@@ -221,9 +223,9 @@ class _OtpPadScreenState extends State<OtpPadScreen> {
                 'would just see the ciphertext, or nothing, while you got '
                 'a false sense of privacy. Use a private channel or a DM '
                 'if you want OTP encryption.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
             ],
           ),
@@ -530,9 +532,9 @@ class _OtpPadScreenState extends State<OtpPadScreen> {
             ),
             Text(
               '$remainingBytes B left · ~$approxMessages msgs',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ],
         ),
@@ -670,7 +672,8 @@ class _OtpPadScreenState extends State<OtpPadScreen> {
     } else if (status.timedOut) {
       color = MeshPalette.warn;
       icon = Icons.help_outline;
-      text = 'No reply — unknown (they may not support sync-check, or are offline)';
+      text =
+          'No reply — unknown (they may not support sync-check, or are offline)';
     } else {
       color = MeshPalette.warn;
       icon = Icons.hourglass_top;
@@ -881,9 +884,9 @@ class _OtpPadScreenState extends State<OtpPadScreen> {
               children: [
                 Text(
                   'Shared group pad',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -1034,9 +1037,9 @@ class _OtpPadScreenState extends State<OtpPadScreen> {
                 'Uses this device\'s secure random generator. Generate on '
                 'one device, then have the other person scan or paste the '
                 'exact same pad from here — never generate it twice.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
               const SizedBox(height: 12),
               Row(
@@ -1103,7 +1106,9 @@ class _OtpPadScreenState extends State<OtpPadScreen> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: _busy ? null : () => _importPad(connector, autoRole),
+                  onPressed: _busy
+                      ? null
+                      : () => _importPad(connector, autoRole),
                   icon: _busy
                       ? const SizedBox(
                           width: 16,
@@ -1147,10 +1152,11 @@ class _OtpPadScreenState extends State<OtpPadScreen> {
 
   void _generatePad() {
     final random = Random.secure();
-    final bytes = List<int>.generate(_generateBytes, (_) => random.nextInt(256));
-    final hex = bytes
-        .map((b) => b.toRadixString(16).padLeft(2, '0'))
-        .join();
+    final bytes = List<int>.generate(
+      _generateBytes,
+      (_) => random.nextInt(256),
+    );
+    final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
     setState(() {
       _pasteController.text = hex;
       _formError = null;
@@ -1391,7 +1397,8 @@ class _OtpPadQrScanScreen extends StatelessWidget {
             ),
           );
         },
-        instructions: 'Point the camera at the pad QR shown on the other device',
+        instructions:
+            'Point the camera at the pad QR shown on the other device',
       ),
     );
   }
