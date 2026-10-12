@@ -61,6 +61,19 @@ class RetryServiceConfig {
   )?
   selectRetryPath;
 
+  /// Called once, right when a message would otherwise be given up on
+  /// (retry budget exhausted). Lets the connector claim the message for
+  /// something other than an outright failure - OTP store-and-forward
+  /// hands an exhausted single-shot OTP send to a per-contact waiting
+  /// queue instead of failing it (see MeshCoreConnector._waitingQueue),
+  /// mirroring OTP_3_RC1.lua's ssend_tick -> waiting_enqueue. Return true
+  /// to mean "I took ownership - don't mark this failed", false/null to
+  /// fall through to the normal failed-message handling. The callback is
+  /// responsible for updating the message's own status/store itself
+  /// (e.g. via MeshCoreConnector.updateMessage) before returning true;
+  /// this service only skips its own failed-marking in that case.
+  final bool Function(Message message, Contact contact)? onMaxRetriesExceeded;
+
   const RetryServiceConfig({
     required this.sendMessage,
     required this.addMessage,
@@ -75,6 +88,7 @@ class RetryServiceConfig {
     this.recordPathResult,
     this.onDeliveryObserved,
     this.selectRetryPath,
+    this.onMaxRetriesExceeded,
   });
 }
 
@@ -153,6 +167,7 @@ class MessageRetryService extends ChangeNotifier {
     String? originalText,
     String? translatedLanguageCode,
     String? translationModelId,
+    String? otpPlaintext,
     Uint8List? pathBytes,
     int? pathLength,
   }) async {
@@ -164,10 +179,15 @@ class MessageRetryService extends ChangeNotifier {
         pathLength ?? (resolved.useFlood ? -1 : resolved.hopCount);
     final message = Message(
       senderKey: contact.publicKey,
+      // `text` is the stable OTP1|<hex> ciphertext when OTP is active for
+      // this contact — it must never change across retries (see the note
+      // in meshcore_connector.dart's sendMessage). `otpPlaintext` carries
+      // what the sender actually typed, purely for their own sent bubble.
       text: text,
       originalText: originalText,
       translatedLanguageCode: translatedLanguageCode,
       translationModelId: translationModelId,
+      otpPlaintext: otpPlaintext,
       timestamp: DateTime.now(),
       isOutgoing: true,
       status: MessageStatus.pending,
@@ -597,9 +617,19 @@ class MessageRetryService extends ChangeNotifier {
         }
       });
     } else {
-      // Max retries reached - mark as failed
-      final failedMessage = message.copyWith(status: MessageStatus.failed);
-      _pendingMessages[messageId] = failedMessage;
+      // Max retries reached - give the connector first refusal (OTP
+      // store-and-forward claims an exhausted OTP single-shot send here
+      // instead of letting it fail outright - see onMaxRetriesExceeded's
+      // own doc comment). If it declines (or there's no config), fall
+      // through to the normal failed-message handling exactly as before.
+      final claimed =
+          config?.onMaxRetriesExceeded?.call(message, contact) ?? false;
+
+      if (!claimed) {
+        final failedMessage = message.copyWith(status: MessageStatus.failed);
+        _pendingMessages[messageId] = failedMessage;
+        config?.updateMessage(failedMessage);
+      }
 
       if (config?.appSettingsService?.settings.clearPathOnMaxRetry == true &&
           config?.clearContactPath != null) {
@@ -613,8 +643,6 @@ class MessageRetryService extends ChangeNotifier {
         false,
         null,
       );
-
-      config?.updateMessage(failedMessage);
 
       notifyListeners();
 

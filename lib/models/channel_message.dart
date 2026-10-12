@@ -53,6 +53,15 @@ class ChannelMessage {
   final String? replyToText;
   final Map<String, List<String?>> reactions;
 
+  // OTP: mirrors Message.otpPlaintext — see that field's doc comment.
+  final String? otpPlaintext;
+
+  // OTP: mirrors Message.chunkIndex/chunkTotal — see that field's doc
+  // comment. Set while this outgoing message is an in-flight multi-part
+  // chunked send on a channel (_OtpChannelChunkSend).
+  final int? chunkIndex;
+  final int? chunkTotal;
+
   ChannelMessage({
     this.senderKey,
     required this.senderName,
@@ -62,6 +71,7 @@ class ChannelMessage {
     this.translatedLanguageCode,
     this.translationStatus = MessageTranslationStatus.none,
     this.translationModelId,
+    this.otpPlaintext,
     required this.timestamp,
     required this.isOutgoing,
     this.status = ChannelMessageStatus.pending,
@@ -79,6 +89,8 @@ class ChannelMessage {
     this.replyToSenderName,
     this.replyToText,
     Map<String, List<String?>>? reactions,
+    this.chunkIndex,
+    this.chunkTotal,
   }) : messageId =
            messageId ??
            '${timestamp.millisecondsSinceEpoch}_${senderName.hashCode}_${text.hashCode}',
@@ -92,7 +104,17 @@ class ChannelMessage {
   String? get senderKeyHex =>
       senderKey != null ? pubKeyToHex(senderKey!) : null;
 
+  /// See Message.displayText — same reasoning, channel-side.
+  String get displayText => otpPlaintext ?? text;
+
   ChannelMessage copyWith({
+    // Two call sites: replacing ciphertext with plaintext after an OTP
+    // decrypt (incoming), and filling in the real ciphertext on an
+    // outgoing message that was shown as a bubble before it was actually
+    // encrypted (see the channel-send jitter delay in
+    // meshcore_connector.dart's sendChannelMessage) — every other call
+    // site leaves this null and keeps `text`.
+    String? text,
     ChannelMessageStatus? status,
     List<Repeat>? repeats,
     int? repeatCount,
@@ -110,12 +132,15 @@ class ChannelMessage {
     Object? translatedLanguageCode = _unset,
     MessageTranslationStatus? translationStatus,
     Object? translationModelId = _unset,
+    Object? otpPlaintext = _unset,
     Map<String, List<String?>>? reactions,
+    int? chunkIndex,
+    int? chunkTotal,
   }) {
     return ChannelMessage(
       senderKey: senderKey,
       senderName: senderName,
-      text: text,
+      text: text ?? this.text,
       originalText: originalText == _unset
           ? this.originalText
           : originalText as String?,
@@ -129,6 +154,9 @@ class ChannelMessage {
       translationModelId: translationModelId == _unset
           ? this.translationModelId
           : translationModelId as String?,
+      otpPlaintext: otpPlaintext == _unset
+          ? this.otpPlaintext
+          : otpPlaintext as String?,
       timestamp: timestamp,
       isOutgoing: isOutgoing,
       status: status ?? this.status,
@@ -146,6 +174,8 @@ class ChannelMessage {
       replyToSenderName: replyToSenderName ?? this.replyToSenderName,
       replyToText: replyToText ?? this.replyToText,
       reactions: reactions ?? this.reactions,
+      chunkIndex: chunkIndex ?? this.chunkIndex,
+      chunkTotal: chunkTotal ?? this.chunkTotal,
     );
   }
 
@@ -248,6 +278,16 @@ class ChannelMessage {
     String? translationModelId,
     String? region,
     ChannelMessage? replyTo,
+    String? otpPlaintext,
+    int? chunkIndex,
+    int? chunkTotal,
+    // Explicit id for a message created BEFORE its final `text` is known
+    // (see OtpChannelJitterService's use of this) - the default id below
+    // is derived from `text`, which would silently give this message a
+    // different id once `text` is later filled in with real ciphertext,
+    // orphaning any queue entry or later copyWith lookup keyed on the
+    // original id.
+    String? messageId,
   }) {
     return ChannelMessage(
       senderKey: null,
@@ -259,6 +299,7 @@ class ChannelMessage {
       replyToMessageId: replyTo?.messageId,
       replyToSenderName: replyTo?.senderName,
       replyToText: replyTo?.text,
+      otpPlaintext: otpPlaintext,
       timestamp: DateTime.now(),
       isOutgoing: true,
       status: ChannelMessageStatus.pending,
@@ -267,6 +308,9 @@ class ChannelMessage {
       pathVariants: const [],
       channelIndex: channelIndex,
       region: region,
+      messageId: messageId,
+      chunkIndex: chunkIndex,
+      chunkTotal: chunkTotal,
     );
   }
 

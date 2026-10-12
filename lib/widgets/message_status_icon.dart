@@ -21,6 +21,10 @@ class MessageStatusIcon extends StatefulWidget {
   /// Set when resending gave up before the message was heard through the
   /// required number of repeaters.
   final ({int hops, int required})? hopShortfall;
+
+  /// OTP store-and-forward: the message used up its normal retries and is
+  /// queued until the contact is heard from again (MessageStatus.waiting).
+  final bool isWaiting;
   final double size;
 
   /// Base tint for the sent/sending state. On a colored (outgoing) bubble a
@@ -37,6 +41,7 @@ class MessageStatusIcon extends StatefulWidget {
     this.repeatCount = 0,
     this.resendProgress,
     this.hopShortfall,
+    this.isWaiting = false,
     this.size = 16,
     this.onColor,
   });
@@ -92,6 +97,9 @@ class _MessageStatusIconState extends State<MessageStatusIcon>
           ? l10n.messageStatus_failedChannel
           : l10n.messageStatus_failed;
       icon = Icon(Icons.cancel, size: size, color: colorScheme.error);
+    } else if (widget.isWaiting) {
+      label = 'Waiting to send';
+      icon = Icon(Icons.hourglass_bottom, size: size, color: confirmedColor);
     } else if (widget.isPending) {
       label = l10n.messageStatus_pending;
       icon = _SendingDots(

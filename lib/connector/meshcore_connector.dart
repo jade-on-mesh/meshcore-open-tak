@@ -14,12 +14,21 @@ import '../models/channel_message.dart';
 import '../models/companion_radio_stats.dart';
 import '../models/contact.dart';
 import '../models/message.dart';
+import '../models/otp_pad.dart';
+import '../models/otp_sync_status.dart';
 import '../models/path_selection.dart';
 import '../models/translation_support.dart';
 import '../helpers/reaction_helper.dart';
 import '../helpers/cyr2lat.dart';
 import '../helpers/smaz.dart';
+import '../storage/otp_pad_store.dart';
+import '../storage/passphrase_lock_store.dart';
 import '../services/app_debug_log_service.dart';
+import '../services/otp_service.dart';
+import '../services/otp_chunk_service.dart';
+import '../services/otp_channel_offset_service.dart';
+import '../services/otp_sync_service.dart';
+import '../services/passphrase_lock_service.dart';
 import '../services/ble_debug_log_service.dart';
 import '../services/linux_ble_error_classifier.dart';
 import '../services/linux_ble_pairing_service_stub.dart'
@@ -27,13 +36,23 @@ import '../services/linux_ble_pairing_service_stub.dart'
 import '../services/image_chunk_transport.dart'
     show
         ImageChunkOutcome,
+        ImageChunkStatus,
         ImageChunkTransport,
+        ImageReassemblyResult,
+        ImageStreamKey,
+        ImageStreamMetadata,
         buildSendChannelDataFrame,
         dataTypeAeicImage,
         outPathUnknown,
         respCodeChannelDataRecv,
         senderPrefixFromKey;
 import '../services/image_codec_service.dart';
+import '../services/otp_image_transport.dart';
+import '../services/received_image_store.dart'
+    show ReceivedImageEntry, ReceivedImageRef, ReceivedImageStore;
+import '../widgets/image_send_codec_binding.dart'
+    show ImageCodecRatePoint, kImageCodecSquareSize;
+import '../models/image_codec_support.dart' show aeicRatePointForUi;
 import '../services/message_retry_service.dart';
 import '../services/path_history_service.dart';
 import '../services/app_settings_service.dart';
@@ -60,6 +79,11 @@ import '../utils/platform_info.dart';
 import 'meshcore_uuids.dart';
 import 'meshcore_protocol.dart';
 import 'pending_command_replies.dart';
+
+/// Result of trying to OTP-decrypt+dispatch one incoming message — see the
+/// "OTP receive dispatch" section of [MeshCoreConnector] for what each
+/// combination means.
+typedef _OtpDispatchResult = ({bool handled, String? displayText});
 
 class DirectRepeater {
   static const int maxAgeMinutes = 30; // Max age for direct repeater info
@@ -283,6 +307,22 @@ class MeshCoreConnector extends ChangeNotifier {
   ImageChunkTransport? _imageTransport;
   void Function(ImageChunkOutcome outcome)? _onImageChunk;
   void Function(int senderPrefix)? _onImageSenderPrefix;
+  // OTP-encrypted DM image transfer (see otp_image_transport.dart) reuses
+  // this same store for its receive-side state/decode-queue/eviction —
+  // injected here exactly like _imageCodecService/_imageTransport above,
+  // rather than duplicating any of that machinery for the DM path.
+  ReceivedImageStore? _receivedImageStore;
+
+  /// Arbitrary, fixed `senderPrefix` values used only to keep
+  /// [ReceivedImageStore]'s `(senderPrefix, imgId, channelIndex)` key space
+  /// from colliding an incoming OTP DM image with an outgoing one that
+  /// happens to reuse the same chunk-transfer id (`imgId`) on the same
+  /// contact's virtual channel index. A DM has only two parties and each
+  /// direction is always tagged consistently, so — unlike a real channel,
+  /// where senderPrefix disambiguates N different senders — these never
+  /// need to identify a real device.
+  static const int _otpDmIncomingSenderPrefix = 1;
+  static const int _otpDmOutgoingSenderPrefix = 2;
   // Intentionally global (not per-contact): tracks overall network activity.
   // Frequent RX from any source indicates a busy network with more collisions.
   DateTime _lastRxTime = DateTime.now();
@@ -395,6 +435,7 @@ class MeshCoreConnector extends ChangeNotifier {
   final ChannelSettingsStore _channelSettingsStore = ChannelSettingsStore();
   final ChannelRegionStore _channelRegionStore = ChannelRegionStore();
   final ContactSettingsStore _contactSettingsStore = ContactSettingsStore();
+  final OtpPadStore _otpPadStore = OtpPadStore();
   final ContactStore _contactStore = ContactStore();
   final ContactDiscoveryStore _discoveryContactStore = ContactDiscoveryStore();
   final ChannelStore _channelStore = ChannelStore();
@@ -406,12 +447,200 @@ class MeshCoreConnector extends ChangeNotifier {
   final Map<int, String?> _channelCyr2LatProfileId = {};
   final Map<int, Region> _channelRegions = {};
   Region _defaultRegion = '';
+  final Map<int, OtpPad?> _channelOtpPads = {};
+  // Keyed by the raw "OTP1|<hex>" ciphertext string. Channel messages can
+  // arrive via two independent paths — RESP_CODE_CHANNEL_MSG_RECV and the
+  // raw RX packet log (pushCodeLogRxData → _handleLogRxData), decoded
+  // separately from the same physical packet — and both can fire for one
+  // logical message. Since OTP ciphertext is effectively unique per message
+  // (pad-derived, never repeats), caching by ciphertext lets the second
+  // delivery reuse the first's result instead of decrypting again and
+  // silently burning a second slice of pad for something already decoded.
+  // Capped and FIFO-trimmed; this only needs to outlive brief redelivery
+  // windows, not the whole session.
+  static const int _otpDecryptCacheLimit = 64;
+  final Map<String, String> _otpDecryptCache = {};
+  final List<String> _otpDecryptCacheOrder = [];
+  // Chunked (multi-packet) OTP message state — see the "OTP chunking"
+  // section further down for the full send/receive/ack machinery.
+  //
+  // Pending outbound chunked transfers, one per contact / one per channel
+  // at a time (mirrors Lua's single in-flight `psend`).
+  final Map<String, _OtpContactChunkSend> _pendingContactChunkSends = {};
+  final Map<int, _OtpChannelChunkSend> _pendingChannelChunkSends = {};
+  // Phase 2 channel-collision mitigation (cheap jitter delay, matching
+  // OTP_3_RC1.lua's `pending_channel_send`/`channel_jitter_tick` — see
+  // that file's comment for the full tradeoff discussion vs. a full
+  // reserve/commit handshake). A channel send with OTP enabled does not
+  // capture the pad offset or encrypt at the moment the user hits send;
+  // it waits a short random delay first (`_channelJitterDelay`), so a
+  // competing message that arrives during the wait gets to advance this
+  // channel's pad offset FIRST — see `_encryptForChannel`, which always
+  // reads the pad fresh at call time. This set blocks a second send to
+  // the same channel while one is still in that delay window (mirrors
+  // the `_pendingChannelChunkSends` guard above).
+  final Set<int> _pendingChannelJitterChannels = {};
+  static const Duration _channelJitterMin = Duration(milliseconds: 600);
+  static const Duration _channelJitterMax = Duration(milliseconds: 2200);
+  final _channelJitterRandom = math.Random();
+  // Deliberately generous rather than tied to an exact hop count (not
+  // knowable before an unseen competing message actually arrives) — see
+  // the Lua-side constant of the same name for the full reasoning.
+  Duration _channelJitterDelay() {
+    final spanMs = _channelJitterMax.inMilliseconds - _channelJitterMin.inMilliseconds;
+    return _channelJitterMin +
+        Duration(milliseconds: _channelJitterRandom.nextInt(spanMs + 1));
+  }
+  // Inbound reassembly state, keyed by (contact-or-channel, tid) — unlike
+  // Lua's single global `imt`, this app can have multiple contacts (and a
+  // channel) each with their own in-flight inbound transfer concurrently.
+  final Map<String, Map<int, _OtpChunkReassembly>> _contactChunkReassembly = {};
+  final Map<int, Map<int, _OtpChunkReassembly>> _channelChunkReassembly = {};
+  // Small cache of acks already sent for a given (scope, tid, idx), so a
+  // duplicate-received chunk (redelivered before its first ack even lands)
+  // reuses the already-computed ack ciphertext instead of re-encrypting
+  // (and burning another slice of pad) for an ack that says the same thing.
+  static const int _otpAckCacheLimit = 24;
+  final Map<String, String> _otpAckCache = {};
+  final List<String> _otpAckCacheOrder = [];
+  // Remembers which already-decrypted ciphertext hexes (tracked in
+  // _otpDecryptCache above) were chunk pieces, and their (tid, idx) — so a
+  // redelivered chunk still gets its ack re-sent (the sender's own retry
+  // means the first ack may not have landed) without ever re-decrypting or
+  // re-consuming pad for it. Shares _otpDecryptCache's FIFO trimming since
+  // an entry only exists here while it also exists there.
+  final Map<String, ({int tid, int idx})> _otpChunkHexIndex = {};
+  // ── OTP passphrase lock (Feature: passphrase lock + panic wipe) ──────
+  final PassphraseLockStore _passphraseLockStore = PassphraseLockStore();
+  // Held only in memory, only for this session — never persisted (matches
+  // Lua's `session_key`). Non-null exactly when protection is enabled AND
+  // unlocked; see otpProtectionEnabled/otpLocked.
+  Uint8List? _otpSessionKey;
+  bool _otpPanicArmed = false;
+  DateTime? _otpPanicArmedAt;
+  static const Duration _otpPanicConfirmWindow = Duration(seconds: 4);
+  // ── OTP pad sync-check (Feature: pad sync-check) ──────────────────────
+  final Map<String, OtpSyncStatus> _contactOtpSyncStatus = {};
+  // channelIndex -> senderName -> status for that participant.
+  final Map<int, Map<String, OtpSyncStatus>> _channelOtpSyncStatus = {};
+  final Map<String, Timer> _otpSyncTimeoutTimers = {};
+  static const Duration _otpSyncTimeout = Duration(seconds: 20);
+  // ── OTP pad auto-resync ────────────────────────────────────────────────
+  // Every send burns pad bytes off the sender's own local copy immediately,
+  // before any confirmation the message was actually received - so a lost
+  // packet (dropped over the mesh, a chunk that times out, a device
+  // restarting mid-exchange) leaves the sender's counter ahead of the
+  // receiver's, and every message after that decrypts against the wrong
+  // slice of pad. Recovery is one-directional and safe by construction:
+  // this device's own "how much of the peer's stream have I consumed"
+  // counter (theirOffset for a DM, offset for a channel) can always be
+  // advanced FORWARD to match what the peer reports having sent, without
+  // ever reusing a pad byte - it only ever skips ahead past bytes the
+  // sender already burned. The specific message(s) that got lost are gone
+  // either way (that content was unrecoverable the moment the sender
+  // burned its own copy); resyncing just stops it from corrupting every
+  // message afterward too. This NEVER touches myOffset/this device's own
+  // send counter - that's this device's own record of what it has
+  // actually transmitted, not something to guess at from a peer's report.
+  //
+  // To avoid discarding a message that's merely still in flight (not
+  // actually lost), a detected gap has to persist across the same value
+  // for _resyncGracePeriod before it's acted on.
+  static const Duration _resyncGracePeriod = Duration(seconds: 12);
+  // What's tracked while waiting out the grace period is the PEER'S
+  // REPORTED ABSOLUTE OFFSET (peerOffset), not a fixed byte count taken
+  // at detection time. A byte count captured then would go stale if any
+  // of the "missing" messages turn out not to have been lost after all —
+  // still in flight, decrypting normally through the ordinary receive
+  // path at any point during the wait, which advances theirOffset/offset
+  // on its own, independently of this bookkeeping. Applying a stale byte
+  // count at expiry would then skip PAST bytes still needed for the next
+  // real message — corrupting it, permanently, since this correction
+  // only ever moves the receive counter forward. Recomputing the gap
+  // against the CURRENT offset right before acting (see
+  // _maybeAutoResyncContact/_maybeAutoResyncChannel) is what makes this
+  // safe: if the pad already caught up on its own, there's nothing left
+  // to do.
+  final Map<String, ({int peerOffset, DateTime firstSeen})>
+  _pendingContactResync = {};
+  // channelIndex -> senderName -> pending state for that participant.
+  final Map<int, Map<String, ({int peerOffset, DateTime firstSeen})>>
+  _pendingChannelResync = {};
+  // Found from a real device report: hitting "resync" could drain a DM
+  // pad straight to 0 bytes, then the reply this device sends back would
+  // do the exact same thing to the OTHER side's pad — both ending up
+  // "exhausted" from one resync. _maybeAutoResyncContact previously had
+  // no ceiling at all on how much it would silently auto-consume in one
+  // shot — only an all-or-nothing check (refuse if the WHOLE gap doesn't
+  // fit, otherwise consume the whole gap, however large). A gap that's
+  // merely large (not literally bigger than what's left) sailed straight
+  // through and could eat most or all of a small pad in one call. This is
+  // exactly the failure shape a same-role collision produces (see
+  // resolveDmRole's doc comment on that being undetectable by the
+  // ordinary in-sync check), but the cap below is real protection against
+  // ANY cause of an implausibly large reported gap, not just that one.
+  // _contactResyncStreak counts consecutive auto-resyncs for a contact
+  // with no genuine, fully-confirmed in-sync in between (see
+  // _maybeHandleContactSyncMessage, which resets it to 0 on a real
+  // bidirectional match) — a gap that keeps reappearing after being
+  // "fixed" indicates a persistent mismatch an automatic byte-skip can
+  // never actually resolve, only mask one round at a time while eating
+  // the pad down to nothing.
+  final Map<String, int> _contactResyncStreak = {};
+  static const double _maxAutoResyncFraction = 0.5;
+  static const int _maxAutoResyncAbsBytes = 500;
+  static const int _maxConsecutiveAutoResyncs = 3;
+  final Map<String, Timer> _otpResyncTimers = {};
+  Timer? _otpAutoSyncPollTimer;
+  // Widened from 120s (2min) to 300s (5min), matching the Lua side's
+  // AUTO_SYNC_INTERVAL_MS. A send, a receive, opening the chat, or focusing
+  // the compose box already fire an event-driven check right when drift is
+  // actually likely (see _requestPromptContactSyncCheck/
+  // _requestPromptChannelSyncCheck), so this periodic timer only exists to
+  // catch the rare "nothing happened for a while but we drifted anyway"
+  // case — it doesn't need to be frequent, and every extra tick is one
+  // more transmission that can collide with real chunk traffic on a busy
+  // mesh.
+  static const Duration _otpAutoSyncPollInterval = Duration(seconds: 300);
+  // Airtime backoff: if a PERIODIC check gets no reply at all within
+  // _syncBackoffTimeout, the peer is probably unreachable right now (off,
+  // out of range, etc.) — polling it again every _otpAutoSyncPollInterval
+  // just burns airtime for no benefit. Once backed off, the periodic poll
+  // skips that target entirely until either something is heard from it
+  // again (a sync-check reply or a fresh check it sent on its own — see
+  // _maybeHandleContactSyncMessage/_maybeHandleChannelSyncMessage) or the
+  // person starts typing/reopens the chat/sends/receives (all funnel
+  // through _requestPromptContactSyncCheck/_requestPromptChannelSyncCheck,
+  // which lifts it). A manual "Check Sync" tap always still works — this
+  // only suppresses the automatic background probe.
+  final Set<String> _contactSyncBackoff = {};
+  final Set<int> _channelSyncBackoff = {};
+  final Map<String, Timer> _otpBackoffTimers = {};
+  static const Duration _syncBackoffTimeout = Duration(seconds: 30);
+  // OTP store-and-forward (DMs only — channels have no clean single
+  // "is this contact reachable" concept, matching Lua's own DM-only
+  // scoping). Ports OTP_3_RC1.lua's waiting_queue/flush_waiting/
+  // waiting_tick: a single-shot OTP send that exhausts MessageRetryService's
+  // normal retry budget (see RetryServiceConfig.onMaxRetriesExceeded /
+  // _handleOtpSendExhausted below) is queued here instead of failing
+  // outright, and is retried either the moment something is heard from
+  // that contact again (_flushWaitingQueue, called from
+  // _maybeHandleContactSyncMessage) or on a slow background sweep
+  // (_waitingQueueTickTimer) if nothing is heard at all. No time-based
+  // expiry — only a bounded depth, matching Lua's WAITING_QUEUE_CAP.
+  final Map<String, List<Message>> _waitingQueue = {};
+  static const int _waitingQueueCap = 5;
+  final Map<String, DateTime> _lastWaitingFlushAt = {};
+  static const Duration _waitingFlushCooldown = Duration(seconds: 10);
+  Timer? _waitingQueueTickTimer;
+  static const Duration _waitingQueueTickInterval = Duration(minutes: 10);
   bool _lastSentWasCliCommand =
       false; // Track if last sent message was a CLI command
   final Map<String, bool> _contactSmazEnabled = {};
   final Map<String, bool> _contactCyr2LatEnabled = {};
   final Map<String, bool> _contactUrlImagesEnabled = {};
   final Map<String, String?> _contactCyr2LatProfileId = {};
+  final Map<String, OtpPad?> _contactOtpPads = {};
   final Set<String> _knownContactKeys = {};
   final Map<String, int> _contactUnreadCount = {};
   final Map<String, RepeaterBatterySnapshot> _repeaterBatterySnapshots = {};
@@ -673,6 +902,14 @@ class MeshCoreConnector extends ChangeNotifier {
 
   Future<void> deleteMessage(Message message) async {
     final contactKeyHex = message.senderKeyHex;
+    // Also strip it out of the OTP store-and-forward waiting queue if it's
+    // sitting there (by messageId, not identity — a caller may be passing
+    // in a re-fetched copy rather than the exact queued instance). A no-op
+    // for a message that was never queued, or was already removed by
+    // _flushWaitingQueue before calling here.
+    _waitingQueue[contactKeyHex]?.removeWhere(
+      (m) => m.messageId == message.messageId,
+    );
     final messages = _conversations[contactKeyHex];
     if (messages == null) return;
     final removed = messages.remove(message);
@@ -686,7 +923,11 @@ class MeshCoreConnector extends ChangeNotifier {
     await deleteMessage(message);
     await sendMessage(
       contact,
-      message.text,
+      // A manual resend is a deliberate new send, not an automatic retry —
+      // re-encrypt from the original plaintext (spending a fresh slice of
+      // pad) rather than replaying `message.text`, which for an OTP
+      // message is already-spent ciphertext.
+      message.otpPlaintext ?? message.text,
       originalText: message.originalText,
       translatedLanguageCode: message.translatedLanguageCode,
       translationModelId: message.translationModelId,
@@ -904,6 +1145,2328 @@ class MeshCoreConnector extends ChangeNotifier {
     _ensureContactCyr2LatSettingLoaded(contactKeyHex);
   }
 
+  // ── OTP ────────────────────────────────────────────────────────────────
+  // Unlike the Smaz/Cyr2Lat loaders above (which wrap a technically-async
+  // SharedPreferences read in a Future for historical reasons), pad reads
+  // are written as plain synchronous getters — PrefsManager's underlying
+  // SharedPreferences instance is already memory-resident by the time the
+  // connector can be scoped to a self key, so there's nothing to await.
+
+  OtpPad? getContactOtpPad(String contactKeyHex) {
+    if (!_contactOtpPads.containsKey(contactKeyHex)) {
+      _contactOtpPads[contactKeyHex] = _otpPadStore.loadContactPad(
+        contactKeyHex,
+      );
+    }
+    return _contactOtpPads[contactKeyHex];
+  }
+
+  /// True for the one channel every device on the mesh shares by
+  /// construction (a fixed, well-known PSK - see [Channel.publicChannelPsk]
+  /// - not by name, since a channel's display name is never a reliable
+  /// signal: this one could be renamed, and nothing stops a *different*
+  /// channel from being named "Public" too). False if [channelIndex]
+  /// isn't a currently known channel at all.
+  bool _isPublicChannel(int channelIndex) {
+    return _channels.any(
+      (c) => c.index == channelIndex && c.isPublicChannel,
+    );
+  }
+
+  /// Returns null unconditionally for the Public channel, regardless of
+  /// what's actually sitting in [_channelOtpPads] or on disk - see
+  /// [setChannelOtpPad] for why nothing can ever get OTP-enabled there in
+  /// the first place, but this is the funnel every OTP-channel check in
+  /// this file goes through ([isChannelOtpEnabled], [_dispatchOtpChannel],
+  /// every send path), so gating here is enough to keep the Public channel
+  /// out of OTP everywhere without touching each of those call sites, and
+  /// it also covers a pad that was somehow saved before this restriction
+  /// existed - it's hidden from use, not deleted.
+  OtpPad? getChannelOtpPad(int channelIndex) {
+    if (_isPublicChannel(channelIndex)) return null;
+    if (!_channelOtpPads.containsKey(channelIndex)) {
+      _channelOtpPads[channelIndex] = _otpPadStore.loadChannelPad(
+        channelIndex,
+      );
+    }
+    return _channelOtpPads[channelIndex];
+  }
+
+  bool isContactOtpEnabled(String contactKeyHex) {
+    final pad = getContactOtpPad(contactKeyHex);
+    return pad != null && pad.enabled;
+  }
+
+  bool isChannelOtpEnabled(int channelIndex) {
+    final pad = getChannelOtpPad(channelIndex);
+    return pad != null && pad.enabled;
+  }
+
+  /// Imports/replaces the pad for a contact and enables OTP for them.
+  /// [padHex] is the shared secret pad material as hex (however it was
+  /// obtained — pasted or scanned from a QR code). Overwrites any existing
+  /// pad and resets both offsets to zero: only do this for a genuinely new
+  /// pad, never to "fix" a desync, since that reuses already-spent bytes.
+  Future<void> setContactOtpPad(
+    String contactKeyHex,
+    String padHex,
+    OtpPadRole role, {
+    String? label,
+  }) async {
+    // Refuse while store-and-forward still has messages queued for this
+    // contact — a queued message's ciphertext was encrypted against the
+    // OLD pad's byte offsets, and this resets both offsets to zero, so
+    // replacing it out from under a queued send would corrupt it (or
+    // silently desync the recipient) exactly like importing over an
+    // in-flight chunked send. Mirrors OTP_3_RC1.lua's import_pad_hex
+    // refusing while waiting_queue[id] is non-empty — the person has to
+    // cancel or wait for the queue to drain first.
+    final queuedCount = waitingQueueLength(contactKeyHex);
+    if (queuedCount > 0) {
+      throw OtpPadImportBlockedException(queuedCount);
+    }
+    final pad = OtpPad(
+      padHex: padHex,
+      role: role,
+      enabled: true,
+      label: label,
+      importedAt: DateTime.now(),
+    );
+    _contactOtpPads[contactKeyHex] = pad;
+    await _otpPadStore.saveContactPad(contactKeyHex, pad);
+    _clearContactSyncState(contactKeyHex);
+    notifyListeners();
+  }
+
+  /// [role] is accepted for call-site symmetry with [setContactOtpPad] but
+  /// ignored — channels always use [OtpPadMode.sharedSequential] (no A/B
+  /// split), mirroring Lua's `sync_party_mode_to_destination()`, which
+  /// forces Multi mode for any channel destination.
+  Future<void> setChannelOtpPad(
+    int channelIndex,
+    String padHex,
+    OtpPadRole role, {
+    String? label,
+  }) async {
+    if (_isPublicChannel(channelIndex)) {
+      throw OtpPublicChannelBlockedException();
+    }
+    final pad = OtpPad(
+      padHex: padHex,
+      mode: OtpPadMode.sharedSequential,
+      enabled: true,
+      label: label,
+      importedAt: DateTime.now(),
+    );
+    _channelOtpPads[channelIndex] = pad;
+    await _otpPadStore.saveChannelPad(channelIndex, pad);
+    _clearChannelSyncState(channelIndex);
+    notifyListeners();
+  }
+
+  Future<void> setContactOtpEnabled(String contactKeyHex, bool enabled) async {
+    final pad = getContactOtpPad(contactKeyHex);
+    if (pad == null) return;
+    final updated = pad.copyWith(enabled: enabled);
+    _contactOtpPads[contactKeyHex] = updated;
+    await _otpPadStore.saveContactPad(contactKeyHex, updated);
+    notifyListeners();
+  }
+
+  Future<void> setChannelOtpEnabled(int channelIndex, bool enabled) async {
+    final pad = getChannelOtpPad(channelIndex);
+    if (pad == null) return;
+    final updated = pad.copyWith(enabled: enabled);
+    _channelOtpPads[channelIndex] = updated;
+    await _otpPadStore.saveChannelPad(channelIndex, updated);
+    notifyListeners();
+  }
+
+  Future<void> clearContactOtpPad(String contactKeyHex) async {
+    _contactOtpPads[contactKeyHex] = null;
+    await _otpPadStore.clearContactPad(contactKeyHex);
+    _clearContactSyncState(contactKeyHex);
+    notifyListeners();
+  }
+
+  Future<void> clearChannelOtpPad(int channelIndex) async {
+    _channelOtpPads[channelIndex] = null;
+    await _otpPadStore.clearChannelPad(channelIndex);
+    _clearChannelSyncState(channelIndex);
+    notifyListeners();
+  }
+
+  /// A wiped or freshly-imported pad shouldn't carry over a stale
+  /// resync countdown or status line from whatever the pad used to be.
+  void _clearContactSyncState(String contactKeyHex) {
+    _contactOtpSyncStatus.remove(contactKeyHex);
+    _pendingContactResync.remove(contactKeyHex);
+    _contactResyncStreak.remove(contactKeyHex);
+    _otpResyncTimers.remove('rc:$contactKeyHex')?.cancel();
+    _otpSyncTimeoutTimers.remove('c:$contactKeyHex')?.cancel();
+    _lastPromptSyncCheckAt.remove('c:$contactKeyHex');
+    _clearContactSyncBackoff(contactKeyHex);
+  }
+
+  void _clearChannelSyncState(int channelIndex) {
+    final perChannel = _channelOtpSyncStatus.remove(channelIndex);
+    final pendingPerChannel = _pendingChannelResync.remove(channelIndex);
+    if (pendingPerChannel != null) {
+      for (final senderName in pendingPerChannel.keys) {
+        _otpResyncTimers.remove('rs:$channelIndex:$senderName')?.cancel();
+      }
+    }
+    perChannel?.clear();
+    _otpSyncTimeoutTimers.remove('s:$channelIndex')?.cancel();
+    _clearChannelSyncBackoff(channelIndex);
+    _lastPromptSyncCheckAt.remove('s:$channelIndex');
+  }
+
+  // ── OTP passphrase lock + panic wipe ─────────────────────────────────
+  // Ported from WADAMESH OTP_2_RC15.lua's protection design (HMAC-SHA256
+  // KDF, 3001 rounds, random 16-byte salt, fixed check-tag domain string —
+  // see PassphraseLockCrypto). Scope decision (this app's own, not Lua's):
+  // this gates the OTP pad-manager screen and, transitively, OTP pad
+  // decrypt — NOT the whole app. Lua is a single-purpose OTP messenger
+  // where a full-app lock screen is the only sensible design; this is a
+  // general multi-contact MeshCore companion app where OTP is already an
+  // opt-in per-contact/per-channel feature layered on top of otherwise-
+  // normal messaging, so locking browsing contacts/channels/non-OTP chat
+  // behind a passphrase would be needless friction the app's owner did not
+  // ask for. The gating mechanism itself needs no extra "is locked" checks
+  // scattered through the send/receive paths: while locked, OtpPadStore
+  // simply can't decrypt a persisted pad blob (see its `sessionKey`), so
+  // getContactOtpPad/getChannelOtpPad transparently return null and OTP
+  // behaves as "not enabled" for that contact/channel until unlocked —
+  // incoming ciphertext is left showing as raw hex (never mis-decrypted,
+  // and never consumes pad bytes) rather than being displayed as plaintext.
+
+  /// True once a passphrase has ever been set up (salt+tag persisted) —
+  /// independent of whether the session is currently locked or unlocked.
+  bool get otpProtectionEnabled => _passphraseLockStore.hasProtection;
+
+  /// True when protection is enabled but this session doesn't (yet) hold
+  /// the derived session key — i.e. OTP pads are currently inaccessible.
+  bool get otpLocked => otpProtectionEnabled && _otpSessionKey == null;
+
+  /// True for the ~4s window after a single "panic wipe" tap, during which
+  /// a second tap confirms the wipe. The pad-manager/lock UI should show
+  /// "tap again to confirm" while this is true.
+  bool get otpPanicArmed {
+    final armedAt = _otpPanicArmedAt;
+    if (!_otpPanicArmed || armedAt == null) return false;
+    if (DateTime.now().difference(armedAt) > _otpPanicConfirmWindow) {
+      return false;
+    }
+    return true;
+  }
+
+  /// Sets up passphrase protection for the first time (or replaces it,
+  /// though the UI should route a "change passphrase" flow through this the
+  /// same way — there is no separate re-key path). Generates a fresh random
+  /// salt, derives the session key from [passphrase], persists salt+tag
+  /// (never the key or the passphrase), unlocks immediately with the new
+  /// key, and re-encrypts every pad already on disk under it.
+  Future<void> enableOtpProtection(String passphrase) async {
+    final salt = PassphraseLockCrypto.randomSalt();
+    final key = PassphraseLockCrypto.deriveKey(passphrase, salt);
+    final tag = PassphraseLockCrypto.checkTag(key);
+    await _passphraseLockStore.save(
+      saltHex: OtpService.bytesToHex(salt),
+      tagHex: tag,
+    );
+    _otpSessionKey = key;
+    _otpPadStore.sessionKey = key;
+    // Force every pad already cached in memory (plaintext, from before
+    // protection existed) to reload from disk next time it's asked for —
+    // migrateAllToEncrypted below re-saves the on-disk copies directly, so
+    // this just keeps the in-memory cache from serving a stale (unencrypted
+    // in spirit, though harmless in memory) copy instead of the fresh one.
+    _contactOtpPads.clear();
+    _channelOtpPads.clear();
+    await _otpPadStore.migrateAllToEncrypted();
+    notifyListeners();
+  }
+
+  /// Attempts to unlock with [passphrase]. Returns true and makes pads
+  /// accessible again on a match; returns false (stays locked) on a
+  /// mismatch. No-op (returns false) if protection was never enabled.
+  Future<bool> unlockOtpProtection(String passphrase) async {
+    final saltHex = _passphraseLockStore.loadSaltHex();
+    final tagHex = _passphraseLockStore.loadTagHex();
+    if (saltHex == null || tagHex == null) return false;
+    final Uint8List salt;
+    try {
+      salt = hex2Uint8List(saltHex);
+    } catch (_) {
+      return false;
+    }
+    final key = PassphraseLockCrypto.deriveKey(passphrase, salt);
+    if (PassphraseLockCrypto.checkTag(key) != tagHex) return false;
+    _otpSessionKey = key;
+    _otpPadStore.sessionKey = key;
+    // MUST clear these: while locked, a lookup for any pad that only exists
+    // encrypted on disk was cached here as `null` ("no pad"). Without this
+    // clear, that stale null would keep shadowing the real pad forever,
+    // even after a correct unlock.
+    _contactOtpPads.clear();
+    _channelOtpPads.clear();
+    notifyListeners();
+    return true;
+  }
+
+  /// Re-locks without touching any stored data — the opposite of
+  /// [unlockOtpProtection]. No-op if protection isn't enabled.
+  void lockOtpProtection() {
+    if (!otpProtectionEnabled || _otpSessionKey == null) return;
+    _otpSessionKey = null;
+    _otpPadStore.sessionKey = null;
+    _contactOtpPads.clear();
+    _channelOtpPads.clear();
+    notifyListeners();
+  }
+
+  /// Single tap arms the panic wipe and returns false (caller should show
+  /// "tap again within 4s to confirm"); a second tap within
+  /// [_otpPanicConfirmWindow] confirms it, performs the wipe, and returns
+  /// true. Matches Lua exactly: wipes every pad, clears the stored
+  /// salt/tag, and drops the session key — protection ends up fully
+  /// DISABLED afterward (this is "destroy the secrets AND the lock", not
+  /// "wipe secrets but stay locked").
+  Future<bool> tapOtpPanicWipe() async {
+    final now = DateTime.now();
+    final armedAt = _otpPanicArmedAt;
+    if (_otpPanicArmed &&
+        armedAt != null &&
+        now.difference(armedAt) <= _otpPanicConfirmWindow) {
+      _otpPanicArmed = false;
+      _otpPanicArmedAt = null;
+      await _otpPadStore.wipeAllPads();
+      _contactOtpPads.clear();
+      _channelOtpPads.clear();
+      await _passphraseLockStore.clear();
+      _otpSessionKey = null;
+      _otpPadStore.sessionKey = null;
+      notifyListeners();
+      return true;
+    }
+    _otpPanicArmed = true;
+    _otpPanicArmedAt = now;
+    notifyListeners();
+    return false;
+  }
+
+  /// Cancels an armed-but-unconfirmed panic wipe (e.g. the user navigated
+  /// away, or just tapped by accident).
+  void cancelOtpPanicWipe() {
+    if (!_otpPanicArmed) return;
+    _otpPanicArmed = false;
+    _otpPanicArmedAt = null;
+    notifyListeners();
+  }
+
+  // ── OTP pad sync-check ────────────────────────────────────────────────
+  // New (no Lua equivalent): a lightweight, user-triggered exchange of pad
+  // POSITION COUNTERS ONLY — never pad bytes — to confirm two devices'
+  // offsets haven't drifted apart, without spending any pad. See
+  // otp_sync_service.dart for the wire format and the receive-path hooks in
+  // _parseContactMessage/_handleIncomingChannelMessage/_handleLogRxData for
+  // where sync-check messages (marker "z1", see otp_sync_service.dart) are
+  // intercepted before OTP dispatch.
+
+  OtpSyncStatus? getContactOtpSyncStatus(String contactKeyHex) =>
+      _contactOtpSyncStatus[contactKeyHex];
+
+  /// Per-participant sync status for a channel, keyed by sender display
+  /// name (channel messages don't carry a resolvable sender public key —
+  /// see the identical reasoning already documented on
+  /// `_ackChunkFromChannelSender`).
+  Map<String, OtpSyncStatus> getChannelOtpSyncStatuses(int channelIndex) =>
+      Map.unmodifiable(_channelOtpSyncStatus[channelIndex] ?? const {});
+
+  /// Subset of [getChannelOtpSyncStatuses] heard from — a sync-check reply,
+  /// or an ordinary offset-bearing chat message (see
+  /// _recordChannelParticipantHeard) — within the last [maxAge]. Used by
+  /// the channel chat screen's participant strip, which is deliberately
+  /// more aggressive about dropping stale names than the OTP Pad screen's
+  /// all-time list: someone not heard from in a while has more likely
+  /// stepped away or gone out of range than stayed present but perpetually
+  /// unsynced, so the strip just stops showing them rather than leaving a
+  /// permanently-greyed-out entry.
+  Map<String, OtpSyncStatus> getActiveChannelParticipants(
+    int channelIndex, {
+    Duration maxAge = const Duration(minutes: 10),
+  }) {
+    final perChannel = _channelOtpSyncStatus[channelIndex];
+    if (perChannel == null || perChannel.isEmpty) return const {};
+    final cutoff = DateTime.now().subtract(maxAge);
+    final result = <String, OtpSyncStatus>{};
+    for (final entry in perChannel.entries) {
+      final heardAt = entry.value.repliedAt ?? entry.value.checkedAt;
+      if (heardAt.isAfter(cutoff)) {
+        result[entry.key] = entry.value;
+      }
+    }
+    return result;
+  }
+
+  /// Sends a sync-check request to [contactKeyHex]'s DM pad, reporting this
+  /// device's own current counters. A reply (see
+  /// _maybeHandleContactSyncMessage) updates [getContactOtpSyncStatus]; if
+  /// nothing comes back within [_otpSyncTimeout], the status is left/marked
+  /// as timed-out (unknown), never falsely "in sync" or "out of sync".
+  void checkContactPadSync(String contactKeyHex) {
+    final pad = getContactOtpPad(contactKeyHex);
+    if (pad == null) return;
+    final contact = _contacts.cast<Contact?>().firstWhere(
+      (c) => c != null && c.publicKeyHex == contactKeyHex,
+      orElse: () => null,
+    );
+    if (contact == null) return;
+    final payload = pad.isSharedSequential
+        ? OtpSyncService.buildShared(isReply: false, offset: pad.offset)
+        : OtpSyncService.buildTwoParty(
+            isReply: false,
+            myOffset: pad.myOffset,
+            theirOffset: pad.theirOffset,
+            role: pad.role,
+          );
+    unawaited(
+      sendFrame(
+        buildSendTextMsgFrame(
+          contact.publicKey,
+          prepareContactOutboundText(contact, payload),
+        ),
+      ),
+    );
+    _contactOtpSyncStatus[contactKeyHex] = OtpSyncStatus(
+      checkedAt: DateTime.now(),
+    );
+    _armOtpSyncTimeout('c:$contactKeyHex', () {
+      final status = _contactOtpSyncStatus[contactKeyHex];
+      if (status != null && status.isPending) {
+        _contactOtpSyncStatus[contactKeyHex] = status.copyWith(
+          timedOut: true,
+        );
+        notifyListeners();
+      }
+    });
+    notifyListeners();
+  }
+
+  /// Sends a sync-check to a channel — broadcast, since this is metadata
+  /// only (never secret): every current participant that has this feature
+  /// replies once, so one broadcast naturally populates
+  /// [getChannelOtpSyncStatuses] for everyone who answers, not just the
+  /// initiator.
+  void checkChannelPadSync(int channelIndex) {
+    final pad = getChannelOtpPad(channelIndex);
+    if (pad == null) return;
+    final payload = OtpSyncService.buildShared(
+      isReply: false,
+      offset: pad.offset,
+    );
+    unawaited(
+      sendFrame(
+        buildSendChannelTextMsgFrame(
+          channelIndex,
+          prepareChannelOutboundText(channelIndex, payload),
+        ),
+      ),
+    );
+    _armOtpSyncTimeout('s:$channelIndex', () {
+      // Per-participant entries carry their own pending/timedOut state
+      // (set as each reply — or lack of one — is processed); this timer
+      // just nudges listeners so a UI showing "waiting…" for the channel
+      // as a whole knows the initial window has closed.
+      notifyListeners();
+    });
+    notifyListeners();
+  }
+
+  void _armOtpSyncTimeout(String key, void Function() onTimeout) {
+    _otpSyncTimeoutTimers[key]?.cancel();
+    _otpSyncTimeoutTimers[key] = Timer(_otpSyncTimeout, onTimeout);
+  }
+
+  /// Manual "ReSync" action — ports OTP_3_RC1.lua's `resync_current_target()`
+  /// (the chat screen's "ReSync" button). Two things, back to back: force-
+  /// reload this contact's pad straight from storage, discarding whatever's
+  /// cached in [_contactOtpPads] (a no-op almost every time, since the cache
+  /// and storage don't normally drift — it only matters if the pad file was
+  /// replaced on disk out from under an already-running session), then fire
+  /// an immediate, unthrottled sync-check exactly like [checkContactPadSync]
+  /// already does for the (currently nonexistent) manual "Check Sync"
+  /// affordance. Returns false (and does nothing else) if there's no pad to
+  /// resync, so the caller can show a "nothing to resync" message the same
+  /// way Lua's toast does.
+  bool resyncContact(String contactKeyHex) {
+    _contactOtpPads.remove(contactKeyHex);
+    final pad = getContactOtpPad(contactKeyHex);
+    if (pad == null) return false;
+    checkContactPadSync(contactKeyHex);
+    return true;
+  }
+
+  /// Channel counterpart of [resyncContact] — ports the same Lua ReSync
+  /// button for a channel target.
+  bool resyncChannel(int channelIndex) {
+    _channelOtpPads.remove(channelIndex);
+    final pad = getChannelOtpPad(channelIndex);
+    if (pad == null) return false;
+    checkChannelPadSync(channelIndex);
+    return true;
+  }
+
+  /// Returns true if [text] was a sync-check control message (handled
+  /// here, including sending the automatic reply) and must NOT be shown as
+  /// a chat message — mirrors how a chunk piece/ack "handled" result
+  /// suppresses display in [_dispatchOtpContact].
+  static final RegExp _nackPattern = RegExp(r'^z4([CDG])z$');
+  final Set<String> _nackRetryKeys = {};
+  DateTime? _lastNackAt;
+
+  bool _nackAllowed() {
+    final now = DateTime.now();
+    final last = _lastNackAt;
+    if (last != null && now.difference(last).inSeconds < 3) return false;
+    _lastNackAt = now;
+    return true;
+  }
+
+  void _sendContactNack(Contact contact, String reason) {
+    if (!_nackAllowed()) return;
+    unawaited(
+      sendFrame(
+        buildSendTextMsgFrame(
+          contact.publicKey,
+          prepareContactOutboundText(contact, 'z4${reason}z'),
+        ),
+      ),
+    );
+  }
+
+  void _sendChannelNack(int channelIndex, String reason) {
+    if (!_nackAllowed()) return;
+    unawaited(
+      sendFrame(
+        buildSendChannelTextMsgFrame(
+          channelIndex,
+          prepareChannelOutboundText(channelIndex, 'z4${reason}z'),
+        ),
+      ),
+    );
+  }
+
+  bool _maybeHandleContactNack(Contact contact, String text) {
+    if (!_nackPattern.hasMatch(text.trim())) return false;
+    final key = contact.publicKeyHex;
+    final pending = _pendingContactChunkSends[key];
+    if (pending != null) {
+      _finishContactChunkSend(pending, success: false);
+      notifyListeners();
+      return true;
+    }
+    final messages = _conversations[key];
+    if (messages != null) {
+      for (var i = messages.length - 1; i >= 0; i--) {
+        final m = messages[i];
+        if (m.isOutgoing &&
+            (m.status == MessageStatus.sent ||
+                m.status == MessageStatus.pending)) {
+          _updateStoredContactMessage(
+            key,
+            m.messageId,
+            (cur) => cur.copyWith(status: MessageStatus.failed),
+          );
+          break;
+        }
+      }
+    }
+    notifyListeners();
+    return true;
+  }
+
+  bool _maybeHandleChannelNack(int channelIndex, String text) {
+    final nack = _nackPattern.firstMatch(text.trim());
+    if (nack == null) return false;
+    final messages = _channelMessages[channelIndex];
+    if (messages != null) {
+      for (var i = messages.length - 1; i >= 0; i--) {
+        final m = messages[i];
+        if (m.isOutgoing &&
+            (m.status == ChannelMessageStatus.sent ||
+                m.status == ChannelMessageStatus.pending)) {
+          final plain = m.otpPlaintext;
+          final key = '$channelIndex:$plain';
+          final retry =
+              nack.group(1) == 'C' &&
+              plain != null &&
+              !_nackRetryKeys.contains(key);
+          if (retry) {
+            _nackRetryKeys.add(key);
+            Timer(
+              const Duration(seconds: 60),
+              () => _nackRetryKeys.remove(key),
+            );
+            _updateStoredChannelMessage(
+              channelIndex,
+              m.messageId,
+              (cur) => cur.copyWith(status: ChannelMessageStatus.pending),
+            );
+            Timer(
+              Duration(
+                milliseconds: 2000 + _channelJitterRandom.nextInt(4000),
+              ),
+              () {
+                final list = _channelMessages[channelIndex];
+                if (list != null) {
+                  list.removeWhere((e) => e.messageId == m.messageId);
+                  unawaited(
+                    _channelMessageStore.saveChannelMessages(
+                      channelIndex,
+                      list,
+                    ),
+                  );
+                }
+                notifyListeners();
+                for (final c in _channels) {
+                  if (c.index == channelIndex) {
+                    unawaited(sendChannelMessage(c, plain!));
+                    break;
+                  }
+                }
+              },
+            );
+          } else {
+            _nackRetryKeys.remove(key);
+            _updateStoredChannelMessage(
+              channelIndex,
+              m.messageId,
+              (cur) => cur.copyWith(status: ChannelMessageStatus.failed),
+            );
+          }
+          break;
+        }
+      }
+    }
+    notifyListeners();
+    return true;
+  }
+
+  bool _maybeHandleContactSyncMessage(Contact contact, String text) {
+    if (!OtpSyncService.looksLikeSyncMessage(text)) return false;
+    final payload = OtpSyncService.parse(text);
+    if (payload == null) return true;
+    // Any sync-check from this contact — a reply to one of ours, or one
+    // they sent on their own — is proof they're actually reachable right
+    // now, so lift any airtime backoff in effect.
+    _clearContactSyncBackoff(contact.publicKeyHex);
+    // Same "proof they're actually reachable right now" signal also drives
+    // OTP store-and-forward: attempt the oldest queued message for them,
+    // rate-limited — mirrors Lua's flush_waiting, driven from the same
+    // handle_sync_message spot.
+    _flushWaitingQueue(contact.publicKeyHex);
+    final pad = getContactOtpPad(contact.publicKeyHex);
+    if (pad != null &&
+        !pad.isSharedSequential &&
+        !payload.isSharedSequential) {
+      // Explicit role-verification handshake (wire v3, "z3"): each side now
+      // states its own resolved role directly on the wire, so a same-role
+      // collision (both devices independently resolving to "A", say) can
+      // be caught here directly instead of only being inferred after the
+      // fact from implausible byte-count math. See the matching comment in
+      // OtpSyncPayload/OtpPad.role's own doc comment about why this was
+      // previously an undetectable failure mode.
+      final roleCollision = payload.role != null && payload.role == pad.role;
+      final peerMyOffset = payload.myOffset ?? 0;
+      final peerTheirOffset = payload.theirOffset ?? 0;
+      // In sync iff: what THEY say they've sent (their myOffset) matches
+      // how much of THEIRS I've decrypted (my theirOffset), AND what THEY
+      // say they've decrypted of MINE (their theirOffset) matches how much
+      // I've actually sent (my myOffset). A brief, benign mismatch right
+      // after a send (before the peer has decrypted it yet) is expected —
+      // this is a diagnostic signal, not a hard correctness guarantee.
+      final drift = pad.theirOffset - peerMyOffset;
+      final otherDrift = pad.myOffset - peerTheirOffset;
+      final inSync = !roleCollision && drift == 0 && otherDrift == 0;
+      // A genuine, fully-confirmed in-sync (both directions agree, not
+      // just "the one direction _maybeAutoResyncContact cares about")
+      // clears the repeated-resync streak — only a real recovery should
+      // reset it, not merely receiving another sync-check.
+      if (inSync) _contactResyncStreak.remove(contact.publicKeyHex);
+      final primaryDrift = drift != 0 ? drift : otherDrift;
+      _contactOtpSyncStatus[contact.publicKeyHex] = OtpSyncStatus(
+        checkedAt:
+            _contactOtpSyncStatus[contact.publicKeyHex]?.checkedAt ??
+            DateTime.now(),
+        repliedAt: DateTime.now(),
+        inSync: inSync,
+        driftBytes: (inSync || roleCollision) ? 0 : primaryDrift,
+        driftDirection: (inSync || roleCollision)
+            ? null
+            : (primaryDrift > 0 ? 'mine-ahead' : 'theirs-ahead'),
+        roleCollision: roleCollision,
+      );
+      // A role collision means the counters on each side aren't even
+      // comparable (both parties think they own the same half of the
+      // pad), so any apparent "gap" here is meaningless and must NOT be
+      // used to arm an auto-resync — that would just make things worse.
+      // Only ever track/auto-fix the direction this device can safely fix
+      // itself: "I'm behind on receiving what they say they've sent"
+      // (peerMyOffset > pad.theirOffset). The other mismatch direction
+      // (otherDrift) is THEIR receive lag, not fixable from here — it
+      // resolves itself on their device via the identical logic once our
+      // reply below reaches them.
+      if (!roleCollision) {
+        _trackContactResyncGap(contact.publicKeyHex, peerMyOffset);
+        _maybeSkipSendSideContact(contact.publicKeyHex, peerTheirOffset);
+      } else {
+        _pendingContactResync.remove(contact.publicKeyHex);
+      }
+    }
+    // Real hardware bug found in production: this reply used to fire
+    // unconditionally for every original (non-reply) sync-check heard, no
+    // throttle at all — so mesh-level packet retransmission, or another
+    // contact/channel participant checking in again, produced its own
+    // immediate, un-cooled-down radio transmission stacking on top of real
+    // message chunk/ack traffic, tripping the firmware's "too fast" rate
+    // limit. Sharing _shouldSendPromptSyncCheck's cooldown key with the
+    // prompted/periodic checks means a reply just sent counts toward the
+    // same floor those already respect.
+    if (!payload.isReply &&
+        pad != null &&
+        _shouldSendPromptSyncCheck('c:${contact.publicKeyHex}')) {
+      final livePad = getContactOtpPad(contact.publicKeyHex) ?? pad;
+      final reply = livePad.isSharedSequential
+          ? OtpSyncService.buildShared(isReply: true, offset: livePad.offset)
+          : OtpSyncService.buildTwoParty(
+              isReply: true,
+              myOffset: livePad.myOffset,
+              theirOffset: livePad.theirOffset,
+              role: livePad.role,
+            );
+      unawaited(
+        sendFrame(
+          buildSendTextMsgFrame(
+            contact.publicKey,
+            prepareContactOutboundText(contact, reply),
+          ),
+        ),
+      );
+    }
+    notifyListeners();
+    return true;
+  }
+
+  /// Channel counterpart of [_maybeHandleContactSyncMessage]. [senderName]
+  /// identifies the participant this counter belongs to (see
+  /// [getChannelOtpSyncStatuses] doc).
+  bool _maybeHandleChannelSyncMessage(
+    int channelIndex,
+    String senderName,
+    String text,
+  ) {
+    if (!OtpSyncService.looksLikeSyncMessage(text)) return false;
+    final payload = OtpSyncService.parse(text);
+    if (payload == null) return true;
+    _clearChannelSyncBackoff(channelIndex);
+    final pad = getChannelOtpPad(channelIndex);
+    if (pad != null && payload.isSharedSequential) {
+      final peerOffset = payload.offset ?? 0;
+      final drift = pad.offset - peerOffset;
+      final perChannel = _channelOtpSyncStatus.putIfAbsent(
+        channelIndex,
+        () => {},
+      );
+      perChannel[senderName] = OtpSyncStatus(
+        checkedAt: perChannel[senderName]?.checkedAt ?? DateTime.now(),
+        repliedAt: DateTime.now(),
+        inSync: drift == 0,
+        driftBytes: drift,
+        driftDirection: drift == 0
+            ? null
+            : (drift > 0 ? 'mine-ahead' : 'theirs-ahead'),
+      );
+      // Same reasoning as the contact side: only auto-fix "I'm behind
+      // this participant's reported offset" (peerOffset > pad.offset).
+      _trackChannelResyncGap(channelIndex, senderName, peerOffset);
+    }
+    // See the matching comment in _maybeHandleContactSyncMessage — this
+    // reply used to fire unconditionally for every original sync-check
+    // heard, which is exactly what produced the observed spam: a channel
+    // has several participants, so each of THEIR original checks (plus any
+    // the mesh itself retransmits) used to each cost this device its own
+    // immediate, un-cooled-down reply transmission. Sharing the cooldown
+    // key with the prompted/periodic channel checks closes that gap.
+    if (!payload.isReply &&
+        pad != null &&
+        _shouldSendPromptSyncCheck('s:$channelIndex')) {
+      final reply = OtpSyncService.buildShared(
+        isReply: true,
+        offset: pad.offset,
+      );
+      unawaited(
+        sendFrame(
+          buildSendChannelTextMsgFrame(
+            channelIndex,
+            prepareChannelOutboundText(channelIndex, reply),
+          ),
+        ),
+      );
+    }
+    notifyListeners();
+    return true;
+  }
+
+  /// Records that [senderName] was just heard from on [channelIndex]'s OTP
+  /// channel — from an ordinary offset-bearing chat message, not a
+  /// sync-check (see [_maybeHandleChannelSyncMessage] for that path, which
+  /// writes into the same [_channelOtpSyncStatus] map). [claimedOffset]
+  /// null means the message carried no offset framing (a legacy sender, or
+  /// something that isn't OTP at all) — still counts as "heard" (keeps
+  /// them from disappearing from the participant strip — see
+  /// [getActiveChannelParticipants]), but leaves any previously known
+  /// in-sync verdict alone rather than overwriting it with an unknown one.
+  void _recordChannelParticipantHeard(
+    int channelIndex,
+    String senderName, {
+    required int? claimedOffset,
+    required int currentOffset,
+  }) {
+    final perChannel = _channelOtpSyncStatus.putIfAbsent(
+      channelIndex,
+      () => {},
+    );
+    final existing = perChannel[senderName];
+    if (claimedOffset == null) {
+      perChannel[senderName] =
+          (existing ?? OtpSyncStatus(checkedAt: DateTime.now())).copyWith(
+            repliedAt: DateTime.now(),
+          );
+      notifyListeners();
+      return;
+    }
+    // Same sign convention as _maybeHandleChannelSyncMessage/OtpSyncStatus:
+    // positive drift means THIS device's counter is ahead of theirs.
+    final drift = currentOffset - claimedOffset;
+    perChannel[senderName] = OtpSyncStatus(
+      checkedAt: existing?.checkedAt ?? DateTime.now(),
+      repliedAt: DateTime.now(),
+      inSync: drift == 0,
+      driftBytes: drift,
+      driftDirection: drift == 0
+          ? null
+          : (drift > 0 ? 'mine-ahead' : 'theirs-ahead'),
+    );
+    // Some callers (the "ahead"/resync-gap branch in _dispatchOtpChannel)
+    // return early with no chat message to display and no notifyListeners
+    // of their own further down — without this, the participant strip
+    // would only pick up this update whenever something else happens to
+    // rebuild it.
+    notifyListeners();
+  }
+
+  // ── OTP pad auto-resync ────────────────────────────────────────────────
+  // See the field doc on `_resyncGracePeriod` above for the full reasoning.
+
+  void _trackContactResyncGap(String contactKeyHex, int peerMyOffset) {
+    final timerKey = 'rc:$contactKeyHex';
+    final pad = getContactOtpPad(contactKeyHex);
+    final gap = peerMyOffset - (pad?.theirOffset ?? 0);
+    if (gap <= 0) {
+      _pendingContactResync.remove(contactKeyHex);
+      _otpResyncTimers.remove(timerKey)?.cancel();
+      return;
+    }
+    final existing = _pendingContactResync[contactKeyHex];
+    if (existing != null && existing.peerOffset == peerMyOffset) {
+      return; // same reported offset, timer already running
+    }
+    _pendingContactResync[contactKeyHex] = (
+      peerOffset: peerMyOffset,
+      firstSeen: DateTime.now(),
+    );
+    _otpResyncTimers[timerKey]?.cancel();
+    _otpResyncTimers[timerKey] = Timer(
+      _resyncGracePeriod,
+      () => _maybeAutoResyncContact(contactKeyHex),
+    );
+  }
+
+  /// DM-only send-side repair. A peer can only have decrypted bytes this
+  /// device actually sent, so peerTheirOffset > myOffset is never in-flight
+  /// lag, only a desync (peer consumed bytes we never used). Burn our own
+  /// unused send bytes up to the peer's count so the next message lines up.
+  /// Never used for channels: shared counter, many writers.
+  void _maybeSkipSendSideContact(String contactKeyHex, int peerTheirOffset) {
+    final pad = getContactOtpPad(contactKeyHex);
+    if (pad == null || pad.isSharedSequential) return;
+    final gap = peerTheirOffset - pad.myOffset;
+    if (gap <= 0) return;
+    if (gap > pad.myBytesRemaining || gap > _maxAutoResyncAbsBytes) return;
+    final updated = pad.copyWith(myOffset: pad.myOffset + gap);
+    _contactOtpPads[contactKeyHex] = updated;
+    unawaited(_otpPadStore.saveContactPad(contactKeyHex, updated));
+    _contactOtpSyncStatus[contactKeyHex] = OtpSyncStatus(
+      checkedAt: DateTime.now(),
+      repliedAt: DateTime.now(),
+      inSync: true,
+      autoResyncedBytes: gap,
+    );
+  }
+
+  void _maybeAutoResyncContact(String contactKeyHex) {
+    final pending = _pendingContactResync.remove(contactKeyHex);
+    if (pending == null) return;
+    final pad = getContactOtpPad(contactKeyHex);
+    if (pad == null) return;
+    // Recompute the gap against the CURRENT offset, not a byte count
+    // captured at detection time — see the doc on _pendingContactResync
+    // above. If real messages decrypted normally during the grace-period
+    // wait, theirOffset may already be partially or fully caught up on
+    // its own.
+    final gap = pending.peerOffset - pad.theirOffset;
+    if (gap <= 0) {
+      _contactResyncStreak.remove(contactKeyHex);
+      return; // caught up on its own - nothing left to fix
+    }
+    if ((_contactResyncStreak[contactKeyHex] ?? 0) >=
+        _maxConsecutiveAutoResyncs) {
+      _contactOtpSyncStatus[contactKeyHex] =
+          (_contactOtpSyncStatus[contactKeyHex] ??
+                  OtpSyncStatus(checkedAt: DateTime.now()))
+              .copyWith(
+                inSync: false,
+                driftBytes: gap,
+                driftDirection: 'theirs-ahead',
+              );
+      notifyListeners();
+      return;
+    }
+    if (pad.theirBytesRemaining < gap) {
+      _contactOtpSyncStatus[contactKeyHex] =
+          (_contactOtpSyncStatus[contactKeyHex] ??
+                  OtpSyncStatus(checkedAt: DateTime.now()))
+              .copyWith(
+                inSync: false,
+                driftBytes: gap,
+                driftDirection: 'theirs-ahead',
+              );
+      notifyListeners();
+      return;
+    }
+    // A gap is only auto-fixed up to a bounded ceiling (half of what's
+    // actually left, capped at _maxAutoResyncAbsBytes) — a gap bigger
+    // than that almost certainly means something is structurally wrong
+    // (role mismatch, corrupted counters) rather than "missed a couple
+    // of messages", and blindly paying it out of irreplaceable pad bytes
+    // is the wrong response. See the field doc on _contactResyncStreak
+    // above for the full reasoning.
+    final cap = math.min(
+      (pad.theirBytesRemaining * _maxAutoResyncFraction).floor(),
+      _maxAutoResyncAbsBytes,
+    );
+    if (gap > cap) {
+      _contactOtpSyncStatus[contactKeyHex] =
+          (_contactOtpSyncStatus[contactKeyHex] ??
+                  OtpSyncStatus(checkedAt: DateTime.now()))
+              .copyWith(
+                inSync: false,
+                driftBytes: gap,
+                driftDirection: 'theirs-ahead',
+              );
+      notifyListeners();
+      return;
+    }
+    final updated = pad.copyWith(theirOffset: pad.theirOffset + gap);
+    _contactOtpPads[contactKeyHex] = updated;
+    unawaited(_otpPadStore.saveContactPad(contactKeyHex, updated));
+    _contactResyncStreak[contactKeyHex] =
+        (_contactResyncStreak[contactKeyHex] ?? 0) + 1;
+    _contactOtpSyncStatus[contactKeyHex] = OtpSyncStatus(
+      checkedAt: DateTime.now(),
+      repliedAt: DateTime.now(),
+      inSync: true,
+      autoResyncedBytes: gap,
+    );
+    notifyListeners();
+    checkContactPadSync(contactKeyHex); // confirm we're actually caught up now
+  }
+
+  void _trackChannelResyncGap(
+    int channelIndex,
+    String senderName,
+    int peerOffset,
+  ) {
+    final timerKey = 'rs:$channelIndex:$senderName';
+    final perChannel = _pendingChannelResync.putIfAbsent(
+      channelIndex,
+      () => {},
+    );
+    final pad = getChannelOtpPad(channelIndex);
+    final gap = peerOffset - (pad?.offset ?? 0);
+    if (gap <= 0) {
+      perChannel.remove(senderName);
+      _otpResyncTimers.remove(timerKey)?.cancel();
+      return;
+    }
+    final existing = perChannel[senderName];
+    if (existing != null && existing.peerOffset == peerOffset) return;
+    perChannel[senderName] = (
+      peerOffset: peerOffset,
+      firstSeen: DateTime.now(),
+    );
+    _otpResyncTimers[timerKey]?.cancel();
+    _otpResyncTimers[timerKey] = Timer(
+      _resyncGracePeriod,
+      () => _maybeAutoResyncChannel(channelIndex, senderName),
+    );
+  }
+
+  void _maybeAutoResyncChannel(int channelIndex, String senderName) {
+    final perChannel = _pendingChannelResync[channelIndex];
+    final pending = perChannel?.remove(senderName);
+    if (pending == null) return;
+    final pad = getChannelOtpPad(channelIndex);
+    if (pad == null) return;
+    // Recompute against the CURRENT shared offset, not the byte count
+    // captured at detection time — same reasoning as the contact side.
+    final gap = pending.peerOffset - pad.offset;
+    if (gap <= 0) {
+      return; // caught up on its own - nothing left to fix
+    }
+    final statuses = _channelOtpSyncStatus.putIfAbsent(channelIndex, () => {});
+    if (pad.myBytesRemaining < gap) {
+      statuses[senderName] =
+          (statuses[senderName] ?? OtpSyncStatus(checkedAt: DateTime.now()))
+              .copyWith(
+                inSync: false,
+                driftBytes: gap,
+                driftDirection: 'theirs-ahead',
+              );
+      notifyListeners();
+      return;
+    }
+    // advanceShared moves the ONE shared offset this pad's sending and
+    // receiving both use (see OtpPad.advanceShared doc) - the same
+    // operation a real receive would perform, just without decrypting
+    // anything, since what would have been decrypted is unrecoverable.
+    final updated = pad.advanceShared(gap);
+    _channelOtpPads[channelIndex] = updated;
+    unawaited(_otpPadStore.saveChannelPad(channelIndex, updated));
+    statuses[senderName] = OtpSyncStatus(
+      checkedAt: DateTime.now(),
+      repliedAt: DateTime.now(),
+      inSync: true,
+      autoResyncedBytes: gap,
+    );
+    notifyListeners();
+    checkChannelPadSync(channelIndex);
+  }
+
+  // ── OTP pad periodic + post-activity sync-checking ─────────────────────
+  // Runs alongside battery polling (see the calls next to
+  // _startBatteryPolling/_stopBatteryPolling) so it shares the same
+  // connected-device lifecycle without a separate connect/disconnect path
+  // to keep in sync.
+  //
+  // Deliberately scoped to ONLY whichever contact/channel screen is
+  // currently open (_activeContactKey/_activeChannelIndex — the same
+  // state ChatScreen/ChannelChatScreen already set on
+  // setActiveContact/setActiveChannel for unread tracking), not every
+  // OTP-enabled contact/channel in the address book. A sync-check is a
+  // real mesh transmission, and this app can be running with dozens of
+  // OTP contacts/channels configured but only ever one conversation open
+  // at a time — polling all of them on a timer would multiply airtime
+  // use by however many pads exist, for conversations nobody is
+  // currently looking at. The tradeoff: drift in a conversation that
+  // isn't open right now won't be caught until it's opened again (which
+  // itself triggers an immediate check — see setActiveContact/
+  // setActiveChannel below) or a message is sent/received in it (which
+  // also triggers one — see _requestPromptContactSyncCheck/
+  // _requestPromptChannelSyncCheck). Nothing is ever silently wrong for
+  // longer than "until you open that chat."
+  void _startOtpAutoSyncPolling() {
+    _otpAutoSyncPollTimer?.cancel();
+    _otpAutoSyncPollTimer = Timer.periodic(_otpAutoSyncPollInterval, (timer) {
+      if (!isConnected) {
+        timer.cancel();
+        return;
+      }
+      _pollActiveOtpSyncCheck();
+    });
+  }
+
+  void _stopOtpAutoSyncPolling() {
+    _otpAutoSyncPollTimer?.cancel();
+    _otpAutoSyncPollTimer = null;
+  }
+
+  // Background fallback for the store-and-forward waiting queue — a single
+  // global periodic sweep (matching every other timer in this class:
+  // _batteryPollTimer, _otpAutoSyncPollTimer, etc. are all one Timer.periodic
+  // iterating internal state, not one Timer per contact) that attempts a
+  // flush for every contact with a non-empty queue, every ~10 minutes,
+  // mirroring OTP_3_RC1.lua's waiting_tick(). This is only the fallback —
+  // the primary trigger is hearing anything at all from that contact (see
+  // _flushWaitingQueue, called from _maybeHandleContactSyncMessage), which
+  // fires far sooner in the common case of the contact coming back into
+  // range.
+  void _startWaitingQueueTicker() {
+    _waitingQueueTickTimer?.cancel();
+    _waitingQueueTickTimer = Timer.periodic(_waitingQueueTickInterval, (
+      timer,
+    ) {
+      if (!isConnected) {
+        timer.cancel();
+        return;
+      }
+      for (final contactKeyHex in _waitingQueue.keys.toList()) {
+        _flushWaitingQueue(contactKeyHex);
+      }
+    });
+  }
+
+  void _stopWaitingQueueTicker() {
+    _waitingQueueTickTimer?.cancel();
+    _waitingQueueTickTimer = null;
+  }
+
+  // Skips a target while a real chunked send or receive is actually in
+  // flight for it (_pendingContactChunkSends/_pendingChannelChunkSends,
+  // _contactChunkReassembly/_channelChunkReassembly) — never let this
+  // device's own diagnostic probe compete with real message chunk/ack
+  // traffic for airtime; that's exactly when reliable delivery matters
+  // most, and is exactly the contention real hardware showed tripping the
+  // firmware's "too fast" rate limit.
+  void _pollActiveOtpSyncCheck() {
+    final contactKeyHex = _activeContactKey;
+    if (contactKeyHex != null &&
+        !_contactSyncBackoff.contains(contactKeyHex) &&
+        !_pendingContactChunkSends.containsKey(contactKeyHex) &&
+        (_contactChunkReassembly[contactKeyHex]?.isNotEmpty ?? false) ==
+            false &&
+        getContactOtpPad(contactKeyHex)?.enabled == true) {
+      checkContactPadSync(contactKeyHex);
+      _armSyncBackoffTimer(
+        'c:$contactKeyHex',
+        () => _contactSyncBackoff.add(contactKeyHex),
+      );
+    }
+    final channelIndex = _activeChannelIndex;
+    if (channelIndex != null &&
+        !_channelSyncBackoff.contains(channelIndex) &&
+        !_pendingChannelChunkSends.containsKey(channelIndex) &&
+        (_channelChunkReassembly[channelIndex]?.isNotEmpty ?? false) ==
+            false &&
+        getChannelOtpPad(channelIndex)?.enabled == true) {
+      checkChannelPadSync(channelIndex);
+      _armSyncBackoffTimer(
+        's:$channelIndex',
+        () => _channelSyncBackoff.add(channelIndex),
+      );
+    }
+  }
+
+  void _armSyncBackoffTimer(String key, void Function() onTimeout) {
+    _otpBackoffTimers.remove(key)?.cancel();
+    _otpBackoffTimers[key] = Timer(_syncBackoffTimeout, onTimeout);
+  }
+
+  /// Lifts any airtime backoff in effect for [contactKeyHex]/[channelIndex]
+  /// — called whenever something is heard from that target (a sync-check
+  /// reply, or one it sent on its own) or the person starts typing/opens
+  /// the chat/sends/receives (see call sites of
+  /// _requestPromptContactSyncCheck/_requestPromptChannelSyncCheck and
+  /// _maybeHandleContactSyncMessage/_maybeHandleChannelSyncMessage).
+  void _clearContactSyncBackoff(String contactKeyHex) {
+    _contactSyncBackoff.remove(contactKeyHex);
+    _otpBackoffTimers.remove('c:$contactKeyHex')?.cancel();
+  }
+
+  void _clearChannelSyncBackoff(int channelIndex) {
+    _channelSyncBackoff.remove(channelIndex);
+    _otpBackoffTimers.remove('s:$channelIndex')?.cancel();
+  }
+
+  // Several independent events all want to "prompt a check soon": a
+  // send/receive completing, opening the chat screen, and focusing the
+  // compose field can all land within the same second or two of each
+  // other (e.g. open a chat and immediately tap to type). Without a
+  // cooldown that's an extra mesh transmission per event that fires in
+  // that window, for no extra information. _lastPromptSyncCheckAt makes
+  // a burst of triggers collapse into the one check that actually gets
+  // sent, without adding a manual "did I already check recently"
+  // condition at every call site.
+  final Map<String, DateTime> _lastPromptSyncCheckAt = {};
+  // Widened from 5s to 10s (matching the Lua side's SYNC_PROMPT_MIN_
+  // SPACING_MS) now that this cooldown also gates reply-echo transmissions
+  // (see _maybeHandleContactSyncMessage/_maybeHandleChannelSyncMessage) —
+  // real hardware evidence showed 5s wasn't enough margin against the
+  // firmware's "too fast" rate limit when a reply lands close to a real
+  // message chunk/ack.
+  static const Duration _promptSyncCheckCooldown = Duration(seconds: 10);
+
+  bool _shouldSendPromptSyncCheck(String cooldownKey) {
+    final last = _lastPromptSyncCheckAt[cooldownKey];
+    final now = DateTime.now();
+    if (last != null && now.difference(last) < _promptSyncCheckCooldown) {
+      return false;
+    }
+    _lastPromptSyncCheckAt[cooldownKey] = now;
+    return true;
+  }
+
+  /// Called right after a send, a receive, opening the chat, or focusing
+  /// the compose field for [contactKeyHex], so drift gets caught quickly
+  /// rather than waiting for the next periodic poll — cheap, since a
+  /// sync-check is just a few bytes of plaintext metadata, and
+  /// event-driven rather than timer-driven so it doesn't add to the
+  /// periodic airtime budget above (see _shouldSendPromptSyncCheck for
+  /// why a burst of these still only sends one).
+  void _requestPromptContactSyncCheck(String contactKeyHex) {
+    // Typing, sending, receiving, and reopening the chat are all real
+    // signs of life for this conversation, so any of them lifts a
+    // previously-armed airtime backoff — see _clearContactSyncBackoff.
+    _clearContactSyncBackoff(contactKeyHex);
+    if (getContactOtpPad(contactKeyHex)?.enabled == true &&
+        _shouldSendPromptSyncCheck('c:$contactKeyHex')) {
+      checkContactPadSync(contactKeyHex);
+    }
+  }
+
+  void _requestPromptChannelSyncCheck(int channelIndex) {
+    _clearChannelSyncBackoff(channelIndex);
+    if (getChannelOtpPad(channelIndex)?.enabled == true &&
+        _shouldSendPromptSyncCheck('s:$channelIndex')) {
+      checkChannelPadSync(channelIndex);
+    }
+  }
+
+  // ── OTP pad consumption ──────────────────────────────────────────────
+  // A single, mode-aware pair of helpers used for EVERY pad consumption in
+  // this app — single-shot encrypt/decrypt and every chunk/ack send or
+  // receive all go through these two functions. For
+  // OtpPadMode.sharedSequential (channels), send and receive both route
+  // through the identical `pad.takeSharedKeyBytes`/`pad.advanceShared`
+  // pair — this is genuinely one consumption operation, not two branches
+  // that happen to compute the same thing, exactly mirroring how Lua's
+  // `pdib()` collapses both directions to the same case in Multi mode. For
+  // OtpPadMode.twoPartyHalfSplit (contacts), sending and receiving remain
+  // genuinely different (mine vs theirs), unchanged from before.
+  ({Uint8List keyBytes, OtpPad updated}) _consumePadForSend(
+    OtpPad pad,
+    int length,
+  ) {
+    if (pad.mode == OtpPadMode.sharedSequential) {
+      final keyBytes = pad.takeSharedKeyBytes(length);
+      return (keyBytes: keyBytes, updated: pad.advanceShared(length));
+    }
+    final keyBytes = pad.takeMyKeyBytes(length);
+    return (
+      keyBytes: keyBytes,
+      updated: pad.copyWith(myOffset: pad.myOffset + length),
+    );
+  }
+
+  ({Uint8List keyBytes, OtpPad updated}) _consumePadForReceive(
+    OtpPad pad,
+    int length,
+  ) {
+    if (pad.mode == OtpPadMode.sharedSequential) {
+      final keyBytes = pad.takeSharedKeyBytes(length);
+      return (keyBytes: keyBytes, updated: pad.advanceShared(length));
+    }
+    final keyBytes = pad.takeTheirKeyBytes(length);
+    return (
+      keyBytes: keyBytes,
+      updated: pad.copyWith(theirOffset: pad.theirOffset + length),
+    );
+  }
+
+  /// Encrypts [plaintext] for [contact], advancing and persisting the pad
+  /// offset. Called exactly once per logical message — see the note on
+  /// `sendMessage` for why this must never run again on retry.
+  Future<String> _encryptForContact(Contact contact, String plaintext) async {
+    final contactKeyHex = contact.publicKeyHex;
+    final pad = getContactOtpPad(contactKeyHex);
+    if (pad == null) {
+      throw OtpPadExhaustedException(neededBytes: 0, availableBytes: 0);
+    }
+    final needed = OtpService.plaintextByteLength(plaintext);
+    final consumption = _consumePadForSend(pad, needed);
+    final ciphertext = OtpService.encrypt(plaintext, consumption.keyBytes);
+    _contactOtpPads[contactKeyHex] = consumption.updated;
+    await _otpPadStore.saveContactPad(contactKeyHex, consumption.updated);
+    _requestPromptContactSyncCheck(contactKeyHex);
+    return ciphertext;
+  }
+
+  /// Returns both the ciphertext and the pad offset it was encrypted
+  /// against (captured BEFORE [_consumePadForSend] advances it) — the
+  /// caller wraps that offset onto the OUTGOING wire text only (see
+  /// [OtpChannelOffsetService]) so a receiver can detect a collision with
+  /// another sender instead of just decrypting whatever's at its own
+  /// current front. The stored/local ciphertext record stays unwrapped.
+  Future<({String cipherHex, int claimedOffset})> _encryptForChannel(
+    int channelIndex,
+    String plaintext,
+  ) async {
+    final pad = getChannelOtpPad(channelIndex);
+    if (pad == null) {
+      throw OtpPadExhaustedException(neededBytes: 0, availableBytes: 0);
+    }
+    final claimedOffset = pad.offset;
+    final needed = OtpService.plaintextByteLength(plaintext);
+    final consumption = _consumePadForSend(pad, needed);
+    final ciphertext = OtpService.encrypt(plaintext, consumption.keyBytes);
+    _channelOtpPads[channelIndex] = consumption.updated;
+    await _otpPadStore.saveChannelPad(channelIndex, consumption.updated);
+    _requestPromptChannelSyncCheck(channelIndex);
+    return (cipherHex: ciphertext, claimedOffset: claimedOffset);
+  }
+
+  /// Records that ciphertext hex [hex] decrypted to [plaintext] (empty
+  /// string for "processed but nothing to display" — an ack or a non-final
+  /// chunk piece), so a redelivery of the same message via a different
+  /// receive path — or a genuine mesh-level retransmission — reuses the
+  /// result instead of decrypting (and consuming pad) again. [chunkInfo],
+  /// when this hex was a chunk piece, lets a later cache-hit still re-send
+  /// that chunk's ack (see [_dispatchOtpContact]/[_dispatchOtpChannel]).
+  void _rememberOtpDecrypt(
+    String hex,
+    String plaintext, {
+    ({int tid, int idx})? chunkInfo,
+  }) {
+    if (_otpDecryptCache.containsKey(hex)) return;
+    _otpDecryptCache[hex] = plaintext;
+    _otpDecryptCacheOrder.add(hex);
+    if (chunkInfo != null) _otpChunkHexIndex[hex] = chunkInfo;
+    if (_otpDecryptCacheOrder.length > _otpDecryptCacheLimit) {
+      final oldest = _otpDecryptCacheOrder.removeAt(0);
+      _otpDecryptCache.remove(oldest);
+      _otpChunkHexIndex.remove(oldest);
+    }
+  }
+
+  void _rememberOtpAck(String cacheKey, String hex) {
+    if (_otpAckCache.containsKey(cacheKey)) return;
+    _otpAckCache[cacheKey] = hex;
+    _otpAckCacheOrder.add(cacheKey);
+    if (_otpAckCacheOrder.length > _otpAckCacheLimit) {
+      final oldest = _otpAckCacheOrder.removeAt(0);
+      _otpAckCache.remove(oldest);
+    }
+  }
+
+  // ── OTP receive dispatch ─────────────────────────────────────────────
+  // Handles every incoming OTP-looking payload for a contact or channel:
+  // ordinary single-shot messages, chunk pieces of a multi-packet message,
+  // and app-level chunk acks. `handled: false` means "not OTP at all, or
+  // OTP not enabled here — leave the message exactly as received".
+  // `handled: true, displayText: null` means "this WAS OTP and has been
+  // fully processed (an ack, or a non-final chunk) — show nothing for it".
+  // `handled: true, displayText: <text>` is the plaintext to show (a
+  // decrypted single-shot message, a completed reassembly, or an error
+  // placeholder).
+
+  _OtpDispatchResult _dispatchOtpContact(Contact contact, String rawText) {
+    final contactKeyHex = contact.publicKeyHex;
+    final pad = getContactOtpPad(contactKeyHex);
+    if (pad == null || !pad.enabled) {
+      return const (handled: false, displayText: null);
+    }
+    final hex = OtpService.extractCiphertextHex(rawText);
+    if (hex == null) return const (handled: false, displayText: null);
+
+    // Covers EVERY already-decrypted hex — acks and non-final chunk pieces
+    // included, not just displayable messages (empty string means "already
+    // processed, nothing to show"). This is essential, not just an
+    // optimization: contact messages, like channel messages, can be
+    // redelivered (mesh-level retransmission, or the sender's own chunk/ack
+    // retry landing twice before state updates) and OTP decrypt is
+    // stateful — reusing a cached result instead of decrypting again is
+    // what stops a redelivery from double-consuming pad and desyncing.
+    final cached = _otpDecryptCache[hex];
+    if (cached != null) {
+      final chunkInfo = _otpChunkHexIndex[hex];
+      if (chunkInfo != null) {
+        // Idempotent chunk redelivery: never re-decrypt/re-consume pad, but
+        // still re-send this chunk's ack — the sender is retrying because
+        // their first ack may not have landed. buildAckFrame/pad-consuming
+        // work for the ack itself is deduped separately by _otpAckCache.
+        _sendChunkAckToContact(contact, chunkInfo.tid, chunkInfo.idx);
+        return const (handled: true, displayText: null);
+      }
+      return (handled: true, displayText: cached.isEmpty ? null : cached);
+    }
+
+    final cipherByteLen = hex.length ~/ 2;
+    Uint8List plainBytes;
+    try {
+      final freshPad = getContactOtpPad(contactKeyHex)!;
+      final consumption = _consumePadForReceive(freshPad, cipherByteLen);
+      plainBytes = OtpService.decryptBytesFromHex(hex, consumption.keyBytes);
+      _contactOtpPads[contactKeyHex] = consumption.updated;
+      unawaited(_otpPadStore.saveContactPad(contactKeyHex, consumption.updated));
+      _requestPromptContactSyncCheck(contactKeyHex);
+    } catch (e) {
+      appLogger.warn('OTP decrypt failed for contact $contactKeyHex: $e');
+      _sendContactNack(contact, 'D');
+      _requestPromptContactSyncCheck(contactKeyHex);
+      return (
+        handled: true,
+        displayText: '🔒 Could not decrypt — pad may be out of sync',
+      );
+    }
+
+    final parsed = OtpChunkService.parse(plainBytes);
+    if (parsed is ParsedAckFrame) {
+      _rememberOtpDecrypt(hex, '');
+      _handleIncomingOtpAck(contactKeyHex, parsed.tid, parsed.idx);
+      return const (handled: true, displayText: null);
+    }
+    if (parsed is ParsedChunkFrame) {
+      final reassembled = _handleIncomingChunkForContact(contact, parsed);
+      _rememberOtpDecrypt(
+        hex,
+        reassembled ?? '',
+        chunkInfo: (tid: parsed.tid, idx: parsed.idx),
+      );
+      if (reassembled == null) return const (handled: true, displayText: null);
+      return (handled: true, displayText: reassembled);
+    }
+
+    final plaintext = utf8.decode(plainBytes, allowMalformed: true);
+    _rememberOtpDecrypt(hex, plaintext);
+    return (handled: true, displayText: plaintext);
+  }
+
+  _OtpDispatchResult _dispatchOtpChannel(
+    int channelIndex,
+    String senderName,
+    String rawText,
+  ) {
+    final pad = getChannelOtpPad(channelIndex);
+    if (pad == null || !pad.enabled) {
+      return const (handled: false, displayText: null);
+    }
+
+    // Channel-only explicit pad-offset framing (see OtpChannelOffsetService)
+    // - the real architectural gap this fixes: a shared-sequential channel
+    // pad has no per-sender split, so two participants who transmit close
+    // enough together that neither has heard the other's message can
+    // encrypt against the SAME pad bytes. Without a claimed offset to check
+    // against, this device would just decrypt whatever's at its own
+    // current front and get garbage for whichever collided message it
+    // processes second. A message with no z2 prefix (an older build, or
+    // the Lua side before this ships there) falls through unchanged -
+    // claimedOffset stays null and every check below is skipped, exactly
+    // as before this fix.
+    int? claimedOffset;
+    var text = rawText;
+    final offsetFramed = OtpChannelOffsetService.parse(rawText);
+    if (offsetFramed != null) {
+      claimedOffset = offsetFramed.offset;
+      text = offsetFramed.cipherHex;
+    }
+
+    // Feeds the participant-sync tracking (see getActiveChannelParticipants
+    // / the channel chat screen's participant strip) from ordinary
+    // conversation, not just explicit sync-check replies — every
+    // offset-bearing message someone sends is itself a statement of where
+    // they think the pad is, at least as good a signal as a sync-check.
+    // Deliberately BEFORE the cache-hit/collision/ahead checks below: even
+    // a duplicate, a collision, or a gap is still evidence this sender was
+    // just heard from, which is exactly what the strip needs to know.
+    _recordChannelParticipantHeard(
+      channelIndex,
+      senderName,
+      claimedOffset: claimedOffset,
+      currentOffset: pad.offset,
+    );
+
+    final hex = OtpService.extractCiphertextHex(text);
+    if (hex == null) return const (handled: false, displayText: null);
+
+    final cached = _otpDecryptCache[hex];
+    if (cached != null) {
+      final chunkInfo = _otpChunkHexIndex[hex];
+      if (chunkInfo != null) {
+        // Same idempotent-redelivery reasoning as the contact path above.
+        // This deliberately runs BEFORE the offset compare below: a chunk
+        // the sender re-transmitted because it never heard our ack has a
+        // "stale" offset by now too, and that's not a collision, it's a
+        // duplicate we've already fully processed — the cache hit on exact
+        // ciphertext content (not offset) is what correctly tells the two
+        // apart.
+        _ackChunkFromChannelSender(senderName, chunkInfo.tid, chunkInfo.idx);
+        return const (handled: true, displayText: null);
+      }
+      return (handled: true, displayText: cached.isEmpty ? null : cached);
+    }
+
+    if (claimedOffset != null) {
+      final currentOffset = pad.offset;
+      if (claimedOffset < currentOffset) {
+        // Collision: this exact ciphertext is new (missed the cache-hit
+        // dedup above), but it claims pad bytes we've already spent — on
+        // our own send or an earlier receive. There's no historical record
+        // of past offsets to recover which slice it actually wanted, so
+        // unlike a resync gap this specific message is simply gone; say so
+        // plainly instead of attempting a decrypt that can only be wrong.
+        appLogger.warn(
+          'channel $channelIndex: collision from $senderName at offset '
+          '$claimedOffset (we are at $currentOffset) - message lost',
+        );
+        // Force an immediate, unthrottled resync the moment a collision is
+        // detected, rather than waiting for the next periodic/backed-off
+        // check (which passes 6-7's throttling can space out by minutes) -
+        // ports OTP_3_RC1.lua's newest collision-handling behavior. There
+        // is no accompanying "resend": this device never had the lost
+        // message's plaintext to resend (that ciphertext belonged to
+        // whoever collided with it, and Phase 1 never decrypts a collided
+        // message), so all that's actionable here is getting this
+        // channel's own counter caught up as fast as possible.
+        checkChannelPadSync(channelIndex);
+        _sendChannelNack(channelIndex, 'C');
+        return (
+          handled: true,
+          displayText:
+              '⚠️ Channel message from $senderName lost — collided with '
+              'another sender',
+        );
+      }
+      if (claimedOffset > currentOffset) {
+        // We're behind what this message needs - most likely a predecessor
+        // we haven't received yet. Feed the EXISTING auto-resync
+        // grace-period machinery (_trackChannelResyncGap) with this
+        // concrete, certain offset - an actual message declaring it, not
+        // just a self-reported sync-check counter - so catch-up doesn't
+        // have to wait for the next throttled periodic check. This
+        // message can't be decrypted yet either (its bytes are past our
+        // current front), so it's suppressed, not buffered for a retry.
+        _trackChannelResyncGap(channelIndex, senderName, claimedOffset);
+        return const (handled: true, displayText: null);
+      }
+      // claimedOffset == currentOffset: exactly the next expected message -
+      // fall through to the ordinary decrypt path below, unchanged.
+    }
+
+    final cipherByteLen = hex.length ~/ 2;
+    Uint8List plainBytes;
+    try {
+      final freshPad = getChannelOtpPad(channelIndex)!;
+      final consumption = _consumePadForReceive(freshPad, cipherByteLen);
+      plainBytes = OtpService.decryptBytesFromHex(hex, consumption.keyBytes);
+      _channelOtpPads[channelIndex] = consumption.updated;
+      unawaited(_otpPadStore.saveChannelPad(channelIndex, consumption.updated));
+      _requestPromptChannelSyncCheck(channelIndex);
+    } catch (e) {
+      appLogger.warn('OTP decrypt failed for channel $channelIndex: $e');
+      _sendChannelNack(channelIndex, 'D');
+      _requestPromptChannelSyncCheck(channelIndex);
+      return (
+        handled: true,
+        displayText: '🔒 Could not decrypt — pad may be out of sync',
+      );
+    }
+
+    final parsed = OtpChunkService.parse(plainBytes);
+    if (parsed is ParsedAckFrame) {
+      _rememberOtpDecrypt(hex, '');
+      _handleIncomingOtpAck(null, parsed.tid, parsed.idx, viaChannel: true);
+      return const (handled: true, displayText: null);
+    }
+    if (parsed is ParsedChunkFrame) {
+      final reassembled = _handleIncomingChunkForChannel(
+        channelIndex,
+        senderName,
+        parsed,
+      );
+      _rememberOtpDecrypt(
+        hex,
+        reassembled ?? '',
+        chunkInfo: (tid: parsed.tid, idx: parsed.idx),
+      );
+      if (reassembled == null) return const (handled: true, displayText: null);
+      return (handled: true, displayText: reassembled);
+    }
+
+    final plaintext = utf8.decode(plainBytes, allowMalformed: true);
+    _rememberOtpDecrypt(hex, plaintext);
+    return (handled: true, displayText: plaintext);
+  }
+
+  /// Resolves [senderName] to a known contact and, if found, sends them a
+  /// chunk ack for (tid, idx) as a DM — shared by both the first-arrival
+  /// path ([_handleIncomingChunkForChannel]) and the idempotent-redelivery
+  /// cache-hit path in [_dispatchOtpChannel], so a redelivered channel
+  /// chunk still gets re-acked without re-decrypting/re-consuming pad.
+  void _ackChunkFromChannelSender(String senderName, int tid, int idx) {
+    final senderContact = _contacts.cast<Contact?>().firstWhere(
+      (c) => c != null && c.name == senderName,
+      orElse: () => null,
+    );
+    if (senderContact != null) {
+      _sendChunkAckToContact(senderContact, tid, idx);
+    } else {
+      appLogger.info(
+        'OTP: cannot ack channel chunk from "$senderName" — not a known '
+        'contact, skipping ack',
+      );
+    }
+  }
+
+  // ── OTP chunk receive (reassembly + acking) ─────────────────────────
+
+  /// Stores one incoming chunk for a contact DM transfer, always sends an
+  /// ack for it (idempotent — a duplicate-received chunk just re-sends the
+  /// same cached ack rather than reprocessing), and returns the fully
+  /// reassembled plaintext once every chunk of this transfer has arrived
+  /// (null while more are still pending).
+  String? _handleIncomingChunkForContact(
+    Contact contact,
+    ParsedChunkFrame frame,
+  ) {
+    final contactKeyHex = contact.publicKeyHex;
+    final perContact = _contactChunkReassembly.putIfAbsent(
+      contactKeyHex,
+      () => {},
+    );
+    final state = perContact.putIfAbsent(
+      frame.tid,
+      () => _OtpChunkReassembly(frame.totCh),
+    );
+    state.chunks.putIfAbsent(frame.idx, () => frame.data);
+    state.lastActivity = DateTime.now();
+
+    _sendChunkAckToContact(contact, frame.tid, frame.idx);
+
+    final joined = state.tryJoin();
+    if (joined == null) return null;
+    perContact.remove(frame.tid);
+
+    // An OTP-encrypted image transfer (see otp_image_transport.dart) rides
+    // over this exact chunk pipeline, so the only way to tell it apart from
+    // ordinary chat text is to check the reassembled PLAINTEXT for its
+    // marker before ever calling utf8.decode on it — the marker check must
+    // come first because `allowMalformed: true` below would otherwise
+    // silently mangle the binary bitstream into lossy replacement
+    // characters, destroying it. This can't return synchronously through
+    // `_dispatchOtpContact`'s displayText plumbing like ordinary chunked
+    // text does: registering the image (and its preview bytes) with
+    // ReceivedImageStore is async, so it's finished separately and posts
+    // its own message once done (see _completeIncomingContactImage) —
+    // nothing is shown for this frame in the meantime, exactly like a
+    // non-final chunk.
+    final imagePayload = OtpImageTransport.parse(joined);
+    if (imagePayload != null) {
+      unawaited(_completeIncomingContactImage(contact, imagePayload, frame.tid));
+      return null;
+    }
+
+    return utf8.decode(joined, allowMalformed: true);
+  }
+
+  /// Finishes an OTP DM image transfer once every chunk has reassembled and
+  /// [OtpImageTransport.parse] has confirmed the marker: hands the bitstream
+  /// to [ReceivedImageStore] exactly as an inbound channel image would (see
+  /// `ImageStreamReassembler.addChunk` in main.dart), then posts the
+  /// sentinel message itself.
+  ///
+  /// Best-effort throughout: by the time this runs, the transfer has already
+  /// been fully received and acked, so a failure here (no store wired, a
+  /// disk-write error) must not look like a lost message — it's logged and
+  /// dropped rather than surfaced as a decrypt error.
+  Future<void> _completeIncomingContactImage(
+    Contact contact,
+    OtpImagePayload payload,
+    int tid,
+  ) async {
+    final store = _receivedImageStore;
+    if (store == null) {
+      appLogger.warn(
+        'OTP image from ${contact.publicKeyHex} dropped: no '
+        'ReceivedImageStore wired into this build',
+      );
+      return;
+    }
+    final channelIndex = OtpImageTransport.virtualChannelIndexFor(
+      contact.publicKeyHex,
+    );
+    final outcome = ImageChunkOutcome(
+      ImageChunkStatus.completed,
+      result: ImageReassemblyResult(
+        key: ImageStreamKey(
+          senderPrefix: _otpDmIncomingSenderPrefix,
+          imgId: tid,
+          channelIndex: channelIndex,
+        ),
+        metadata: payload.metadata,
+        data: payload.bitstream,
+        recoveredWithParity: false,
+        chunkCount: 1,
+      ),
+    );
+    ReceivedImageEntry? entry;
+    try {
+      entry = await store.handleOutcome(outcome, channelIndex: channelIndex);
+    } on Exception catch (error) {
+      appLogger.warn(
+        'OTP image from ${contact.publicKeyHex} failed to register: $error',
+      );
+      return;
+    }
+    if (entry == null) return;
+    final message = Message(
+      senderKey: contact.publicKey,
+      text: ReceivedImageRef.encode(entry.streamId),
+      timestamp: DateTime.now(),
+      isOutgoing: false,
+      isCli: false,
+      status: MessageStatus.delivered,
+      pathBytes: Uint8List(0),
+    );
+    _addMessage(contact.publicKeyHex, message);
+    notifyListeners();
+  }
+
+  /// Same idea for a channel-received chunk. Per the wire format, the ack
+  /// MUST go back to the original sender as a direct message, never as a
+  /// channel broadcast — but this app's channel messages don't carry a
+  /// resolvable sender public key (only a display name; see
+  /// ChannelMessage.fromFrame / _splitSenderText), so acking is only
+  /// possible when [senderName] happens to match a known contact who also
+  /// has their own DM OTP pad configured with us. When it doesn't, we
+  /// still store/reassemble the chunk correctly (so the message itself is
+  /// never lost) — we just can't tell the sender we got it, so they'll
+  /// keep retrying until they give up. This is an explicit, documented
+  /// platform limitation: Lua's single-device model doesn't have this
+  /// "is this participant even a known contact" ambiguity.
+  String? _handleIncomingChunkForChannel(
+    int channelIndex,
+    String senderName,
+    ParsedChunkFrame frame,
+  ) {
+    final perChannel = _channelChunkReassembly.putIfAbsent(
+      channelIndex,
+      () => {},
+    );
+    final state = perChannel.putIfAbsent(
+      frame.tid,
+      () => _OtpChunkReassembly(frame.totCh),
+    );
+    state.chunks.putIfAbsent(frame.idx, () => frame.data);
+    state.lastActivity = DateTime.now();
+
+    _ackChunkFromChannelSender(senderName, frame.tid, frame.idx);
+
+    final joined = state.tryJoin();
+    if (joined == null) return null;
+    perChannel.remove(frame.tid);
+    return utf8.decode(joined, allowMalformed: true);
+  }
+
+  /// Sends (or, for a duplicate, re-sends the cached) chunk ack to
+  /// [contact] as a direct message, OTP-encrypted with the DM pad we share
+  /// with them. Skips gracefully — never throws — if we don't actually
+  /// have a usable pad with this contact, since an ack is best-effort: the
+  /// original sender's own retry timer is what actually guarantees
+  /// eventual delivery.
+  void _sendChunkAckToContact(Contact contact, int tid, int idx) {
+    final cacheKey = 'c:${contact.publicKeyHex}:$tid:$idx';
+    final cachedHex = _otpAckCache[cacheKey];
+    if (cachedHex != null) {
+      unawaited(
+        sendFrame(
+          buildSendTextMsgFrame(
+            contact.publicKey,
+            prepareContactOutboundText(contact, cachedHex),
+          ),
+        ),
+      );
+      return;
+    }
+    final pad = getContactOtpPad(contact.publicKeyHex);
+    if (pad == null || !pad.enabled) return;
+    final frame = OtpChunkService.buildAckFrame(tid: tid, idx: idx);
+    Uint8List cipherBytes;
+    OtpPad updatedPad;
+    try {
+      final consumption = _consumePadForSend(pad, frame.length);
+      cipherBytes = OtpService.encryptBytes(frame, consumption.keyBytes);
+      updatedPad = consumption.updated;
+    } on OtpPadExhaustedException catch (e) {
+      appLogger.warn(
+        'Cannot send chunk ack to ${contact.publicKeyHex}: pad exhausted: $e',
+      );
+      return;
+    }
+    _contactOtpPads[contact.publicKeyHex] = updatedPad;
+    unawaited(_otpPadStore.saveContactPad(contact.publicKeyHex, updatedPad));
+    final hex = OtpService.bytesToHex(cipherBytes);
+    _rememberOtpAck(cacheKey, hex);
+    unawaited(
+      sendFrame(
+        buildSendTextMsgFrame(
+          contact.publicKey,
+          prepareContactOutboundText(contact, hex),
+        ),
+      ),
+    );
+  }
+
+  /// Advances whichever pending chunked SEND (contact or channel) this ack
+  /// belongs to. [fromContactKeyHex] restricts contact-DM matching to the
+  /// contact that actually sent the ack; channel sends accept an ack from
+  /// ANY current participant for the current chunk index (a deliberate,
+  /// documented generalization of Lua's single-recipient DM ack model to
+  /// N-party channels — the first valid ack for the current chunk is
+  /// enough to advance, since sharedSequential pad state is symmetric for
+  /// everyone on the channel).
+  void _handleIncomingOtpAck(
+    String? fromContactKeyHex,
+    int tid,
+    int idx, {
+    bool viaChannel = false,
+  }) {
+    if (!viaChannel && fromContactKeyHex != null) {
+      final contactState = _pendingContactChunkSends[fromContactKeyHex];
+      if (contactState != null &&
+          contactState.tid == tid &&
+          idx == contactState.sctr) {
+        _advanceContactChunkSend(contactState);
+        return;
+      }
+    }
+    for (final state in _pendingChannelChunkSends.values.toList()) {
+      if (state.tid == tid && idx == state.sctr) {
+        _advanceChannelChunkSend(state);
+        return;
+      }
+    }
+  }
+
+  // ── OTP chunk send (contact DM) ──────────────────────────────────────
+
+  Future<void> _sendChunkedContactMessage(
+    Contact contact,
+    String plaintext,
+    Uint8List plainBytes, {
+    String? originalText,
+    String? translatedLanguageCode,
+    String? translationModelId,
+  }) async {
+    final capacity =
+        OtpService.maxPlaintextBytesForContact() - OtpChunkService.chunkOverheadBytes;
+    if (capacity <= 0) {
+      appLogger.warn(
+        'sendMessage: no room for chunk framing overhead on this contact',
+      );
+      return;
+    }
+    final dataChunks = OtpChunkService.splitPlaintextBytes(plainBytes, capacity);
+    if (dataChunks.length > 255) {
+      appLogger.warn(
+        'sendMessage: message too long even for chunking '
+        '(${dataChunks.length} chunks needed)',
+      );
+      return;
+    }
+
+    final message = Message.outgoing(contact.publicKey, plaintext,
+        originalText: originalText,
+        translatedLanguageCode: translatedLanguageCode,
+        translationModelId: translationModelId,
+        chunkIndex: 0,
+        chunkTotal: dataChunks.length);
+    _addMessage(contact.publicKeyHex, message);
+    notifyListeners();
+
+    final tid = math.Random.secure().nextInt(256);
+    final state = _OtpContactChunkSend(
+      contact: contact,
+      tid: tid,
+      chunks: dataChunks,
+      localMessageId: message.messageId,
+    );
+    _pendingContactChunkSends[contact.publicKeyHex] = state;
+    await _sendCurrentContactChunk(state);
+  }
+
+  /// True when this contact has an OTP pad configured and no chunked send
+  /// (text or image) already in flight — the gate a "send photo" button
+  /// should use to decide whether to show/enable itself.
+  bool canSendOtpImageToContact(String contactKeyHex) {
+    final pad = getContactOtpPad(contactKeyHex);
+    if (pad == null || !pad.enabled) return false;
+    return !_pendingContactChunkSends.containsKey(contactKeyHex);
+  }
+
+  /// Sends [codecBitstream] (the output of `ImageCodecService.encodeImageFile`
+  /// — see `image_send_preview_sheet.dart`) as an OTP-encrypted DM to
+  /// [contact], riding over the same chunked-send pipeline an ordinary long
+  /// OTP text message uses (see `_sendChunkedContactMessage` above) rather
+  /// than the channel-only GRP_DATA image transport.
+  ///
+  /// [previewPng] is the sender's own 512x512 crop (not a decode) — exactly
+  /// what the channel image feature shows for the sender's own bubble — so
+  /// this contact's own sent photo renders immediately without waiting on a
+  /// round trip or a model decode. Returns false without sending anything
+  /// if there's no usable OTP pad for this contact, a chunked send to them
+  /// is already in flight, or the image is too large even chunked.
+  Future<bool> sendOtpImageToContact(
+    Contact contact, {
+    required Uint8List codecBitstream,
+    required Uint8List previewPng,
+    required ImageCodecRatePoint rate,
+    int aspectCode = 0,
+    int resolution = kImageCodecSquareSize,
+  }) async {
+    if (!canSendOtpImageToContact(contact.publicKeyHex)) return false;
+    final metadata = ImageStreamMetadata(
+      rate: rate,
+      squareSize: resolution,
+      aspectCode: aspectCode,
+    );
+    Uint8List plaintext;
+    try {
+      plaintext = OtpImageTransport.buildPlaintext(
+        metadata: metadata,
+        bitstream: codecBitstream,
+      );
+    } on ArgumentError catch (e) {
+      appLogger.warn('sendOtpImage: unrepresentable resolution: $e');
+      return false;
+    }
+    return _sendChunkedContactImage(
+      contact,
+      plaintext,
+      metadata: metadata,
+      previewPng: previewPng,
+    );
+  }
+
+  Future<bool> _sendChunkedContactImage(
+    Contact contact,
+    Uint8List plainBytes, {
+    required ImageStreamMetadata metadata,
+    required Uint8List previewPng,
+  }) async {
+    final capacity =
+        OtpService.maxPlaintextBytesForContact() - OtpChunkService.chunkOverheadBytes;
+    if (capacity <= 0) {
+      appLogger.warn('sendOtpImage: no room for chunk framing overhead on this contact');
+      return false;
+    }
+    final dataChunks = OtpChunkService.splitPlaintextBytes(plainBytes, capacity);
+    if (dataChunks.length > 255) {
+      appLogger.warn(
+        'sendOtpImage: image too large even for chunking '
+        '(${dataChunks.length} chunks needed)',
+      );
+      return false;
+    }
+
+    // Placeholder bubble text until the transfer completes and
+    // onSendCompleted swaps it for the real ReceivedImageRef sentinel — the
+    // chunk progress machinery (chunkIndex/chunkTotal) already renders
+    // "n/m" over whatever text is here in the meantime, exactly like a long
+    // chunked text message.
+    final message = Message.outgoing(
+      contact.publicKey,
+      '📷 Photo',
+      chunkIndex: 0,
+      chunkTotal: dataChunks.length,
+    );
+    _addMessage(contact.publicKeyHex, message);
+    notifyListeners();
+
+    final tid = math.Random.secure().nextInt(256);
+    final state = _OtpContactChunkSend(
+      contact: contact,
+      tid: tid,
+      chunks: dataChunks,
+      localMessageId: message.messageId,
+    );
+    state.onSendCompleted = (success) async {
+      if (!success) return;
+      final store = _receivedImageStore;
+      if (store == null) return;
+      final channelIndex = OtpImageTransport.virtualChannelIndexFor(
+        contact.publicKeyHex,
+      );
+      try {
+        final entry = await store.registerOutgoing(
+          channelIndex: channelIndex,
+          senderPrefix: _otpDmOutgoingSenderPrefix,
+          imgId: tid,
+          previewPng: previewPng,
+          rate: aeicRatePointForUi(metadata.rate),
+          chunkCount: dataChunks.length,
+        );
+        _updateStoredContactMessage(
+          contact.publicKeyHex,
+          message.messageId,
+          (m) => m.copyWith(text: ReceivedImageRef.encode(entry.streamId)),
+        );
+        notifyListeners();
+      } on Exception catch (error) {
+        appLogger.warn('outgoing OTP image registration failed: $error');
+      }
+    };
+    _pendingContactChunkSends[contact.publicKeyHex] = state;
+    await _sendCurrentContactChunk(state);
+    return true;
+  }
+
+  Future<void> _sendCurrentContactChunk(_OtpContactChunkSend state) async {
+    if (_pendingContactChunkSends[state.contact.publicKeyHex] != state) return;
+    if (state.sctr >= state.chunks.length) {
+      _finishContactChunkSend(state, success: true);
+      return;
+    }
+    if (state.currentCipherHex == null) {
+      final pad = getContactOtpPad(state.contact.publicKeyHex);
+      if (pad == null) {
+        _finishContactChunkSend(state, success: false);
+        return;
+      }
+      final frame = OtpChunkService.buildChunkFrame(
+        tid: state.tid,
+        idx: state.sctr,
+        totCh: state.chunks.length,
+        chunkData: state.chunks[state.sctr],
+      );
+      try {
+        final consumption = _consumePadForSend(pad, frame.length);
+        final cipherBytes = OtpService.encryptBytes(frame, consumption.keyBytes);
+        _contactOtpPads[state.contact.publicKeyHex] = consumption.updated;
+        await _otpPadStore.saveContactPad(
+          state.contact.publicKeyHex,
+          consumption.updated,
+        );
+        state.currentCipherHex = OtpService.bytesToHex(cipherBytes);
+      } on OtpPadExhaustedException catch (e) {
+        appLogger.warn(
+          'Chunk send pad exhausted for ${state.contact.publicKeyHex}: $e',
+        );
+        _finishContactChunkSend(state, success: false);
+        return;
+      }
+    }
+    // Re-check ownership after the await above (pad consumption + disk
+    // save) — if a second send for this same contact somehow started while
+    // this one was suspended there, it would have replaced this state in
+    // _pendingContactChunkSends already. Transmitting anyway would put a
+    // stale, already-superseded ciphertext chunk on the air using pad
+    // bytes real (unrelated) traffic may since have consumed past, and its
+    // own retry timer would keep re-sending it. See the identical guard on
+    // _sendCurrentChannelChunk for the fuller reasoning.
+    if (_pendingContactChunkSends[state.contact.publicKeyHex] != state) return;
+    // Slick-UI: keep the bubble's progress in step with which part is
+    // actually going out, not just a static "sending" — see
+    // Message.chunkIndex/chunkTotal.
+    _updateStoredContactMessage(
+      state.contact.publicKeyHex,
+      state.localMessageId,
+      (m) => m.copyWith(chunkIndex: state.sctr, chunkTotal: state.chunks.length),
+    );
+    await _transmitContactChunkCipher(state.contact, state.currentCipherHex!);
+    state.lastAttemptAt = DateTime.now();
+    state.cancelRetryTimer();
+    state.retryTimer = Timer(
+      const Duration(seconds: 12),
+      () => _handleContactChunkTimeout(state),
+    );
+  }
+
+  Future<void> _transmitContactChunkCipher(
+    Contact contact,
+    String cipherHex,
+  ) async {
+    await _waitForRadioQuiet(lastInboundRxTime: _lastContactMsgRxTime);
+    final outboundText = prepareContactOutboundText(contact, cipherHex);
+    await sendFrame(buildSendTextMsgFrame(contact.publicKey, outboundText));
+  }
+
+  void _handleContactChunkTimeout(_OtpContactChunkSend state) {
+    if (_pendingContactChunkSends[state.contact.publicKeyHex] != state) return;
+    state.retryCount += 1;
+    // Local retry policy only — the wire format (chunk framing, reused
+    // ciphertext) is what has to match Lua, not this timer/count. Lua's
+    // own retry policy is not ported verbatim; this app already has its
+    // own delivery-reliability conventions (see message_retry_service.dart)
+    // and this mirrors that spirit rather than Lua's millisecond timers.
+    if (state.retryCount > 5) {
+      _finishContactChunkSend(state, success: false);
+      return;
+    }
+    unawaited(
+      _transmitContactChunkCipher(state.contact, state.currentCipherHex!),
+    );
+    state.lastAttemptAt = DateTime.now();
+    state.retryTimer = Timer(
+      const Duration(seconds: 12),
+      () => _handleContactChunkTimeout(state),
+    );
+  }
+
+  void _advanceContactChunkSend(_OtpContactChunkSend state) {
+    state.cancelRetryTimer();
+    state.retryCount = 0;
+    state.sctr += 1;
+    state.currentCipherHex = null;
+    if (state.sctr >= state.chunks.length) {
+      _finishContactChunkSend(state, success: true);
+    } else {
+      unawaited(_sendCurrentContactChunk(state));
+    }
+  }
+
+  void _finishContactChunkSend(
+    _OtpContactChunkSend state, {
+    required bool success,
+  }) {
+    state.cancelRetryTimer();
+    if (_pendingContactChunkSends[state.contact.publicKeyHex] == state) {
+      _pendingContactChunkSends.remove(state.contact.publicKeyHex);
+    }
+    _updateStoredContactMessage(
+      state.contact.publicKeyHex,
+      state.localMessageId,
+      (m) => m.copyWith(
+        status: success ? MessageStatus.delivered : MessageStatus.failed,
+      ),
+    );
+    if (success) {
+      _requestPromptContactSyncCheck(state.contact.publicKeyHex);
+    }
+    final onCompleted = state.onSendCompleted;
+    if (onCompleted != null) {
+      unawaited(onCompleted(success));
+    }
+  }
+
+  // ── OTP chunk send (channel) ─────────────────────────────────────────
+
+  Future<void> _sendChunkedChannelMessage(
+    Channel channel,
+    String plaintext,
+    Uint8List plainBytes, {
+    String? originalText,
+    String? translatedLanguageCode,
+    String? translationModelId,
+  }) async {
+    final capacity = OtpService.maxPlaintextBytesForChannel(_selfName) -
+        OtpChunkService.chunkOverheadBytes;
+    if (capacity <= 0) {
+      appLogger.warn(
+        'sendChannelMessage: no room for chunk framing overhead on this channel',
+      );
+      return;
+    }
+    final dataChunks = OtpChunkService.splitPlaintextBytes(plainBytes, capacity);
+    if (dataChunks.length > 255) {
+      appLogger.warn(
+        'sendChannelMessage: message too long even for chunking '
+        '(${dataChunks.length} chunks needed)',
+      );
+      return;
+    }
+
+    final message = ChannelMessage.outgoing(
+      plaintext,
+      _selfName ?? 'Me',
+      channel.index,
+      originalText: originalText,
+      translatedLanguageCode: translatedLanguageCode,
+      translationModelId: translationModelId,
+      chunkIndex: 0,
+      chunkTotal: dataChunks.length,
+    );
+    _addChannelMessage(channel.index, message);
+    // Deliberately NOT added to _pendingChannelSentQueue: that FIFO is for
+    // the single-shot "one RESP_CODE_SENT == one queued local message"
+    // model, paired 1:1 with a channelSendQueueId passed into
+    // _sendFrameAndWaitForCommandAck. A chunked send transmits several
+    // separate packets for one local message bubble, so it tracks its own
+    // status via the OTP-level chunk ack machinery instead (see
+    // _finishChannelChunkSend) — enqueueing here without ever supplying a
+    // matching channelSendQueueId would leave a stale entry that a later,
+    // unrelated RESP_CODE_SENT could incorrectly pop and misattribute.
+    notifyListeners();
+
+    final tid = math.Random.secure().nextInt(256);
+    final state = _OtpChannelChunkSend(
+      channel: channel,
+      tid: tid,
+      chunks: dataChunks,
+      localMessageId: message.messageId,
+    );
+    _pendingChannelChunkSends[channel.index] = state;
+    await _sendCurrentChannelChunk(state);
+  }
+
+  Future<void> _sendCurrentChannelChunk(_OtpChannelChunkSend state) async {
+    if (_pendingChannelChunkSends[state.channel.index] != state) return;
+    if (state.sctr >= state.chunks.length) {
+      _finishChannelChunkSend(state, success: true);
+      return;
+    }
+    if (state.currentCipherHex == null) {
+      final pad = getChannelOtpPad(state.channel.index);
+      if (pad == null) {
+        _finishChannelChunkSend(state, success: false);
+        return;
+      }
+      final frame = OtpChunkService.buildChunkFrame(
+        tid: state.tid,
+        idx: state.sctr,
+        totCh: state.chunks.length,
+        chunkData: state.chunks[state.sctr],
+      );
+      try {
+        final consumption = _consumePadForSend(pad, frame.length);
+        final cipherBytes = OtpService.encryptBytes(frame, consumption.keyBytes);
+        _channelOtpPads[state.channel.index] = consumption.updated;
+        await _otpPadStore.saveChannelPad(
+          state.channel.index,
+          consumption.updated,
+        );
+        state.currentCipherHex = OtpService.bytesToHex(cipherBytes);
+      } on OtpPadExhaustedException catch (e) {
+        appLogger.warn(
+          'Chunk send pad exhausted for channel ${state.channel.index}: $e',
+        );
+        _finishChannelChunkSend(state, success: false);
+        return;
+      }
+    }
+    // Re-check ownership after the await above (pad consumption + disk
+    // save) — if a second send for this same channel somehow started while
+    // this one was suspended there, it would have replaced this state in
+    // _pendingChannelChunkSends already (see sendChannelMessage/
+    // _sendChunkedChannelMessage's now-in-flight guard). Transmitting
+    // anyway would put a stale, already-superseded ciphertext chunk on the
+    // air against pad bytes real traffic may since have consumed past —
+    // silently corrupting the shared channel pad's sequential offset for
+    // every participant, not just this device — and its own retry timer
+    // would keep re-sending it indefinitely.
+    if (_pendingChannelChunkSends[state.channel.index] != state) return;
+    // Slick-UI: keep the bubble's progress in step with which part is
+    // actually going out — see Message.chunkIndex/chunkTotal (mirrored
+    // here on ChannelMessage).
+    _updateStoredChannelMessage(
+      state.channel.index,
+      state.localMessageId,
+      (m) => m.copyWith(chunkIndex: state.sctr, chunkTotal: state.chunks.length),
+    );
+    await _transmitChannelChunkCipher(state.channel, state.currentCipherHex!);
+    state.lastAttemptAt = DateTime.now();
+    state.cancelRetryTimer();
+    state.retryTimer = Timer(
+      const Duration(seconds: 12),
+      () => _handleChannelChunkTimeout(state),
+    );
+  }
+
+  Future<void> _transmitChannelChunkCipher(
+    Channel channel,
+    String cipherHex,
+  ) async {
+    final outboundText = prepareChannelOutboundText(channel.index, cipherHex);
+    await _runScopedChannelSend(() async {
+      await _waitForRadioQuiet(lastInboundRxTime: _lastChannelMsgRxTime);
+      await _sendFrameAndWaitForCommandAck(
+        buildSendChannelTextMsgFrame(channel.index, outboundText),
+      );
+    }, region: getChannelRegion(channel.index));
+  }
+
+  void _handleChannelChunkTimeout(_OtpChannelChunkSend state) {
+    if (_pendingChannelChunkSends[state.channel.index] != state) return;
+    state.retryCount += 1;
+    if (state.retryCount > 5) {
+      _finishChannelChunkSend(state, success: false);
+      return;
+    }
+    unawaited(
+      _transmitChannelChunkCipher(state.channel, state.currentCipherHex!),
+    );
+    state.lastAttemptAt = DateTime.now();
+    state.retryTimer = Timer(
+      const Duration(seconds: 12),
+      () => _handleChannelChunkTimeout(state),
+    );
+  }
+
+  /// Call when the app returns to the foreground (see main.dart's
+  /// didChangeAppLifecycleState). A backgrounded app can have its chunk-
+  /// send retry Timers suspended by Android for far longer than their
+  /// nominal 12s (Doze / background execution limits) — a transfer that
+  /// was genuinely due for a retry while backgrounded just sits there
+  /// instead, and since _pendingContactChunkSends/_pendingChannelChunkSends
+  /// stay populated the whole time, that also blocks any further send to
+  /// the same contact/channel — not just until the ~60s retry budget
+  /// should have run out, but indefinitely, until the app happens to come
+  /// back to the foreground. This re-evaluates every in-flight chunked
+  /// send against wall-clock time (not the Timer that may never have
+  /// fired) and forces the overdue ones through the normal timeout
+  /// handler immediately, exactly as if their Timer had fired on time.
+  void resumeStalledOtpChunkSends() {
+    const overdueAfter = Duration(seconds: 12);
+    final now = DateTime.now();
+    for (final state in _pendingContactChunkSends.values.toList()) {
+      final last = state.lastAttemptAt;
+      if (last != null && now.difference(last) >= overdueAfter) {
+        state.cancelRetryTimer();
+        _handleContactChunkTimeout(state);
+      }
+    }
+    for (final state in _pendingChannelChunkSends.values.toList()) {
+      final last = state.lastAttemptAt;
+      if (last != null && now.difference(last) >= overdueAfter) {
+        state.cancelRetryTimer();
+        _handleChannelChunkTimeout(state);
+      }
+    }
+  }
+
+  void _advanceChannelChunkSend(_OtpChannelChunkSend state) {
+    state.cancelRetryTimer();
+    state.retryCount = 0;
+    state.sctr += 1;
+    state.currentCipherHex = null;
+    if (state.sctr >= state.chunks.length) {
+      _finishChannelChunkSend(state, success: true);
+    } else {
+      unawaited(_sendCurrentChannelChunk(state));
+    }
+  }
+
+  void _finishChannelChunkSend(
+    _OtpChannelChunkSend state, {
+    required bool success,
+  }) {
+    state.cancelRetryTimer();
+    if (_pendingChannelChunkSends[state.channel.index] == state) {
+      _pendingChannelChunkSends.remove(state.channel.index);
+    }
+    _updateStoredChannelMessage(
+      state.channel.index,
+      state.localMessageId,
+      (m) => m.copyWith(
+        status: success ? ChannelMessageStatus.sent : ChannelMessageStatus.failed,
+      ),
+    );
+    if (success) {
+      _requestPromptChannelSyncCheck(state.channel.index);
+    }
+  }
+
   Future<void> loadUnreadState() async {
     _contactUnreadCount
       ..clear()
@@ -927,6 +3490,10 @@ class MeshCoreConnector extends ChangeNotifier {
     _activeContactKey = contactKeyHex;
     if (contactKeyHex != null) {
       markContactRead(contactKeyHex);
+      // Opening a chat is exactly the moment the periodic poll above
+      // would otherwise have to wait up to _otpAutoSyncPollInterval to
+      // first check it — check right away instead.
+      _requestPromptContactSyncCheck(contactKeyHex);
     }
   }
 
@@ -934,7 +3501,20 @@ class MeshCoreConnector extends ChangeNotifier {
     _activeChannelIndex = channelIndex;
     if (channelIndex != null) {
       markChannelRead(channelIndex);
+      _requestPromptChannelSyncCheck(channelIndex);
     }
+  }
+
+  /// Called when the message-compose field gains focus (i.e. the person is
+  /// about to start typing a reply) so a drifted pad is caught BEFORE real
+  /// pad bytes get burned sending into it, rather than only ever surfacing
+  /// after the fact as a failed decrypt on the other end.
+  void notifyComposeStartedForContact(String contactKeyHex) {
+    _requestPromptContactSyncCheck(contactKeyHex);
+  }
+
+  void notifyComposeStartedForChannel(int channelIndex) {
+    _requestPromptChannelSyncCheck(channelIndex);
   }
 
   void markContactRead(String contactKeyHex) {
@@ -1267,6 +3847,7 @@ class MeshCoreConnector extends ChangeNotifier {
     ImageChunkTransport? imageTransport,
     void Function(ImageChunkOutcome outcome)? onImageChunk,
     void Function(int senderPrefix)? onImageSenderPrefix,
+    ReceivedImageStore? receivedImageStore,
   }) {
     _retryService = retryService;
     _pathHistoryService = pathHistoryService;
@@ -1276,6 +3857,7 @@ class MeshCoreConnector extends ChangeNotifier {
     _imageTransport = imageTransport;
     _onImageChunk = onImageChunk;
     _onImageSenderPrefix = onImageSenderPrefix;
+    _receivedImageStore = receivedImageStore;
     _bleDebugLogService = bleDebugLogService;
     _appDebugLogService = appDebugLogService;
     _backgroundService = backgroundService;
@@ -1300,6 +3882,7 @@ class MeshCoreConnector extends ChangeNotifier {
         sendMessage: _sendMessageDirect,
         addMessage: _addMessage,
         updateMessage: _updateMessage,
+        onMaxRetriesExceeded: _handleOtpSendExhausted,
         clearContactPath: clearContactPath,
         setContactPath: setContactPath,
         calculateTimeout:
@@ -1539,6 +4122,110 @@ class MeshCoreConnector extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  // ===================== OTP store-and-forward =====================
+  // Ports OTP_3_RC1.lua's waiting_queue/flush_waiting/waiting_tick (see the
+  // dedicated project-doc section). DM-only, matching Lua: channels have no
+  // clean single "is this contact reachable" signal, and a channel's shared
+  // pad already has its own collision-coordination problem (see the channel
+  // OTP-collision sections) that multi-party queuing would only compound.
+
+  /// [RetryServiceConfig.onMaxRetriesExceeded] — called by MessageRetryService
+  /// the moment an outgoing message would otherwise be marked failed. Claims
+  /// only single-shot OTP sends (message.otpPlaintext != null); anything else
+  /// (plaintext mesh messages, reactions) falls through to the normal failed
+  /// handling exactly as before this feature, since Lua's store-and-forward
+  /// only ever applied to OTP's own ssend path either.
+  bool _handleOtpSendExhausted(Message message, Contact contact) {
+    if (message.otpPlaintext == null) return false;
+    final contactKeyHex = contact.publicKeyHex;
+    final queue = _waitingQueue.putIfAbsent(contactKeyHex, () => []);
+    // Refusing a NEW send once the queue is already at cap (see sendMessage)
+    // is meant to keep this from ever happening — this is a safety net, not
+    // the primary gate.
+    if (queue.length >= _waitingQueueCap) {
+      appLogger.warn(
+        'OTP store-and-forward queue for $contactKeyHex is already at cap '
+        '($_waitingQueueCap) — letting this send fail instead of growing '
+        'the queue further unbounded',
+      );
+      return false;
+    }
+    final waitingMessage = message.copyWith(
+      status: MessageStatus.waiting,
+      waitingSinceAt: DateTime.now(),
+    );
+    queue.add(waitingMessage);
+    _updateMessage(waitingMessage);
+    appLogger.info(
+      'OTP send to $contactKeyHex exhausted retries — queued for '
+      'store-and-forward (${queue.length}/$_waitingQueueCap)',
+    );
+    return true;
+  }
+
+  /// Attempts the oldest queued message for [contactKeyHex], rate-limited by
+  /// [_waitingFlushCooldown] so repeated "heard from them" triggers (several
+  /// sync-check replies in a row, say) don't each cost a retransmission.
+  /// Called both from _maybeHandleContactSyncMessage (the moment anything at
+  /// all is heard from that contact — mirrors Lua's flush_waiting, driven
+  /// from handle_sync_message) and from the background _waitingQueueTickTimer
+  /// sweep (mirrors waiting_tick).
+  void _flushWaitingQueue(String contactKeyHex) {
+    final queue = _waitingQueue[contactKeyHex];
+    if (queue == null || queue.isEmpty) return;
+    final now = DateTime.now();
+    final last = _lastWaitingFlushAt[contactKeyHex];
+    if (last != null && now.difference(last) < _waitingFlushCooldown) return;
+    // Never compete with a real send already in flight for this contact —
+    // same reasoning as every other OTP transmission gate in this file.
+    if (_pendingContactChunkSends.containsKey(contactKeyHex)) return;
+    Contact? contact;
+    for (final c in _contacts) {
+      if (c.publicKeyHex == contactKeyHex) {
+        contact = c;
+        break;
+      }
+    }
+    if (contact == null) return;
+    _lastWaitingFlushAt[contactKeyHex] = now;
+    final oldest = queue.removeAt(0);
+    appLogger.info(
+      'Flushing queued OTP message to $contactKeyHex '
+      '(${queue.length} remaining)',
+    );
+    // Re-drive through the normal send path from the ORIGINAL plaintext,
+    // not a replay of the old ciphertext bytes — the contact's pad offset
+    // has very likely moved on since this was first queued (auto-resync,
+    // or other messages sent in the meantime), so it must be re-encrypted
+    // fresh against the current offset, exactly like Lua's flush_waiting
+    // re-entering send_chat_message rather than retransmitting stale bytes.
+    // The old "waiting" bubble is removed first so the person sees one
+    // bubble transition from "waiting" to "sending", not two bubbles for
+    // what they experience as a single message.
+    final plaintext = oldest.otpPlaintext ?? oldest.text;
+    deleteMessage(oldest);
+    sendMessage(contact, plaintext);
+  }
+
+  /// Drains [contact]'s entire store-and-forward queue without attempting
+  /// to send any of it — used when cancelling, or when the person would
+  /// rather give up than keep waiting. Mirrors OTP_3_RC1.lua's
+  /// cancel_send() draining waiting_queue oldest-first when nothing is
+  /// actively sending.
+  void cancelWaitingQueue(Contact contact) {
+    final queue = _waitingQueue[contact.publicKeyHex];
+    if (queue == null || queue.isEmpty) return;
+    for (final message in List<Message>.from(queue)) {
+      deleteMessage(message);
+    }
+  }
+
+  /// How many messages are currently queued for this contact — surfaced to
+  /// the UI (e.g. to refuse composing yet another send, or to show a queue
+  /// depth badge) without exposing the queue's internal representation.
+  int waitingQueueLength(String contactKeyHex) =>
+      _waitingQueue[contactKeyHex]?.length ?? 0;
 
   Future<TranslationResult?> translateContactMessage(
     String contactKeyHex,
@@ -2057,6 +4744,8 @@ class MeshCoreConnector extends ChangeNotifier {
       );
       await _requestDeviceInfo();
       _startBatteryPolling();
+      _startOtpAutoSyncPolling();
+      _startWaitingQueueTicker();
       if (_radioStatsPollRefCount > 0) _startRadioStatsPolling();
       var gotSelfInfo = await _waitForSelfInfo(
         timeout: const Duration(seconds: 3),
@@ -2178,6 +4867,8 @@ class MeshCoreConnector extends ChangeNotifier {
       _pendingInitialContactsSync = true;
       await _requestDeviceInfo();
       _startBatteryPolling();
+      _startOtpAutoSyncPolling();
+      _startWaitingQueueTicker();
       if (_radioStatsPollRefCount > 0) _startRadioStatsPolling();
 
       var gotSelfInfo = await _waitForSelfInfo(
@@ -2894,6 +5585,8 @@ class MeshCoreConnector extends ChangeNotifier {
 
     await _requestDeviceInfo();
     _startBatteryPolling();
+    _startOtpAutoSyncPolling();
+    _startWaitingQueueTicker();
     if (_radioStatsPollRefCount > 0) _startRadioStatsPolling();
 
     final gotSelfInfo = await _waitForSelfInfo(
@@ -3083,6 +5776,8 @@ class MeshCoreConnector extends ChangeNotifier {
     _setState(MeshCoreConnectionState.disconnecting);
     _retryService?.failAllPending();
     _stopBatteryPolling();
+    _stopOtpAutoSyncPolling();
+    _stopWaitingQueueTicker();
     _stopRadioStatsPolling();
 
     await _usbFrameSubscription?.cancel();
@@ -3582,8 +6277,95 @@ class MeshCoreConnector extends ChangeNotifier {
   }) async {
     if (!isConnected || text.isEmpty) return;
 
+    // Check if this is a reaction - apply locally with pending status and route through retry service
+    final reactionInfo = ReactionHelper.parseReaction(text);
+
+    // OTP: reactions are always sent in the clear (they're tiny emoji-coded
+    // acks, not secret) — only real message text gets encrypted here.
+    //
+    // This MUST happen exactly once, right here, before `text` is ever
+    // handed to the retry service. prepareContactOutboundText's ciphertext
+    // bypass (below) makes every later call on the resulting ciphertext a
+    // no-op, but the encryption step itself is stateful — it advances the
+    // pad offset — so if it ran again on every retry attempt it would burn
+    // a fresh slice of pad per attempt and produce a DIFFERENT ciphertext
+    // each time. The firmware's ACK hash is computed from the outbound
+    // text, so retries must resend byte-identical frames; encrypting once
+    // and reusing the result is what makes that true.
+    // OTP: refuse to start a second encrypted send to this contact while
+    // one is already consuming pad (a chunked transfer in flight). Nothing
+    // previously stopped a double-tap of Send, or any other re-entrant
+    // call, from starting a second chunk-send state machine for the same
+    // contact — the newer one would silently replace the older one in
+    // _pendingContactChunkSends, but the older one's in-flight chunk keeps
+    // being encrypted/transmitted off the now-shared pad regardless,
+    // interleaving two messages' ciphertext on the air in an order that
+    // doesn't match the order it was encrypted in and permanently
+    // desyncing the receive side. Mirrors the Lua app's own `psend`/
+    // `queued_cipher` guard ("still sending the previous message").
+    if (reactionInfo == null &&
+        isContactOtpEnabled(contact.publicKeyHex) &&
+        _pendingContactChunkSends.containsKey(contact.publicKeyHex)) {
+      appLogger.warn(
+        'sendMessage: still sending the previous message to '
+        '${contact.publicKeyHex}, dropping this send',
+      );
+      return;
+    }
+
+    // OTP store-and-forward: refuse a brand-new send once this contact's
+    // waiting queue is already at cap, rather than letting it grow
+    // unbounded — mirrors Lua's send_chat_message refusing a 6th queued
+    // send outright. This is the primary gate; _handleOtpSendExhausted's
+    // own cap check is only a safety net for the (shouldn't-happen) case
+    // of a retry exhausting while the queue is already full.
+    if (reactionInfo == null &&
+        isContactOtpEnabled(contact.publicKeyHex) &&
+        waitingQueueLength(contact.publicKeyHex) >= _waitingQueueCap) {
+      appLogger.warn(
+        'sendMessage: store-and-forward queue for ${contact.publicKeyHex} '
+        'is full ($_waitingQueueCap queued) — refusing this send',
+      );
+      return;
+    }
+
+    if (reactionInfo == null && isContactOtpEnabled(contact.publicKeyHex)) {
+      final plainBytes = Uint8List.fromList(utf8.encode(text));
+      if (plainBytes.length > OtpService.maxPlaintextBytesForContact()) {
+        // Doesn't fit in one packet — hand off to the multi-chunk sender,
+        // which adds its own local message bubble and drives its own
+        // send/retry/ack state machine (see the "OTP chunk send" section).
+        await _sendChunkedContactMessage(
+          contact,
+          text,
+          plainBytes,
+          originalText: originalText,
+          translatedLanguageCode: translatedLanguageCode,
+          translationModelId: translationModelId,
+        );
+        return;
+      }
+    }
+
+    String wireText = text;
+    String? otpPlaintext;
+    if (reactionInfo == null && isContactOtpEnabled(contact.publicKeyHex)) {
+      try {
+        wireText = await _encryptForContact(contact, text);
+        otpPlaintext = text;
+      } on OtpPadExhaustedException catch (e) {
+        // Fail closed: never fall through and send plaintext. The UI's
+        // compose-box preflight check should catch this before the user
+        // even gets here, but this is the last line of defense.
+        appLogger.warn(
+          'sendMessage: OTP pad exhausted for ${contact.publicKeyHex}: $e',
+        );
+        return;
+      }
+    }
+
     final outboundBytes = utf8.encode(
-      prepareContactOutboundText(contact, text),
+      prepareContactOutboundText(contact, wireText),
     );
     if (outboundBytes.length > maxTextPayloadBytes) {
       debugPrint(
@@ -3593,8 +6375,6 @@ class MeshCoreConnector extends ChangeNotifier {
       return;
     }
 
-    // Check if this is a reaction - apply locally with pending status and route through retry service
-    final reactionInfo = ReactionHelper.parseReaction(text);
     if (reactionInfo != null) {
       appLogger.info('Sending reaction: ${reactionInfo.identifier()}');
       _conversations.putIfAbsent(contact.publicKeyHex, () => []);
@@ -3629,26 +6409,28 @@ class MeshCoreConnector extends ChangeNotifier {
     if (_retryService != null) {
       await _retryService!.sendMessageWithRetry(
         contact: contact,
-        text: text,
+        text: wireText,
         originalText: originalText,
         translatedLanguageCode: translatedLanguageCode,
         translationModelId: translationModelId,
+        otpPlaintext: otpPlaintext,
       );
     } else {
       // Fallback to old behavior if retry service not initialized
       final resolved = resolvePathSelection(contact);
       final message = Message.outgoing(
         contact.publicKey,
-        text,
+        wireText,
         pathLength: resolved.useFlood ? -1 : resolved.hopCount,
         pathBytes: Uint8List.fromList(resolved.pathBytes),
         originalText: originalText,
         translatedLanguageCode: translatedLanguageCode,
         translationModelId: translationModelId,
+        otpPlaintext: otpPlaintext,
       );
       _addMessage(contact.publicKeyHex, message); // recipient as "sender"
       notifyListeners();
-      final outboundText = prepareContactOutboundText(contact, text);
+      final outboundText = prepareContactOutboundText(contact, wireText);
       await sendFrame(buildSendTextMsgFrame(contact.publicKey, outboundText));
     }
   }
@@ -4052,21 +6834,139 @@ class MeshCoreConnector extends ChangeNotifier {
       // we continue to process it normally.
     }
 
-    final message = ChannelMessage.outgoing(
-      text,
-      _selfName ?? 'Me',
-      channel.index,
-      originalText: originalText,
-      translatedLanguageCode: translatedLanguageCode,
-      translationModelId: translationModelId,
-      region: sendRegion,
-      replyTo: replyTo,
-    );
-    _addChannelMessage(channel.index, message);
+    // OTP: refuse to start a second encrypted send to this channel while
+    // one is already consuming pad — see the identical guard and reasoning
+    // in sendMessage() above. Doubly important here: a channel pad is
+    // shared-sequential (one counter every participant must agree on), so
+    // corrupting its order doesn't just break this device, it desyncs
+    // everyone on the channel. Also refused while a previous send to this
+    // channel is still in its jitter delay (see
+    // _pendingChannelJitterChannels above) — same reasoning, just an
+    // earlier point in the same send.
+    if (isChannelOtpEnabled(channel.index) &&
+        (_pendingChannelChunkSends.containsKey(channel.index) ||
+            _pendingChannelJitterChannels.contains(channel.index))) {
+      appLogger.warn(
+        'sendChannelMessage: still sending the previous message to '
+        'channel ${channel.index}, dropping this send',
+      );
+      return;
+    }
+
+    // OTP: same reasoning as sendMessage() above — encrypt exactly once,
+    // here, before either the locally-stored message or the outbound frame
+    // is built, so both derive from the same ciphertext.
+    if (isChannelOtpEnabled(channel.index)) {
+      final plainBytes = Uint8List.fromList(utf8.encode(text));
+      if (plainBytes.length >
+          OtpService.maxPlaintextBytesForChannel(_selfName)) {
+        // Chunked OTP sends are DM-only, never channel - a channel pad is
+        // one shared-sequential counter every participant must agree on,
+        // so a chunk transfer that stalls or loses a part (a real,
+        // observed failure mode - see _sendChunkedContactMessage's DM
+        // counterpart and its git history) doesn't just desync the two
+        // people talking, it desyncs everyone on the channel. The
+        // compose-box UI already refuses this before it reaches here
+        // (see channel_chat_screen.dart's _sendMessage); this is the
+        // backstop for any other caller.
+        appLogger.warn(
+          'sendChannelMessage: message too long for one packet on channel '
+          '${channel.index} (${plainBytes.length} bytes) - refusing rather '
+          'than chunking; use a DM for longer OTP messages',
+        );
+        return;
+      }
+    }
+
+    String wireText = text;
+    String? otpPlaintext;
+    // Claimed pad offset for THIS ciphertext, wrapped onto the outbound
+    // wire text only (see OtpChannelOffsetService) - the locally stored
+    // ChannelMessage record keeps the bare, unwrapped ciphertext, same as
+    // before this fix.
+    int? claimedOffset;
+    // Set below only for the OTP-enabled jitter path, once the bubble has
+    // already been added to _channelMessages as "pending" — lets the code
+    // after the delay fill in the real ciphertext on that SAME message
+    // (by messageId) instead of adding a second one.
+    ChannelMessage? jitterMessage;
+    if (isChannelOtpEnabled(channel.index)) {
+      // Phase 2 channel-collision mitigation: show the bubble right away,
+      // holding only the plaintext (via otpPlaintext/displayText — see
+      // ChannelMessage), but don't touch the pad or encrypt yet. Wait a
+      // short random delay first, so a competing message from someone
+      // else that arrives in the meantime gets to advance this channel's
+      // pad offset before this device commits to one — see
+      // _encryptForChannel, which always reads the pad fresh at call
+      // time, and the class-level comment on _pendingChannelJitterChannels
+      // for the full tradeoff vs. a full reserve/commit handshake.
+      jitterMessage = ChannelMessage.outgoing(
+        '',
+        _selfName ?? 'Me',
+        channel.index,
+        originalText: originalText,
+        translatedLanguageCode: translatedLanguageCode,
+        translationModelId: translationModelId,
+        otpPlaintext: text,
+        region: sendRegion,
+        replyTo: replyTo,
+      );
+      _addChannelMessage(channel.index, jitterMessage);
+      notifyListeners();
+      _pendingChannelJitterChannels.add(channel.index);
+      try {
+        await Future.delayed(_channelJitterDelay());
+      } finally {
+        _pendingChannelJitterChannels.remove(channel.index);
+      }
+      try {
+        final encrypted = await _encryptForChannel(channel.index, text);
+        wireText = encrypted.cipherHex;
+        claimedOffset = encrypted.claimedOffset;
+        otpPlaintext = text;
+      } on OtpPadExhaustedException catch (e) {
+        appLogger.warn(
+          'sendChannelMessage: OTP pad exhausted for channel '
+          '${channel.index}: $e',
+        );
+        _markPendingChannelMessageFailedById(jitterMessage.messageId);
+        return;
+      }
+    }
+
+    final message = jitterMessage != null
+        ? jitterMessage.copyWith(text: wireText)
+        : ChannelMessage.outgoing(
+            wireText,
+            _selfName ?? 'Me',
+            channel.index,
+            originalText: originalText,
+            translatedLanguageCode: translatedLanguageCode,
+            translationModelId: translationModelId,
+            otpPlaintext: otpPlaintext,
+            region: sendRegion,
+            replyTo: replyTo,
+          );
+    if (jitterMessage != null) {
+      _fillJitteredChannelMessageText(
+        channel.index,
+        message.messageId,
+        wireText,
+      );
+    } else {
+      _addChannelMessage(channel.index, message);
+    }
     _pendingChannelSentQueue.add(message.messageId);
     notifyListeners();
 
-    final outboundText = prepareChannelOutboundText(channel.index, text);
+    // OTP: the claimed pad offset rides on the wire text only.
+    final wireTextForRadio = claimedOffset != null
+        ? OtpChannelOffsetService.wrap(claimedOffset, wireText)
+        : wireText;
+    final outboundText = prepareChannelOutboundText(
+      channel.index,
+      wireTextForRadio,
+    );
     // Resends reuse the timestamp, so they are the same packet: repeaters
     // that already forwarded it drop the copy and recipients see it once.
     Future<void> transmit({bool isResend = false}) =>
@@ -5180,6 +8080,7 @@ class MeshCoreConnector extends ChangeNotifier {
     _channelSettingsStore.setPublicKeyHex = selfPublicKeyHex;
     _channelRegionStore.setPublicKeyHex = selfPublicKeyHex;
     _contactSettingsStore.setPublicKeyHex = selfPublicKeyHex;
+    _otpPadStore.setPublicKeyHex = selfPublicKeyHex;
     _contactStore.setPublicKeyHex = selfPublicKeyHex;
     _channelStore.setPublicKeyHex = selfPublicKeyHex;
     _unreadStore.setPublicKeyHex = selfPublicKeyHex;
@@ -6057,7 +8958,7 @@ class MeshCoreConnector extends ChangeNotifier {
         appLogger.warn('Received message with empty text, ignoring');
         return null;
       }
-      final decodedText = isCli
+      var decodedText = isCli
           ? msgText
           : (Smaz.tryDecodePrefixed(msgText) ?? msgText);
 
@@ -6070,6 +8971,26 @@ class MeshCoreConnector extends ChangeNotifier {
           'Received message from unknown contact with prefix: ${senderPrefix.map((b) => b.toRadixString(16).padLeft(2, '0').toUpperCase()).join('')}',
         );
         return null;
+      }
+
+      // OTP: decrypt (and, for a chunk piece or ack, dispatch) in place,
+      // once, right here — this Message object and its `text` flow into
+      // every downstream render/notification/search call site unchanged,
+      // so this is the only place this needs to happen. A chunk piece or
+      // ack has nothing to show yet, so the whole incoming frame is
+      // suppressed (return null) rather than turned into a visible message.
+      if (!isCli) {
+        // Pad sync-check control messages are sent in the clear (never OTP
+        // ciphertext) and must never appear as a chat bubble — checked
+        // before OTP dispatch so this works even when OTP isn't (or isn't
+        // yet) enabled for this contact.
+        if (_maybeHandleContactNack(contact, decodedText)) return null;
+        if (_maybeHandleContactSyncMessage(contact, decodedText)) return null;
+        final otpResult = _dispatchOtpContact(contact, decodedText);
+        if (otpResult.handled) {
+          if (otpResult.displayText == null) return null;
+          decodedText = otpResult.displayText!;
+        }
       }
 
       return Message(
@@ -6200,10 +9121,26 @@ class MeshCoreConnector extends ChangeNotifier {
   /// This should be used to transform text before computing ACK hashes.
   String prepareContactOutboundText(Contact contact, String text) {
     final trimmed = text.trim();
+    // There's no more "OTP1|" marker to spot ciphertext by (removed so the
+    // wire format matches Lua's bare-hex payloads — see otp_service.dart).
+    // Since OTP encryption always runs exactly once, at compose time,
+    // before this function ever sees the text (see sendMessage/
+    // sendChannelMessage), a hex-looking payload for a contact that has
+    // OTP enabled IS that already-computed ciphertext — never run
+    // Smaz/Cyr2Lat on it, both would corrupt it, and compressing random
+    // bytes never helps anyway. A plaintext message that merely happens to
+    // look hex-ish only takes this branch when OTP is enabled for this
+    // contact, in which case it likely NEVER reaches here un-encrypted; the
+    // narrow remaining case is a reaction (which sendMessage never
+    // encrypts) that coincidentally looks like hex, where skipping Smaz is
+    // a harmless missed optimization, not a correctness issue.
     final isStructuredPayload =
         trimmed.startsWith('g:') ||
         trimmed.startsWith('m:') ||
-        trimmed.startsWith('V1|');
+        trimmed.startsWith('V1|') ||
+        OtpSyncService.looksLikeSyncMessage(trimmed) ||
+        (isContactOtpEnabled(contact.publicKeyHex) &&
+            OtpService.looksLikeCiphertextHex(trimmed));
     if (!isStructuredPayload) {
       if (isContactSmazEnabled(contact.publicKeyHex)) {
         return Smaz.encodeIfSmaller(text);
@@ -6230,8 +9167,20 @@ class MeshCoreConnector extends ChangeNotifier {
 
   String prepareChannelOutboundText(int channelIndex, String text) {
     final trimmed = text.trim();
+    // See the comment in prepareContactOutboundText above — same reasoning,
+    // channel-side.
     final isStructuredPayload =
-        trimmed.startsWith('g:') || trimmed.startsWith('m:');
+        trimmed.startsWith('g:') ||
+        trimmed.startsWith('m:') ||
+        OtpSyncService.looksLikeSyncMessage(trimmed) ||
+        // z2-framed channel ciphertext (see OtpChannelOffsetService) isn't
+        // pure hex any more (it has the offset + a pipe ahead of the hex),
+        // so it fails looksLikeCiphertextHex below and would otherwise fall
+        // through to Smaz/Cyr2Lat, which corrupts it exactly like it would
+        // corrupt raw ciphertext.
+        OtpChannelOffsetService.looksLikeOffsetMessage(trimmed) ||
+        (isChannelOtpEnabled(channelIndex) &&
+            OtpService.looksLikeCiphertextHex(trimmed));
     if (!isStructuredPayload) {
       if (isChannelSmazEnabled(channelIndex)) {
         return Smaz.encodeIfSmaller(text);
@@ -6316,10 +9265,45 @@ class MeshCoreConnector extends ChangeNotifier {
     if (_isSyncingQueuedMessages) {
       _handleQueuedMessageReceived();
     }
-    final parsed = ChannelMessage.fromFrame(frame);
+    var parsed = ChannelMessage.fromFrame(frame);
     if (parsed != null && parsed.channelIndex != null) {
-      if (_shouldDropSelfChannelMessage(parsed.senderName, parsed.pathBytes)) {
+      if (_shouldDropSelfChannelMessage(
+        parsed.senderName,
+        parsed.pathBytes,
+        channelIndex: parsed.channelIndex,
+      )) {
         return;
+      }
+      // Pad sync-check control messages (see the note in
+      // _parseContactMessage) — checked before OTP dispatch, same reasoning.
+      if (_maybeHandleChannelNack(parsed.channelIndex!, parsed.text)) {
+        return;
+      }
+      if (_maybeHandleChannelSyncMessage(
+        parsed.channelIndex!,
+        parsed.senderName,
+        parsed.text,
+      )) {
+        _lastChannelMsgRxTime = DateTime.now();
+        _handleQueuedMessageReceived();
+        return;
+      }
+      // OTP: decrypt (and, for a chunk piece or ack, dispatch) in place,
+      // once, right here, same reasoning as the contact-message path in
+      // _parseContactMessage above. A chunk piece or ack has nothing to
+      // show yet, so this whole incoming frame is suppressed.
+      final otpResult = _dispatchOtpChannel(
+        parsed.channelIndex!,
+        parsed.senderName,
+        parsed.text,
+      );
+      if (otpResult.handled) {
+        if (otpResult.displayText == null) {
+          _lastChannelMsgRxTime = DateTime.now();
+          _handleQueuedMessageReceived();
+          return;
+        }
+        parsed = parsed.copyWith(text: otpResult.displayText);
       }
       _lastChannelMsgRxTime = DateTime.now();
       final contentHash = _computeContentHash(
@@ -6393,13 +9377,53 @@ class MeshCoreConnector extends ChangeNotifier {
 
           final text = decrypted.readCString();
           final parsed = _splitSenderText(text);
-          final decodedText =
-              Smaz.tryDecodePrefixed(parsed.text) ?? parsed.text;
+
+          // Self-check MUST happen before any OTP decrypt attempt below:
+          // our own outgoing channel messages can loop back through this
+          // raw RX log path, and OTP decrypt is stateful (it advances the
+          // pad offset) — decrypting our own echo here would double-consume
+          // pad that was already spent when the message was sent, corrupting
+          // sync. (This also matches how _handleIncomingChannelMessage
+          // already orders its self-check before its OTP handling.)
           if (_shouldDropSelfChannelMessage(
             parsed.senderName,
             packet.pathBytes,
+            channelIndex: channel.index,
           )) {
             return;
+          }
+
+          var decodedText = Smaz.tryDecodePrefixed(parsed.text) ?? parsed.text;
+
+          // Pad sync-check control messages — same reasoning as the
+          // _handleIncomingChannelMessage hook; this is the second,
+          // independent channel-receive path, so it needs the same check.
+          if (_maybeHandleChannelNack(channel.index, decodedText)) {
+            return;
+          }
+          if (_maybeHandleChannelSyncMessage(
+            channel.index,
+            parsed.senderName,
+            decodedText,
+          )) {
+            return;
+          }
+
+          // OTP: this is the second, independent channel-receive path (raw
+          // RX log data, decoded straight from the channel PSK rather than
+          // via RESP_CODE_CHANNEL_MSG_RECV) — needs the same decrypt/dispatch
+          // hook as _handleIncomingChannelMessage, since either path can be
+          // the one that actually delivers a given message. A chunk piece
+          // or ack has nothing to show yet, so bail out without adding a
+          // visible message.
+          final otpResult = _dispatchOtpChannel(
+            channel.index,
+            parsed.senderName,
+            decodedText,
+          );
+          if (otpResult.handled) {
+            if (otpResult.displayText == null) return;
+            decodedText = otpResult.displayText!;
           }
 
           final pktHash = _computePacketHash(
@@ -6507,6 +9531,32 @@ class MeshCoreConnector extends ChangeNotifier {
         }
       }
     }
+  }
+
+  /// Fills in the real ciphertext (and any other passed fields) on a
+  /// channel message that was shown as a bubble before it was actually
+  /// encrypted — see the channel-send jitter delay in sendChannelMessage.
+  /// Unlike _markPendingChannelMessageSentById, this doesn't require the
+  /// message to still be `pending` (it always is at this point, but this
+  /// helper's job is narrower: just the text swap, not a status change).
+  bool _fillJitteredChannelMessageText(
+    int channelIndex,
+    String messageId,
+    String cipherHex,
+  ) {
+    final channelMessages = _channelMessages[channelIndex];
+    if (channelMessages == null) return false;
+    for (int i = channelMessages.length - 1; i >= 0; i--) {
+      final message = channelMessages[i];
+      if (message.messageId != messageId) continue;
+      channelMessages[i] = message.copyWith(text: cipherHex);
+      unawaited(
+        _channelMessageStore.saveChannelMessages(channelIndex, channelMessages),
+      );
+      notifyListeners();
+      return true;
+    }
+    return false;
   }
 
   bool _markPendingChannelMessageSentById(String messageId) {
@@ -7369,7 +10419,11 @@ class MeshCoreConnector extends ChangeNotifier {
         existing.text == incoming.text;
   }
 
-  bool _shouldDropSelfChannelMessage(String senderName, Uint8List pathBytes) {
+  bool _shouldDropSelfChannelMessage(
+    String senderName,
+    Uint8List pathBytes, {
+    int? channelIndex,
+  }) {
     final trimmed = senderName.trim();
     if (trimmed.isEmpty) return false;
 
@@ -7379,9 +10433,25 @@ class MeshCoreConnector extends ChangeNotifier {
     // If sender name doesn't match, keep the message
     if (trimmed != selfName) return false;
 
-    // Name matches - this is from self
-    // Drop only if pathBytes is empty (direct broadcast)
-    // Keep if pathBytes has data (repeated through another node)
+    // Name matches - this is from self.
+    //
+    // For an OTP-enabled channel, always drop it, hop count or not. A
+    // self-echo repeated back through another node still carries the exact
+    // ciphertext we already burned pad on when we sent it; letting it reach
+    // _dispatchOtpChannel would consume ANOTHER slice of the (forward-only,
+    // shared-sequential) channel pad against our own message, permanently
+    // desyncing us from every other participant even though nothing is
+    // actually wrong. There's no legitimate reason two different senders on
+    // the same OTP channel would share our exact self-name, so this can't
+    // drop someone else's real message.
+    if (channelIndex != null && getChannelOtpPad(channelIndex)?.enabled == true) {
+      return true;
+    }
+
+    // Plaintext channel: keep the old, non-OTP behavior. Drop only if
+    // pathBytes is empty (direct broadcast); keep it if pathBytes has data
+    // (repeated through another node), since that's useful confirmation the
+    // message actually propagated.
     return pathBytes.isEmpty;
   }
 
@@ -7437,6 +10507,8 @@ class MeshCoreConnector extends ChangeNotifier {
 
   void _handleDisconnection() {
     _stopBatteryPolling();
+    _stopOtpAutoSyncPolling();
+    _stopWaitingQueueTicker();
     _stopGpsLocationPolling();
     _stopRadioStatsPolling();
     _latestRadioStats = null;
@@ -7605,8 +10677,19 @@ class MeshCoreConnector extends ChangeNotifier {
     _notifyListenersTimer?.cancel();
     _reconnectTimer?.cancel();
     _batteryPollTimer?.cancel();
+    _otpAutoSyncPollTimer?.cancel();
+    _waitingQueueTickTimer?.cancel();
     _gpsLocationPollTimer?.cancel();
     _radioStatsPollTimer?.cancel();
+    for (final timer in _otpSyncTimeoutTimers.values) {
+      timer.cancel();
+    }
+    for (final timer in _otpResyncTimers.values) {
+      timer.cancel();
+    }
+    for (final timer in _otpBackoffTimers.values) {
+      timer.cancel();
+    }
     radioStatsNotifier.dispose();
     _receivedFramesController.close();
     _contactsFullController.close();
@@ -8265,3 +11348,104 @@ class _RepeaterAckContext {
     required this.messageBytes,
   });
 }
+
+/// Inbound reassembly state for one chunked OTP transfer (one `tid`) from
+/// one contact or on one channel. Chunks may arrive out of order or be
+/// redelivered (see the two-independent-channel-receive-paths note near
+/// the top of this file) — storing by index and only reassembling once
+/// every index 0..totCh-1 is present makes both of those harmless.
+class _OtpChunkReassembly {
+  final int totCh;
+  final Map<int, Uint8List> chunks = {};
+  DateTime lastActivity = DateTime.now();
+
+  _OtpChunkReassembly(this.totCh);
+
+  bool get isComplete => chunks.length >= totCh;
+
+  Uint8List? tryJoin() {
+    if (!isComplete) return null;
+    final ordered = <Uint8List>[];
+    for (var i = 0; i < totCh; i++) {
+      final part = chunks[i];
+      if (part == null) return null; // shouldn't happen given isComplete
+      ordered.add(part);
+    }
+    return OtpChunkService.joinOrderedChunks(ordered);
+  }
+}
+
+/// Base outbound chunked-send state shared by the contact and channel
+/// variants below. One in-flight chunked send at a time per contact / per
+/// channel (mirrors Lua's single global `psend`).
+abstract class _OtpChunkSend {
+  final int tid;
+  final List<Uint8List> chunks;
+  final String localMessageId;
+
+  /// Index of the next chunk to send — Lua's `psend.sctr`.
+  int sctr = 0;
+
+  /// The already-computed ciphertext hex for chunk [sctr]. Must be reused
+  /// verbatim on every retry — never recomputed — exactly like this app's
+  /// existing single-shot "encrypt exactly once at compose time" rule,
+  /// extended to the chunk case.
+  String? currentCipherHex;
+
+  int retryCount = 0;
+  Timer? retryTimer;
+
+  /// Wall-clock time of the last real transmit attempt for the current
+  /// chunk. Used by MeshCoreConnector.resumeStalledOtpChunkSends to tell
+  /// a retry that's genuinely overdue from one that's simply early —
+  /// retryTimer alone can't answer that after the app has been
+  /// backgrounded, since Android can suspend a plain Dart Timer for far
+  /// longer than its nominal duration (Doze / background execution
+  /// limits), silently leaving this transfer (and the send guard that
+  /// blocks anything else to this contact/channel while it's in flight)
+  /// stuck long past whatever its real retry budget should have been.
+  DateTime? lastAttemptAt;
+
+  _OtpChunkSend({
+    required this.tid,
+    required this.chunks,
+    required this.localMessageId,
+  });
+
+  void cancelRetryTimer() {
+    retryTimer?.cancel();
+    retryTimer = null;
+  }
+}
+
+class _OtpContactChunkSend extends _OtpChunkSend {
+  final Contact contact;
+
+  /// Fires exactly once, when this whole chunked transfer finishes
+  /// (success or not). An ordinary chunked text message has nothing left
+  /// to do once `_finishContactChunkSend` has updated its status, so this
+  /// is null for one — only an OTP DM image send sets it, to register the
+  /// completed transfer with `ReceivedImageStore` and swap the placeholder
+  /// bubble text for the real image sentinel, which can only happen once
+  /// transmission is confirmed (see `_sendChunkedContactImage`).
+  Future<void> Function(bool success)? onSendCompleted;
+
+  _OtpContactChunkSend({
+    required this.contact,
+    required super.tid,
+    required super.chunks,
+    required super.localMessageId,
+  });
+}
+
+class _OtpChannelChunkSend extends _OtpChunkSend {
+  final Channel channel;
+
+  _OtpChannelChunkSend({
+    required this.channel,
+    required super.tid,
+    required super.chunks,
+    required super.localMessageId,
+  });
+}
+
