@@ -1634,18 +1634,6 @@ class MeshCoreConnector extends ChangeNotifier {
     return true;
   }
 
-  void _sendContactNack(Contact contact, String reason) {
-    if (!_nackAllowed()) return;
-    unawaited(
-      sendFrame(
-        buildSendTextMsgFrame(
-          contact.publicKey,
-          prepareContactOutboundText(contact, 'z4${reason}z'),
-        ),
-      ),
-    );
-  }
-
   void _sendChannelNack(int channelIndex, String reason) {
     if (!_nackAllowed()) return;
     unawaited(
@@ -1732,7 +1720,7 @@ class MeshCoreConnector extends ChangeNotifier {
                 notifyListeners();
                 for (final c in _channels) {
                   if (c.index == channelIndex) {
-                    unawaited(sendChannelMessage(c, plain!));
+                    unawaited(sendChannelMessage(c, plain));
                     break;
                   }
                 }
@@ -3265,66 +3253,6 @@ class MeshCoreConnector extends ChangeNotifier {
     if (onCompleted != null) {
       unawaited(onCompleted(success));
     }
-  }
-
-  // ── OTP chunk send (channel) ─────────────────────────────────────────
-
-  Future<void> _sendChunkedChannelMessage(
-    Channel channel,
-    String plaintext,
-    Uint8List plainBytes, {
-    String? originalText,
-    String? translatedLanguageCode,
-    String? translationModelId,
-  }) async {
-    final capacity = OtpService.maxPlaintextBytesForChannel(_selfName) -
-        OtpChunkService.chunkOverheadBytes;
-    if (capacity <= 0) {
-      appLogger.warn(
-        'sendChannelMessage: no room for chunk framing overhead on this channel',
-      );
-      return;
-    }
-    final dataChunks = OtpChunkService.splitPlaintextBytes(plainBytes, capacity);
-    if (dataChunks.length > 255) {
-      appLogger.warn(
-        'sendChannelMessage: message too long even for chunking '
-        '(${dataChunks.length} chunks needed)',
-      );
-      return;
-    }
-
-    final message = ChannelMessage.outgoing(
-      plaintext,
-      _selfName ?? 'Me',
-      channel.index,
-      originalText: originalText,
-      translatedLanguageCode: translatedLanguageCode,
-      translationModelId: translationModelId,
-      chunkIndex: 0,
-      chunkTotal: dataChunks.length,
-    );
-    _addChannelMessage(channel.index, message);
-    // Deliberately NOT added to _pendingChannelSentQueue: that FIFO is for
-    // the single-shot "one RESP_CODE_SENT == one queued local message"
-    // model, paired 1:1 with a channelSendQueueId passed into
-    // _sendFrameAndWaitForCommandAck. A chunked send transmits several
-    // separate packets for one local message bubble, so it tracks its own
-    // status via the OTP-level chunk ack machinery instead (see
-    // _finishChannelChunkSend) — enqueueing here without ever supplying a
-    // matching channelSendQueueId would leave a stale entry that a later,
-    // unrelated RESP_CODE_SENT could incorrectly pop and misattribute.
-    notifyListeners();
-
-    final tid = math.Random.secure().nextInt(256);
-    final state = _OtpChannelChunkSend(
-      channel: channel,
-      tid: tid,
-      chunks: dataChunks,
-      localMessageId: message.messageId,
-    );
-    _pendingChannelChunkSends[channel.index] = state;
-    await _sendCurrentChannelChunk(state);
   }
 
   Future<void> _sendCurrentChannelChunk(_OtpChannelChunkSend state) async {

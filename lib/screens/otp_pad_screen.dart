@@ -14,7 +14,6 @@ import '../models/otp_theme.dart';
 import '../services/app_settings_service.dart';
 import '../services/otp_service.dart';
 import '../theme/mesh_theme.dart';
-import '../theme/otp_bubble_colors.dart';
 import '../widgets/adaptive_app_bar_title.dart';
 import '../widgets/mesh_ui.dart';
 import '../widgets/qr_code_display.dart';
@@ -30,13 +29,11 @@ class OtpPadScreen extends StatefulWidget {
   final Contact? contact;
   final Channel? channel;
 
-  const OtpPadScreen.forContact(Contact contact, {super.key})
-    : contact = contact,
-      channel = null;
+  const OtpPadScreen.forContact(Contact this.contact, {super.key})
+    : channel = null;
 
-  const OtpPadScreen.forChannel(Channel channel, {super.key})
-    : contact = null,
-      channel = channel;
+  const OtpPadScreen.forChannel(Channel this.channel, {super.key})
+    : contact = null;
 
   @override
   State<OtpPadScreen> createState() => _OtpPadScreenState();

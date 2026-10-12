@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
@@ -26,7 +25,6 @@ import '../helpers/gif_helper.dart';
 import '../models/channel_message.dart';
 import '../models/contact.dart';
 import '../l10n/contact_localization.dart';
-import '../models/image_codec_support.dart' show aeicRatePointForUi;
 import '../models/message.dart';
 import '../models/otp_theme.dart';
 import '../models/translation_support.dart';
@@ -64,7 +62,6 @@ import '../widgets/translated_message_content.dart';
 import '../l10n/l10n.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../widgets/unread_divider.dart';
-import '../theme/mesh_theme.dart';
 import '../widgets/mesh_ui.dart';
 import 'telemetry_screen.dart';
 import '../vox/image_send_sheet.dart';
