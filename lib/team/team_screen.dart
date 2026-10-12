@@ -9,6 +9,8 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'tak/tak_service.dart';
+import 'team_casevac_ui.dart';
+import 'team_draw.dart';
 import 'team_forms.dart';
 import 'team_map.dart';
 import 'team_service.dart';
@@ -635,10 +637,42 @@ class _PinsTab extends StatelessWidget {
     final team = context.watch<TeamService>();
     final fix = team.fix;
     return Scaffold(
-      body: team.markers.isEmpty
-          ? const _Empty('No pins yet. Long-press the map to drop one.')
+      body: team.markers.isEmpty && team.shapes.isEmpty
+          ? const _Empty(
+              'No pins or drawings yet. Long-press the map to drop a pin, or '
+              'use Tools on the map to draw, plan a route or set a geofence.',
+            )
           : ListView(
               children: [
+                if (team.shapes.isNotEmpty)
+                  const ListTile(
+                    dense: true,
+                    title: Text('Routes, drawings and geofences'),
+                  ),
+                for (final sh in team.shapes)
+                  ListTile(
+                    leading: Icon(
+                      shapeKindIcon(sh.kind, geofence: sh.isGeofence),
+                      color: Color(sh.color.argb),
+                    ),
+                    title: Text(sh.title),
+                    subtitle: Text(
+                      [
+                        sh.isGeofence
+                            ? 'Geofence · ${sh.geofence.label}'
+                            : sh.kind.label,
+                        if (sh.kind == ShapeKind.route)
+                          '${teamFormatLength(sh.lengthM)} · ${routeEta(sh)}',
+                        teamAgo(sh.time),
+                      ].join(' · '),
+                    ),
+                    trailing: team.navRoute?.key == sh.key
+                        ? const Icon(Icons.navigation, color: Color(0xFFFF6D00))
+                        : null,
+                    onTap: () => showTeamShapeSheet(context, sh),
+                  ),
+                if (team.shapes.isNotEmpty && team.markers.isNotEmpty)
+                  const ListTile(dense: true, title: Text('Pins')),
                 for (final m in team.markers)
                   ListTile(
                     leading: Icon(
@@ -686,14 +720,28 @@ class _ReportsTab extends StatelessWidget {
     final team = context.watch<TeamService>();
     final fix = team.fix;
     return Scaffold(
-      body: team.reports.isEmpty
+      body: team.reports.isEmpty && team.casevacs.isEmpty
           ? const _Empty(
-              'No SALUTE reports yet. Long-press the map where you saw it, or '
-              'file one at your position.',
+              'No reports yet. Long-press the map where you saw it to file a '
+              'SALUTE report or CASEVAC request, or use Tools on the map.',
             )
           : ListView(
               padding: const EdgeInsets.all(8),
               children: [
+                for (final c in team.casevacs)
+                  Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: casevacColor(c), width: 2),
+                    ),
+                    child: InkWell(
+                      onTap: () => showCasevacSheet(context, c),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: CasevacCard(request: c),
+                      ),
+                    ),
+                  ),
                 for (final r in team.reports)
                   Card(
                     child: InkWell(
@@ -921,17 +969,20 @@ class _SetupTabState extends State<_SetupTab> {
           ),
           ListTile(
             leading: const Icon(Icons.replay),
-            title: const Text('Resend my pins'),
+            title: const Text('Resend my pins and drawings'),
             subtitle: const Text(
               'For teammates who joined after you dropped them.',
             ),
             onTap: team.active
                 ? () async {
                     final n = await team.resendMyMarkers();
+                    final d = await team.resendMyShapes();
                     if (context.mounted) {
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text('Resent $n pins')));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Resent $n pins and $d drawings'),
+                        ),
+                      );
                     }
                   }
                 : null,
@@ -1159,6 +1210,26 @@ class _TakSettingsState extends State<_TakSettings> {
           ),
           value: _s.relayToMesh,
           onChanged: (v) => setState(() => _s = _s.copyWith(relayToMesh: v)),
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Team chat to TAK GeoChat'),
+          subtitle: const Text(
+            'Team channel messages appear in TAK\'s All Chat Rooms. TAK chat '
+            'shows in the map chat pane.',
+          ),
+          value: _s.geoChat,
+          onChanged: (v) => setState(() => _s = _s.copyWith(geoChat: v)),
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Post TAK chat on the team channel'),
+          subtitle: const Text(
+            'Relays TAK All Chat Rooms messages to your mesh team as text '
+            '(at most one every 15 s). Uses airtime.',
+          ),
+          value: _s.chatToMesh,
+          onChanged: (v) => setState(() => _s = _s.copyWith(chatToMesh: v)),
         ),
         const SizedBox(height: 8),
         FilledButton(

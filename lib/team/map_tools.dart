@@ -8,7 +8,10 @@ import 'package:provider/provider.dart';
 
 import '../vox/image_send_sheet.dart';
 import '../vox/voice_service.dart';
+import 'team_casevac_ui.dart';
+import 'team_draw.dart';
 import 'team_forms.dart';
+import 'team_gpx.dart';
 import 'team_screen.dart';
 import 'team_service.dart';
 import 'team_wire.dart';
@@ -40,11 +43,13 @@ void _openTactical(BuildContext context, int tab) => Navigator.push(
   MaterialPageRoute(builder: (_) => TeamScreen(initialTab: tab)),
 );
 
-/// Opens the Tools grid. [onChat] toggles the chat pane; [mapCenter] is
-/// used for tools that place something when there is no position fix.
+/// Opens the Tools grid. [onChat] toggles the chat pane; [onDraw] starts a
+/// drawing tool on the map; [mapCenter] is used for tools that place
+/// something when there is no position fix.
 Future<void> showMapTools(
   BuildContext context, {
   required VoidCallback onChat,
+  required void Function(ShapeKind kind, bool geofence) onDraw,
   required LatLng mapCenter,
 }) {
   final team = context.read<TeamService>();
@@ -57,6 +62,10 @@ Future<void> showMapTools(
       color: Colors.red,
       needsTeam: true,
     ),
+    _Tool(Icons.local_hospital_outlined, 'CASEVAC', (c) {
+      final (lat, lon, _) = _here(team, mapCenter);
+      showCasevacForm(c, lat: lat, lon: lon);
+    }, color: casevacRed, needsTeam: true),
     _Tool(Icons.add_location_alt_outlined, 'Drop Pin', (c) {
       final (lat, lon, _) = _here(team, mapCenter);
       showTeamPinEditor(c, lat: lat, lon: lon);
@@ -70,6 +79,20 @@ Future<void> showMapTools(
     _Tool(Icons.assignment_outlined, 'SALUTE', (c) {
       final (lat, lon, _) = _here(team, mapCenter);
       showSaluteForm(c, lat: lat, lon: lon);
+    }, needsTeam: true),
+    _Tool(Icons.draw_outlined, 'Draw', (c) async {
+      final k = await showDrawToolPicker(c);
+      if (k != null) onDraw(k, false);
+    }, needsTeam: true),
+    _Tool(
+      Icons.route,
+      'Route',
+      (_) => onDraw(ShapeKind.route, false),
+      needsTeam: true,
+    ),
+    _Tool(Icons.fence, 'Geofence', (c) async {
+      final k = await _pickFenceShape(c);
+      if (k != null) onDraw(k, true);
     }, needsTeam: true),
     _Tool(
       Icons.track_changes,
@@ -91,16 +114,30 @@ Future<void> showMapTools(
       (c) => _showStatusPicker(c, team),
       needsTeam: true,
     ),
+    _Tool(Icons.ios_share, 'Export GPX', (c) async {
+      final messenger = ScaffoldMessenger.of(c);
+      try {
+        if (!await shareTeamGpx(team)) {
+          messenger.showSnackBar(
+            const SnackBar(content: Text('Nothing on the team map to export')),
+          );
+        }
+      } catch (e) {
+        messenger.showSnackBar(SnackBar(content: Text('Export failed: $e')));
+      }
+    }),
   ];
 
   return showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
     useSafeArea: true,
+    isScrollControlled: true,
     builder: (sheet) {
       final scheme = Theme.of(sheet).colorScheme;
       return SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
+          child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -150,10 +187,40 @@ Future<void> showMapTools(
             ],
           ),
         ),
+        ),
       );
     },
   );
 }
+
+Future<ShapeKind?> _pickFenceShape(BuildContext context) =>
+    showModalBottomSheet<ShapeKind>(
+      context: context,
+      showDragHandle: true,
+      builder: (c) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(
+              title: Text('Geofence'),
+              subtitle: Text(
+                'Alerts every teammate when anyone enters or leaves the area.',
+              ),
+            ),
+            for (final k in [
+              ShapeKind.circle,
+              ShapeKind.polygon,
+              ShapeKind.rectangle,
+            ])
+              ListTile(
+                leading: Icon(shapeKindIcon(k)),
+                title: Text(k.label),
+                onTap: () => Navigator.pop(c, k),
+              ),
+          ],
+        ),
+      ),
+    );
 
 class _ToolTile extends StatelessWidget {
   final _Tool tool;

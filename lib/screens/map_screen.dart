@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 
 import '../team/map_chat_pane.dart';
 import '../team/map_tools.dart';
+import '../team/team_draw.dart';
 import '../team/team_map.dart';
 import '../team/team_service.dart';
 import '../connector/meshcore_connector.dart';
@@ -86,6 +87,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
   bool _isBuildingPathTrace = false;
   bool _isSelectingPoi = false;
   bool _chatOpen = false;
+  final TeamDrawController _draw = TeamDrawController();
   bool _hasInitializedMap = false;
   bool _removedMarkersLoaded = false;
   final List<int> _pathTrace = [];
@@ -151,6 +153,9 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
     _searchController.dispose();
     _searchFocus.dispose();
     _mapController.dispose();
+    _draw
+      ..removeListener(_onDrawChanged)
+      ..dispose();
     super.dispose();
   }
 
@@ -207,6 +212,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
   @override
   void initState() {
     super.initState();
+    _draw.addListener(_onDrawChanged);
     _loadRemovedMarkers();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -684,6 +690,8 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                     onChat: () {
                       if (!_chatOpen) _toggleChat();
                     },
+                    onDraw: (kind, geofence) =>
+                        _draw.start(kind, geofence: geofence),
                     mapCenter: _mapController.camera.center,
                   ),
                 ),
@@ -797,7 +805,9 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                       minZoom: _mapMinZoom,
                       maxZoom: _mapMaxZoom,
                       interactionOptions: InteractionOptions(
-                        flags: ~InteractiveFlag.rotate,
+                        flags: _draw.freehand
+                            ? InteractiveFlag.none
+                            : ~InteractiveFlag.rotate,
                         scrollWheelVelocity: isDesktop ? 0.012 : 0.005,
                         cursorKeyboardRotationOptions:
                             CursorKeyboardRotationOptions.disabled(),
@@ -810,6 +820,10 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                             : const KeyboardOptions.disabled(),
                       ),
                       onTap: (_, latLng) {
+                        if (_draw.active) {
+                          _draw.tap(latLng);
+                          return;
+                        }
                         if (_isSelectingPoi) {
                           setState(() {
                             _isSelectingPoi = false;
@@ -835,6 +849,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                         }
                       },
                       onLongPress: (_, latLng) {
+                        if (_draw.active) return;
                         _handleMapContextPress(context, connector, latLng);
                       },
                       onSecondaryTap: (_, latLng) {
@@ -868,6 +883,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                       if (sharedMarkerPolylines.isNotEmpty)
                         PolylineLayer(polylines: sharedMarkerPolylines),
                       const TeamMapLayer(),
+                      TeamDrawLayer(controller: _draw),
                       MarkerLayer(
                         markers: [
                           if (highlightPosition != null)
@@ -985,7 +1001,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                       zoom: initialZoom,
                       connector: connector,
                     ),
-                  if (!_isBuildingPathTrace)
+                  if (!_isBuildingPathTrace && !_draw.active)
                     _buildTopOverlay(
                       context,
                       connector: connector,
@@ -1004,8 +1020,28 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                       pinCount: sharedMarkers.length,
                     ),
                   if (_isBuildingPathTrace) _buildPathTraceOverlay(),
-                  if (!_isBuildingPathTrace && selectedContact == null)
+                  if (!_isBuildingPathTrace &&
+                      selectedContact == null &&
+                      !_draw.active)
                     const TeamMapOverlay(),
+                  if (_draw.freehand)
+                    Positioned.fill(
+                      child: TeamFreehandCapture(
+                        controller: _draw,
+                        toLatLng: (o) =>
+                            _mapController.camera.screenOffsetToLatLng(o),
+                      ),
+                    ),
+                  if (_draw.active)
+                    Positioned(
+                      left: 8,
+                      right: 8,
+                      top: 8,
+                      child: TeamDrawToolbar(
+                        controller: _draw,
+                        onDone: _finishDraw,
+                      ),
+                    ),
                   if (contactsWithLocation.isEmpty &&
                       selectedContact == null &&
                       !_isBuildingPathTrace)
@@ -1051,6 +1087,25 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
   }
 
   void _toggleChat() => setState(() => _chatOpen = !_chatOpen);
+
+  void _onDrawChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _finishDraw() {
+    final kind = _draw.tool;
+    if (kind == null || !_draw.canFinish) return;
+    final (points, radius) = _draw.geometry();
+    final geofence = _draw.geofence;
+    _draw.cancel();
+    showTeamShapeEditor(
+      context,
+      kind: kind,
+      points: points,
+      radiusM: radius,
+      geofence: geofence,
+    );
+  }
 
   /// Docks the chat pane beside the map (landscape) or under it (portrait),
   /// like ATAK's chat drawer.

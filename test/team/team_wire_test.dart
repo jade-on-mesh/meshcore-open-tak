@@ -293,6 +293,80 @@ void main() {
       expect(takSplitEvents(buf).length, 1);
     });
 
+    TeamShape shape(ShapeKind k, List<(double, double)> pts, {int r = 0}) =>
+        TeamShape(
+          authorKey4: '0a0b0c0d',
+          shapeId: 7,
+          kind: k,
+          time: DateTime.now(),
+          points: pts,
+          radiusM: r,
+          label: 'Fence',
+          geofence: TeamGeofence.entry,
+        );
+
+    test('a polygon becomes a closed ATAK drawing', () {
+      final e = parseCot(
+        cotForShape(shape(ShapeKind.polygon, [(1, 1), (1, 2), (2, 2)])),
+      )!;
+      expect(e.type, 'u-d-f');
+      expect(e.isShape, isTrue);
+      expect(e.linkPoints.length, 4); // first vertex repeated to close
+      expect(e.isClosedShape, isTrue);
+      expect(e.callsign, 'Fence');
+    });
+
+    test('a circle carries its radius', () {
+      final e = parseCot(
+        cotForShape(shape(ShapeKind.circle, [(1, 1)], r: 300)),
+      )!;
+      expect(e.type, 'u-d-c-c');
+      expect(e.ellipseMajor, 300);
+      expect(e.isCircle, isTrue);
+    });
+
+    test('a route becomes b-m-r with checkpoints', () {
+      final e = parseCot(
+        cotForShape(shape(ShapeKind.route, [(1, 1), (1.1, 1.1), (1.2, 1)])),
+      )!;
+      expect(e.type, 'b-m-r');
+      expect(e.isRoute, isTrue);
+      expect(e.linkPoints.length, 3);
+    });
+
+    test('CASEVAC becomes an ATAK MEDEVAC', () {
+      final c = TeamCasevac(
+        authorKey4: '0a0b0c0d',
+        requestId: 9,
+        lat: 1,
+        lon: 2,
+        time: DateTime.now(),
+        urgent: 2,
+      );
+      final xml = cotForCasevac(c);
+      final e = parseCot(xml)!;
+      expect(e.type, 'b-r-f-h-c');
+      expect(e.isCasevac, isTrue);
+      expect(xml, contains('urgent="2"'));
+      expect(e.remarks, contains('9-LINE'));
+    });
+
+    test('GeoChat round-trips sender and text', () {
+      final e = parseCot(
+        cotGeoChat(
+          senderUid: 'VOX-0a0b0c0d',
+          senderCallsign: 'JADE',
+          text: 'Moving to CP2',
+          messageId: 'abc',
+        ),
+      )!;
+      expect(e.isChat, isTrue);
+      expect(e.chatSenderCallsign, 'JADE');
+      expect(e.chatSenderUid, 'VOX-0a0b0c0d');
+      expect(e.chatroom, takAllChatRooms);
+      expect(e.remarks, 'Moving to CP2');
+    });
+
     test('SALUTE report becomes a point coloured by affiliation', () {
       final r = TeamReport(
         authorKey4: '0a0b0c0d',

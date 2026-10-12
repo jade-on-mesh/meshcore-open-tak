@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../connector/meshcore_connector.dart';
 import '../models/channel.dart';
+import '../models/channel_message.dart';
 import '../services/image_chunk_transport.dart'
     show parseChannelDataFrame, respCodeChannelDataRecv;
 import '../services/notification_service.dart';
@@ -64,6 +65,25 @@ class TeamFix {
     this.heading,
     this.accuracy = 0,
   });
+}
+
+/// Someone crossed a geofence.
+class TeamGeofenceEvent {
+  final DateTime time;
+  final String fence;
+  final String who;
+  final bool entered;
+  final double lat, lon;
+  const TeamGeofenceEvent({
+    required this.time,
+    required this.fence,
+    required this.who,
+    required this.entered,
+    required this.lat,
+    required this.lon,
+  });
+
+  String get headline => '$who ${entered ? 'entered' : 'left'} $fence';
 }
 
 class TeamService extends ChangeNotifier {
@@ -160,6 +180,14 @@ class TeamService extends ChangeNotifier {
       for (final b64 in p.getStringList(_kReports) ?? const <String>[]) {
         final r = TeamReport.tryParse(base64Decode(b64));
         if (r != null) _reports[r.key] = r;
+      }
+      for (final b64 in p.getStringList(_kShapes) ?? const <String>[]) {
+        final sh = TeamShape.tryParse(base64Decode(b64));
+        if (sh != null) _shapes[sh.key] = sh;
+      }
+      for (final b64 in p.getStringList(_kCasevacs) ?? const <String>[]) {
+        final c = TeamCasevac.tryParse(base64Decode(b64));
+        if (c != null) _casevacs[c.key] = c;
       }
     } catch (e) {
       debugPrint('Team settings load failed: $e');
@@ -277,6 +305,7 @@ class TeamService extends ChangeNotifier {
       _gpsSub = Geolocator.getPositionStream(locationSettings: settings).listen(
         (p) {
           _phoneFix = p;
+          _onSelfMoved();
           notifyListeners();
         },
         onError: (Object e) {
@@ -348,6 +377,7 @@ class TeamService extends ChangeNotifier {
       trail: trail,
     );
     onRemotePosition?.call(_members[p.senderKey4]!);
+    _checkGeofences(p.senderKey4, _members[p.senderKey4]!.callsign, p.lat, p.lon);
     notifyListeners();
   }
 
@@ -356,6 +386,11 @@ class TeamService extends ChangeNotifier {
   void Function(TeamMarker m)? onMarkerChanged;
   void Function(TeamAlert a)? onAlertChanged;
   void Function(TeamPosition p)? onSelfPosition;
+  void Function(TeamShape s)? onShapeChanged;
+  void Function(TeamCasevac c)? onCasevacChanged;
+
+  /// New text on the team channel (for the TAK GeoChat bridge).
+  void Function(ChannelMessage m)? onTeamChat;
 
   // ------------------------------------------------------------ bloodhound
 
@@ -364,6 +399,15 @@ class TeamService extends ChangeNotifier {
 
   /// What Bloodhound is tracking: a teammate (follows them) or a fixed point.
   ({double lat, double lon, String label})? get bloodhound {
+    final nav = navRoute;
+    if (nav != null) {
+      final (lat, lon) = nav.points[_routeIdx];
+      return (
+        lat: lat,
+        lon: lon,
+        label: '${nav.title} · CP${_routeIdx + 1}/${nav.points.length}',
+      );
+    }
     final k = _houndMember;
     if (k != null) {
       final m = _members[k];
@@ -375,21 +419,113 @@ class TeamService extends ChangeNotifier {
   }
 
   void houndMember(String key4) {
+    _routeKey = null;
     _houndMember = key4;
     _houndPoint = null;
     notifyListeners();
   }
 
   void houndPoint(double lat, double lon, String label) {
+    _routeKey = null;
     _houndMember = null;
     _houndPoint = (lat, lon, label);
     notifyListeners();
   }
 
   void stopHound() {
+    _routeKey = null;
     _houndMember = null;
     _houndPoint = null;
     notifyListeners();
+  }
+
+  // ------------------------------------------------------- route navigation
+
+  String? _routeKey;
+  int _routeIdx = 0;
+
+  /// Metres from a checkpoint that count as reaching it.
+  static const double routeArriveM = 30;
+
+  /// The route being followed, if any.
+  TeamShape? get navRoute {
+    final k = _routeKey;
+    if (k == null) return null;
+    final s = _shapes[k];
+    if (s == null || s.deleted || s.points.isEmpty) return null;
+    return _routeReverse
+        ? s.copyWith(points: s.points.reversed.toList())
+        : s;
+  }
+
+  bool _routeReverse = false;
+
+  int get navIndex => _routeIdx;
+
+  /// Follows [route] checkpoint by checkpoint with Bloodhound. Starts at the
+  /// checkpoint nearest to you, or the first one.
+  void navigateRoute(TeamShape route, {bool reverse = false}) {
+    if (route.points.isEmpty) return;
+    final r = reverse
+        ? route.copyWith(points: route.points.reversed.toList())
+        : route;
+    _houndMember = null;
+    _houndPoint = null;
+    _routeKey = route.key;
+    _routeReverse = reverse;
+    _routeIdx = 0;
+    final f = fix;
+    if (f != null) {
+      var best = double.infinity;
+      for (var i = 0; i < r.points.length; i++) {
+        final d = teamDistanceMeters(
+          f.lat,
+          f.lon,
+          r.points[i].$1,
+          r.points[i].$2,
+        );
+        if (d < best) {
+          best = d;
+          _routeIdx = i;
+        }
+      }
+    }
+    notifyListeners();
+  }
+
+  void skipCheckpoint(int delta) {
+    final nav = navRoute;
+    if (nav == null) return;
+    _routeIdx = (_routeIdx + delta).clamp(0, nav.points.length - 1);
+    notifyListeners();
+  }
+
+  void _advanceRoute() {
+    final nav = navRoute;
+    final f = fix;
+    if (nav == null || f == null) return;
+    final (lat, lon) = nav.points[_routeIdx];
+    if (teamDistanceMeters(f.lat, f.lon, lat, lon) > routeArriveM) return;
+    if (_routeIdx < nav.points.length - 1) {
+      _routeIdx++;
+      notifyListeners();
+      return;
+    }
+    final title = nav.title;
+    stopHound();
+    unawaited(
+      NotificationService().showTeamAlert(
+        id: 'route-done'.hashCode,
+        title: 'Route complete',
+        body: 'You reached the end of $title.',
+      ),
+    );
+  }
+
+  void _onSelfMoved() {
+    _advanceRoute();
+    final f = fix;
+    if (f != null) _checkGeofences(selfKey4, 'You', f.lat, f.lon);
   }
 
   // -------------------------------------------------------------- beacons
@@ -402,12 +538,46 @@ class TeamService extends ChangeNotifier {
 
   DateTime? get lastBeacon => _lastBeacon;
 
+  int? _chatSeenCount;
+  int? _chatSeenChannel;
+
   void _onConnectorChanged() {
     // Channel list or connection changed: refresh UI that depends on it.
+    _watchTeamChat();
     notifyListeners();
   }
 
+  /// Passes new team channel text to [onTeamChat] (for the GeoChat bridge).
+  void _watchTeamChat() {
+    final ch = teamChannel;
+    if (ch == null) {
+      _chatSeenCount = null;
+      return;
+    }
+    final msgs = _connector.getChannelMessages(ch);
+    if (_chatSeenChannel != ch.index || _chatSeenCount == null) {
+      _chatSeenChannel = ch.index;
+      _chatSeenCount = msgs.length;
+      return;
+    }
+    if (msgs.length > _chatSeenCount!) {
+      final start = max(_chatSeenCount!, msgs.length - 10);
+      for (var i = start; i < msgs.length; i++) {
+        onTeamChat?.call(msgs[i]);
+      }
+    }
+    _chatSeenCount = msgs.length;
+  }
+
+  /// Posts text on the team channel (used for TAK chat relayed to the mesh).
+  Future<void> postTeamText(String text) async {
+    final ch = teamChannel;
+    if (ch == null || text.trim().isEmpty) return;
+    await _connector.sendChannelMessage(ch, text);
+  }
+
   void _onTick() {
+    _onSelfMoved();
     if (!active || !_sharePosition || _sending) return;
     final f = fix;
     if (f == null) return;
@@ -685,6 +855,247 @@ class TeamService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // --------------------------------------------- drawings, routes, fences
+
+  static const _kShapes = 'team_shapes_v1';
+  final Map<String, TeamShape> _shapes = {};
+
+  List<TeamShape> get shapes =>
+      _shapes.values
+          .where((s) => !s.deleted)
+          .toList()
+        ..sort((a, b) => b.time.compareTo(a.time));
+
+  bool isMyShape(TeamShape s) => s.authorKey4 == selfKey4;
+
+  Future<void> _persistShapes() => _save(
+    (p) => p.setStringList(_kShapes, [
+      for (final s in _shapes.values) base64Encode(s.encode()),
+    ]),
+  );
+
+  void _onShape(TeamShape s) {
+    final cur = _shapes[s.key];
+    if (cur != null && !s.time.isAfter(cur.time) && cur.deleted == s.deleted) {
+      return;
+    }
+    _shapes[s.key] = s;
+    unawaited(_persistShapes());
+    onShapeChanged?.call(s);
+    notifyListeners();
+  }
+
+  /// Shares a new drawing/route/geofence (or an edit of [existing]).
+  Future<TeamShape> putShape({
+    TeamShape? existing,
+    required ShapeKind kind,
+    required List<(double, double)> points,
+    TeamColor color = TeamColor.yellow,
+    String label = '',
+    TeamGeofence geofence = TeamGeofence.off,
+    RouteMethod routeMethod = RouteMethod.walking,
+    int radiusM = 0,
+  }) async {
+    final s = TeamShape(
+      authorKey4: existing?.authorKey4 ?? selfKey4,
+      shapeId: existing?.shapeId ?? _rng.nextInt(1 << 32),
+      kind: kind,
+      time: DateTime.now(),
+      points: points,
+      color: color,
+      label: label,
+      geofence: geofence,
+      routeMethod: routeMethod,
+      radiusM: radiusM,
+    ).fitted();
+    _shapes[s.key] = s;
+    unawaited(_persistShapes());
+    onShapeChanged?.call(s);
+    notifyListeners();
+    await _send(s.encode());
+    return s;
+  }
+
+  Future<void> deleteShape(TeamShape s) async {
+    final d = s.copyWith(deleted: true, time: DateTime.now());
+    _shapes[s.key] = d;
+    if (_routeKey == s.key) stopHound();
+    unawaited(_persistShapes());
+    onShapeChanged?.call(d);
+    notifyListeners();
+    if (isMyShape(s)) await _send(d.encode());
+  }
+
+  /// Re-sends my drawings, e.g. for someone who joined late.
+  Future<int> resendMyShapes() async {
+    var n = 0;
+    for (final s in shapes) {
+      if (!isMyShape(s)) continue;
+      if (await _send(s.encode())) n++;
+      await Future<void>.delayed(const Duration(seconds: 3));
+    }
+    return n;
+  }
+
+  // Geofences: each phone watches every teammate (and itself) against every
+  // geofence and raises a local notification on entry/exit. Nothing extra
+  // goes on air.
+
+  final Map<String, bool> _inside = {};
+  final List<TeamGeofenceEvent> _geoEvents = [];
+
+  /// Recent geofence crossings, newest first.
+  List<TeamGeofenceEvent> get geofenceEvents => _geoEvents.reversed.toList();
+
+  void _checkGeofences(String who, String name, double lat, double lon) {
+    for (final s in _shapes.values) {
+      if (s.deleted || !s.isGeofence) continue;
+      final k = '${s.key}|$who';
+      final now = s.contains(lat, lon);
+      final was = _inside[k];
+      _inside[k] = now;
+      if (was == null || was == now) continue;
+      if ((now && !s.geofence.onEntry) || (!now && !s.geofence.onExit)) {
+        continue;
+      }
+      final ev = TeamGeofenceEvent(
+        time: DateTime.now(),
+        fence: s.title,
+        who: name,
+        entered: now,
+        lat: lat,
+        lon: lon,
+      );
+      _geoEvents.add(ev);
+      if (_geoEvents.length > 50) _geoEvents.removeAt(0);
+      unawaited(
+        NotificationService().showTeamAlert(
+          id: k.hashCode,
+          title: 'Geofence: ${ev.headline}',
+          body: s.geofence.label,
+        ),
+      );
+      notifyListeners();
+    }
+  }
+
+  // ------------------------------------------------------------- CASEVAC
+
+  static const _kCasevacs = 'team_casevac_v1';
+  final Map<String, TeamCasevac> _casevacs = {};
+
+  List<TeamCasevac> get casevacs =>
+      _casevacs.values.where((c) => !c.deleted).toList()
+        ..sort((a, b) => b.time.compareTo(a.time));
+
+  bool isMyCasevac(TeamCasevac c) => c.authorKey4 == selfKey4;
+
+  Future<void> _persistCasevacs() => _save(
+    (p) => p.setStringList(_kCasevacs, [
+      for (final c in _casevacs.values) base64Encode(c.encode()),
+    ]),
+  );
+
+  void _onCasevac(TeamCasevac c) {
+    final cur = _casevacs[c.key];
+    if (cur != null && cur.deleted == c.deleted) return;
+    _casevacs[c.key] = c;
+    unawaited(_persistCasevacs());
+    onCasevacChanged?.call(c);
+    notifyListeners();
+    if (!c.deleted) {
+      unawaited(
+        NotificationService().showTeamAlert(
+          id: c.key.hashCode,
+          title: '🚑 ${c.precedenceLabel} CASEVAC'
+              '${c.place.isNotEmpty ? ' @${c.place}' : ''}',
+          body: [
+            '${c.totalPatients} patient${c.totalPatients == 1 ? '' : 's'}',
+            _alertWhereLatLon(c.lat, c.lon),
+          ].join(' · '),
+        ),
+      );
+    } else {
+      unawaited(NotificationService().cancelTeamAlert(c.key.hashCode));
+    }
+  }
+
+  /// Sends a CASEVAC request three times (collisions happen; duplicates are
+  /// dropped by key), optionally also as text.
+  Future<TeamCasevac> requestCasevac(
+    TeamCasevac draft, {
+    bool alsoAsText = false,
+  }) async {
+    final c = TeamCasevac(
+      authorKey4: selfKey4,
+      requestId: _rng.nextInt(1 << 32),
+      lat: draft.lat,
+      lon: draft.lon,
+      time: DateTime.now(),
+      frequency: draft.frequency,
+      callsign: draft.callsign.isEmpty ? callsign : draft.callsign,
+      urgent: draft.urgent,
+      urgentSurgical: draft.urgentSurgical,
+      priority: draft.priority,
+      routine: draft.routine,
+      convenience: draft.convenience,
+      equipment: draft.equipment,
+      litter: draft.litter,
+      ambulatory: draft.ambulatory,
+      security: draft.security,
+      marking: draft.marking,
+      markingDetail: draft.markingDetail,
+      usMilitary: draft.usMilitary,
+      usCivilian: draft.usCivilian,
+      nonUsMilitary: draft.nonUsMilitary,
+      nonUsCivilian: draft.nonUsCivilian,
+      epw: draft.epw,
+      child: draft.child,
+      terrain: draft.terrain,
+      nbc: draft.nbc,
+      place: draft.place,
+      remarks: draft.remarks,
+    );
+    _casevacs[c.key] = c;
+    unawaited(_persistCasevacs());
+    onCasevacChanged?.call(c);
+    notifyListeners();
+    unawaited(() async {
+      for (final delay in const [0, 20, 60]) {
+        if (delay > 0) await Future<void>.delayed(Duration(seconds: delay));
+        if (_casevacs[c.key]?.deleted != false) return;
+        await _send(c.encode());
+      }
+    }());
+    final ch = teamChannel;
+    if (alsoAsText && ch != null) {
+      try {
+        await _connector.sendChannelMessage(ch, c.condensedText());
+      } catch (_) {}
+    }
+    return c;
+  }
+
+  /// Closes a request (mine: tells the team; others': hides it here).
+  Future<void> closeCasevac(TeamCasevac c) async {
+    final d = c.copyWith(deleted: true, time: DateTime.now());
+    _casevacs[c.key] = d;
+    unawaited(_persistCasevacs());
+    unawaited(NotificationService().cancelTeamAlert(c.key.hashCode));
+    onCasevacChanged?.call(d);
+    notifyListeners();
+    if (isMyCasevac(c)) await _send(d.encode());
+  }
+
+  String _alertWhereLatLon(double lat, double lon) {
+    final f = fix;
+    if (f == null) return '${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)}';
+    return teamRangeBearing(
+      teamDistanceMeters(f.lat, f.lon, lat, lon),
+      teamBearingDeg(f.lat, f.lon, lat, lon),
+    );
+  }
+
   // --------------------------------------------------------------- alerts
 
   final Map<String, TeamAlert> _alerts = {};
@@ -817,6 +1228,12 @@ class TeamService extends ChangeNotifier {
       case teamMsgReport:
         final r = TeamReport.tryParse(p);
         if (r != null) _onReport(r);
+      case teamMsgShape:
+        final sh = TeamShape.tryParse(p);
+        if (sh != null) _onShape(sh);
+      case teamMsgCasevac:
+        final c = TeamCasevac.tryParse(p);
+        if (c != null) _onCasevac(c);
     }
   }
 

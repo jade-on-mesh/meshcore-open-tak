@@ -18,12 +18,20 @@
 //             [lat i32][lon i32][observed u32][vehicles u8][people u8]
 //             [place][size][activity][unit][equipment] (length-prefixed)
 //             [attachMode u8][sid4][packets][extra]
+//   shape     [0x44][key4][shapeId u32][op u8][kind u8][colour u8][time u32]
+//             [labelLen][label][geofence u8][param varint][nPoints u8]
+//             [lat0 i32][lon0 i32][zigzag varint deltas...] (1e-5 degrees)
+//   casevac   [0x43][key4][id u32][op u8][lat i32][lon i32][time u32] then
+//             the 9 lines (see team_casevac_wire.dart)
 //
 // Coordinates are degrees x 1e7 (about 1 cm). All integers big-endian.
 
 import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
+
+part 'team_shape_wire.dart';
+part 'team_casevac_wire.dart';
 
 /// GRP_DATA data type for team traffic ('VT').
 const int teamChannelDataType = 0x5654;
@@ -32,6 +40,8 @@ const int teamMsgPosition = 0x50; // 'P'
 const int teamMsgAlert = 0x53; // 'S'
 const int teamMsgMarker = 0x4D; // 'M'
 const int teamMsgReport = 0x52; // 'R'
+const int teamMsgShape = 0x44; // 'D' (drawings, routes, geofences)
+const int teamMsgCasevac = 0x43; // 'C' (CASEVAC / MEDEVAC 9-line)
 
 /// Largest GRP_DATA payload the firmware accepts.
 const int teamMaxPayload = 163;
@@ -144,6 +154,19 @@ class _W {
   void i32(int v) => u32(v & 0xFFFFFFFF);
   void i16(int v) => u16(v & 0xFFFF);
   void bytes(List<int> v) => b.add(v);
+
+  /// Unsigned LEB128.
+  void varint(int v) {
+    var x = v;
+    while (x >= 0x80) {
+      u8((x & 0x7F) | 0x80);
+      x >>= 7;
+    }
+    u8(x);
+  }
+
+  /// Zigzag signed varint.
+  void svarint(int v) => varint(v >= 0 ? v << 1 : ((-v) << 1) - 1);
   void str(String s, int maxBytes) {
     final enc = teamTruncateUtf8(s, maxBytes);
     u8(enc.length);
@@ -169,6 +192,24 @@ class _R {
   int i16() {
     final v = u16();
     return v >= 0x8000 ? v - 0x10000 : v;
+  }
+
+  /// Unsigned LEB128, or null if truncated.
+  int? varint() {
+    var v = 0, shift = 0;
+    while (true) {
+      if (!has(1) || shift > 35) return null;
+      final b = u8();
+      v |= (b & 0x7F) << shift;
+      if (b < 0x80) return v;
+      shift += 7;
+    }
+  }
+
+  int? svarint() {
+    final z = varint();
+    if (z == null) return null;
+    return z.isEven ? z >> 1 : -((z + 1) >> 1);
   }
 
   Uint8List take(int n) {
@@ -218,7 +259,9 @@ Uint8List _key4(String hex) => Uint8List.fromList([
   if (p[0] != teamMsgPosition &&
       p[0] != teamMsgAlert &&
       p[0] != teamMsgMarker &&
-      p[0] != teamMsgReport) {
+      p[0] != teamMsgReport &&
+      p[0] != teamMsgShape &&
+      p[0] != teamMsgCasevac) {
     return null;
   }
   return (p[0], teamKey4Hex(p, 1));
