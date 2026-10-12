@@ -25,6 +25,15 @@ jobs:
           cache: true
       - run: flutter pub get
       - name: Analyze (errors fail, warnings are listed)
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter analyze --no-fatal-infos --no-fatal-warnings | tee analyze.log
+      - name: Analyzer findings as annotations
+        if: always()
+        shell: bash
+        run: |
+          grep -E "^ *(error|warning|info) " analyze.log | head -40 | while IFS= read -r l; do echo "::warning::${l}"; done || true
+          dart format --output=none --set-exit-if-changed lib test 2>&1 | grep -E "^Changed" | head -20 | while IFS= read -r l; do echo "::warning::format: ${l}"; done || true
       - name: Unit tests
         run: flutter test --reporter=compact

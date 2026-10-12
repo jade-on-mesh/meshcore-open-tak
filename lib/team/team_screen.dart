@@ -5,13 +5,15 @@ import 'dart:async';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart' show MapController;
+import 'package:latlong2/latlong.dart' show LatLng;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../screens/map_screen.dart';
 import 'tak/tak_service.dart';
 import 'team_forms.dart';
 import 'team_map.dart';
+import 'team_mini_map.dart';
 import 'team_service.dart';
 import 'team_wire.dart';
 import 'watch_feed.dart';
@@ -73,7 +75,9 @@ class TeamScreen extends StatelessWidget {
             ],
           ),
         ),
+        // No swipe between tabs: the Pins and Reports maps pan sideways.
         body: const TabBarView(
+          physics: NeverScrollableScrollPhysics(),
           children: [
             _RosterTab(),
             WatchTab(),
@@ -627,65 +631,101 @@ class _Empty extends StatelessWidget {
 
 // -------------------------------------------------------------------- pins
 
-class _PinsTab extends StatelessWidget {
+/// The mini map above (or beside, on wide screens) a list.
+class _MapAndList extends StatelessWidget {
+  final Widget map;
+  final Widget list;
+  const _MapAndList({required this.map, required this.list});
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) {
+      if (box.maxWidth >= 840) {
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(flex: 3, child: map),
+            const VerticalDivider(width: 1),
+            Expanded(flex: 2, child: list),
+          ],
+        );
+      }
+      return Column(
+        children: [
+          SizedBox(height: teamMiniMapHeight(context), child: map),
+          const Divider(height: 1),
+          Expanded(child: list),
+        ],
+      );
+    },
+  );
+}
+
+class _PinsTab extends StatefulWidget {
   const _PinsTab();
+  @override
+  State<_PinsTab> createState() => _PinsTabState();
+}
+
+class _PinsTabState extends State<_PinsTab> {
+  final _map = MapController();
+
+  @override
+  void dispose() {
+    _map.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final team = context.watch<TeamService>();
     final fix = team.fix;
-    final mapButton = Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: FilledButton.tonalIcon(
-          icon: const Icon(Icons.map_outlined),
-          label: const Text('Open map'),
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const MapScreen()),
-          ),
-        ),
-      ),
+    final map = TeamMiniMap(
+      controller: _map,
+      points: [for (final m in team.markers) LatLng(m.lat, m.lon)],
+      dropLabel: 'Pin here',
+      dropIcon: Icons.add_location_alt,
+      onDrop: (at) =>
+          showTeamPinEditor(context, lat: at.latitude, lon: at.longitude),
     );
-    return Scaffold(
-      body: team.markers.isEmpty
-          ? Column(
-              children: [
-                mapButton,
-                const Expanded(
-                  child: _Empty('No pins yet. Long-press the map to drop one.'),
-                ),
-              ],
-            )
-          : ListView(
-              children: [
-                mapButton,
-                for (final m in team.markers)
-                  ListTile(
-                    leading: Icon(
-                      markerKindIcon(m.kind),
-                      color: markerKindColor(m.kind),
-                    ),
-                    title: Text(m.label.isEmpty ? m.kind.label : m.label),
-                    subtitle: Text(
-                      [
-                        m.kind.label,
-                        teamAgo(m.time),
-                        if (m.attachment != null) 'attachment',
-                        if (fix != null)
-                          teamRangeBearing(
-                            teamDistanceMeters(fix.lat, fix.lon, m.lat, m.lon),
-                            teamBearingDeg(fix.lat, fix.lon, m.lat, m.lon),
-                          ),
-                      ].join(' · '),
-                    ),
-                    onTap: () => showTeamPinSheet(context, m),
+    final list = team.markers.isEmpty
+        ? const _Empty('No pins yet. Hold the map above to drop one.')
+        : ListView(
+            padding: const EdgeInsets.only(bottom: 88),
+            children: [
+              for (final m in team.markers)
+                ListTile(
+                  leading: Icon(
+                    markerKindIcon(m.kind),
+                    color: markerKindColor(m.kind),
                   ),
-              ],
-            ),
+                  title: Text(m.label.isEmpty ? m.kind.label : m.label),
+                  subtitle: Text(
+                    [
+                      m.kind.label,
+                      teamAgo(m.time),
+                      if (m.attachment != null) 'attachment',
+                      if (fix != null)
+                        teamRangeBearing(
+                          teamDistanceMeters(fix.lat, fix.lon, m.lat, m.lon),
+                          teamBearingDeg(fix.lat, fix.lon, m.lat, m.lon),
+                        ),
+                    ].join(' · '),
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.info_outline),
+                    tooltip: 'Details',
+                    onPressed: () => showTeamPinSheet(context, m),
+                  ),
+                  onTap: () => teamMiniMapShow(_map, m.lat, m.lon),
+                ),
+            ],
+          );
+    return Scaffold(
+      body: _MapAndList(map: map, list: list),
       floatingActionButton: team.active
           ? FloatingActionButton.extended(
-              icon: const Icon(Icons.add_location_alt),
+              icon: const Icon(Icons.person_pin_circle_outlined),
               label: const Text('Pin at my position'),
               onPressed: fix == null
                   ? null
@@ -699,37 +739,66 @@ class _PinsTab extends StatelessWidget {
 
 // ----------------------------------------------------------------- reports
 
-class _ReportsTab extends StatelessWidget {
+class _ReportsTab extends StatefulWidget {
   const _ReportsTab();
+  @override
+  State<_ReportsTab> createState() => _ReportsTabState();
+}
+
+class _ReportsTabState extends State<_ReportsTab> {
+  final _map = MapController();
+
+  @override
+  void dispose() {
+    _map.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final team = context.watch<TeamService>();
     final fix = team.fix;
-    return Scaffold(
-      body: team.reports.isEmpty
-          ? const _Empty(
-              'No SALUTE reports yet. Long-press the map where you saw it, or '
-              'file one at your position.',
-            )
-          : ListView(
-              padding: const EdgeInsets.all(8),
-              children: [
-                for (final r in team.reports)
-                  Card(
-                    child: InkWell(
-                      onTap: () => showTeamReportSheet(context, r),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: TeamReportCard(report: r),
-                      ),
+    final map = TeamMiniMap(
+      controller: _map,
+      points: [
+        for (final r in team.reports)
+          if (r.lat != 0 || r.lon != 0) LatLng(r.lat, r.lon),
+      ],
+      dropLabel: 'Report here',
+      dropIcon: Icons.report_outlined,
+      onDrop: (at) =>
+          showSaluteForm(context, lat: at.latitude, lon: at.longitude),
+    );
+    final list = team.reports.isEmpty
+        ? const _Empty(
+            'No SALUTE reports yet. Hold the map above where you saw it, or '
+            'file one at your position.',
+          )
+        : ListView(
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 88),
+            children: [
+              for (final r in team.reports)
+                Card(
+                  child: InkWell(
+                    onTap: () {
+                      if (r.lat != 0 || r.lon != 0) {
+                        teamMiniMapShow(_map, r.lat, r.lon);
+                      }
+                      showTeamReportSheet(context, r);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: TeamReportCard(report: r),
                     ),
                   ),
-              ],
-            ),
+                ),
+            ],
+          );
+    return Scaffold(
+      body: _MapAndList(map: map, list: list),
       floatingActionButton: team.active
           ? FloatingActionButton.extended(
-              icon: const Icon(Icons.report_outlined),
+              icon: const Icon(Icons.person_pin_circle_outlined),
               label: const Text('SALUTE at my position'),
               onPressed: fix == null
                   ? null

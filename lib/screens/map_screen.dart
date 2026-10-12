@@ -53,6 +53,10 @@ class MapScreen extends StatefulWidget {
   final double highlightZoom;
   final bool hideBackButton;
 
+  /// Open centred here, without a highlight marker (e.g. from a mini map).
+  final LatLng? focusPosition;
+  final double focusZoom;
+
   const MapScreen({
     super.key,
     this.highlightPosition,
@@ -60,6 +64,8 @@ class MapScreen extends StatefulWidget {
     this.highlightMarkerKey,
     this.highlightZoom = 15.0,
     this.hideBackButton = false,
+    this.focusPosition,
+    this.focusZoom = 15.0,
   });
 
   @override
@@ -623,6 +629,9 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
         if (highlightPosition != null) {
           center = highlightPosition;
           initialZoom = widget.highlightZoom;
+        } else if (widget.focusPosition != null) {
+          center = widget.focusPosition!;
+          initialZoom = widget.focusZoom;
         }
 
         // Re center map after removed markers have loaded
