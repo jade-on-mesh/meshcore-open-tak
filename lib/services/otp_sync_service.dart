@@ -93,12 +93,11 @@ class OtpSyncPayload {
   }) : isSharedSequential = false,
        offset = null;
 
-  const OtpSyncPayload.shared({required this.isReply, required int offset})
+  const OtpSyncPayload.shared({required this.isReply, required int this.offset})
     : isSharedSequential = true,
       myOffset = null,
       theirOffset = null,
-      role = null,
-      offset = offset;
+      role = null;
 }
 
 class OtpSyncService {

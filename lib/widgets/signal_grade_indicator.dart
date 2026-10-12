@@ -137,7 +137,7 @@ IconData iconForSignalGrade(String label) {
   }
 }
 
-/// Small tappable "Signal: <grade>" readout for the chat/channel chat
+/// Small tappable "Signal: `<grade>`" readout for the chat/channel chat
 /// app bars - taps through to the existing CompanionRadioStatsScreen
 /// for the raw dBm numbers, same as RadioStatsIconButton right next to
 /// it. Reuses the connector's existing ref-counted radio-stats polling
