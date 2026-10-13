@@ -65,6 +65,8 @@ dependencies:
   flutter_linkify: ^6.0.0 # Auto-detect and linkify URLs in text
   gpx: ^2.3.0
   path_provider: ^2.1.5
+  sqlite3: ^2.7.6         # offline map packs (MBTiles)
+  sqlite3_flutter_libs: ^0.5.40
   file_selector: ^1.0.3   # desktop save dialog for GPX export
   share_plus: ^13.1.0
   build_pipe: ^0.3.1

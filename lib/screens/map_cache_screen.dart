@@ -14,7 +14,10 @@ import '../theme/mesh_theme.dart';
 import '../widgets/mesh_ui.dart';
 
 class MapCacheScreen extends StatefulWidget {
-  const MapCacheScreen({super.key});
+  /// Start with this area selected (the map's view), instead of the last one.
+  final LatLngBounds? initialBounds;
+
+  const MapCacheScreen({super.key, this.initialBounds});
 
   @override
   State<MapCacheScreen> createState() => _MapCacheScreenState();
@@ -118,7 +121,9 @@ class _MapCacheScreenState extends State<MapCacheScreen> {
 
   void _loadSettings() {
     final settings = context.read<AppSettingsService>().settings;
-    final bounds = MapTileCacheService.boundsFromJson(settings.mapCacheBounds);
+    final bounds =
+        widget.initialBounds ??
+        MapTileCacheService.boundsFromJson(settings.mapCacheBounds);
     final minZoom = settings.mapCacheMinZoom.clamp(3, 18);
     final maxZoom = settings.mapCacheMaxZoom.clamp(3, 18);
     final safeMin = minZoom <= maxZoom ? minZoom : maxZoom;

@@ -21,6 +21,7 @@ import '../widgets/mesh_ui.dart';
 import '../widgets/sync_progress_overlay.dart';
 import '../helpers/snack_bar_builder.dart';
 import 'map_cache_screen.dart';
+import 'map_packs_screen.dart';
 
 class AppSettingsScreen extends StatelessWidget {
   /// Scrolls the image-message settings into view once, on first build.
@@ -1087,6 +1088,17 @@ class AppSettingsScreen extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+      const Divider(height: 1, indent: 16),
+      ListTile(
+        leading: const Icon(Icons.layers_outlined),
+        title: const Text('Offline map packs'),
+        subtitle: const Text('Import MBTiles maps that work with no internet'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const MapPacksScreen()),
         ),
       ),
       const Divider(height: 1, indent: 16),
