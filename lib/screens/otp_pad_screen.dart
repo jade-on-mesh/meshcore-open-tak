@@ -16,8 +16,7 @@ import '../services/otp_service.dart';
 import '../theme/mesh_theme.dart';
 import '../widgets/adaptive_app_bar_title.dart';
 import '../widgets/mesh_ui.dart';
-import '../widgets/qr_code_display.dart';
-import '../widgets/qr_scanner_widget.dart';
+import '../widgets/otp_pad_qr_dialog.dart';
 import 'otp_lock_screen.dart';
 
 /// Pad management screen for a contact or a channel — import via paste or
@@ -727,7 +726,7 @@ class _OtpPadScreenState extends State<OtpPadScreen> {
             leading: const Icon(Icons.qr_code_2),
             title: const Text('Show pad as QR'),
             subtitle: const Text(
-              'Let the other device scan this exact pad — only do this once, privately',
+              'Let the other phone scan this exact pad — only do this once, privately',
             ),
             onTap: () => _showPadQr(pad),
           ),
@@ -1023,6 +1022,11 @@ class _OtpPadScreenState extends State<OtpPadScreen> {
                     icon: const Icon(Icons.qr_code_scanner, size: 18),
                     label: const Text('Scan QR'),
                   ),
+                  OutlinedButton.icon(
+                    onPressed: _showFormQr,
+                    icon: const Icon(Icons.qr_code_2, size: 18),
+                    label: const Text('Show QR'),
+                  ),
                 ],
               ),
               const Divider(height: 28),
@@ -1140,7 +1144,7 @@ class _OtpPadScreenState extends State<OtpPadScreen> {
 
   Future<void> _scanQr() async {
     final result = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => const _OtpPadQrScanScreen()),
+      MaterialPageRoute(builder: (_) => const OtpPadQrScanScreen()),
     );
     if (result != null && mounted) {
       setState(() {
@@ -1275,49 +1279,12 @@ class _OtpPadScreenState extends State<OtpPadScreen> {
   }
 
   Future<void> _showPadQr(OtpPad pad) async {
-    final bytes = pad.padHex.length ~/ 2;
-    // A pad this large is very likely to produce a QR symbol too dense to
-    // scan reliably (see OtpService.maxQrShareablePadBytes for the actual
-    // capacity math) - ask before even trying, rather than silently
-    // rendering something the other device may not be able to read at all.
-    if (bytes > OtpService.maxQrShareablePadBytes && mounted) {
-      final proceed = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Pad too large for one QR code'),
-          content: Text(
-            'This pad is $bytes bytes - larger than the '
-            '${OtpService.maxQrShareablePadBytes} bytes that reliably fit '
-            'in a single scannable QR code. It may render, but the other '
-            'device could fail to scan it. Paste the hex or transfer the '
-            'file directly instead for a pad this size.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Show anyway'),
-            ),
-          ],
-        ),
-      );
-      if (proceed != true || !mounted) return;
-    }
-    if (!mounted) return;
-    QrCodeShareDialog.show(
-      context: context,
-      // Uppercased so the QR encoder's alphanumeric mode applies (its
-      // charset is digits, uppercase A-F, and a few symbols - exactly
-      // uppercased hex) rather than the lower-capacity byte mode a
-      // mixed-case string would force. Purely a QR-density optimization -
-      // every import path already normalizes hex case-insensitively
-      // (_normalizeHex below lowercases on the way in), so this changes
-      // nothing about what gets stored or how it's decoded.
-      data: pad.padHex.toUpperCase(),
-      title: 'Scan on the other device',
+    // A pad over OtpService.maxQrShareablePadBytes plays as a loop of QR
+    // parts (OTPQR1, see otp_pad_qr.dart) that the other phone collects; a
+    // smaller one stays a single plain hex code, as older versions read.
+    await OtpPadQrDialog.show(
+      context,
+      padHex: pad.padHex,
       instructions: pad.isSharedSequential
           ? 'This shows the raw pad in plain sight — make sure no one else '
                 'can see your screen while others scan it. Every member of '
@@ -1328,6 +1295,29 @@ class _OtpPadScreenState extends State<OtpPadScreen> {
                 'app will normally work out on its own that they\'re Party '
                 '${pad.role == OtpPadRole.a ? 'B' : 'A'} for this pad; if it '
                 "can't, they'll need to pick that role by hand.",
+    );
+  }
+
+  /// The pad typed, pasted or generated in the setup form, as QR, so the
+  /// other device can take it before (or while) this one imports it.
+  Future<void> _showFormQr() async {
+    final hex = _normalizeHex(_pasteController.text);
+    if (hex == null || hex.length < 8) {
+      setState(
+        () => _formError =
+            'Enter valid hex pad data (paste, scan, or generate one below)',
+      );
+      return;
+    }
+    await OtpPadQrDialog.show(
+      context,
+      padHex: hex,
+      instructions:
+          'This shows the raw pad in plain sight — make sure no one else '
+          'can see your screen. On the other device, open this '
+          '${_isChannel ? 'channel' : 'contact'}\'s OTP Pad screen and tap '
+          'Scan QR. Import the same pad here too, and never use it for '
+          'anything else.',
     );
   }
 
@@ -1365,41 +1355,5 @@ class _OtpPadScreenState extends State<OtpPadScreen> {
     } else {
       await connector.clearContactOtpPad(widget.contact!.publicKeyHex);
     }
-  }
-}
-
-/// Thin wrapper around the app's existing [QrScannerWidget] that validates
-/// scanned data looks like pad hex before returning it.
-class _OtpPadQrScanScreen extends StatelessWidget {
-  const _OtpPadQrScanScreen();
-
-  bool _looksLikeHex(String data) {
-    final cleaned = data.trim();
-    return cleaned.length >= 8 &&
-        cleaned.length % 2 == 0 &&
-        RegExp(r'^[0-9a-fA-F]+$').hasMatch(cleaned);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const AdaptiveAppBarTitle('Scan OTP Pad'),
-        centerTitle: true,
-      ),
-      body: QrScannerWidget(
-        onScanned: (data) => Navigator.of(context).pop(data.trim()),
-        validator: _looksLikeHex,
-        onValidationFailed: (_) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('That QR code doesn\'t look like pad data'),
-            ),
-          );
-        },
-        instructions:
-            'Point the camera at the pad QR shown on the other device',
-      ),
-    );
   }
 }
