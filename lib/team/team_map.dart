@@ -661,11 +661,12 @@ class TeamMapLayer extends StatelessWidget {
   }
 
   /// The Watch tab, scrolled to this report and highlighted.
-  void _openWatch(BuildContext context, WatchItem w) => Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => TeamScreen(initialTab: 1, watchFocusKey: w.key),
-    ),
-  );
+  void _openWatch(BuildContext context, WatchItem w) =>
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => TeamScreen(initialTab: 1, watchFocusKey: w.key),
+        ),
+      );
 
   /// A watched report's second position, e.g. a drone's operator.
   Marker _watchSecondMarker(BuildContext context, WatchItem w) => Marker(
