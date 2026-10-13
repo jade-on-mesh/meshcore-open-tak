@@ -25,7 +25,11 @@ import 'watch_feed.dart';
 class TeamScreen extends StatelessWidget {
   /// 0 Team, 1 Watch, 2 Pins, 3 Reports, 4 Setup.
   final int? initialTab;
-  const TeamScreen({super.key, this.initialTab});
+
+  /// A watched report to scroll to and highlight on the Watch tab
+  /// ([WatchItem.key]), e.g. the pin tapped on the map.
+  final String? watchFocusKey;
+  const TeamScreen({super.key, this.initialTab, this.watchFocusKey});
 
   @override
   Widget build(BuildContext context) {
@@ -80,14 +84,14 @@ class TeamScreen extends StatelessWidget {
           ),
         ),
         // No swipe between tabs: the Pins and Reports maps pan sideways.
-        body: const TabBarView(
-          physics: NeverScrollableScrollPhysics(),
+        body: TabBarView(
+          physics: const NeverScrollableScrollPhysics(),
           children: [
-            _RosterTab(),
-            WatchTab(),
-            _PinsTab(),
-            _ReportsTab(),
-            _SetupTab(),
+            const _RosterTab(),
+            WatchTab(focusKey: watchFocusKey),
+            const _PinsTab(),
+            const _ReportsTab(),
+            const _SetupTab(),
           ],
         ),
       ),
@@ -158,7 +162,9 @@ class _Onboarding extends StatelessWidget {
 
 /// Feeds from other channels (#icewatch, #dronewatch, …).
 class WatchTab extends StatefulWidget {
-  const WatchTab({super.key});
+  /// Scroll to this report ([WatchItem.key]) and highlight it.
+  final String? focusKey;
+  const WatchTab({super.key, this.focusKey});
   @override
   State<WatchTab> createState() => _WatchTabState();
 }
@@ -167,12 +173,65 @@ class _WatchTabState extends State<WatchTab> {
   String? _channel; // null = all
   final Set<WatchLevel> _levels = {};
   final Set<String> _expanded = {};
+  final _scroll = ScrollController();
+  final _focusCard = GlobalKey();
+  String? _highlight; // the report opened from the map, lit for a while
+  bool _focusPending = false;
+  Timer? _highlightTimer;
 
   @override
   void initState() {
     super.initState();
+    final k = widget.focusKey;
+    if (k != null) {
+      _highlight = k;
+      _focusPending = true;
+      _expanded.add(k);
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(context.read<WatchFeedService>().markSeen());
+    });
+  }
+
+  @override
+  void dispose() {
+    _highlightTimer?.cancel();
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// Brings the focused report into view: jump near it (the list is built
+  /// lazily, so it may not exist yet), then centre it once it is built.
+  void _scrollToFocus(int index) {
+    _focusPending = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      void centre() {
+        final c = _focusCard.currentContext;
+        if (c != null) {
+          unawaited(
+            Scrollable.ensureVisible(
+              c,
+              alignment: 0.3,
+              duration: const Duration(milliseconds: 300),
+            ),
+          );
+        }
+      }
+
+      if (_focusCard.currentContext == null && _scroll.hasClients) {
+        _scroll.jumpTo(
+          (index * 76.0).clamp(0.0, _scroll.position.maxScrollExtent),
+        );
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) centre();
+        });
+      } else {
+        centre();
+      }
+      _highlightTimer = Timer(const Duration(seconds: 6), () {
+        if (mounted) setState(() => _highlight = null);
+      });
     });
   }
 
@@ -260,12 +319,22 @@ class _WatchTabState extends State<WatchTab> {
       );
     }
     final all = feed.items;
+    // Opened from a map pin: make sure no filter hides that report.
+    if (_focusPending && all.any((i) => i.key == widget.focusKey)) {
+      final f = all.firstWhere((i) => i.key == widget.focusKey);
+      if (_channel != null && _channel != f.channel.name) _channel = null;
+      if (_levels.isNotEmpty && !_levels.contains(f.level)) _levels.clear();
+    }
     final items = [
       for (final i in all)
         if ((_channel == null || i.channel.name == _channel) &&
             (_levels.isEmpty || _levels.contains(i.level)))
           i,
     ];
+    if (_focusPending) {
+      final at = items.indexWhere((i) => i.key == _highlight);
+      if (at >= 0) _scrollToFocus(at);
+    }
     final fix = context.watch<TeamService>().fix;
     return Column(
       children: [
@@ -336,11 +405,15 @@ class _WatchTabState extends State<WatchTab> {
           child: items.isEmpty
               ? const Center(child: Text('Nothing matches these filters.'))
               : ListView.builder(
+                  controller: _scroll,
                   itemCount: items.length,
                   itemBuilder: (context, i) {
                     final it = items[i];
                     final open = _expanded.contains(it.key);
+                    final lit = it.key == _highlight;
                     return _WatchCard(
+                      key: lit ? _focusCard : null,
+                      highlighted: lit,
                       item: it,
                       unseen: feed.isUnseen(it),
                       expanded: open,
@@ -377,9 +450,12 @@ class _WatchTabState extends State<WatchTab> {
 class _WatchCard extends StatelessWidget {
   final WatchItem item;
   final bool unseen, expanded;
+  final bool highlighted; // opened from its pin on the map
   final String? range;
   final VoidCallback onTap;
   const _WatchCard({
+    super.key,
+    this.highlighted = false,
     required this.item,
     required this.unseen,
     required this.expanded,
@@ -411,7 +487,9 @@ class _WatchCard extends StatelessWidget {
             left: BorderSide(color: color, width: 5),
             bottom: BorderSide(color: scheme.outlineVariant, width: 0.5),
           ),
-          color: unseen
+          color: highlighted
+              ? color.withValues(alpha: 0.28)
+              : unseen
               ? scheme.primaryContainer.withValues(alpha: 0.18)
               : null,
         ),

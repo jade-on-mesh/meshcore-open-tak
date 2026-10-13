@@ -660,8 +660,11 @@ class TeamMapLayer extends StatelessWidget {
     );
   }
 
-  void _openWatch(BuildContext context) => Navigator.of(context).push(
-    MaterialPageRoute<void>(builder: (_) => const TeamScreen(initialTab: 1)),
+  /// The Watch tab, scrolled to this report and highlighted.
+  void _openWatch(BuildContext context, WatchItem w) => Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => TeamScreen(initialTab: 1, watchFocusKey: w.key),
+    ),
   );
 
   /// A watched report's second position, e.g. a drone's operator.
@@ -670,7 +673,7 @@ class TeamMapLayer extends StatelessWidget {
     width: 110,
     height: 50,
     child: GestureDetector(
-      onTap: () => _openWatch(context),
+      onTap: () => _openWatch(context, w),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -698,7 +701,7 @@ class TeamMapLayer extends StatelessWidget {
         width: 170,
         height: 54,
         child: GestureDetector(
-          onTap: () => _openWatch(context),
+          onTap: () => _openWatch(context, w),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -731,11 +734,7 @@ class TeamMapLayer extends StatelessWidget {
       width: 110,
       height: 50,
       child: GestureDetector(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => const TeamScreen(initialTab: 1),
-          ),
-        ),
+        onTap: () => _openWatch(context, w),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
