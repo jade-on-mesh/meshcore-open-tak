@@ -108,7 +108,7 @@ Future<void> showVoxImagePicker(
   if (source == null || !context.mounted) return;
   final sketch =
       aiSketch != null && (voice.photoAiSketch || !voice.imagesAvailable);
-  if (sketch && !aiSketch!.ready()) {
+  if (sketch && !aiSketch.ready()) {
     aiSketch.explainNotReady();
     return;
   }
@@ -143,7 +143,7 @@ Future<void> showVoxImagePicker(
       }
       return;
     }
-    await aiSketch!.send(bytes, fileBytes);
+    await aiSketch.send(bytes, fileBytes);
     return;
   }
   VoxRgbImage ref;
