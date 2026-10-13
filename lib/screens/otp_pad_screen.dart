@@ -1321,7 +1321,6 @@ class _OtpPadScreenState extends State<OtpPadScreen> {
     );
   }
 
-
   Future<void> _confirmAndClear(
     MeshCoreConnector connector, {
     bool andThenSetup = false,

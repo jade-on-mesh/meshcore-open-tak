@@ -57,7 +57,9 @@ List<String> otpPadQrParts(
   int chunkBytes = otpPadQrChunkBytes,
 }) {
   final hex = padHex.toUpperCase();
-  final crc = otpPadCrc32Hex(hex).toRadixString(16).toUpperCase().padLeft(8, '0');
+  final crc = otpPadCrc32Hex(
+    hex,
+  ).toRadixString(16).toUpperCase().padLeft(8, '0');
   final step = chunkBytes * 2;
   final n = (hex.length + step - 1) ~/ step;
   return [
@@ -138,7 +140,9 @@ class OtpPadQrAssembler {
     if (part == null) {
       // The older form: the whole pad as one plain hex code.
       final cleaned = s.replaceAll(RegExp(r'\s+'), '');
-      if (cleaned.length >= 8 && cleaned.length.isEven && _hexRe.hasMatch(cleaned)) {
+      if (cleaned.length >= 8 &&
+          cleaned.length.isEven &&
+          _hexRe.hasMatch(cleaned)) {
         _result = cleaned.toLowerCase();
         return OtpPadQrScan.complete;
       }

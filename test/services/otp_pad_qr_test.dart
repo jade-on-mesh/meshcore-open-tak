@@ -15,7 +15,10 @@ void main() {
 
   test('crc32 matches zlib', () {
     expect(otpPadCrc32Hex(hex), 0x3BDDFFA4);
-    expect(otpPadCrc32(Uint8List.fromList(List.generate(20, (i) => i))), 0x3BDDFFA4);
+    expect(
+      otpPadCrc32(Uint8List.fromList(List.generate(20, (i) => i))),
+      0x3BDDFFA4,
+    );
   });
 
   test('writes the golden parts', () {
@@ -39,7 +42,10 @@ void main() {
     expect(a.add('00010203ABCD'), OtpPadQrScan.complete);
     expect(a.result, '00010203abcd');
     expect(OtpPadQrAssembler().add('hello'), OtpPadQrScan.invalid);
-    expect(OtpPadQrAssembler().add('OTPQR1:4:3:3BDDFFA4:10'), OtpPadQrScan.invalid);
+    expect(
+      OtpPadQrAssembler().add('OTPQR1:4:3:3BDDFFA4:10'),
+      OtpPadQrScan.invalid,
+    );
   });
 
   test('a part of another pad starts over', () {
