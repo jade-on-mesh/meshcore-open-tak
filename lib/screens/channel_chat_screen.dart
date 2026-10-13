@@ -1705,7 +1705,10 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
 
   /// AEIC preview, then send: the photo button's "AI sketch" choice and the
   /// + menu both end here.
-  Future<void> _sendAiSketch(Uint8List sourceBytes, int originalFileBytes) async {
+  Future<void> _sendAiSketch(
+    Uint8List sourceBytes,
+    int originalFileBytes,
+  ) async {
     final codec = _imageCodec;
     if (codec == null || !mounted) return;
     final connector = context.read<MeshCoreConnector>();

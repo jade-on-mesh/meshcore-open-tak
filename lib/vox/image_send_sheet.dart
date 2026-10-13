@@ -106,7 +106,8 @@ Future<void> showVoxImagePicker(
     ),
   );
   if (source == null || !context.mounted) return;
-  final sketch = aiSketch != null && (voice.photoAiSketch || !voice.imagesAvailable);
+  final sketch =
+      aiSketch != null && (voice.photoAiSketch || !voice.imagesAvailable);
   if (sketch && !aiSketch!.ready()) {
     aiSketch.explainNotReady();
     return;

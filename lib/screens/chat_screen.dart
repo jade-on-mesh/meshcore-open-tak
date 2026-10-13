@@ -687,14 +687,15 @@ class _ChatScreenState extends State<ChatScreen> {
               VoxImageButton(
                 // AI sketches to a person ride the OTP pipeline, so they are
                 // offered only once this contact has a pad.
-                aiSketch: connector.canSendOtpImageToContact(contactKeyHex) &&
+                aiSketch:
+                    connector.canSendOtpImageToContact(contactKeyHex) &&
                         _imageCodec != null
                     ? VoxAiSketchOption(
                         ready: () =>
                             _imageCodec?.availability ==
                             ImageCodecAvailability.ready,
-                        explainNotReady: () => ScaffoldMessenger.of(context)
-                            .showSnackBar(
+                        explainNotReady: () =>
+                            ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text(
                                   'AI sketches need the image model: turn on '
