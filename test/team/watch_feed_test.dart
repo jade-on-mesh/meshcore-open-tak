@@ -129,4 +129,10 @@ void main() {
     );
     expect(it.time, t);
   });
+
+  test('ICE watch reports are tagged ICE on the map', () {
+    expect(watchMapTag('#icewatch', 'Somebody'), 'ICE');
+    expect(watchMapTag('#ibtest', 'IceBot'), 'ICE');
+    expect(watchMapTag('#dronewatch', 'DARS-C6L'), '#dronewatch');
+  });
 }
