@@ -48,6 +48,7 @@ String _takRoleName(TeamRole r) => switch (r) {
   TeamRole.security => 'Team Member',
   TeamRole.observer => 'Forward Observer',
   TeamRole.command => 'HQ',
+  TeamRole.press => 'Team Member',
 };
 
 TeamRole teamRoleFromTak(String? role) => switch ((role ?? '').toLowerCase()) {
@@ -241,14 +242,21 @@ String cotForMarker(TeamMarker m) {
 
 /// A SALUTE report as CoT: a point coloured by affiliation, remarks holding
 /// the report.
-String cotForReport(TeamReport r) => cotEvent(
+String cotForReport(TeamReport r) => r.withdrawn
+    ? cotDelete('VOX-R-${r.authorKey4}-${r.reportId.toRadixString(16)}')
+    : _cotForLiveReport(r);
+
+String _cotForLiveReport(TeamReport r) => cotEvent(
   uid: 'VOX-R-${r.authorKey4}-${r.reportId.toRadixString(16)}',
-  type: switch (r.affiliation) {
-    TeamAffiliation.hostile => 'a-h-G',
-    TeamAffiliation.neutral => 'a-n-G',
-    TeamAffiliation.friendly => 'a-f-G',
-    TeamAffiliation.unknown => 'a-u-G',
-  },
+  // A general report is a note at a place: a spot marker, not a sighting.
+  type: r.isGeneral
+      ? 'b-m-p-s-m'
+      : switch (r.affiliation) {
+          TeamAffiliation.hostile => 'a-h-G',
+          TeamAffiliation.neutral => 'a-n-G',
+          TeamAffiliation.friendly => 'a-f-G',
+          TeamAffiliation.unknown => 'a-u-G',
+        },
   how: 'h-g-i-g-o',
   lat: r.lat,
   lon: r.lon,
@@ -259,7 +267,7 @@ String cotForReport(TeamReport r) => cotEvent(
       'contact',
       attributes: {
         'callsign':
-            'SALUTE ${r.observed.toUtc().toIso8601String().substring(11, 16)}Z',
+            '${r.isGeneral ? 'REPORT' : 'SALUTE'} ${r.observed.toUtc().toIso8601String().substring(11, 16)}Z',
       },
     );
     b.element(
@@ -271,7 +279,10 @@ String cotForReport(TeamReport r) => cotEvent(
       },
     );
     b.element('archive');
-    b.element('remarks', nest: 'SALUTE ${r.summary()}');
+    b.element(
+      'remarks',
+      nest: '${r.isGeneral ? 'Report' : 'SALUTE'} ${r.summary()}',
+    );
   },
 );
 

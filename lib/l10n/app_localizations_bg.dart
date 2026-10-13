@@ -2265,6 +2265,12 @@ class AppLocalizationsBg extends AppLocalizations {
   String get map_otherNodes => 'Други възли';
 
   @override
+  String get map_rooms => 'Rooms';
+
+  @override
+  String get map_sensors => 'Sensors';
+
+  @override
   String get map_showOverlaps => 'Покриване на ключа на повтаряча';
 
   @override

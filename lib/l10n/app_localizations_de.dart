@@ -2262,6 +2262,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get map_otherNodes => 'Andere Knoten';
 
   @override
+  String get map_rooms => 'Rooms';
+
+  @override
+  String get map_sensors => 'Sensors';
+
+  @override
   String get map_showOverlaps => 'Repeater-Schlüsselüberlappungen';
 
   @override

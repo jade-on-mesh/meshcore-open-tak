@@ -44,9 +44,9 @@ String buildTeamGpx({
       Wpt(
         lat: r.lat,
         lon: r.lon,
-        name: 'SALUTE ${r.timeLabel}',
+        name: '${r.isGeneral ? 'Report' : 'SALUTE'} ${r.timeLabel}',
         desc: r.summary(),
-        type: 'SALUTE',
+        type: r.isGeneral ? 'Report' : 'SALUTE',
         time: r.observed.toUtc(),
       ),
     for (final c in casevacs)

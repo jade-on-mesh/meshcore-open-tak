@@ -2248,6 +2248,12 @@ class AppLocalizationsNl extends AppLocalizations {
   String get map_otherNodes => 'Andere Nodes';
 
   @override
+  String get map_rooms => 'Rooms';
+
+  @override
+  String get map_sensors => 'Sensors';
+
+  @override
   String get map_showOverlaps => 'Overlappende repeatersleutels';
 
   @override

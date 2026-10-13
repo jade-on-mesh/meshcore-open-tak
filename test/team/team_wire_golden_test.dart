@@ -63,7 +63,7 @@ void main() {
     );
     expect(_hex(p3.encode()), kP3);
     expect(TeamPosition.tryParse(_unhex(kP3))!.roleId, 20);
-    // Roles 9-14 fit the nibble: no extra byte.
+    // Added roles up to 14 fit the nibble: no extra byte.
     final p4 = TeamPosition(
       senderKey4: '01020304',
       lat: 1,

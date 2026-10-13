@@ -2256,6 +2256,12 @@ class AppLocalizationsUk extends AppLocalizations {
   String get map_otherNodes => 'Інші вузли';
 
   @override
+  String get map_rooms => 'Rooms';
+
+  @override
+  String get map_sensors => 'Sensors';
+
+  @override
   String get map_showOverlaps => 'Перекриття ключів ретрансляторів';
 
   @override

@@ -14,7 +14,7 @@ class RoleIcon {
   const RoleIcon(this.id, this.name, this.group, this.icon);
 }
 
-/// Every choice, grouped (the first nine are the default role icons).
+/// Every choice, grouped (Defaults are the default role icons).
 const List<RoleIcon> roleIconLibrary = [
   RoleIcon(1, 'person', 'Defaults', Icons.person),
   RoleIcon(2, 'star', 'Defaults', Icons.star),
@@ -666,6 +666,8 @@ const List<RoleIcon> roleIconLibrary = [
   RoleIcon(563, 'lens', 'Symbols', Icons.lens),
   RoleIcon(564, 'token', 'Symbols', Icons.token),
   RoleIcon(565, 'api', 'Symbols', Icons.api),
+  // Appended: Press, the tenth default role.
+  RoleIcon(566, 'video camera', 'Defaults', Icons.videocam_outlined),
 ];
 
 final Map<int, RoleIcon> _byId = {for (final i in roleIconLibrary) i.id: i};

@@ -2254,6 +2254,12 @@ class AppLocalizationsHu extends AppLocalizations {
   String get map_otherNodes => 'Egyéb csomópontok';
 
   @override
+  String get map_rooms => 'Rooms';
+
+  @override
+  String get map_sensors => 'Sensors';
+
+  @override
   String get map_showOverlaps => 'Repeater Key átfedések';
 
   @override

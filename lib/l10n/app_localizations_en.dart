@@ -2229,6 +2229,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get map_otherNodes => 'Other Nodes';
 
   @override
+  String get map_rooms => 'Rooms';
+
+  @override
+  String get map_sensors => 'Sensors';
+
+  @override
   String get map_showOverlaps => 'Repeater Key Overlaps';
 
   @override

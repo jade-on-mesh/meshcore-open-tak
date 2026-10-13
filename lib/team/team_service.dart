@@ -187,6 +187,7 @@ class TeamService extends ChangeNotifier {
       _recordTrack = p.getBool(_kRecordTrack) ?? true;
       _showTracks = p.getBool(_kShowTracks) ?? true;
       _myTrack.addAll(decodeTeamTrack(p.getString(_kMyTrack) ?? ''));
+      _hidden.addAll(p.getStringList(_kHidden) ?? const <String>[]);
       for (final b64 in p.getStringList(_kMarkers) ?? const <String>[]) {
         final m = TeamMarker.tryParse(base64Decode(b64));
         if (m != null) _markers[m.key] = m;
@@ -950,8 +951,41 @@ class TeamService extends ChangeNotifier {
   final Map<String, TeamMarker> _markers = {};
 
   List<TeamMarker> get markers =>
-      _markers.values.where((m) => !m.deleted).toList()
+      _markers.values
+          .where((m) => !m.deleted && !_hidden.contains(m.key))
+          .toList()
         ..sort((a, b) => b.time.compareTo(a.time));
+
+  // ---------------------------------------------- hidden on this phone only
+  //
+  // Someone else's pin or report can't be deleted for the team, only hidden
+  // here. The keys are kept, so a re-sent copy stays hidden too.
+  static const _kHidden = 'team_hidden_items_v1';
+  final Set<String> _hidden = {};
+
+  bool isHidden(String key) => _hidden.contains(key);
+
+  void _hide(String key) {
+    _hidden.add(key);
+    // Bounded: the oldest hidden keys go first.
+    while (_hidden.length > 1000) {
+      _hidden.remove(_hidden.first);
+    }
+    unawaited(_save((p) => p.setStringList(_kHidden, _hidden.toList())));
+    notifyListeners();
+  }
+
+  /// Hides someone else's pin on this phone.
+  void hideMarker(TeamMarker m) => _hide(m.key);
+
+  /// Shows everything hidden on this phone again.
+  void unhideAll() {
+    _hidden.clear();
+    unawaited(_save((p) => p.remove(_kHidden)));
+    notifyListeners();
+  }
+
+  int get hiddenCount => _hidden.length;
 
   bool isMine(TeamMarker m) => m.authorKey4 == selfKey4;
 
@@ -1013,7 +1047,9 @@ class TeamService extends ChangeNotifier {
     return m;
   }
 
+  /// Deletes my own pin for the whole team (someone else's is hidden instead).
   Future<void> deleteMarker(TeamMarker m) async {
+    if (!isMine(m)) return hideMarker(m);
     final d = m.copyWith(deleted: true, time: DateTime.now());
     _markers[m.key] = d;
     unawaited(_persistMarkers());
@@ -1038,8 +1074,8 @@ class TeamService extends ChangeNotifier {
 
   // ---------------------------------------------------------------- roles
   //
-  // The team can rename the nine default roles, give any role an icon, and
-  // add up to 16 roles of its own. Each role's newest edit wins and is shared
+  // The team can rename the ten default roles, give any role an icon, and
+  // add up to 15 roles of its own. Each role's newest edit wins and is shared
   // on the team channel, so every phone (and a T-Deck's roster) agrees.
 
   static const _kRoles = 'team_roles_v1';
@@ -1047,7 +1083,7 @@ class TeamService extends ChangeNotifier {
   Timer? _roleShareTimer;
   DateTime? _lastRoleShare;
 
-  /// Roles to choose from: the nine defaults, then the team's added roles.
+  /// Roles to choose from: the ten defaults, then the team's added roles.
   List<int> get roleIds => [
     for (var i = 0; i < teamFirstAddedRole; i++) i,
     for (var i = teamFirstAddedRole; i <= teamMaxRoleId; i++)
@@ -1181,8 +1217,10 @@ class TeamService extends ChangeNotifier {
   final Map<String, TeamReport> _reports = {};
 
   List<TeamReport> get reports =>
-      _reports.values.toList()
+      _reports.values.where((r) => !_hidden.contains(r.key)).toList()
         ..sort((a, b) => b.observed.compareTo(a.observed));
+
+  bool isMyReport(TeamReport r) => r.authorKey4 == selfKey4;
 
   void Function(TeamReport r)? onReportChanged;
 
@@ -1193,7 +1231,12 @@ class TeamService extends ChangeNotifier {
   );
 
   void _onReport(TeamReport r) {
-    if (_reports.containsKey(r.key)) return;
+    if (r.withdrawn) {
+      // Only its author can take a report back (the sender is the author).
+      _withdrawn(r.key);
+      return;
+    }
+    if (_reports.containsKey(r.key) || _hidden.contains(r.key)) return;
     _reports[r.key] = r;
     unawaited(_persistReports());
     onReportChanged?.call(r);
@@ -1208,11 +1251,12 @@ class TeamService extends ChangeNotifier {
     );
   }
 
-  /// Files a SALUTE report and sends it to the team.
+  /// Files a report (SALUTE, or a general one) and sends it to the team.
   Future<TeamReport> fileReport({
     required double lat,
     required double lon,
     required DateTime observed,
+    TeamReportKind kind = TeamReportKind.salute,
     TeamAffiliation affiliation = TeamAffiliation.unknown,
     TeamUrgency urgency = TeamUrgency.observed,
     int vehicles = 0,
@@ -1228,6 +1272,7 @@ class TeamService extends ChangeNotifier {
     final r = TeamReport(
       authorKey4: selfKey4,
       reportId: _rng.nextInt(1 << 32),
+      kind: kind,
       affiliation: affiliation,
       urgency: urgency,
       vehicles: vehicles,
@@ -1257,10 +1302,23 @@ class TeamService extends ChangeNotifier {
     return r;
   }
 
-  Future<void> deleteReport(TeamReport r) async {
-    _reports.remove(r.key);
-    unawaited(_persistReports());
+  void _withdrawn(String key) {
+    final r = _reports.remove(key);
+    _hidden.add(key); // a late copy of it must not bring it back
+    unawaited(_save((p) => p.setStringList(_kHidden, _hidden.toList())));
+    if (r != null) {
+      unawaited(_persistReports());
+      onReportChanged?.call(r.asWithdrawn());
+    }
     notifyListeners();
+  }
+
+  /// My own report: taken back for the whole team. Someone else's: hidden
+  /// on this phone only.
+  Future<void> deleteReport(TeamReport r) async {
+    if (!isMyReport(r)) return _hide(r.key);
+    _withdrawn(r.key);
+    await _send(r.asWithdrawn().encode());
   }
 
   // --------------------------------------------- drawings, routes, fences

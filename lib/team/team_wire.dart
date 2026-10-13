@@ -17,7 +17,9 @@
 //   report    [0x52][key4][reportId u32][kind<<4|urgency][affiliation]
 //             [lat i32][lon i32][observed u32][vehicles u8][people u8]
 //             [place][size][activity][unit][equipment] (length-prefixed)
-//             [attachMode u8][sid4][packets][extra]
+//             [attachMode u8][sid4][packets][extra] [withdrawn u8]?
+//             (the trailing 1 retracts the author's own report; older
+//             readers ignore it)
 //   role      [0x4C][key4][roleId u8][op u8][time u32][icon u16]
 //             [nameLen][name]   (a team-wide name/icon for a role; op 1 =
 //             back to the default, or removed for an added role)
@@ -69,8 +71,8 @@ const int teamMaxNoteBytes = 60;
 const int teamMaxAlertNoteBytes = 80;
 const int teamMaxRoleNameBytes = 20;
 
-/// Role ids: 0-8 are [TeamRole]'s defaults, 9-24 roles a team added.
-const int teamFirstAddedRole = 9;
+/// Role ids: 0-9 are [TeamRole]'s defaults, 10-24 roles a team added.
+const int teamFirstAddedRole = 10;
 const int teamMaxRoleId = 24;
 const int _roleEscape = 15;
 
@@ -84,7 +86,8 @@ enum TeamRole {
   driver('Driver / vehicle'),
   security('Security'),
   observer('Observer'),
-  command('Command / HQ');
+  command('Command / HQ'),
+  press('Press');
 
   const TeamRole(this.label);
   final String label;
@@ -311,7 +314,7 @@ class TeamPosition {
   final int accuracyM;
   final int? batteryPct;
 
-  /// 0-8 a default [TeamRole], 9-24 a role the team added.
+  /// 0-9 a default [TeamRole], 10-24 a role the team added.
   final int roleId;
   final TeamColor color;
   final TeamStatus status;
@@ -705,7 +708,12 @@ enum TeamAffiliation {
 }
 
 enum TeamReportKind {
-  salute('SALUTE');
+  salute('SALUTE'),
+
+  /// Free text: whatever someone wants the team to know, at a place. Sent in
+  /// the SALUTE layout with the text in Activity, so older apps show it as
+  /// a SALUTE report with that activity.
+  general('Report');
 
   const TeamReportKind(this.label);
   final String label;
@@ -735,6 +743,10 @@ const int teamMaxSaluteUnitBytes = 24;
 const int teamMaxSaluteEquipmentBytes = 28;
 const int teamMaxSalutePlaceBytes = 24;
 
+/// A general report's text. With a full place name, an attachment and a
+/// withdrawal byte the report is exactly [teamMaxPayload].
+const int teamMaxGeneralTextBytes = 100;
+
 /// SALUTE report: Size, Activity, Location, Unit/uniform, Time, Equipment.
 /// Size is structured as vehicle and personnel counts (plus a short note),
 /// location as coordinates plus an optional place name, time as a timestamp.
@@ -750,6 +762,9 @@ class TeamReport {
   final String place;
   final String size, activity, unit, equipment;
   final TeamAttachment? attachment;
+
+  /// The author took this report back; receivers remove it.
+  final bool withdrawn;
 
   const TeamReport({
     required this.authorKey4,
@@ -768,9 +783,31 @@ class TeamReport {
     this.unit = '',
     this.equipment = '',
     this.attachment,
+    this.withdrawn = false,
   });
 
   String get key => '$authorKey4:${reportId.toRadixString(16)}';
+
+  /// The same report, marked as taken back by its author.
+  TeamReport asWithdrawn() => TeamReport(
+    authorKey4: authorKey4,
+    reportId: reportId,
+    lat: lat,
+    lon: lon,
+    observed: observed,
+    kind: kind,
+    affiliation: affiliation,
+    urgency: urgency,
+    vehicles: vehicles,
+    people: people,
+    place: place,
+    size: size,
+    activity: activity,
+    unit: unit,
+    equipment: equipment,
+    attachment: attachment,
+    withdrawn: true,
+  );
 
   static String _two(int v) => v.toString().padLeft(2, '0');
 
@@ -790,17 +827,32 @@ class TeamReport {
       ? place
       : '${lat.toStringAsFixed(4)}, ${lon.toStringAsFixed(4)}';
 
+  bool get isGeneral => kind == TeamReportKind.general;
+
+  /// A general report's text.
+  String get text => activity;
+
+  /// "Report" or "SALUTE report", for headings.
+  String get title => isGeneral ? 'Report' : 'SALUTE report';
+
   /// The condensed card, line by line:
   ///   🔴 CRITICAL / 10-03 11:30 / @Auburn E Main St / 3-🚗 5-🥾 / details
-  List<String> condensedLines() => [
-    '${urgency.dot} ${urgency.label}',
-    timeLabel,
-    '@$placeLabel',
-    if (countsLabel.isNotEmpty) countsLabel,
-    if (activity.isNotEmpty) 'A: $activity',
-    if (unit.isNotEmpty) 'U: $unit',
-    if (equipment.isNotEmpty) 'E: $equipment',
-  ];
+  List<String> condensedLines() => isGeneral
+      ? [
+          '${urgency.dot} ${urgency.label}',
+          timeLabel,
+          '@$placeLabel',
+          if (text.isNotEmpty) text,
+        ]
+      : [
+          '${urgency.dot} ${urgency.label}',
+          timeLabel,
+          '@$placeLabel',
+          if (countsLabel.isNotEmpty) countsLabel,
+          if (activity.isNotEmpty) 'A: $activity',
+          if (unit.isNotEmpty) 'U: $unit',
+          if (equipment.isNotEmpty) 'E: $equipment',
+        ];
 
   /// As a plain text message for MeshCore apps without VOX (kept short).
   String condensedText({int maxChars = 150}) {
@@ -809,15 +861,21 @@ class TeamReport {
   }
 
   /// One-line SALUTE summary for lists and TAK remarks.
-  String summary() => [
-    '${urgency.label}${affiliation == TeamAffiliation.unknown ? '' : ' ${affiliation.label.toLowerCase()}'}',
-    if (countsLabel.isNotEmpty) 'S: $countsLabel',
-    if (activity.isNotEmpty) 'A: $activity',
-    'L: ${place.isNotEmpty ? '$place ' : ''}(${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)})',
-    if (unit.isNotEmpty) 'U: $unit',
-    'T: ${observed.toUtc().toIso8601String().substring(0, 16)}Z',
-    if (equipment.isNotEmpty) 'E: $equipment',
-  ].join(' / ');
+  String summary() => isGeneral
+      ? [
+          '${urgency.label}: $text',
+          'L: ${place.isNotEmpty ? '$place ' : ''}(${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)})',
+          'T: ${observed.toUtc().toIso8601String().substring(0, 16)}Z',
+        ].join(' / ')
+      : [
+          '${urgency.label}${affiliation == TeamAffiliation.unknown ? '' : ' ${affiliation.label.toLowerCase()}'}',
+          if (countsLabel.isNotEmpty) 'S: $countsLabel',
+          if (activity.isNotEmpty) 'A: $activity',
+          'L: ${place.isNotEmpty ? '$place ' : ''}(${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)})',
+          if (unit.isNotEmpty) 'U: $unit',
+          'T: ${observed.toUtc().toIso8601String().substring(0, 16)}Z',
+          if (equipment.isNotEmpty) 'E: $equipment',
+        ].join(' / ');
 
   Uint8List encode() {
     final w = _W()
@@ -833,7 +891,10 @@ class TeamReport {
       ..u8(people.clamp(0, 255))
       ..str(place, teamMaxSalutePlaceBytes)
       ..str(size, teamMaxSaluteSizeBytes)
-      ..str(activity, teamMaxSaluteActivityBytes)
+      ..str(
+        activity,
+        isGeneral ? teamMaxGeneralTextBytes : teamMaxSaluteActivityBytes,
+      )
       ..str(unit, teamMaxSaluteUnitBytes)
       ..str(equipment, teamMaxSaluteEquipmentBytes);
     final a = attachment;
@@ -846,6 +907,7 @@ class TeamReport {
         ..u8(a.packets)
         ..u16(a.extra);
     }
+    if (withdrawn) w.u8(1);
     return w.done();
   }
 
@@ -870,11 +932,13 @@ class TeamReport {
       return null;
     }
     TeamAttachment? att;
+    var withdrawn = false;
     if (r.has(1)) {
       final mode = r.u8();
       if (mode != 0 && r.has(7)) {
         att = TeamAttachment(mode, teamKey4Hex(r.take(4)), r.u8(), r.u16());
       }
+      if (r.has(1)) withdrawn = r.u8() & 1 != 0;
     }
     return TeamReport(
       authorKey4: key,
@@ -893,6 +957,7 @@ class TeamReport {
       unit: unit,
       equipment: eq,
       attachment: att,
+      withdrawn: withdrawn,
     );
   }
 }

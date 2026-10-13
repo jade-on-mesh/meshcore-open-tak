@@ -176,6 +176,36 @@ class _WatchTabState extends State<WatchTab> {
     });
   }
 
+  Future<void> _chooseMapTtl(WatchFeedService feed) =>
+      showModalBottomSheet<void>(
+        context: context,
+        builder: (c) => SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const ListTile(
+                  title: Text('Keep watched reports on the map for'),
+                  subtitle: Text(
+                    'Counted from when each report happened. The feed here '
+                    'keeps them all.',
+                  ),
+                ),
+                for (final d in watchMapTtlChoices)
+                  ListTile(
+                    title: Text(watchTtlLabel(d)),
+                    trailing: feed.mapTtl == d ? const Icon(Icons.check) : null,
+                    onTap: () {
+                      unawaited(feed.setMapTtl(d));
+                      Navigator.pop(c);
+                    },
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+
   Future<void> _chooseChannels() => showModalBottomSheet<void>(
     context: context,
     builder: (context) {
@@ -264,6 +294,12 @@ class _WatchTabState extends State<WatchTab> {
                 avatar: const Icon(Icons.tune, size: 16),
                 label: const Text('Channels'),
                 onPressed: _chooseChannels,
+              ),
+              const SizedBox(width: 6),
+              ActionChip(
+                avatar: const Icon(Icons.timer_outlined, size: 16),
+                label: Text('On map: ${watchTtlLabel(feed.mapTtl)}'),
+                onPressed: () => _chooseMapTtl(feed),
               ),
             ],
           ),
@@ -358,9 +394,12 @@ class _WatchCard extends StatelessWidget {
     final it = item;
     final color = Color(it.level.argb);
     final meta = [
-      it.when ?? teamAgo(it.message.timestamp),
+      it.when ?? teamAgo(it.time),
+      ?it.detail,
       if (it.counts.isNotEmpty)
         it.counts.map((c) => '${c.$1} ${c.$2}').join('  '),
+      if (it.hasSecondPosition)
+        '${it.isDrone ? 'operator' : it.label2 ?? '2nd point'} on map',
       it.channel.name,
       ?range,
     ].join(' · ');
@@ -446,7 +485,7 @@ class _WatchCard extends StatelessWidget {
               Text(it.message.text, style: t.bodyMedium),
               const SizedBox(height: 4),
               Text(
-                'From ${it.message.senderName} · ${teamAgo(it.message.timestamp)}',
+                'From ${it.message.senderName} · ${teamAgo(it.time)}',
                 style: t.bodySmall,
               ),
             ],
@@ -644,6 +683,23 @@ class _Empty extends StatelessWidget {
 
 // -------------------------------------------------------------------- pins
 
+/// "N hidden on this phone · Show again", when anything is hidden.
+Widget? _hiddenRow(BuildContext context, TeamService team) {
+  if (team.hiddenCount == 0) return null;
+  return ListTile(
+    dense: true,
+    leading: const Icon(Icons.visibility_off_outlined),
+    title: Text(
+      '${team.hiddenCount} hidden on this phone (pins and reports others '
+      'placed)',
+    ),
+    trailing: TextButton(
+      onPressed: team.unhideAll,
+      child: const Text('Show again'),
+    ),
+  );
+}
+
 /// The mini map above (or beside, on wide screens) a list.
 class _MapAndList extends StatelessWidget {
   final Widget map;
@@ -705,11 +761,19 @@ class _PinsTabState extends State<_PinsTab> {
       onDrop: (at) =>
           showTeamPinEditor(context, lat: at.latitude, lon: at.longitude),
     );
+    final hidden = _hiddenRow(context, team);
     final list = team.markers.isEmpty && team.shapes.isEmpty
-        ? const _Empty(
-            'No pins or drawings yet. Hold the map above to drop a pin, or '
-            'use Tools on the full map to draw, plan a route or set a '
-            'geofence.',
+        ? Column(
+            children: [
+              const Expanded(
+                child: _Empty(
+                  'No pins or drawings yet. Hold the map above to drop a pin, '
+                  'or use Tools on the full map to draw, plan a route or set '
+                  'a geofence.',
+                ),
+              ),
+              ?hidden,
+            ],
           )
         : ListView(
             padding: const EdgeInsets.only(bottom: 88),
@@ -781,6 +845,7 @@ class _PinsTabState extends State<_PinsTab> {
                   ),
                   onTap: () => teamMiniMapShow(_map, m.lat, m.lon),
                 ),
+              ?hidden,
             ],
           );
     return Scaffold(
@@ -801,7 +866,7 @@ class _PinsTabState extends State<_PinsTab> {
 
 // ----------------------------------------------------------------- reports
 
-/// SALUTE report or CASEVAC request at [at].
+/// A report (general, SALUTE or CASEVAC) at [lat], [lon].
 Future<void> _reportAt(BuildContext context, double lat, double lon) =>
     showModalBottomSheet<void>(
       context: context,
@@ -809,6 +874,15 @@ Future<void> _reportAt(BuildContext context, double lat, double lon) =>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            ListTile(
+              leading: const Icon(Icons.edit_note),
+              title: const Text('Report here'),
+              subtitle: const Text('Anything the team should know'),
+              onTap: () {
+                Navigator.pop(c);
+                showGeneralReportForm(context, lat: lat, lon: lon);
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.report_outlined),
               title: const Text('SALUTE report here'),
@@ -861,10 +935,18 @@ class _ReportsTabState extends State<_ReportsTab> {
       dropIcon: Icons.report_outlined,
       onDrop: (at) => _reportAt(context, at.latitude, at.longitude),
     );
+    final hidden = _hiddenRow(context, team);
     final list = team.reports.isEmpty && team.casevacs.isEmpty
-        ? const _Empty(
-            'No reports yet. Hold the map above where you saw it to file a '
-            'SALUTE report or CASEVAC request.',
+        ? Column(
+            children: [
+              const Expanded(
+                child: _Empty(
+                  'No reports yet. Hold the map above where you saw it to file '
+                  'a report, SALUTE or CASEVAC request.',
+                ),
+              ),
+              ?hidden,
+            ],
           )
         : ListView(
             padding: const EdgeInsets.fromLTRB(8, 8, 8, 88),
@@ -903,6 +985,7 @@ class _ReportsTabState extends State<_ReportsTab> {
                     ),
                   ),
                 ),
+              ?hidden,
             ],
           );
     return Scaffold(

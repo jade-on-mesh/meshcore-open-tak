@@ -38,6 +38,7 @@ IconData teamRoleIcon(TeamRole r) => switch (r) {
   TeamRole.security => Icons.shield_outlined,
   TeamRole.observer => Icons.visibility,
   TeamRole.command => Icons.account_balance,
+  TeamRole.press => Icons.videocam_outlined,
 };
 
 /// Role [roleId]'s icon: the team's choice from the icon library, else the
@@ -137,10 +138,7 @@ class TeamMapLayer extends StatelessWidget {
     final team = context.watch<TeamService>();
     final tak = context.watch<TakService>();
     final watch = context.watch<WatchFeedService>();
-    final watched = [
-      for (final i in watch.items.take(300))
-        if (i.hasPosition) i,
-    ];
+    final watched = watch.mapItems;
     final shared = team.points;
     final atakShapes = team.atakShapes;
     if (!team.enabled &&
@@ -212,6 +210,15 @@ class TeamMapLayer extends StatelessWidget {
             color: _argb(s.strokeArgb).withValues(alpha: 0.9),
             strokeWidth: s.strokeWidth.clamp(2, 8).toDouble(),
             pattern: StrokePattern.dashed(segments: const [10, 6]),
+          ),
+      // A watched report's second position (a drone's operator).
+      for (final w in watched)
+        if (w.hasSecondPosition)
+          Polyline(
+            points: [LatLng(w.lat!, w.lon!), LatLng(w.lat2!, w.lon2!)],
+            color: Color(w.level.argb).withValues(alpha: 0.8),
+            strokeWidth: 2,
+            pattern: StrokePattern.dashed(segments: const [8, 6]),
           ),
       if (hound != null && fix != null)
         Polyline(
@@ -295,7 +302,10 @@ class TeamMapLayer extends StatelessWidget {
     final markers = <Marker>[
       for (final sh in shapes) ..._shapeMarkers(context, sh, nav),
       // Watch-feed reports and TAK units sit under the mesh team.
-      for (final w in watched) _watchMarker(context, w),
+      for (final w in watched) ...[
+        if (w.hasSecondPosition) _watchSecondMarker(context, w),
+        _watchMarker(context, w),
+      ],
       for (final s in atakShapes)
         if (s.label.isNotEmpty && s.points.isNotEmpty)
           Marker(
@@ -640,7 +650,9 @@ class TeamMapLayer extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             _label(
-              '${r.urgency.dot} ${r.countsLabel.isEmpty ? 'SALUTE' : r.countsLabel}',
+              r.isGeneral
+                  ? '${r.urgency.dot} ${r.text.isEmpty ? 'Report' : r.text}'
+                  : '${r.urgency.dot} ${r.countsLabel.isEmpty ? 'SALUTE' : r.countsLabel}',
             ),
           ],
         ),
@@ -648,8 +660,64 @@ class TeamMapLayer extends StatelessWidget {
     );
   }
 
+  void _openWatch(BuildContext context) => Navigator.of(context).push(
+    MaterialPageRoute<void>(builder: (_) => const TeamScreen(initialTab: 1)),
+  );
+
+  /// A watched report's second position, e.g. a drone's operator.
+  Marker _watchSecondMarker(BuildContext context, WatchItem w) => Marker(
+    point: LatLng(w.lat2!, w.lon2!),
+    width: 110,
+    height: 50,
+    child: GestureDetector(
+      onTap: () => _openWatch(context),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: Color(w.level.argb), width: 2),
+            ),
+            child: const Icon(Icons.person, size: 14, color: Colors.black),
+          ),
+          _label(w.isDrone ? 'Operator' : (w.label2 ?? '')),
+        ],
+      ),
+    ),
+  );
+
   Marker _watchMarker(BuildContext context, WatchItem w) {
     final c = Color(w.level.argb);
+    if (w.isDrone) {
+      return Marker(
+        point: LatLng(w.lat!, w.lon!),
+        width: 120,
+        height: 54,
+        child: GestureDetector(
+          onTap: () => _openWatch(context),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: c,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.black87, width: 2),
+                ),
+                child: const Icon(Icons.flight, size: 16, color: Colors.black),
+              ),
+              _label('Drone ${w.detail ?? ''}'),
+            ],
+          ),
+        ),
+      );
+    }
     return Marker(
       point: LatLng(w.lat!, w.lon!),
       width: 110,
@@ -1061,8 +1129,14 @@ Future<void> showTeamPinSheet(
                     },
                   ),
                 OutlinedButton.icon(
-                  icon: const Icon(Icons.delete_outline),
-                  label: Text(team.isMine(m) ? 'Delete for team' : 'Hide'),
+                  icon: Icon(
+                    team.isMine(m)
+                        ? Icons.delete_outline
+                        : Icons.visibility_off_outlined,
+                  ),
+                  label: Text(
+                    team.isMine(m) ? 'Delete for team' : 'Hide on my map',
+                  ),
                   onPressed: () {
                     unawaited(team.deleteMarker(m));
                     Navigator.pop(context);
@@ -1103,10 +1177,11 @@ class TeamReportCard extends StatelessWidget {
             const SizedBox(width: 8),
             Text(r.urgency.label, style: t.titleMedium),
             const Spacer(),
-            Text(
-              r.affiliation.label,
-              style: TextStyle(color: affiliationColor(r.affiliation)),
-            ),
+            if (!r.isGeneral)
+              Text(
+                r.affiliation.label,
+                style: TextStyle(color: affiliationColor(r.affiliation)),
+              ),
           ],
         ),
         for (final l in lines.skip(1)) Text(l, style: t.bodyLarge),
@@ -1134,10 +1209,7 @@ Future<void> showTeamReportSheet(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'SALUTE report',
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
+            Text(r.title, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 6),
             TeamReportCard(report: r),
             const SizedBox(height: 8),
@@ -1152,12 +1224,21 @@ Future<void> showTeamReportSheet(
               children: [
                 _houndButton(
                   context,
-                  () =>
-                      team.houndPoint(r.lat, r.lon, 'SALUTE @${r.placeLabel}'),
+                  () => team.houndPoint(
+                    r.lat,
+                    r.lon,
+                    '${r.title} @${r.placeLabel}',
+                  ),
                 ),
                 OutlinedButton.icon(
-                  icon: const Icon(Icons.delete_outline),
-                  label: const Text('Remove from my map'),
+                  icon: Icon(
+                    team.isMyReport(r)
+                        ? Icons.delete_outline
+                        : Icons.visibility_off_outlined,
+                  ),
+                  label: Text(
+                    team.isMyReport(r) ? 'Delete for team' : 'Hide on my map',
+                  ),
                   onPressed: () {
                     unawaited(team.deleteReport(r));
                     Navigator.pop(context);
@@ -1239,6 +1320,18 @@ Future<void> showTeamMapActions(
             onTap: () {
               Navigator.pop(context);
               showTeamPinEditor(context, lat: at.latitude, lon: at.longitude);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.edit_note),
+            title: const Text('Report here'),
+            onTap: () {
+              Navigator.pop(context);
+              showGeneralReportForm(
+                context,
+                lat: at.latitude,
+                lon: at.longitude,
+              );
             },
           ),
           ListTile(
@@ -1428,6 +1521,15 @@ class TeamMapOverlay extends StatelessWidget {
               onTap: () {
                 Navigator.pop(c);
                 showTeamPinEditor(context, lat: fix!.lat, lon: fix.lon);
+              },
+            ),
+            ListTile(
+              enabled: fix != null,
+              leading: const Icon(Icons.edit_note),
+              title: const Text('Report'),
+              onTap: () {
+                Navigator.pop(c);
+                showGeneralReportForm(context, lat: fix!.lat, lon: fix.lon);
               },
             ),
             ListTile(

@@ -2165,6 +2165,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get map_otherNodes => 'その他のノード';
 
   @override
+  String get map_rooms => 'Rooms';
+
+  @override
+  String get map_sensors => 'Sensors';
+
+  @override
   String get map_showOverlaps => 'リピータキーの重複';
 
   @override

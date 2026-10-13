@@ -1,6 +1,7 @@
 // MeshCore Open TAK - forms: tactical pin editor and SALUTE report.
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -317,6 +318,198 @@ class _PinEditorState extends State<_PinEditor> {
                 onSubmit: _sending ? null : _save,
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// --------------------------------------------------------- general report
+
+/// A general report: free text at a place, for anything the team should know.
+Future<void> showGeneralReportForm(
+  BuildContext context, {
+  required double lat,
+  required double lon,
+}) => showModalBottomSheet<void>(
+  context: context,
+  isScrollControlled: true,
+  builder: (_) => _GeneralReportForm(lat: lat, lon: lon),
+);
+
+class _GeneralReportForm extends StatefulWidget {
+  final double lat, lon;
+  const _GeneralReportForm({required this.lat, required this.lon});
+  @override
+  State<_GeneralReportForm> createState() => _GeneralReportFormState();
+}
+
+class _GeneralReportFormState extends State<_GeneralReportForm> {
+  TeamUrgency _urgency = TeamUrgency.other;
+  final _text = TextEditingController();
+  final _place = TextEditingController();
+  TeamAttachment? _attachment;
+  bool _alsoText = false;
+  bool _sending = false;
+
+  @override
+  void dispose() {
+    _text.dispose();
+    _place.dispose();
+    super.dispose();
+  }
+
+  int get _bytes => utf8.encode(_text.text.trim()).length;
+
+  TeamReport get _preview => TeamReport(
+    authorKey4: '00000000',
+    reportId: 0,
+    kind: TeamReportKind.general,
+    lat: widget.lat,
+    lon: widget.lon,
+    observed: DateTime.now(),
+    urgency: _urgency,
+    place: _place.text.trim(),
+    activity: _text.text.trim(),
+  );
+
+  bool get _dirty =>
+      _attachment != null ||
+      _text.text.trim().isNotEmpty ||
+      _place.text.trim().isNotEmpty;
+
+  Future<void> _close() async {
+    if (_dirty && !await confirmTeamDiscard(context, 'this report')) return;
+    if (mounted) Navigator.pop(context);
+  }
+
+  Future<void> _send() async {
+    final team = context.read<TeamService>();
+    final messenger = ScaffoldMessenger.of(context);
+    if (!team.active) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(team.inactiveReason ?? 'Team not ready')),
+      );
+      return;
+    }
+    if (_text.text.trim().isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Write what you want to report.')),
+      );
+      return;
+    }
+    setState(() => _sending = true);
+    final p = _preview;
+    await team.fileReport(
+      kind: TeamReportKind.general,
+      lat: p.lat,
+      lon: p.lon,
+      observed: p.observed,
+      urgency: p.urgency,
+      place: p.place,
+      activity: p.activity,
+      attachment: _attachment,
+      alsoAsText: _alsoText,
+    );
+    if (mounted) Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final over = _bytes > teamMaxGeneralTextBytes;
+    return PopScope(
+      canPop: !_dirty || _sending,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) unawaited(_close());
+      },
+      child: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 12,
+            bottom: 12 + MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TeamSheetHeader(title: 'Report', onClose: _close),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _text,
+                  autofocus: true,
+                  minLines: 3,
+                  maxLines: 6,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                    labelText: 'What should the team know?',
+                    border: const OutlineInputBorder(),
+                    // Bytes, not letters: emoji and accents take more room.
+                    counterText: '$_bytes / $teamMaxGeneralTextBytes',
+                    errorText: over
+                        ? 'Too long: the end will be cut off when sent'
+                        : null,
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  children: [
+                    for (final u in TeamUrgency.values.reversed)
+                      ChoiceChip(
+                        label: Text('${u.dot} ${u.label}'),
+                        selected: _urgency == u,
+                        onSelected: (_) => setState(() => _urgency = u),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _place,
+                  maxLength: teamMaxSalutePlaceBytes,
+                  decoration: InputDecoration(
+                    labelText: 'Place name (optional)',
+                    helperText:
+                        'Map point ${context.read<TeamService>().formatCoord(widget.lat, widget.lon)}',
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+                TeamAttachmentField(
+                  value: _attachment,
+                  label: 'Report',
+                  onChanged: (a) => setState(() => _attachment = a),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Also post as text'),
+                  subtitle: const Text(
+                    'For teammates on other MeshCore apps. Costs one more '
+                    'channel message.',
+                  ),
+                  value: _alsoText,
+                  onChanged: (v) => setState(() => _alsoText = v),
+                ),
+                const SizedBox(height: 6),
+                Text('Preview', style: t.labelLarge),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: TeamReportCard(report: _preview),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TeamSheetActions(
+                  onCancel: _close,
+                  submitLabel: 'Send report',
+                  onSubmit: _sending ? null : _send,
+                ),
+              ],
+            ),
           ),
         ),
       ),
