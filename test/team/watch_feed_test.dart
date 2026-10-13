@@ -101,8 +101,10 @@ void main() {
     );
     expect(it.isDrone, isTrue);
     expect(it.droneLabel, 'DRONE 1581F9DE');
-    expect(_parse('saw a drone overhead at 47.60378,-122.34052').isDrone,
-        isFalse);
+    expect(
+      _parse('saw a drone overhead at 47.60378,-122.34052').isDrone,
+      isFalse,
+    );
   });
 
   test('a sender clock stuck at 1970 uses the given time', () {
