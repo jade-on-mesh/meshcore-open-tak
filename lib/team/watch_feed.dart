@@ -85,6 +85,17 @@ class WatchItem {
   bool get hasSecondPosition => lat2 != null && lon2 != null;
   bool get isDrone => trackId?.startsWith('DRONE') ?? false;
 
+  /// The map's label for a drone: "DRONE 1581F9DE h251m 1m/s" (the first 8
+  /// letters and digits of its serial, then height and speed if reported).
+  String get droneLabel {
+    final serial = (trackId ?? '').replaceFirst('DRONE ', '');
+    final short = serial.replaceAll(RegExp(r'[^A-Za-z0-9]'), '');
+    return [
+      'DRONE ${short.length > 8 ? short.substring(0, 8) : short}',
+      ?detail,
+    ].join(' ');
+  }
+
   /// Only a link (a bot posting its report's URL on its own).
   bool get isBareLink =>
       url != null &&
@@ -142,8 +153,11 @@ final _whenRe = RegExp(r'^\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2}$');
 final _countRe = RegExp(r'(\d+)\s*-\s*([^\s\d]+)');
 final _urlRe = RegExp(r'https?://\S+');
 final _coordRe = RegExp(r'(-?\d{1,2}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})');
+// "DRONE <serial>" anywhere in the message (after an emoji, a bot's prefix,
+// on its own line...). The serial must hold a digit, so chat like "a drone
+// overhead" is not taken for a detection.
 final _droneRe = RegExp(
-  r'^\s*DRONE\s+([A-Za-z0-9-]{6,})',
+  r'\bDRONE\b[\s:#-]*((?=[A-Za-z0-9-]*\d)[A-Za-z0-9-]{6,})',
   caseSensitive: false,
 );
 final _factRe = RegExp(

@@ -695,7 +695,7 @@ class TeamMapLayer extends StatelessWidget {
     if (w.isDrone) {
       return Marker(
         point: LatLng(w.lat!, w.lon!),
-        width: 120,
+        width: 170,
         height: 54,
         child: GestureDetector(
           onTap: () => _openWatch(context),
@@ -712,7 +712,7 @@ class TeamMapLayer extends StatelessWidget {
                 ),
                 child: const Icon(Icons.flight, size: 16, color: Colors.black),
               ),
-              _label('Drone ${w.detail ?? ''}'),
+              _label(w.droneLabel),
             ],
           ),
         ),
