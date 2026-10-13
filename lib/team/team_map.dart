@@ -38,6 +38,7 @@ IconData teamRoleIcon(TeamRole r) => switch (r) {
   TeamRole.security => Icons.shield_outlined,
   TeamRole.observer => Icons.visibility,
   TeamRole.command => Icons.account_balance,
+  TeamRole.press => Icons.videocam_outlined,
 };
 
 /// Role [roleId]'s icon: the team's choice from the icon library, else the

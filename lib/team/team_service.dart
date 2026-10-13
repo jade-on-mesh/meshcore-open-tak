@@ -1074,8 +1074,8 @@ class TeamService extends ChangeNotifier {
 
   // ---------------------------------------------------------------- roles
   //
-  // The team can rename the nine default roles, give any role an icon, and
-  // add up to 16 roles of its own. Each role's newest edit wins and is shared
+  // The team can rename the ten default roles, give any role an icon, and
+  // add up to 15 roles of its own. Each role's newest edit wins and is shared
   // on the team channel, so every phone (and a T-Deck's roster) agrees.
 
   static const _kRoles = 'team_roles_v1';
@@ -1083,7 +1083,7 @@ class TeamService extends ChangeNotifier {
   Timer? _roleShareTimer;
   DateTime? _lastRoleShare;
 
-  /// Roles to choose from: the nine defaults, then the team's added roles.
+  /// Roles to choose from: the ten defaults, then the team's added roles.
   List<int> get roleIds => [
     for (var i = 0; i < teamFirstAddedRole; i++) i,
     for (var i = teamFirstAddedRole; i <= teamMaxRoleId; i++)

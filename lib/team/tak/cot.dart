@@ -48,6 +48,7 @@ String _takRoleName(TeamRole r) => switch (r) {
   TeamRole.security => 'Team Member',
   TeamRole.observer => 'Forward Observer',
   TeamRole.command => 'HQ',
+  TeamRole.press => 'Team Member',
 };
 
 TeamRole teamRoleFromTak(String? role) => switch ((role ?? '').toLowerCase()) {

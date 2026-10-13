@@ -71,8 +71,8 @@ const int teamMaxNoteBytes = 60;
 const int teamMaxAlertNoteBytes = 80;
 const int teamMaxRoleNameBytes = 20;
 
-/// Role ids: 0-8 are [TeamRole]'s defaults, 9-24 roles a team added.
-const int teamFirstAddedRole = 9;
+/// Role ids: 0-9 are [TeamRole]'s defaults, 10-24 roles a team added.
+const int teamFirstAddedRole = 10;
 const int teamMaxRoleId = 24;
 const int _roleEscape = 15;
 
@@ -86,7 +86,8 @@ enum TeamRole {
   driver('Driver / vehicle'),
   security('Security'),
   observer('Observer'),
-  command('Command / HQ');
+  command('Command / HQ'),
+  press('Press');
 
   const TeamRole(this.label);
   final String label;
@@ -313,7 +314,7 @@ class TeamPosition {
   final int accuracyM;
   final int? batteryPct;
 
-  /// 0-8 a default [TeamRole], 9-24 a role the team added.
+  /// 0-9 a default [TeamRole], 10-24 a role the team added.
   final int roleId;
   final TeamColor color;
   final TeamStatus status;
