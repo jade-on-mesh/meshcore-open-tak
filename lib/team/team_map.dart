@@ -138,10 +138,7 @@ class TeamMapLayer extends StatelessWidget {
     final team = context.watch<TeamService>();
     final tak = context.watch<TakService>();
     final watch = context.watch<WatchFeedService>();
-    final watched = [
-      for (final i in watch.items.take(300))
-        if (i.hasPosition) i,
-    ];
+    final watched = watch.mapItems;
     final shared = team.points;
     final atakShapes = team.atakShapes;
     if (!team.enabled &&
@@ -213,6 +210,15 @@ class TeamMapLayer extends StatelessWidget {
             color: _argb(s.strokeArgb).withValues(alpha: 0.9),
             strokeWidth: s.strokeWidth.clamp(2, 8).toDouble(),
             pattern: StrokePattern.dashed(segments: const [10, 6]),
+          ),
+      // A watched report's second position (a drone's operator).
+      for (final w in watched)
+        if (w.hasSecondPosition)
+          Polyline(
+            points: [LatLng(w.lat!, w.lon!), LatLng(w.lat2!, w.lon2!)],
+            color: Color(w.level.argb).withValues(alpha: 0.8),
+            strokeWidth: 2,
+            pattern: StrokePattern.dashed(segments: const [8, 6]),
           ),
       if (hound != null && fix != null)
         Polyline(
@@ -296,7 +302,10 @@ class TeamMapLayer extends StatelessWidget {
     final markers = <Marker>[
       for (final sh in shapes) ..._shapeMarkers(context, sh, nav),
       // Watch-feed reports and TAK units sit under the mesh team.
-      for (final w in watched) _watchMarker(context, w),
+      for (final w in watched) ...[
+        if (w.hasSecondPosition) _watchSecondMarker(context, w),
+        _watchMarker(context, w),
+      ],
       for (final s in atakShapes)
         if (s.label.isNotEmpty && s.points.isNotEmpty)
           Marker(
@@ -651,8 +660,64 @@ class TeamMapLayer extends StatelessWidget {
     );
   }
 
+  void _openWatch(BuildContext context) => Navigator.of(context).push(
+    MaterialPageRoute<void>(builder: (_) => const TeamScreen(initialTab: 1)),
+  );
+
+  /// A watched report's second position, e.g. a drone's operator.
+  Marker _watchSecondMarker(BuildContext context, WatchItem w) => Marker(
+    point: LatLng(w.lat2!, w.lon2!),
+    width: 110,
+    height: 50,
+    child: GestureDetector(
+      onTap: () => _openWatch(context),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: Color(w.level.argb), width: 2),
+            ),
+            child: const Icon(Icons.person, size: 14, color: Colors.black),
+          ),
+          _label(w.isDrone ? 'Operator' : (w.label2 ?? '')),
+        ],
+      ),
+    ),
+  );
+
   Marker _watchMarker(BuildContext context, WatchItem w) {
     final c = Color(w.level.argb);
+    if (w.isDrone) {
+      return Marker(
+        point: LatLng(w.lat!, w.lon!),
+        width: 120,
+        height: 54,
+        child: GestureDetector(
+          onTap: () => _openWatch(context),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: c,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.black87, width: 2),
+                ),
+                child: const Icon(Icons.flight, size: 16, color: Colors.black),
+              ),
+              _label('Drone ${w.detail ?? ''}'),
+            ],
+          ),
+        ),
+      );
+    }
     return Marker(
       point: LatLng(w.lat!, w.lon!),
       width: 110,

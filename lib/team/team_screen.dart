@@ -176,6 +176,38 @@ class _WatchTabState extends State<WatchTab> {
     });
   }
 
+  Future<void> _chooseMapTtl(WatchFeedService feed) =>
+      showModalBottomSheet<void>(
+        context: context,
+        builder: (c) => SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const ListTile(
+                  title: Text('Keep watched reports on the map for'),
+                  subtitle: Text(
+                    'Counted from when each report happened. The feed here '
+                    'keeps them all.',
+                  ),
+                ),
+                for (final d in watchMapTtlChoices)
+                  ListTile(
+                    title: Text(watchTtlLabel(d)),
+                    trailing: feed.mapTtl == d
+                        ? const Icon(Icons.check)
+                        : null,
+                    onTap: () {
+                      unawaited(feed.setMapTtl(d));
+                      Navigator.pop(c);
+                    },
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+
   Future<void> _chooseChannels() => showModalBottomSheet<void>(
     context: context,
     builder: (context) {
@@ -264,6 +296,12 @@ class _WatchTabState extends State<WatchTab> {
                 avatar: const Icon(Icons.tune, size: 16),
                 label: const Text('Channels'),
                 onPressed: _chooseChannels,
+              ),
+              const SizedBox(width: 6),
+              ActionChip(
+                avatar: const Icon(Icons.timer_outlined, size: 16),
+                label: Text('On map: ${watchTtlLabel(feed.mapTtl)}'),
+                onPressed: () => _chooseMapTtl(feed),
               ),
             ],
           ),
@@ -358,9 +396,11 @@ class _WatchCard extends StatelessWidget {
     final it = item;
     final color = Color(it.level.argb);
     final meta = [
-      it.when ?? teamAgo(it.message.timestamp),
+      it.when ?? teamAgo(it.time),
+      ?it.detail,
       if (it.counts.isNotEmpty)
         it.counts.map((c) => '${c.$1} ${c.$2}').join('  '),
+      if (it.hasSecondPosition) '${it.isDrone ? 'operator' : it.label2 ?? '2nd point'} on map',
       it.channel.name,
       ?range,
     ].join(' · ');
@@ -446,7 +486,7 @@ class _WatchCard extends StatelessWidget {
               Text(it.message.text, style: t.bodyMedium),
               const SizedBox(height: 4),
               Text(
-                'From ${it.message.senderName} · ${teamAgo(it.message.timestamp)}',
+                'From ${it.message.senderName} · ${teamAgo(it.time)}',
                 style: t.bodySmall,
               ),
             ],

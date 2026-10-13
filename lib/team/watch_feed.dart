@@ -4,7 +4,14 @@
 // Messages in the condensed report format bots like IceBot post
 //   🔴 CRITICAL / 10-03 11:30 / @Auburn E Main St / 3-🚗 5-🥾 / https://…
 // are parsed into structured cards. Anything else is shown as plain text.
-// Messages with coordinates (or a shared map marker) also go on the map.
+// Messages with coordinates (or a shared map marker) also go on the map, for
+// as long as the Watch tab's "On map" setting allows.
+//
+// Detector bots get some extra handling, e.g. a drone detector's
+//   DRONE 1581F9DEV26590296G6G h251m 1m/s https://maps.google.com/?q=47.60378,-122.34052
+//   Op https://maps.google.com/?q=47.60531,-122.34016
+// is one drone (only its latest report stays on the map) with its operator's
+// position, and a bot's bare link right after its report is folded into it.
 
 import 'dart:async';
 
@@ -40,6 +47,21 @@ class WatchItem {
   final double? lat, lon;
   final List<String> otherLines;
 
+  /// When it happened: the sender's time if their clock is plausible, else
+  /// when this phone first saw it (some detectors send 1970).
+  final DateTime time;
+
+  /// A second position in the same message, e.g. a drone's operator ("Op").
+  final double? lat2, lon2;
+  final String? label2;
+
+  /// Something reported again and again (a drone by serial): only the
+  /// newest report of each goes on the map. "DRONE 1581F9…" etc.
+  final String? trackId;
+
+  /// Short facts after the id, e.g. "h251m 1m/s".
+  final String? detail;
+
   const WatchItem({
     required this.channel,
     required this.message,
@@ -52,7 +74,45 @@ class WatchItem {
     this.lat,
     this.lon,
     this.otherLines = const [],
+    required this.time,
+    this.lat2,
+    this.lon2,
+    this.label2,
+    this.trackId,
+    this.detail,
   });
+
+  bool get hasSecondPosition => lat2 != null && lon2 != null;
+  bool get isDrone => trackId?.startsWith('DRONE') ?? false;
+
+  /// Only a link (a bot posting its report's URL on its own).
+  bool get isBareLink =>
+      url != null &&
+      !hasPosition &&
+      statusWord == null &&
+      place == null &&
+      counts.isEmpty &&
+      otherLines.isEmpty;
+
+  WatchItem withUrl(String u) => WatchItem(
+    channel: channel,
+    message: message,
+    level: level,
+    statusWord: statusWord,
+    when: when,
+    place: place,
+    counts: counts,
+    url: u,
+    lat: lat,
+    lon: lon,
+    otherLines: otherLines,
+    time: time,
+    lat2: lat2,
+    lon2: lon2,
+    label2: label2,
+    trackId: trackId,
+    detail: detail,
+  );
 
   bool get isStructured =>
       statusWord != null || place != null || counts.isNotEmpty;
@@ -61,6 +121,7 @@ class WatchItem {
 
   /// One-line headline for the card.
   String get headline {
+    if (trackId != null) return trackId!;
     if (place != null) return place!;
     if (otherLines.isNotEmpty) return otherLines.first;
     return message.text.split('\n').first;
@@ -81,6 +142,14 @@ final _whenRe = RegExp(r'^\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2}$');
 final _countRe = RegExp(r'(\d+)\s*-\s*([^\s\d]+)');
 final _urlRe = RegExp(r'https?://\S+');
 final _coordRe = RegExp(r'(-?\d{1,2}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})');
+final _droneRe = RegExp(r'^\s*DRONE\s+([A-Za-z0-9-]{6,})', caseSensitive: false);
+final _factRe = RegExp(r'^(h-?\d+m|-?\d+(\.\d+)?m/s|\d+(\.\d+)?\s?km/h|alt\S*)$');
+
+/// Lines that are only a position ("📍 45.5625,-122.6108"), not text.
+bool _onlyCoords(String line) {
+  final rest = line.replaceAll(_coordRe, '').replaceAll(RegExp(r'[\s📍,;:]'), '');
+  return rest.isEmpty;
+}
 final _markerRe = RegExp(r'm:(-?[0-9.]+),(-?[0-9.]+)\|');
 
 WatchLevel _levelFromWord(String w) {
@@ -92,25 +161,61 @@ WatchLevel _levelFromWord(String w) {
   return WatchLevel.none;
 }
 
-/// Parses one channel message into a feed item.
-WatchItem parseWatchMessage(Channel channel, ChannelMessage m) {
+/// Parses one channel message into a feed item. [time] is when it happened
+/// (see [WatchItem.time]); it defaults to the message's own timestamp.
+WatchItem parseWatchMessage(Channel channel, ChannelMessage m, {DateTime? time}) {
   var level = WatchLevel.none;
-  String? status, when, place, url;
+  String? status, when, place, url, trackId, detail, label2;
   final counts = <(int, String)>[];
   final other = <String>[];
-  double? lat, lon;
+  double? lat, lon, lat2, lon2;
+
+  (double, double)? valid(String? a, String? b) {
+    final x = double.tryParse(a ?? ''), y = double.tryParse(b ?? '');
+    if (x == null || y == null || x.abs() > 90 || y.abs() > 180) return null;
+    return (x, y);
+  }
 
   final mk = _markerRe.firstMatch(m.text);
-  final co = mk ?? _coordRe.firstMatch(m.text);
-  if (co != null) {
-    final a = double.tryParse(co.group(1)!), b = double.tryParse(co.group(2)!);
-    if (a != null && b != null && a.abs() <= 90 && b.abs() <= 180) {
-      lat = a;
-      lon = b;
+  if (mk != null) {
+    final v = valid(mk.group(1), mk.group(2));
+    if (v != null) (lat, lon) = (v.$1, v.$2);
+  } else {
+    // Every position in the message: the first is the report's; a second one
+    // takes the word just before it as its label ("Op" for an operator).
+    final all = _coordRe.allMatches(m.text).toList();
+    var prevEnd = 0;
+    for (final co in all) {
+      final v = valid(co.group(1), co.group(2));
+      if (v == null) continue;
+      if (lat == null) {
+        (lat, lon) = (v.$1, v.$2);
+      } else if (lat2 == null) {
+        (lat2, lon2) = (v.$1, v.$2);
+        final words = m.text
+            .substring(prevEnd, co.start)
+            .split(RegExp(r'\s+'))
+            .where((w) => w.isNotEmpty && !w.contains('://') && !w.contains('='))
+            .toList();
+        label2 = words.isEmpty ? null : words.last;
+      }
+      prevEnd = co.end;
     }
   }
 
-  for (final raw in m.text.split('\n')) {
+  final drone = _droneRe.firstMatch(m.text);
+  if (drone != null) {
+    trackId = 'DRONE ${drone.group(1)}';
+    level = WatchLevel.active;
+    status = 'DRONE';
+    final facts = [
+      for (final w in m.text.substring(drone.end).split(RegExp(r'\s+')))
+        if (_factRe.hasMatch(w)) w,
+    ];
+    if (facts.isNotEmpty) detail = facts.join(' ');
+  }
+
+  for (final raw in drone != null ? const <String>[] : m.text.split('\n')) {
     var line = raw.trim();
     if (line.isEmpty) continue;
     final u = _urlRe.firstMatch(line);
@@ -152,8 +257,10 @@ WatchItem parseWatchMessage(Channel channel, ChannelMessage m) {
       }
       continue;
     }
+    if (lat != null && _onlyCoords(line)) continue;   // shown as the map point
     other.add(line);
   }
+  if (drone != null) url = _urlRe.firstMatch(m.text)?.group(0);
   if (status == null) {
     final w = _levelFromWord(m.text.split('\n').first);
     if (w != WatchLevel.none) {
@@ -173,18 +280,114 @@ WatchItem parseWatchMessage(Channel channel, ChannelMessage m) {
     lat: lat,
     lon: lon,
     otherLines: other,
+    time: time ?? m.timestamp,
+    lat2: lat2,
+    lon2: lon2,
+    label2: label2,
+    trackId: trackId,
+    detail: detail,
   );
+}
+
+/// How long watched reports stay on the map; null = always.
+const List<Duration?> watchMapTtlChoices = [
+  Duration(minutes: 15),
+  Duration(minutes: 30),
+  Duration(hours: 1),
+  Duration(hours: 2),
+  Duration(hours: 6),
+  Duration(hours: 12),
+  Duration(hours: 24),
+  Duration(days: 3),
+  null,
+];
+
+String watchTtlLabel(Duration? d) {
+  if (d == null) return 'Always';
+  if (d.inMinutes < 60) return '${d.inMinutes} min';
+  if (d.inHours < 48) return '${d.inHours} h';
+  return '${d.inDays} days';
 }
 
 class WatchFeedService extends ChangeNotifier {
   WatchFeedService(this._connector) {
     _connector.addListener(_onConnector);
     unawaited(_load());
+    // Reports leave the map as they pass [mapTtl], without a new message.
+    _expiry = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (_mapTtl != null) notifyListeners();
+    });
   }
+
+  late final Timer _expiry;
 
   final MeshCoreConnector _connector;
   static const _kChannels = 'watch_channels_v1';
   static const _kSeen = 'watch_seen_v1';
+  static const _kMapTtl = 'watch_map_ttl_min_v1';
+  static const _kFirstSeen = 'watch_first_seen_v1';
+
+  Duration? _mapTtl = const Duration(hours: 6);
+
+  /// How long a watched report stays on the map after it happened (null:
+  /// always). The feed itself keeps everything.
+  Duration? get mapTtl => _mapTtl;
+
+  Future<void> setMapTtl(Duration? d) async {
+    _mapTtl = d;
+    notifyListeners();
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setInt(_kMapTtl, d?.inMinutes ?? 0);
+    } catch (_) {}
+  }
+
+  // When this phone first saw each message, for senders whose clock is off.
+  final Map<String, int> _firstSeen = {};
+  bool _firstSeenDirty = false;
+
+  DateTime _timeOf(String key, DateTime sent) {
+    final now = DateTime.now();
+    if (sent.year >= 2020 && sent.isBefore(now.add(const Duration(hours: 1)))) {
+      return sent;
+    }
+    final ms = _firstSeen.putIfAbsent(key, () {
+      _firstSeenDirty = true;
+      return now.millisecondsSinceEpoch;
+    });
+    return DateTime.fromMillisecondsSinceEpoch(ms);
+  }
+
+  Future<void> _saveFirstSeen() async {
+    if (!_firstSeenDirty) return;
+    _firstSeenDirty = false;
+    while (_firstSeen.length > 2000) {
+      _firstSeen.remove(_firstSeen.keys.first);
+    }
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setStringList(_kFirstSeen, [
+        for (final e in _firstSeen.entries) '${e.key}=${e.value}',
+      ]);
+    } catch (_) {}
+  }
+
+  /// Watched reports to put on the map: with a position, within [mapTtl],
+  /// and only the newest report of anything tracked (a drone by serial).
+  List<WatchItem> get mapItems {
+    final cutoff = _mapTtl == null ? null : DateTime.now().subtract(_mapTtl!);
+    final seenTracks = <String>{};
+    final out = <WatchItem>[];
+    for (final i in items) {
+      if (!i.hasPosition) continue;
+      if (cutoff != null && i.time.isBefore(cutoff)) continue;
+      final t = i.trackId;
+      if (t != null && !seenTracks.add(t)) continue;
+      out.add(i);
+      if (out.length >= 300) break;
+    }
+    return out;
+  }
 
   /// Watched channels by name (names survive index changes).
   final Set<String> _watched = {};
@@ -208,6 +411,13 @@ class WatchFeedService extends ChangeNotifier {
       _watched.addAll(p.getStringList(_kChannels) ?? const []);
       final s = p.getInt(_kSeen);
       if (s != null) _seen = DateTime.fromMillisecondsSinceEpoch(s);
+      final ttl = p.getInt(_kMapTtl);
+      if (ttl != null) _mapTtl = ttl == 0 ? null : Duration(minutes: ttl);
+      for (final e in p.getStringList(_kFirstSeen) ?? const <String>[]) {
+        final i = e.lastIndexOf('=');
+        final v = i < 0 ? null : int.tryParse(e.substring(i + 1));
+        if (v != null) _firstSeen[e.substring(0, i)] = v;
+      }
     } catch (_) {}
     _dirty = true;
     notifyListeners();
@@ -237,10 +447,9 @@ class WatchFeedService extends ChangeNotifier {
     } catch (_) {}
   }
 
-  int get unseenCount =>
-      items.where((i) => i.message.timestamp.isAfter(_seen)).length;
+  int get unseenCount => items.where((i) => i.time.isAfter(_seen)).length;
 
-  bool isUnseen(WatchItem i) => i.message.timestamp.isAfter(_seen);
+  bool isUnseen(WatchItem i) => i.time.isAfter(_seen);
 
   // Parsing is cached and redone only when the watched messages change.
   bool _dirty = true;
@@ -268,13 +477,28 @@ class WatchFeedService extends ChangeNotifier {
     for (final c in watchedChannels) {
       final msgs = _connector.getChannelMessages(c);
       final start = msgs.length > 200 ? msgs.length - 200 : 0;
+      final chan = <WatchItem>[];
       for (var i = start; i < msgs.length; i++) {
         final m = msgs[i];
         if (m.text.trim().isEmpty) continue;
-        out.add(parseWatchMessage(c, m));
+        final key = '${c.index}:${m.messageId}';
+        final it = parseWatchMessage(c, m, time: _timeOf(key, m.timestamp));
+        // A bot's bare link right after its own report belongs to that report.
+        if (it.isBareLink && chan.isNotEmpty) {
+          final prev = chan.last;
+          if (prev.url == null &&
+              prev.message.senderName == m.senderName &&
+              it.time.difference(prev.time).inMinutes.abs() <= 5) {
+            chan[chan.length - 1] = prev.withUrl(it.url!);
+            continue;
+          }
+        }
+        chan.add(it);
       }
+      out.addAll(chan);
     }
-    out.sort((a, b) => b.message.timestamp.compareTo(a.message.timestamp));
+    out.sort((a, b) => b.time.compareTo(a.time));
+    unawaited(_saveFirstSeen());
     _items = out;
     _dirty = false;
     return out;
@@ -282,6 +506,7 @@ class WatchFeedService extends ChangeNotifier {
 
   @override
   void dispose() {
+    _expiry.cancel();
     _connector.removeListener(_onConnector);
     super.dispose();
   }
