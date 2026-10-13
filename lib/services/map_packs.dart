@@ -58,15 +58,20 @@ class MapPackInfo {
 
   LatLng? get center => sw == null || ne == null
       ? null
-      : LatLng((sw!.latitude + ne!.latitude) / 2, (sw!.longitude + ne!.longitude) / 2);
+      : LatLng(
+          (sw!.latitude + ne!.latitude) / 2,
+          (sw!.longitude + ne!.longitude) / 2,
+        );
 
   /// Whether tile x/y at zoom z can be in this pack (by its stated bounds).
   bool covers(int z, int x, int y) {
     if (z < minZoom || z > maxZoom) return false;
     if (sw == null || ne == null) return true;
     final n = 1 << z;
-    final x0 = mapPackTileX(sw!.longitude, n), x1 = mapPackTileX(ne!.longitude, n);
-    final y0 = mapPackTileY(ne!.latitude, n), y1 = mapPackTileY(sw!.latitude, n);
+    final x0 = mapPackTileX(sw!.longitude, n),
+        x1 = mapPackTileX(ne!.longitude, n);
+    final y0 = mapPackTileY(ne!.latitude, n),
+        y1 = mapPackTileY(sw!.latitude, n);
     return x >= x0 && x <= x1 && y >= y0 && y <= y1;
   }
 }
@@ -166,7 +171,10 @@ class MapPackService extends ChangeNotifier {
   }
 
   Future<void> remove(String id) async {
-    _packs = [for (final p in _packs) if (p.id != id) p];
+    _packs = [
+      for (final p in _packs)
+        if (p.id != id) p,
+    ];
     notifyListeners();
     await _store.remove(id);
   }

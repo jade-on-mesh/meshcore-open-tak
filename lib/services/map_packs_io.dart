@@ -64,7 +64,9 @@ class MapPackStore {
       var maxZ = int.tryParse(meta['maxzoom'] ?? '');
       if (minZ == null || maxZ == null) {
         final r = db
-            .select('SELECT MIN(zoom_level) AS a, MAX(zoom_level) AS b FROM tiles')
+            .select(
+              'SELECT MIN(zoom_level) AS a, MAX(zoom_level) AS b FROM tiles',
+            )
             .first;
         minZ ??= (r['a'] as int?) ?? 0;
         maxZ ??= (r['b'] as int?) ?? 22;

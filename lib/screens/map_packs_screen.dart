@@ -27,9 +27,7 @@ class MapPacksScreen extends StatelessWidget {
       if (p != null) {
         messenger.showSnackBar(
           SnackBar(
-            content: Text(
-              'Added ${p.name} (zoom ${p.minZoom}-${p.maxZoom})',
-            ),
+            content: Text('Added ${p.name} (zoom ${p.minZoom}-${p.maxZoom})'),
           ),
         );
       }
