@@ -104,8 +104,16 @@ jobs:
           else
             echo "::warning::No ANDROID_KEYSTORE_BASE64 secret: this APK is signed with a throwaway key and will not install over an earlier build"
           fi
-      # Build number always increases, so every APK installs as an update.
-      - run: flutter build apk --release --no-pub --target-platform android-arm64 --build-number=$((1000 + GITHUB_RUN_NUMBER))
+      # The version follows MeshCore Open's (pubspec.yaml, kept current by the
+      # upstream sync) with -tak added: 9.5.0 upstream -> 9.5.0-tak here. The
+      # build number always increases, so every APK installs as an update.
+      - name: Build the APK
+        run: |
+          set -euo pipefail
+          upstream=$(sed -n 's/^version:[[:space:]]*\([^+[:space:]]*\).*/\1/p' pubspec.yaml)
+          echo "Version ${upstream}-tak, build $((1000 + GITHUB_RUN_NUMBER))"
+          flutter build apk --release --no-pub --target-platform android-arm64 \
+            --build-name="${upstream}-tak" --build-number=$((1000 + GITHUB_RUN_NUMBER))
       - name: Check VOX native libraries and models are in the APK
         run: |
           unzip -l build/app/outputs/flutter-apk/app-release.apk > /tmp/apk.txt
@@ -146,10 +154,13 @@ jobs:
           set -e
           cp build/app/outputs/flutter-apk/app-release.apk meshcore-open-tak.apk
           build=$((1000 + GITHUB_RUN_NUMBER))
+          version="$(sed -n 's/^version:[[:space:]]*\([^+[:space:]]*\).*/\1/p' pubspec.yaml)-tak"
           signed="debug key (uninstall the old app before installing)"
           [ -f android/key.properties ] && signed="permanent release key (installs over the previous build)"
           {
-            echo "**Build $build** · $(date -u '+%Y-%m-%d %H:%M UTC') · commit ${GITHUB_SHA::7}"
+            echo "**MeshCore Open TAK $version** (build $build) · $(date -u '+%Y-%m-%d %H:%M UTC') · commit ${GITHUB_SHA::7}"
+            echo
+            echo "Follows MeshCore Open ${version%-tak} with the TAK fork's features added."
             echo
             echo "Signed with the $signed."
             echo
@@ -162,8 +173,8 @@ jobs:
           git tag -f latest-build "$GITHUB_SHA"
           git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" refs/tags/latest-build
           if gh release view latest-build >/dev/null 2>&1; then
-            gh release edit latest-build --title "Latest build ($build)" --notes-file notes.md --latest
+            gh release edit latest-build --title "MeshCore Open TAK $version (build $build)" --notes-file notes.md --latest
           else
-            gh release create latest-build --title "Latest build ($build)" --notes-file notes.md --latest
+            gh release create latest-build --title "MeshCore Open TAK $version (build $build)" --notes-file notes.md --latest
           fi
           gh release upload latest-build meshcore-open-tak.apk --clobber
