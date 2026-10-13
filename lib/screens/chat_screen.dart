@@ -685,6 +685,27 @@ class _ChatScreenState extends State<ChatScreen> {
                       : null,
                 ),
               VoxImageButton(
+                // AI sketches to a person ride the OTP pipeline, so they are
+                // offered only once this contact has a pad.
+                aiSketch: connector.canSendOtpImageToContact(contactKeyHex) &&
+                        _imageCodec != null
+                    ? VoxAiSketchOption(
+                        ready: () =>
+                            _imageCodec?.availability ==
+                            ImageCodecAvailability.ready,
+                        explainNotReady: () => ScaffoldMessenger.of(context)
+                            .showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'AI sketches need the image model: turn on '
+                                  'Image messages in App settings.',
+                                ),
+                              ),
+                            ),
+                        send: (bytes, fileBytes) =>
+                            _sendOtpAiSketch(connector, bytes, fileBytes),
+                      )
+                    : null,
                 recipientLabel: _resolveContact(connector).name,
                 onSend: (image) => context
                     .read<VoxVoiceService>()
@@ -892,7 +913,6 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _showOtpImageSendPreview(MeshCoreConnector connector) async {
     final codec = _imageCodec;
     if (codec == null) return;
-    final contact = _resolveContact(connector);
 
     // The picked bytes are kept past the preview on purpose: the sender's
     // own bubble renders from them (see [_sendOtpImage]), not from a decode
@@ -933,6 +953,19 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     if (!mounted) return;
+    await _sendOtpAiSketch(connector, sourceBytes, originalFileBytes);
+  }
+
+  /// AEIC preview, then OTP-encrypted send to this contact: the photo
+  /// button's "AI sketch" choice and the lock button both end here.
+  Future<void> _sendOtpAiSketch(
+    MeshCoreConnector connector,
+    Uint8List sourceBytes,
+    int originalFileBytes,
+  ) async {
+    final codec = _imageCodec;
+    if (codec == null || !mounted) return;
+    final contact = _resolveContact(connector);
     final result = await showImageSendPreviewSheet(
       context: context,
       imageBytes: sourceBytes,

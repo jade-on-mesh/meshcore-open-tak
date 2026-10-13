@@ -183,6 +183,24 @@ class VoxVoiceService extends ChangeNotifier {
   VoxVoiceMode sendModeFor(String? target) =>
       forcesCodec2(target) ? voxDefaultVoiceMode : sendMode;
 
+  // ------------------------------------------- photos: VOX or AI sketch
+
+  static const _kPhotoAiSketch = 'vox_photo_ai_sketch';
+  bool _photoAiSketch = false;
+
+  /// Send photos as an AI sketch (AEIC, ~150 B) instead of a VOX photo
+  /// (AV1, real pixels). Off by default: VOX is the default.
+  bool get photoAiSketch => _photoAiSketch;
+
+  Future<void> setPhotoAiSketch(bool v) async {
+    _photoAiSketch = v;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kPhotoAiSketch, v);
+    } catch (_) {}
+  }
+
   Future<void> setPreferMimi(bool v) async {
     _preferMimi = v;
     notifyListeners();
@@ -233,6 +251,7 @@ class VoxVoiceService extends ChangeNotifier {
       _forceRepeaterRoute = prefs.getBool(_kForceRoute) ?? false;
       _forcedRepeaterKeys = prefs.getStringList(_kForceRouteKeys) ?? const [];
       _preferMimi = prefs.getBool(_kPreferMimi) ?? true;
+      _photoAiSketch = prefs.getBool(_kPhotoAiSketch) ?? false;
       _codec2Targets = (prefs.getStringList(_kCodec2Targets) ?? const [])
           .toSet();
       _autoPlay = prefs.getBool(_kAutoPlay) ?? true;

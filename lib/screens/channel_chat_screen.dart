@@ -1658,7 +1658,6 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       _explainImageCodecNotReady(codec);
       return;
     }
-    final connector = context.read<MeshCoreConnector>();
 
     // The picked bytes are kept past the preview on purpose: the sender's own
     // bubble renders from them (see [_registerOutgoingImage]). The bitstream
@@ -1701,6 +1700,15 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     }
 
     if (!mounted) return;
+    await _sendAiSketch(sourceBytes, originalFileBytes);
+  }
+
+  /// AEIC preview, then send: the photo button's "AI sketch" choice and the
+  /// + menu both end here.
+  Future<void> _sendAiSketch(Uint8List sourceBytes, int originalFileBytes) async {
+    final codec = _imageCodec;
+    if (codec == null || !mounted) return;
+    final connector = context.read<MeshCoreConnector>();
     final result = await showImageSendPreviewSheet(
       context: context,
       imageBytes: sourceBytes,
@@ -1710,6 +1718,17 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     if (result == null) return; // cancelled at the preview
     if (!mounted) return;
     await _sendImage(connector, result, sourceBytes: sourceBytes);
+  }
+
+  /// The photo button's AI sketch option for this channel.
+  VoxAiSketchOption? get _aiSketchOption {
+    final codec = _imageCodec;
+    if (codec == null) return null;
+    return VoxAiSketchOption(
+      ready: () => codec.availability == ImageCodecAvailability.ready,
+      explainNotReady: () => _explainImageCodecNotReady(codec),
+      send: _sendAiSketch,
+    );
   }
 
   /// Chunks [result] and puts it on the channel as GRP_DATA packets.
@@ -2434,6 +2453,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                     ],
                   ),
                   VoxImageButton(
+                    aiSketch: _aiSketchOption,
                     recipientLabel: widget.channel.name,
                     onSend: (image) => context
                         .read<VoxVoiceService>()
