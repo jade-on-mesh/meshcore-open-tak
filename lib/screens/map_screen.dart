@@ -1227,6 +1227,8 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
       showRepeaters: settings.mapShowRepeaters,
       showChatNodes: settings.mapShowChatNodes,
       showOtherNodes: settings.mapShowOtherNodes,
+      showRooms: settings.mapShowRooms,
+      showSensors: settings.mapShowSensors,
       isBuildingPathTrace: _isBuildingPathTrace,
       clusterNodes: settings.mapClusterNodes,
     );
@@ -1481,8 +1483,17 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
           (settings.mapShowChatNodes || _isBuildingPathTrace)) {
         addContact = true;
       }
+      if (contact.type == advTypeRoom &&
+          (settings.mapShowRooms || _isBuildingPathTrace)) {
+        addContact = true;
+      }
+      if (contact.type == advTypeSensor && settings.mapShowSensors) {
+        addContact = true;
+      }
       if (contact.type != advTypeChat &&
           contact.type != advTypeRepeater &&
+          contact.type != advTypeRoom &&
+          contact.type != advTypeSensor &&
           (settings.mapShowOtherNodes || _isBuildingPathTrace)) {
         addContact = true;
       }
@@ -2137,6 +2148,21 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                   color: MapPalette.selected,
                   onTap: () => settingsService.setMapShowChatNodes(
                     !settings.mapShowChatNodes,
+                  ),
+                ),
+                _mapChip(
+                  label: context.l10n.map_rooms,
+                  selected: settings.mapShowRooms,
+                  color: MapPalette.router,
+                  onTap: () =>
+                      settingsService.setMapShowRooms(!settings.mapShowRooms),
+                ),
+                _mapChip(
+                  label: context.l10n.map_sensors,
+                  selected: settings.mapShowSensors,
+                  color: MapPalette.sensor,
+                  onTap: () => settingsService.setMapShowSensors(
+                    !settings.mapShowSensors,
                   ),
                 ),
                 _mapChip(
@@ -3652,6 +3678,19 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                               service.setMapShowRepeaters(value),
                         ),
                         SwitchListTile(
+                          title: Text(sheetContext.l10n.map_rooms),
+                          value: settings.mapShowRooms,
+                          dense: true,
+                          onChanged: (value) => service.setMapShowRooms(value),
+                        ),
+                        SwitchListTile(
+                          title: Text(sheetContext.l10n.map_sensors),
+                          value: settings.mapShowSensors,
+                          dense: true,
+                          onChanged: (value) =>
+                              service.setMapShowSensors(value),
+                        ),
+                        SwitchListTile(
                           title: Text(sheetContext.l10n.map_otherNodes),
                           value: settings.mapShowOtherNodes,
                           dense: true,
@@ -4158,6 +4197,8 @@ class _NodeMarkersCacheKey {
   final bool showRepeaters;
   final bool showChatNodes;
   final bool showOtherNodes;
+  final bool showRooms;
+  final bool showSensors;
   final bool isBuildingPathTrace;
   final bool clusterNodes;
 
@@ -4178,6 +4219,8 @@ class _NodeMarkersCacheKey {
     required this.showRepeaters,
     required this.showChatNodes,
     required this.showOtherNodes,
+    required this.showRooms,
+    required this.showSensors,
     required this.isBuildingPathTrace,
     required this.clusterNodes,
   });
@@ -4201,6 +4244,8 @@ class _NodeMarkersCacheKey {
         showRepeaters == other.showRepeaters &&
         showChatNodes == other.showChatNodes &&
         showOtherNodes == other.showOtherNodes &&
+        showRooms == other.showRooms &&
+        showSensors == other.showSensors &&
         isBuildingPathTrace == other.isBuildingPathTrace &&
         clusterNodes == other.clusterNodes;
   }
@@ -4223,6 +4268,8 @@ class _NodeMarkersCacheKey {
     showRepeaters,
     showChatNodes,
     showOtherNodes,
+    showRooms,
+    showSensors,
     isBuildingPathTrace,
     clusterNodes,
   );

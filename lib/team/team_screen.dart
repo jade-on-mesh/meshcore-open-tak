@@ -644,6 +644,23 @@ class _Empty extends StatelessWidget {
 
 // -------------------------------------------------------------------- pins
 
+/// "N hidden on this phone · Show again", when anything is hidden.
+Widget? _hiddenRow(BuildContext context, TeamService team) {
+  if (team.hiddenCount == 0) return null;
+  return ListTile(
+    dense: true,
+    leading: const Icon(Icons.visibility_off_outlined),
+    title: Text(
+      '${team.hiddenCount} hidden on this phone (pins and reports others '
+      'placed)',
+    ),
+    trailing: TextButton(
+      onPressed: team.unhideAll,
+      child: const Text('Show again'),
+    ),
+  );
+}
+
 /// The mini map above (or beside, on wide screens) a list.
 class _MapAndList extends StatelessWidget {
   final Widget map;
@@ -705,11 +722,19 @@ class _PinsTabState extends State<_PinsTab> {
       onDrop: (at) =>
           showTeamPinEditor(context, lat: at.latitude, lon: at.longitude),
     );
+    final hidden = _hiddenRow(context, team);
     final list = team.markers.isEmpty && team.shapes.isEmpty
-        ? const _Empty(
-            'No pins or drawings yet. Hold the map above to drop a pin, or '
-            'use Tools on the full map to draw, plan a route or set a '
-            'geofence.',
+        ? Column(
+            children: [
+              const Expanded(
+                child: _Empty(
+                  'No pins or drawings yet. Hold the map above to drop a pin, '
+                  'or use Tools on the full map to draw, plan a route or set '
+                  'a geofence.',
+                ),
+              ),
+              ?hidden,
+            ],
           )
         : ListView(
             padding: const EdgeInsets.only(bottom: 88),
@@ -781,6 +806,7 @@ class _PinsTabState extends State<_PinsTab> {
                   ),
                   onTap: () => teamMiniMapShow(_map, m.lat, m.lon),
                 ),
+              ?hidden,
             ],
           );
     return Scaffold(
@@ -861,10 +887,18 @@ class _ReportsTabState extends State<_ReportsTab> {
       dropIcon: Icons.report_outlined,
       onDrop: (at) => _reportAt(context, at.latitude, at.longitude),
     );
+    final hidden = _hiddenRow(context, team);
     final list = team.reports.isEmpty && team.casevacs.isEmpty
-        ? const _Empty(
-            'No reports yet. Hold the map above where you saw it to file a '
-            'SALUTE report or CASEVAC request.',
+        ? Column(
+            children: [
+              const Expanded(
+                child: _Empty(
+                  'No reports yet. Hold the map above where you saw it to file '
+                  'a SALUTE report or CASEVAC request.',
+                ),
+              ),
+              ?hidden,
+            ],
           )
         : ListView(
             padding: const EdgeInsets.fromLTRB(8, 8, 8, 88),
@@ -903,6 +937,7 @@ class _ReportsTabState extends State<_ReportsTab> {
                     ),
                   ),
                 ),
+              ?hidden,
             ],
           );
     return Scaffold(

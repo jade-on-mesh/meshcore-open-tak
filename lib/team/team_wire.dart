@@ -17,7 +17,9 @@
 //   report    [0x52][key4][reportId u32][kind<<4|urgency][affiliation]
 //             [lat i32][lon i32][observed u32][vehicles u8][people u8]
 //             [place][size][activity][unit][equipment] (length-prefixed)
-//             [attachMode u8][sid4][packets][extra]
+//             [attachMode u8][sid4][packets][extra] [withdrawn u8]?
+//             (the trailing 1 retracts the author's own report; older
+//             readers ignore it)
 //   role      [0x4C][key4][roleId u8][op u8][time u32][icon u16]
 //             [nameLen][name]   (a team-wide name/icon for a role; op 1 =
 //             back to the default, or removed for an added role)
@@ -751,6 +753,9 @@ class TeamReport {
   final String size, activity, unit, equipment;
   final TeamAttachment? attachment;
 
+  /// The author took this report back; receivers remove it.
+  final bool withdrawn;
+
   const TeamReport({
     required this.authorKey4,
     required this.reportId,
@@ -768,9 +773,31 @@ class TeamReport {
     this.unit = '',
     this.equipment = '',
     this.attachment,
+    this.withdrawn = false,
   });
 
   String get key => '$authorKey4:${reportId.toRadixString(16)}';
+
+  /// The same report, marked as taken back by its author.
+  TeamReport asWithdrawn() => TeamReport(
+    authorKey4: authorKey4,
+    reportId: reportId,
+    lat: lat,
+    lon: lon,
+    observed: observed,
+    kind: kind,
+    affiliation: affiliation,
+    urgency: urgency,
+    vehicles: vehicles,
+    people: people,
+    place: place,
+    size: size,
+    activity: activity,
+    unit: unit,
+    equipment: equipment,
+    attachment: attachment,
+    withdrawn: true,
+  );
 
   static String _two(int v) => v.toString().padLeft(2, '0');
 
@@ -846,6 +873,7 @@ class TeamReport {
         ..u8(a.packets)
         ..u16(a.extra);
     }
+    if (withdrawn) w.u8(1);
     return w.done();
   }
 
@@ -870,11 +898,13 @@ class TeamReport {
       return null;
     }
     TeamAttachment? att;
+    var withdrawn = false;
     if (r.has(1)) {
       final mode = r.u8();
       if (mode != 0 && r.has(7)) {
         att = TeamAttachment(mode, teamKey4Hex(r.take(4)), r.u8(), r.u16());
       }
+      if (r.has(1)) withdrawn = r.u8() & 1 != 0;
     }
     return TeamReport(
       authorKey4: key,
@@ -893,6 +923,7 @@ class TeamReport {
       unit: unit,
       equipment: eq,
       attachment: att,
+      withdrawn: withdrawn,
     );
   }
 }

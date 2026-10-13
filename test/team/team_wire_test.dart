@@ -164,6 +164,19 @@ void main() {
       attachment: att,
     );
 
+    test('a withdrawal carries its flag, with or without an attachment', () {
+      for (final att in [null, const TeamAttachment(40, '01234567', 18, 150)]) {
+        final r = sample(att: att);
+        expect(TeamReport.tryParse(r.encode())!.withdrawn, isFalse);
+        final w = r.asWithdrawn();
+        expect(w.encode().length, r.encode().length + 1);
+        final b = TeamReport.tryParse(w.encode())!;
+        expect(b.withdrawn, isTrue);
+        expect(b.key, r.key);
+        expect(b.attachment?.sessionId, att?.sessionId);
+      }
+    });
+
     test('round-trips every field', () {
       final r = sample(att: const TeamAttachment(40, '01234567', 18, 150));
       final b = TeamReport.tryParse(r.encode())!;

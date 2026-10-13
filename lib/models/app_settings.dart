@@ -83,6 +83,8 @@ class AppSettings {
   final bool mapShowRepeaters;
   final bool mapShowChatNodes;
   final bool mapShowOtherNodes;
+  final bool mapShowRooms;
+  final bool mapShowSensors;
   final bool mapShowOverlaps;
   final double mapTimeFilterHours; // 0 = all time
   final bool mapKeyPrefixEnabled;
@@ -205,6 +207,8 @@ class AppSettings {
     this.mapShowRepeaters = true,
     this.mapShowChatNodes = true,
     this.mapShowOtherNodes = true,
+    this.mapShowRooms = true,
+    this.mapShowSensors = true,
     this.mapShowOverlaps = false,
     this.mapTimeFilterHours = 168,
     this.mapKeyPrefixEnabled = false,
@@ -286,6 +290,8 @@ class AppSettings {
       'map_show_repeaters': mapShowRepeaters,
       'map_show_chat_nodes': mapShowChatNodes,
       'map_show_other_nodes': mapShowOtherNodes,
+      'map_show_rooms': mapShowRooms,
+      'map_show_sensors': mapShowSensors,
       'map_show_overlaps': mapShowOverlaps,
       'map_time_filter_hours': mapTimeFilterHours,
       'map_key_prefix_enabled': mapKeyPrefixEnabled,
@@ -369,6 +375,15 @@ class AppSettings {
       mapShowRepeaters: json['map_show_repeaters'] as bool? ?? true,
       mapShowChatNodes: json['map_show_chat_nodes'] as bool? ?? true,
       mapShowOtherNodes: json['map_show_other_nodes'] as bool? ?? true,
+      // Rooms and sensors used to follow "other nodes"; keep what was shown.
+      mapShowRooms:
+          json['map_show_rooms'] as bool? ??
+          json['map_show_other_nodes'] as bool? ??
+          true,
+      mapShowSensors:
+          json['map_show_sensors'] as bool? ??
+          json['map_show_other_nodes'] as bool? ??
+          true,
       mapShowOverlaps: json['map_show_overlaps'] as bool? ?? false,
       mapTimeFilterHours:
           (json['map_time_filter_hours'] as num?)?.toDouble() ?? 168,
@@ -526,6 +541,8 @@ class AppSettings {
     bool? mapShowRepeaters,
     bool? mapShowChatNodes,
     bool? mapShowOtherNodes,
+    bool? mapShowRooms,
+    bool? mapShowSensors,
     bool? mapShowOverlaps,
     double? mapTimeFilterHours,
     bool? mapKeyPrefixEnabled,
@@ -591,6 +608,8 @@ class AppSettings {
       mapShowRepeaters: mapShowRepeaters ?? this.mapShowRepeaters,
       mapShowChatNodes: mapShowChatNodes ?? this.mapShowChatNodes,
       mapShowOtherNodes: mapShowOtherNodes ?? this.mapShowOtherNodes,
+      mapShowRooms: mapShowRooms ?? this.mapShowRooms,
+      mapShowSensors: mapShowSensors ?? this.mapShowSensors,
       mapShowOverlaps: mapShowOverlaps ?? this.mapShowOverlaps,
       mapTimeFilterHours: mapTimeFilterHours ?? this.mapTimeFilterHours,
       mapKeyPrefixEnabled: mapKeyPrefixEnabled ?? this.mapKeyPrefixEnabled,

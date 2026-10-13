@@ -241,7 +241,11 @@ String cotForMarker(TeamMarker m) {
 
 /// A SALUTE report as CoT: a point coloured by affiliation, remarks holding
 /// the report.
-String cotForReport(TeamReport r) => cotEvent(
+String cotForReport(TeamReport r) => r.withdrawn
+    ? cotDelete('VOX-R-${r.authorKey4}-${r.reportId.toRadixString(16)}')
+    : _cotForLiveReport(r);
+
+String _cotForLiveReport(TeamReport r) => cotEvent(
   uid: 'VOX-R-${r.authorKey4}-${r.reportId.toRadixString(16)}',
   type: switch (r.affiliation) {
     TeamAffiliation.hostile => 'a-h-G',

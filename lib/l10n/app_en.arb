@@ -1181,6 +1181,8 @@
   "map_chatNodes": "Chat Nodes",
   "map_repeaters": "Repeaters",
   "map_otherNodes": "Other Nodes",
+  "map_rooms": "Rooms",
+  "map_sensors": "Sensors",
   "map_showOverlaps": "Repeater Key Overlaps",
   "map_keyPrefix": "Key Prefix",
   "map_filterByKeyPrefix": "Filter by key prefix",

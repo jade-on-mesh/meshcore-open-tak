@@ -1061,8 +1061,14 @@ Future<void> showTeamPinSheet(
                     },
                   ),
                 OutlinedButton.icon(
-                  icon: const Icon(Icons.delete_outline),
-                  label: Text(team.isMine(m) ? 'Delete for team' : 'Hide'),
+                  icon: Icon(
+                    team.isMine(m)
+                        ? Icons.delete_outline
+                        : Icons.visibility_off_outlined,
+                  ),
+                  label: Text(
+                    team.isMine(m) ? 'Delete for team' : 'Hide on my map',
+                  ),
                   onPressed: () {
                     unawaited(team.deleteMarker(m));
                     Navigator.pop(context);
@@ -1156,8 +1162,14 @@ Future<void> showTeamReportSheet(
                       team.houndPoint(r.lat, r.lon, 'SALUTE @${r.placeLabel}'),
                 ),
                 OutlinedButton.icon(
-                  icon: const Icon(Icons.delete_outline),
-                  label: const Text('Remove from my map'),
+                  icon: Icon(
+                    team.isMyReport(r)
+                        ? Icons.delete_outline
+                        : Icons.visibility_off_outlined,
+                  ),
+                  label: Text(
+                    team.isMyReport(r) ? 'Delete for team' : 'Hide on my map',
+                  ),
                   onPressed: () {
                     unawaited(team.deleteReport(r));
                     Navigator.pop(context);

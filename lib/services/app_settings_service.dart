@@ -94,6 +94,14 @@ class AppSettingsService extends ChangeNotifier {
     await updateSettings(_settings.copyWith(mapShowOtherNodes: value));
   }
 
+  Future<void> setMapShowRooms(bool value) async {
+    await updateSettings(_settings.copyWith(mapShowRooms: value));
+  }
+
+  Future<void> setMapShowSensors(bool value) async {
+    await updateSettings(_settings.copyWith(mapShowSensors: value));
+  }
+
   Future<void> setMapShowOverlaps(bool value) async {
     await updateSettings(_settings.copyWith(mapShowOverlaps: value));
   }
