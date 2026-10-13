@@ -90,7 +90,8 @@ void main() {
       expect((it.lat, it.lon), (47.60378, -122.34052));
       expect((it.lat2, it.lon2), (47.60531, -122.34016));
       expect(it.label2, 'Op');
-      expect(it.droneLabel, 'DRONE 1581F9DE h251m 1m/s');
+      expect(it.droneLabel(), 'DRONE 1581F9DE h251m 1m/s');
+      expect(it.bearing, isNull);
     }
   });
 
@@ -100,7 +101,14 @@ void main() {
       'https://maps.google.com/?q=47.60378,-122.34052',
     );
     expect(it.isDrone, isTrue);
-    expect(it.droneLabel, 'DRONE 1581F9DE');
+    expect(it.droneLabel(), 'DRONE 1581F9DE');
+    expect(it.droneLabel(44), 'DRONE 1581F9DE 044° NE');
+    final hdg = _parse(
+      'DRONE 1581F9DEV26590296G6G h120m 4m/s hdg 270 '
+      'https://maps.google.com/?q=47.60378,-122.34052',
+    );
+    expect(hdg.bearing, 270);
+    expect(hdg.droneLabel(10), 'DRONE 1581F9DE h120m 4m/s 270° W');
     expect(
       _parse('saw a drone overhead at 47.60378,-122.34052').isDrone,
       isFalse,

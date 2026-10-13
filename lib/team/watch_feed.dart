@@ -21,6 +21,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../connector/meshcore_connector.dart';
 import '../models/channel.dart';
 import '../models/channel_message.dart';
+import 'team_wire.dart' show teamBearingDeg, teamDistanceMeters;
 
 /// Status levels found in feed reports, most urgent first.
 enum WatchLevel {
@@ -62,6 +63,9 @@ class WatchItem {
   /// Short facts after the id, e.g. "h251m 1m/s".
   final String? detail;
 
+  /// Direction of travel the sender reported, in degrees, if any.
+  final double? bearing;
+
   const WatchItem({
     required this.channel,
     required this.message,
@@ -80,19 +84,24 @@ class WatchItem {
     this.label2,
     this.trackId,
     this.detail,
+    this.bearing,
   });
 
   bool get hasSecondPosition => lat2 != null && lon2 != null;
   bool get isDrone => trackId?.startsWith('DRONE') ?? false;
 
-  /// The map's label for a drone: "DRONE 1581F9DE h251m 1m/s" (the first 8
-  /// letters and digits of its serial, then height and speed if reported).
-  String get droneLabel {
+  /// The map's label for a drone: "DRONE 1581F9DE h251m 1m/s 045° NE" (the
+  /// first 8 letters and digits of its serial, then height, speed and
+  /// direction of travel when known). [course] is used when the report has
+  /// no direction of its own (e.g. worked out from its previous position).
+  String droneLabel([double? course]) {
     final serial = (trackId ?? '').replaceFirst('DRONE ', '');
     final short = serial.replaceAll(RegExp(r'[^A-Za-z0-9]'), '');
+    final b = bearing ?? course;
     return [
       'DRONE ${short.length > 8 ? short.substring(0, 8) : short}',
       ?detail,
+      if (b != null) watchBearingLabel(b),
     ].join(' ');
   }
 
@@ -123,6 +132,7 @@ class WatchItem {
     label2: label2,
     trackId: trackId,
     detail: detail,
+    bearing: bearing,
   );
 
   bool get isStructured =>
@@ -163,6 +173,19 @@ final _droneRe = RegExp(
 final _factRe = RegExp(
   r'^(h-?\d+m|-?\d+(\.\d+)?m/s|\d+(\.\d+)?\s?km/h|alt\S*)$',
 );
+// A direction of travel: "123°", "hdg123", "brg:45", "dir 270", "heading 90".
+final _bearingRe = RegExp(
+  r'(?:\b(?:hdg|brg|dir|crs|cog|heading|bearing|course)[\s:=]*(\d{1,3}(?:\.\d+)?)°?)'
+  r'|(?:(?<![\d.])(\d{1,3}(?:\.\d+)?)\s?°)',
+  caseSensitive: false,
+);
+
+/// "045° NE"
+String watchBearingLabel(double b) {
+  const names = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  final d = ((b % 360) + 360) % 360;
+  return '${d.round().toString().padLeft(3, '0')}° ${names[((d + 22.5) ~/ 45) % 8]}';
+}
 
 /// Lines that are only a position ("📍 45.5625,-122.6108"), not text.
 bool _onlyCoords(String line) {
@@ -192,6 +215,7 @@ WatchItem parseWatchMessage(
 }) {
   var level = WatchLevel.none;
   String? status, when, place, url, trackId, detail, label2;
+  double? bearing;
   final counts = <(int, String)>[];
   final other = <String>[];
   double? lat, lon, lat2, lon2;
@@ -241,6 +265,9 @@ WatchItem parseWatchMessage(
         if (_factRe.hasMatch(w)) w,
     ];
     if (facts.isNotEmpty) detail = facts.join(' ');
+    final b = _bearingRe.firstMatch(m.text.substring(drone.end));
+    final v = double.tryParse(b?.group(1) ?? b?.group(2) ?? '');
+    if (v != null && v <= 360) bearing = v;
   }
 
   for (final raw in drone != null ? const <String>[] : m.text.split('\n')) {
@@ -314,6 +341,7 @@ WatchItem parseWatchMessage(
     label2: label2,
     trackId: trackId,
     detail: detail,
+    bearing: bearing,
   );
 }
 
@@ -404,18 +432,44 @@ class WatchFeedService extends ChangeNotifier {
   /// and only the newest report of anything tracked (a drone by serial).
   List<WatchItem> get mapItems {
     final cutoff = _mapTtl == null ? null : DateTime.now().subtract(_mapTtl!);
-    final seenTracks = <String>{};
+    final latest = <String, WatchItem>{};
     final out = <WatchItem>[];
+    _courses.clear();
     for (final i in items) {
       if (!i.hasPosition) continue;
-      if (cutoff != null && i.time.isBefore(cutoff)) continue;
       final t = i.trackId;
-      if (t != null && !seenTracks.add(t)) continue;
-      out.add(i);
-      if (out.length >= 300) break;
+      if (t != null) {
+        final newer = latest[t];
+        if (newer != null) {
+          // An older report of something already on the map: its direction
+          // of travel since then, if it moved enough to tell.
+          if (!_courses.containsKey(t) &&
+              teamDistanceMeters(i.lat!, i.lon!, newer.lat!, newer.lon!) >=
+                  15) {
+            _courses[t] = teamBearingDeg(
+              i.lat!,
+              i.lon!,
+              newer.lat!,
+              newer.lon!,
+            );
+          }
+          continue;
+        }
+      }
+      if (cutoff != null && i.time.isBefore(cutoff)) continue;
+      if (t != null) latest[t] = i;
+      if (out.length < 300) out.add(i);
     }
     return out;
   }
+
+  // Direction of travel worked out from each tracked thing's last two reports.
+  final Map<String, double> _courses = {};
+
+  /// Where a tracked report (a drone) is heading, from its last two
+  /// positions; null if unknown. Valid after [mapItems].
+  double? courseOf(WatchItem i) =>
+      i.trackId == null ? null : _courses[i.trackId!];
 
   /// Watched channels by name (names survive index changes).
   final Set<String> _watched = {};
