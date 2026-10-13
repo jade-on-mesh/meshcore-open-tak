@@ -827,7 +827,7 @@ class _PinsTabState extends State<_PinsTab> {
 
 // ----------------------------------------------------------------- reports
 
-/// SALUTE report or CASEVAC request at [at].
+/// A report (general, SALUTE or CASEVAC) at [lat], [lon].
 Future<void> _reportAt(BuildContext context, double lat, double lon) =>
     showModalBottomSheet<void>(
       context: context,
@@ -835,6 +835,15 @@ Future<void> _reportAt(BuildContext context, double lat, double lon) =>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            ListTile(
+              leading: const Icon(Icons.edit_note),
+              title: const Text('Report here'),
+              subtitle: const Text('Anything the team should know'),
+              onTap: () {
+                Navigator.pop(c);
+                showGeneralReportForm(context, lat: lat, lon: lon);
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.report_outlined),
               title: const Text('SALUTE report here'),
@@ -894,7 +903,7 @@ class _ReportsTabState extends State<_ReportsTab> {
               const Expanded(
                 child: _Empty(
                   'No reports yet. Hold the map above where you saw it to file '
-                  'a SALUTE report or CASEVAC request.',
+                  'a report, SALUTE or CASEVAC request.',
                 ),
               ),
               ?hidden,

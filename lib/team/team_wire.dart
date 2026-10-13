@@ -707,7 +707,12 @@ enum TeamAffiliation {
 }
 
 enum TeamReportKind {
-  salute('SALUTE');
+  salute('SALUTE'),
+
+  /// Free text: whatever someone wants the team to know, at a place. Sent in
+  /// the SALUTE layout with the text in Activity, so older apps show it as
+  /// a SALUTE report with that activity.
+  general('Report');
 
   const TeamReportKind(this.label);
   final String label;
@@ -736,6 +741,10 @@ const int teamMaxSaluteActivityBytes = 32;
 const int teamMaxSaluteUnitBytes = 24;
 const int teamMaxSaluteEquipmentBytes = 28;
 const int teamMaxSalutePlaceBytes = 24;
+
+/// A general report's text. With a full place name, an attachment and a
+/// withdrawal byte the report is exactly [teamMaxPayload].
+const int teamMaxGeneralTextBytes = 100;
 
 /// SALUTE report: Size, Activity, Location, Unit/uniform, Time, Equipment.
 /// Size is structured as vehicle and personnel counts (plus a short note),
@@ -817,9 +826,24 @@ class TeamReport {
       ? place
       : '${lat.toStringAsFixed(4)}, ${lon.toStringAsFixed(4)}';
 
+  bool get isGeneral => kind == TeamReportKind.general;
+
+  /// A general report's text.
+  String get text => activity;
+
+  /// "Report" or "SALUTE report", for headings.
+  String get title => isGeneral ? 'Report' : 'SALUTE report';
+
   /// The condensed card, line by line:
   ///   🔴 CRITICAL / 10-03 11:30 / @Auburn E Main St / 3-🚗 5-🥾 / details
-  List<String> condensedLines() => [
+  List<String> condensedLines() => isGeneral
+      ? [
+          '${urgency.dot} ${urgency.label}',
+          timeLabel,
+          '@$placeLabel',
+          if (text.isNotEmpty) text,
+        ]
+      : [
     '${urgency.dot} ${urgency.label}',
     timeLabel,
     '@$placeLabel',
@@ -836,7 +860,13 @@ class TeamReport {
   }
 
   /// One-line SALUTE summary for lists and TAK remarks.
-  String summary() => [
+  String summary() => isGeneral
+      ? [
+          '${urgency.label}: $text',
+          'L: ${place.isNotEmpty ? '$place ' : ''}(${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)})',
+          'T: ${observed.toUtc().toIso8601String().substring(0, 16)}Z',
+        ].join(' / ')
+      : [
     '${urgency.label}${affiliation == TeamAffiliation.unknown ? '' : ' ${affiliation.label.toLowerCase()}'}',
     if (countsLabel.isNotEmpty) 'S: $countsLabel',
     if (activity.isNotEmpty) 'A: $activity',
@@ -860,7 +890,7 @@ class TeamReport {
       ..u8(people.clamp(0, 255))
       ..str(place, teamMaxSalutePlaceBytes)
       ..str(size, teamMaxSaluteSizeBytes)
-      ..str(activity, teamMaxSaluteActivityBytes)
+      ..str(activity, isGeneral ? teamMaxGeneralTextBytes : teamMaxSaluteActivityBytes)
       ..str(unit, teamMaxSaluteUnitBytes)
       ..str(equipment, teamMaxSaluteEquipmentBytes);
     final a = attachment;

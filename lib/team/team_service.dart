@@ -1251,11 +1251,12 @@ class TeamService extends ChangeNotifier {
     );
   }
 
-  /// Files a SALUTE report and sends it to the team.
+  /// Files a report (SALUTE, or a general one) and sends it to the team.
   Future<TeamReport> fileReport({
     required double lat,
     required double lon,
     required DateTime observed,
+    TeamReportKind kind = TeamReportKind.salute,
     TeamAffiliation affiliation = TeamAffiliation.unknown,
     TeamUrgency urgency = TeamUrgency.observed,
     int vehicles = 0,
@@ -1271,6 +1272,7 @@ class TeamService extends ChangeNotifier {
     final r = TeamReport(
       authorKey4: selfKey4,
       reportId: _rng.nextInt(1 << 32),
+      kind: kind,
       affiliation: affiliation,
       urgency: urgency,
       vehicles: vehicles,

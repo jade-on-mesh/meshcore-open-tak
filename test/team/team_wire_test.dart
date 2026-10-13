@@ -164,6 +164,29 @@ void main() {
       attachment: att,
     );
 
+    test('a general report keeps its text and fits one packet at its largest',
+        () {
+      final r = TeamReport(
+        authorKey4: '0a0b0c0d',
+        reportId: 9,
+        kind: TeamReportKind.general,
+        lat: 47.6,
+        lon: -122.3,
+        observed: DateTime(2026, 10, 12, 18),
+        urgency: TeamUrgency.active,
+        place: 'P' * 40,
+        activity: 'x' * 300,
+        attachment: const TeamAttachment(40, '01234567', 18, 150),
+      ).asWithdrawn();
+      final bytes = r.encode();
+      expect(bytes.length, teamMaxPayload);
+      final b = TeamReport.tryParse(bytes)!;
+      expect(b.isGeneral, isTrue);
+      expect(b.text.length, teamMaxGeneralTextBytes);
+      expect(b.title, 'Report');
+      expect(b.condensedLines().last, b.text);
+    });
+
     test('a withdrawal carries its flag, with or without an attachment', () {
       for (final att in [null, const TeamAttachment(40, '01234567', 18, 150)]) {
         final r = sample(att: att);

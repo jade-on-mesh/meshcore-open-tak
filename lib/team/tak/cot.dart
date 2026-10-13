@@ -247,7 +247,8 @@ String cotForReport(TeamReport r) => r.withdrawn
 
 String _cotForLiveReport(TeamReport r) => cotEvent(
   uid: 'VOX-R-${r.authorKey4}-${r.reportId.toRadixString(16)}',
-  type: switch (r.affiliation) {
+  // A general report is a note at a place: a spot marker, not a sighting.
+  type: r.isGeneral ? 'b-m-p-s-m' : switch (r.affiliation) {
     TeamAffiliation.hostile => 'a-h-G',
     TeamAffiliation.neutral => 'a-n-G',
     TeamAffiliation.friendly => 'a-f-G',
@@ -263,7 +264,7 @@ String _cotForLiveReport(TeamReport r) => cotEvent(
       'contact',
       attributes: {
         'callsign':
-            'SALUTE ${r.observed.toUtc().toIso8601String().substring(11, 16)}Z',
+            '${r.isGeneral ? 'REPORT' : 'SALUTE'} ${r.observed.toUtc().toIso8601String().substring(11, 16)}Z',
       },
     );
     b.element(
@@ -275,7 +276,10 @@ String _cotForLiveReport(TeamReport r) => cotEvent(
       },
     );
     b.element('archive');
-    b.element('remarks', nest: 'SALUTE ${r.summary()}');
+    b.element(
+      'remarks',
+      nest: '${r.isGeneral ? 'Report' : 'SALUTE'} ${r.summary()}',
+    );
   },
 );
 

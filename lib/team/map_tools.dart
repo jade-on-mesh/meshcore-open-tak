@@ -67,6 +67,10 @@ Future<void> showMapTools(
       color: Colors.red,
       needsTeam: true,
     ),
+    _Tool(Icons.edit_note, 'Report', (c) {
+      final (lat, lon, _) = _here(team, mapCenter);
+      showGeneralReportForm(c, lat: lat, lon: lon);
+    }, needsTeam: true),
     _Tool(
       Icons.local_hospital_outlined,
       'CASEVAC',

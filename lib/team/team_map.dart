@@ -640,7 +640,9 @@ class TeamMapLayer extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             _label(
-              '${r.urgency.dot} ${r.countsLabel.isEmpty ? 'SALUTE' : r.countsLabel}',
+              r.isGeneral
+                  ? '${r.urgency.dot} ${r.text.isEmpty ? 'Report' : r.text}'
+                  : '${r.urgency.dot} ${r.countsLabel.isEmpty ? 'SALUTE' : r.countsLabel}',
             ),
           ],
         ),
@@ -1109,10 +1111,11 @@ class TeamReportCard extends StatelessWidget {
             const SizedBox(width: 8),
             Text(r.urgency.label, style: t.titleMedium),
             const Spacer(),
-            Text(
-              r.affiliation.label,
-              style: TextStyle(color: affiliationColor(r.affiliation)),
-            ),
+            if (!r.isGeneral)
+              Text(
+                r.affiliation.label,
+                style: TextStyle(color: affiliationColor(r.affiliation)),
+              ),
           ],
         ),
         for (final l in lines.skip(1)) Text(l, style: t.bodyLarge),
@@ -1140,10 +1143,7 @@ Future<void> showTeamReportSheet(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'SALUTE report',
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
+            Text(r.title, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 6),
             TeamReportCard(report: r),
             const SizedBox(height: 8),
@@ -1159,7 +1159,7 @@ Future<void> showTeamReportSheet(
                 _houndButton(
                   context,
                   () =>
-                      team.houndPoint(r.lat, r.lon, 'SALUTE @${r.placeLabel}'),
+                      team.houndPoint(r.lat, r.lon, '${r.title} @${r.placeLabel}'),
                 ),
                 OutlinedButton.icon(
                   icon: Icon(
@@ -1251,6 +1251,18 @@ Future<void> showTeamMapActions(
             onTap: () {
               Navigator.pop(context);
               showTeamPinEditor(context, lat: at.latitude, lon: at.longitude);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.edit_note),
+            title: const Text('Report here'),
+            onTap: () {
+              Navigator.pop(context);
+              showGeneralReportForm(
+                context,
+                lat: at.latitude,
+                lon: at.longitude,
+              );
             },
           ),
           ListTile(
@@ -1440,6 +1452,15 @@ class TeamMapOverlay extends StatelessWidget {
               onTap: () {
                 Navigator.pop(c);
                 showTeamPinEditor(context, lat: fix!.lat, lon: fix.lon);
+              },
+            ),
+            ListTile(
+              enabled: fix != null,
+              leading: const Icon(Icons.edit_note),
+              title: const Text('Report'),
+              onTap: () {
+                Navigator.pop(c);
+                showGeneralReportForm(context, lat: fix!.lat, lon: fix.lon);
               },
             ),
             ListTile(
