@@ -194,9 +194,7 @@ class _WatchTabState extends State<WatchTab> {
                 for (final d in watchMapTtlChoices)
                   ListTile(
                     title: Text(watchTtlLabel(d)),
-                    trailing: feed.mapTtl == d
-                        ? const Icon(Icons.check)
-                        : null,
+                    trailing: feed.mapTtl == d ? const Icon(Icons.check) : null,
                     onTap: () {
                       unawaited(feed.setMapTtl(d));
                       Navigator.pop(c);
@@ -400,7 +398,8 @@ class _WatchCard extends StatelessWidget {
       ?it.detail,
       if (it.counts.isNotEmpty)
         it.counts.map((c) => '${c.$1} ${c.$2}').join('  '),
-      if (it.hasSecondPosition) '${it.isDrone ? 'operator' : it.label2 ?? '2nd point'} on map',
+      if (it.hasSecondPosition)
+        '${it.isDrone ? 'operator' : it.label2 ?? '2nd point'} on map',
       it.channel.name,
       ?range,
     ].join(' · ');

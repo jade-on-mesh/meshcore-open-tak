@@ -142,14 +142,22 @@ final _whenRe = RegExp(r'^\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2}$');
 final _countRe = RegExp(r'(\d+)\s*-\s*([^\s\d]+)');
 final _urlRe = RegExp(r'https?://\S+');
 final _coordRe = RegExp(r'(-?\d{1,2}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})');
-final _droneRe = RegExp(r'^\s*DRONE\s+([A-Za-z0-9-]{6,})', caseSensitive: false);
-final _factRe = RegExp(r'^(h-?\d+m|-?\d+(\.\d+)?m/s|\d+(\.\d+)?\s?km/h|alt\S*)$');
+final _droneRe = RegExp(
+  r'^\s*DRONE\s+([A-Za-z0-9-]{6,})',
+  caseSensitive: false,
+);
+final _factRe = RegExp(
+  r'^(h-?\d+m|-?\d+(\.\d+)?m/s|\d+(\.\d+)?\s?km/h|alt\S*)$',
+);
 
 /// Lines that are only a position ("📍 45.5625,-122.6108"), not text.
 bool _onlyCoords(String line) {
-  final rest = line.replaceAll(_coordRe, '').replaceAll(RegExp(r'[\s📍,;:]'), '');
+  final rest = line
+      .replaceAll(_coordRe, '')
+      .replaceAll(RegExp(r'[\s📍,;:]'), '');
   return rest.isEmpty;
 }
+
 final _markerRe = RegExp(r'm:(-?[0-9.]+),(-?[0-9.]+)\|');
 
 WatchLevel _levelFromWord(String w) {
@@ -163,7 +171,11 @@ WatchLevel _levelFromWord(String w) {
 
 /// Parses one channel message into a feed item. [time] is when it happened
 /// (see [WatchItem.time]); it defaults to the message's own timestamp.
-WatchItem parseWatchMessage(Channel channel, ChannelMessage m, {DateTime? time}) {
+WatchItem parseWatchMessage(
+  Channel channel,
+  ChannelMessage m, {
+  DateTime? time,
+}) {
   var level = WatchLevel.none;
   String? status, when, place, url, trackId, detail, label2;
   final counts = <(int, String)>[];
@@ -195,7 +207,9 @@ WatchItem parseWatchMessage(Channel channel, ChannelMessage m, {DateTime? time})
         final words = m.text
             .substring(prevEnd, co.start)
             .split(RegExp(r'\s+'))
-            .where((w) => w.isNotEmpty && !w.contains('://') && !w.contains('='))
+            .where(
+              (w) => w.isNotEmpty && !w.contains('://') && !w.contains('='),
+            )
             .toList();
         label2 = words.isEmpty ? null : words.last;
       }
@@ -257,7 +271,7 @@ WatchItem parseWatchMessage(Channel channel, ChannelMessage m, {DateTime? time})
       }
       continue;
     }
-    if (lat != null && _onlyCoords(line)) continue;   // shown as the map point
+    if (lat != null && _onlyCoords(line)) continue; // shown as the map point
     other.add(line);
   }
   if (drone != null) url = _urlRe.firstMatch(m.text)?.group(0);
