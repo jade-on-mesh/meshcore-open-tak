@@ -304,7 +304,7 @@ class TeamMapLayer extends StatelessWidget {
       // Watch-feed reports and TAK units sit under the mesh team.
       for (final w in watched) ...[
         if (w.hasSecondPosition) _watchSecondMarker(context, w),
-        _watchMarker(context, w),
+        _watchMarker(context, w, course: watch.courseOf(w)),
       ],
       for (final s in atakShapes)
         if (s.label.isNotEmpty && s.points.isNotEmpty)
@@ -690,12 +690,12 @@ class TeamMapLayer extends StatelessWidget {
     ),
   );
 
-  Marker _watchMarker(BuildContext context, WatchItem w) {
+  Marker _watchMarker(BuildContext context, WatchItem w, {double? course}) {
     final c = Color(w.level.argb);
     if (w.isDrone) {
       return Marker(
         point: LatLng(w.lat!, w.lon!),
-        width: 120,
+        width: 170,
         height: 54,
         child: GestureDetector(
           onTap: () => _openWatch(context),
@@ -710,9 +710,17 @@ class TeamMapLayer extends StatelessWidget {
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.black87, width: 2),
                 ),
-                child: const Icon(Icons.flight, size: 16, color: Colors.black),
+                // Pointing where it is heading, when that is known.
+                child: Transform.rotate(
+                  angle: (w.bearing ?? course ?? 0) * pi / 180,
+                  child: const Icon(
+                    Icons.flight,
+                    size: 16,
+                    color: Colors.black,
+                  ),
+                ),
               ),
-              _label('Drone ${w.detail ?? ''}'),
+              _label(w.droneLabel(course)),
             ],
           ),
         ),
