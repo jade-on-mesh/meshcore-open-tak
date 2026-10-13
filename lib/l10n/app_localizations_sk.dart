@@ -2253,6 +2253,12 @@ class AppLocalizationsSk extends AppLocalizations {
   String get map_otherNodes => 'Ostatné uzly';
 
   @override
+  String get map_rooms => 'Rooms';
+
+  @override
+  String get map_sensors => 'Sensors';
+
+  @override
   String get map_showOverlaps => 'Prekrývanie opakovača kľúča';
 
   @override

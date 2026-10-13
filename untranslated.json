@@ -9,7 +9,9 @@
     "channels_scanChannelQr",
     "channels_scanChannelQrTitle",
     "channels_scanChannelQrInstructions",
-    "channels_invalidChannelQr"
+    "channels_invalidChannelQr",
+    "map_rooms",
+    "map_sensors"
   ],
 
   "de": [
@@ -22,7 +24,9 @@
     "channels_scanChannelQr",
     "channels_scanChannelQrTitle",
     "channels_scanChannelQrInstructions",
-    "channels_invalidChannelQr"
+    "channels_invalidChannelQr",
+    "map_rooms",
+    "map_sensors"
   ],
 
   "es": [
@@ -35,7 +39,9 @@
     "channels_scanChannelQr",
     "channels_scanChannelQrTitle",
     "channels_scanChannelQrInstructions",
-    "channels_invalidChannelQr"
+    "channels_invalidChannelQr",
+    "map_rooms",
+    "map_sensors"
   ],
 
   "fr": [
@@ -48,7 +54,9 @@
     "channels_scanChannelQr",
     "channels_scanChannelQrTitle",
     "channels_scanChannelQrInstructions",
-    "channels_invalidChannelQr"
+    "channels_invalidChannelQr",
+    "map_rooms",
+    "map_sensors"
   ],
 
   "hu": [
@@ -61,7 +69,9 @@
     "channels_scanChannelQr",
     "channels_scanChannelQrTitle",
     "channels_scanChannelQrInstructions",
-    "channels_invalidChannelQr"
+    "channels_invalidChannelQr",
+    "map_rooms",
+    "map_sensors"
   ],
 
   "it": [
@@ -74,7 +84,9 @@
     "channels_scanChannelQr",
     "channels_scanChannelQrTitle",
     "channels_scanChannelQrInstructions",
-    "channels_invalidChannelQr"
+    "channels_invalidChannelQr",
+    "map_rooms",
+    "map_sensors"
   ],
 
   "ja": [
@@ -87,7 +99,9 @@
     "channels_scanChannelQr",
     "channels_scanChannelQrTitle",
     "channels_scanChannelQrInstructions",
-    "channels_invalidChannelQr"
+    "channels_invalidChannelQr",
+    "map_rooms",
+    "map_sensors"
   ],
 
   "ko": [
@@ -100,7 +114,9 @@
     "channels_scanChannelQr",
     "channels_scanChannelQrTitle",
     "channels_scanChannelQrInstructions",
-    "channels_invalidChannelQr"
+    "channels_invalidChannelQr",
+    "map_rooms",
+    "map_sensors"
   ],
 
   "nl": [
@@ -113,7 +129,9 @@
     "channels_scanChannelQr",
     "channels_scanChannelQrTitle",
     "channels_scanChannelQrInstructions",
-    "channels_invalidChannelQr"
+    "channels_invalidChannelQr",
+    "map_rooms",
+    "map_sensors"
   ],
 
   "pl": [
@@ -126,7 +144,9 @@
     "channels_scanChannelQr",
     "channels_scanChannelQrTitle",
     "channels_scanChannelQrInstructions",
-    "channels_invalidChannelQr"
+    "channels_invalidChannelQr",
+    "map_rooms",
+    "map_sensors"
   ],
 
   "pt": [
@@ -139,7 +159,9 @@
     "channels_scanChannelQr",
     "channels_scanChannelQrTitle",
     "channels_scanChannelQrInstructions",
-    "channels_invalidChannelQr"
+    "channels_invalidChannelQr",
+    "map_rooms",
+    "map_sensors"
   ],
 
   "ru": [
@@ -152,7 +174,9 @@
     "channels_scanChannelQr",
     "channels_scanChannelQrTitle",
     "channels_scanChannelQrInstructions",
-    "channels_invalidChannelQr"
+    "channels_invalidChannelQr",
+    "map_rooms",
+    "map_sensors"
   ],
 
   "sk": [
@@ -165,7 +189,9 @@
     "channels_scanChannelQr",
     "channels_scanChannelQrTitle",
     "channels_scanChannelQrInstructions",
-    "channels_invalidChannelQr"
+    "channels_invalidChannelQr",
+    "map_rooms",
+    "map_sensors"
   ],
 
   "sl": [
@@ -178,7 +204,9 @@
     "channels_scanChannelQr",
     "channels_scanChannelQrTitle",
     "channels_scanChannelQrInstructions",
-    "channels_invalidChannelQr"
+    "channels_invalidChannelQr",
+    "map_rooms",
+    "map_sensors"
   ],
 
   "sv": [
@@ -191,7 +219,9 @@
     "channels_scanChannelQr",
     "channels_scanChannelQrTitle",
     "channels_scanChannelQrInstructions",
-    "channels_invalidChannelQr"
+    "channels_invalidChannelQr",
+    "map_rooms",
+    "map_sensors"
   ],
 
   "uk": [
@@ -204,7 +234,9 @@
     "channels_scanChannelQr",
     "channels_scanChannelQrTitle",
     "channels_scanChannelQrInstructions",
-    "channels_invalidChannelQr"
+    "channels_invalidChannelQr",
+    "map_rooms",
+    "map_sensors"
   ],
 
   "zh": [
@@ -217,6 +249,8 @@
     "channels_scanChannelQr",
     "channels_scanChannelQrTitle",
     "channels_scanChannelQrInstructions",
-    "channels_invalidChannelQr"
+    "channels_invalidChannelQr",
+    "map_rooms",
+    "map_sensors"
   ]
 }

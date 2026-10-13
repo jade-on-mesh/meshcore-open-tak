@@ -1302,7 +1302,7 @@ class TeamService extends ChangeNotifier {
 
   void _withdrawn(String key) {
     final r = _reports.remove(key);
-    _hidden.add(key);   // a late copy of it must not bring it back
+    _hidden.add(key); // a late copy of it must not bring it back
     unawaited(_save((p) => p.setStringList(_kHidden, _hidden.toList())));
     if (r != null) {
       unawaited(_persistReports());

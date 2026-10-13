@@ -2280,6 +2280,12 @@ class AppLocalizationsPl extends AppLocalizations {
   String get map_otherNodes => 'Inne węzły';
 
   @override
+  String get map_rooms => 'Rooms';
+
+  @override
+  String get map_sensors => 'Sensors';
+
+  @override
   String get map_showOverlaps => 'Nakładające się klucze przekaźników';
 
   @override

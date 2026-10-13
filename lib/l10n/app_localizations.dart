@@ -4048,6 +4048,18 @@ abstract class AppLocalizations {
   /// **'Other Nodes'**
   String get map_otherNodes;
 
+  /// No description provided for @map_rooms.
+  ///
+  /// In en, this message translates to:
+  /// **'Rooms'**
+  String get map_rooms;
+
+  /// No description provided for @map_sensors.
+  ///
+  /// In en, this message translates to:
+  /// **'Sensors'**
+  String get map_sensors;
+
   /// No description provided for @map_showOverlaps.
   ///
   /// In en, this message translates to:

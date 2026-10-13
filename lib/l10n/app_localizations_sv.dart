@@ -2237,6 +2237,12 @@ class AppLocalizationsSv extends AppLocalizations {
   String get map_otherNodes => 'Andra noder';
 
   @override
+  String get map_rooms => 'Rooms';
+
+  @override
+  String get map_sensors => 'Sensors';
+
+  @override
   String get map_showOverlaps => 'Repeater-nyckelöverlappningar';
 
   @override
