@@ -748,7 +748,7 @@ class TeamMapLayer extends StatelessWidget {
                 border: Border.all(color: Colors.black87, width: 2),
               ),
             ),
-            _label('${w.channel.name} ${w.place ?? w.statusWord ?? ''}'),
+            _label('${w.mapTag} ${w.place ?? w.statusWord ?? ''}'.trim()),
           ],
         ),
       ),

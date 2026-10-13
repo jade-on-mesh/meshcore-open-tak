@@ -88,6 +88,10 @@ class WatchItem {
   });
 
   bool get hasSecondPosition => lat2 != null && lon2 != null;
+
+  /// The short name the map puts before a report: "ICE" for an ICE watch
+  /// channel (#icewatch, or anything IceBot posts), else the channel's name.
+  String get mapTag => watchMapTag(channel.name, message.senderName);
   bool get isDrone => trackId?.startsWith('DRONE') ?? false;
 
   /// The map's label for a drone: "DRONE 1581F9DE h251m 1m/s 045° NE" (the
@@ -179,6 +183,14 @@ final _bearingRe = RegExp(
   r'|(?:(?<![\d.])(\d{1,3}(?:\.\d+)?)\s?°)',
   caseSensitive: false,
 );
+
+/// "ICE" for ICE watch reports (a channel named for it, or IceBot posting),
+/// else the channel name as it is.
+String watchMapTag(String channelName, String? sender) {
+  final c = channelName.toLowerCase(), who = (sender ?? '').toLowerCase();
+  if (c.contains('ice') || who.contains('icebot')) return 'ICE';
+  return channelName;
+}
 
 /// "045° NE"
 String watchBearingLabel(double b) {
