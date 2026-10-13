@@ -844,14 +844,14 @@ class TeamReport {
           if (text.isNotEmpty) text,
         ]
       : [
-    '${urgency.dot} ${urgency.label}',
-    timeLabel,
-    '@$placeLabel',
-    if (countsLabel.isNotEmpty) countsLabel,
-    if (activity.isNotEmpty) 'A: $activity',
-    if (unit.isNotEmpty) 'U: $unit',
-    if (equipment.isNotEmpty) 'E: $equipment',
-  ];
+          '${urgency.dot} ${urgency.label}',
+          timeLabel,
+          '@$placeLabel',
+          if (countsLabel.isNotEmpty) countsLabel,
+          if (activity.isNotEmpty) 'A: $activity',
+          if (unit.isNotEmpty) 'U: $unit',
+          if (equipment.isNotEmpty) 'E: $equipment',
+        ];
 
   /// As a plain text message for MeshCore apps without VOX (kept short).
   String condensedText({int maxChars = 150}) {
@@ -867,14 +867,14 @@ class TeamReport {
           'T: ${observed.toUtc().toIso8601String().substring(0, 16)}Z',
         ].join(' / ')
       : [
-    '${urgency.label}${affiliation == TeamAffiliation.unknown ? '' : ' ${affiliation.label.toLowerCase()}'}',
-    if (countsLabel.isNotEmpty) 'S: $countsLabel',
-    if (activity.isNotEmpty) 'A: $activity',
-    'L: ${place.isNotEmpty ? '$place ' : ''}(${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)})',
-    if (unit.isNotEmpty) 'U: $unit',
-    'T: ${observed.toUtc().toIso8601String().substring(0, 16)}Z',
-    if (equipment.isNotEmpty) 'E: $equipment',
-  ].join(' / ');
+          '${urgency.label}${affiliation == TeamAffiliation.unknown ? '' : ' ${affiliation.label.toLowerCase()}'}',
+          if (countsLabel.isNotEmpty) 'S: $countsLabel',
+          if (activity.isNotEmpty) 'A: $activity',
+          'L: ${place.isNotEmpty ? '$place ' : ''}(${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)})',
+          if (unit.isNotEmpty) 'U: $unit',
+          'T: ${observed.toUtc().toIso8601String().substring(0, 16)}Z',
+          if (equipment.isNotEmpty) 'E: $equipment',
+        ].join(' / ');
 
   Uint8List encode() {
     final w = _W()
@@ -890,7 +890,10 @@ class TeamReport {
       ..u8(people.clamp(0, 255))
       ..str(place, teamMaxSalutePlaceBytes)
       ..str(size, teamMaxSaluteSizeBytes)
-      ..str(activity, isGeneral ? teamMaxGeneralTextBytes : teamMaxSaluteActivityBytes)
+      ..str(
+        activity,
+        isGeneral ? teamMaxGeneralTextBytes : teamMaxSaluteActivityBytes,
+      )
       ..str(unit, teamMaxSaluteUnitBytes)
       ..str(equipment, teamMaxSaluteEquipmentBytes);
     final a = attachment;

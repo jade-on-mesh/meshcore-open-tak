@@ -1158,8 +1158,11 @@ Future<void> showTeamReportSheet(
               children: [
                 _houndButton(
                   context,
-                  () =>
-                      team.houndPoint(r.lat, r.lon, '${r.title} @${r.placeLabel}'),
+                  () => team.houndPoint(
+                    r.lat,
+                    r.lon,
+                    '${r.title} @${r.placeLabel}',
+                  ),
                 ),
                 OutlinedButton.icon(
                   icon: Icon(

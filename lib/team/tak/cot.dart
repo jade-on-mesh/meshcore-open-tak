@@ -248,12 +248,14 @@ String cotForReport(TeamReport r) => r.withdrawn
 String _cotForLiveReport(TeamReport r) => cotEvent(
   uid: 'VOX-R-${r.authorKey4}-${r.reportId.toRadixString(16)}',
   // A general report is a note at a place: a spot marker, not a sighting.
-  type: r.isGeneral ? 'b-m-p-s-m' : switch (r.affiliation) {
-    TeamAffiliation.hostile => 'a-h-G',
-    TeamAffiliation.neutral => 'a-n-G',
-    TeamAffiliation.friendly => 'a-f-G',
-    TeamAffiliation.unknown => 'a-u-G',
-  },
+  type: r.isGeneral
+      ? 'b-m-p-s-m'
+      : switch (r.affiliation) {
+          TeamAffiliation.hostile => 'a-h-G',
+          TeamAffiliation.neutral => 'a-n-G',
+          TeamAffiliation.friendly => 'a-f-G',
+          TeamAffiliation.unknown => 'a-u-G',
+        },
   how: 'h-g-i-g-o',
   lat: r.lat,
   lon: r.lon,
