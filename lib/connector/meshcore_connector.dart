@@ -10630,9 +10630,7 @@ class MeshCoreConnector extends ChangeNotifier {
       final message = channelMessages[i];
       if (message.messageId != messageId) continue;
       channelMessages[i] = message.copyWith(text: cipherHex);
-      unawaited(
-        _saveChannelMessages(channelIndex, channelMessages),
-      );
+      unawaited(_saveChannelMessages(channelIndex, channelMessages));
       notifyListeners();
       return true;
     }
