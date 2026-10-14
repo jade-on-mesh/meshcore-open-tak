@@ -38,5 +38,8 @@ class AeicHdRunner {
     void Function(double) onProgress,
   ) => throw UnsupportedError('AI sketch HD needs the Android app.');
 
+  Future<String> selfTest(void Function(double) onProgress) =>
+      throw UnsupportedError('AI sketch HD needs the Android app.');
+
   void cancelJob() {}
 }

@@ -136,6 +136,8 @@ class AeicHdScreen extends StatelessWidget {
             Text('${hd.jobLabel}…'),
             const SizedBox(height: 8),
           ],
+          const _SelfTestButton(),
+          const SizedBox(height: 8),
           OutlinedButton.icon(
             icon: const Icon(Icons.delete_outline),
             label: Text('Remove model (${_mb(hd.packBytes)})'),
@@ -167,6 +169,64 @@ class AeicHdScreen extends StatelessWidget {
           ),
         ];
     }
+  }
+}
+
+/// Runs the phone check and shows its verdict.
+class _SelfTestButton extends StatefulWidget {
+  const _SelfTestButton();
+
+  @override
+  State<_SelfTestButton> createState() => _SelfTestButtonState();
+}
+
+class _SelfTestButtonState extends State<_SelfTestButton> {
+  bool _running = false;
+  String? _result;
+
+  Future<void> _run() async {
+    setState(() {
+      _running = true;
+      _result = null;
+    });
+    String result;
+    try {
+      result = await AeicHdService.instance.selfTest();
+    } catch (e) {
+      result = 'FAILED: $e';
+    }
+    if (!mounted) return;
+    setState(() {
+      _running = false;
+      _result = result;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final result = _result;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        OutlinedButton.icon(
+          icon: const Icon(Icons.fact_check_outlined),
+          label: const Text('Check this phone (a few minutes)'),
+          onPressed: _running ? null : _run,
+        ),
+        if (result != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            result,
+            style: TextStyle(
+              color: result.startsWith('FAILED')
+                  ? theme.colorScheme.error
+                  : theme.colorScheme.primary,
+            ),
+          ),
+        ],
+      ],
+    );
   }
 }
 

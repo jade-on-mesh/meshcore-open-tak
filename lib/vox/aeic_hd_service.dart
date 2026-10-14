@@ -181,6 +181,16 @@ class AeicHdService extends ChangeNotifier {
   Future<Uint8List> decode(Uint8List payload) =>
       _job('Drawing', (onProgress) => _runner.decode(payload, onProgress));
 
+  /// Runs the phone check (see AeicHdRunner.selfTest): a few minutes.
+  Future<String> selfTest() async {
+    final report = await _job(
+      'Checking',
+      (onProgress) async =>
+          Uint8List.fromList((await _runner.selfTest(onProgress)).codeUnits),
+    );
+    return String.fromCharCodes(report);
+  }
+
   /// Stops the running encode or decode.
   void cancelJob() => _runner.cancelJob();
 

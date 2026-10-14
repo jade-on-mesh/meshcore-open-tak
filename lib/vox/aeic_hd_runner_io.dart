@@ -290,6 +290,101 @@ class AeicHdRunner {
     }
   }
 
+  /// Checks this phone against the reference codec, with the sample photo
+  /// the model pack was exported with: encoding it must give exactly the
+  /// reference's bytes (anything else and this phone's photos could decode
+  /// wrongly elsewhere), and decoding the reference stream must give the
+  /// reference picture to within rounding.
+  Future<String> selfTest(void Function(double) onProgress) async {
+    final dir = await _packDir();
+    final sample = File('${dir.path}/sample.aeic');
+    final input = File('${dir.path}/input.ppm');
+    final reference = File('${dir.path}/reference_rgb.f32');
+    if (!await sample.exists() || !await input.exists()) {
+      throw StateError('The model pack has no test sample.');
+    }
+    final work = await _workDir();
+    try {
+      final encoded = File('${work.path}/test.aeic');
+      final encodeStages =
+          await _stageCount(dir, 'encoder.tsv') +
+          await _stageCount(dir, 'codec.tsv', only: _contextStage);
+      await _run(
+        [
+          '--encode', '--model-dir', dir.path, '--input', input.path,
+          '--bitstream-output', encoded.path, '--threads', '$_threads',
+        ],
+        'ENCODE_COMPLETE',
+        encodeStages,
+        (p) => onProgress(p * 0.1),
+      );
+      final want = await sample.readAsBytes();
+      final got = await encoded.readAsBytes();
+      var same = want.length == got.length;
+      for (var i = 0; same && i < want.length; i++) {
+        same = want[i] == got[i];
+      }
+      if (!same) {
+        return 'FAILED: this phone encodes the test photo differently from '
+            'the reference codec (${got.length} vs ${want.length} bytes). '
+            'Don\'t send AI sketch HD photos from it.';
+      }
+      final decoded = File('${work.path}/test.ppm');
+      final decodeStages =
+          await _stageCount(dir, 'codec.tsv') +
+          await _stageCount(dir, 'renderer.tsv');
+      final watch = Stopwatch()..start();
+      await _run(
+        [
+          '--model-dir', dir.path, '--bitstream', sample.path,
+          '--output', decoded.path, '--threads', '$_threads',
+        ],
+        'DECODE_COMPLETE',
+        decodeStages,
+        (p) => onProgress(0.1 + p * 0.9),
+      );
+      final seconds = watch.elapsed.inSeconds;
+      var quality = '';
+      if (await reference.exists()) {
+        final psnr = _psnr(
+          await decoded.readAsBytes(),
+          await reference.readAsBytes(),
+        );
+        if (psnr != null) {
+          quality = ' The decoded picture is ${psnr.toStringAsFixed(1)} dB '
+              'from the reference${psnr < 35 ? ', which is too far off: '
+                  'something is wrong' : ''}.';
+          if (psnr < 35) return 'FAILED:$quality';
+        }
+      }
+      return 'Passed: encoding matches the reference exactly, and a photo '
+          'took ${seconds ~/ 60} min ${seconds % 60} s to draw.$quality';
+    } finally {
+      await work.delete(recursive: true);
+    }
+  }
+
+  /// PSNR of a 512x512 binary PPM against the exporter's float reference
+  /// (`[1, 3, 512, 512]` little-endian float32 in [-1, 1]).
+  static double? _psnr(Uint8List ppm, Uint8List f32) {
+    const n = _square * _square;
+    if (f32.length != n * 3 * 4 || ppm.length < n * 3) return null;
+    final rgb = Uint8List.sublistView(ppm, ppm.length - n * 3);
+    final ref = ByteData.sublistView(f32);
+    var se = 0.0;
+    for (var c = 0; c < 3; c++) {
+      for (var i = 0; i < n; i++) {
+        final v = (ref.getFloat32((c * n + i) * 4, Endian.little) + 1) * 127.5;
+        final r = v.clamp(0, 255).roundToDouble();
+        final d = rgb[i * 3 + c] - r;
+        se += d * d;
+      }
+    }
+    final mse = se / (n * 3);
+    if (mse == 0) return 99;
+    return 10 * math.log(255 * 255 / mse) / math.ln10;
+  }
+
   void cancelJob() {
     _cancelJob = true;
     _process?.kill(ProcessSignal.sigkill);
