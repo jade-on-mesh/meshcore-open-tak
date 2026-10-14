@@ -42,6 +42,7 @@ import 'team/tak/tak_service.dart';
 import 'team/team_alert_host.dart';
 import 'team/team_service.dart';
 import 'team/watch_feed.dart';
+import 'vox/aeic_hd_service.dart';
 import 'vox/voice_service.dart';
 
 void main() async {
@@ -103,7 +104,7 @@ void main() async {
     // Without a file-backed store this silently falls back to memory and every
     // received image — sidecar included — is gone at the next launch.
     blobs: createReceivedImageBlobStore(),
-    decoder: ImageCodecServiceDecoder(imageCodecService),
+    decoder: AeicHdRoutingDecoder(ImageCodecServiceDecoder(imageCodecService)),
     processAutomatically: appSettingsService.settings.imageProcessAutomatically,
   );
   // A decode peaks around 2.16 GiB, so the setting is the user's consent to

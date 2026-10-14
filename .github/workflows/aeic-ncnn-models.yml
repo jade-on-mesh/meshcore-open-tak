@@ -1,0 +1,224 @@
+name: AEIC ncnn models
+
+# Builds the model pack for the "AEIC HD" photo option: AEIC-SE at the ft2
+# rate point, exported for ncnn with mikecarper/AEIC's mobile exporters
+# (https://github.com/mikecarper/AEIC/tree/main/mobile), at the app's 512 px.
+#
+# The pack is ~2 GB, far too big for the repository, so it is published as a
+# GitHub release (tag below) by aeic-ncnn-publish.yml, bundled into tar
+# archives listed with their checksums in manifest.json.
+#
+# Inputs, all public, all checked against pinned SHA-256s where one is known:
+#   - mikecarper/AEIC at a pinned commit (exporters + original codec)
+#   - AEIC_SE_ft2.pkl from the AEIC authors' checkpoint folder (Google Drive)
+#   - SD-Turbo's UNet config + fp16 weights (Hugging Face)
+#   - AdcSR's halfDecoder.ckpt (Hugging Face)
+#   - a CC0 photo (Pixnio), only used as the exporters' sample image
+#
+# Runs on push to a branch that changes this file, or by hand once merged.
+
+on:
+  push:
+    paths:
+      - .github/workflows/aeic-ncnn-models.yml
+    branches-ignore:
+      - main
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the release (otherwise only an artifact listing)
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: aeic-ncnn-models
+  cancel-in-progress: false
+
+env:
+  AEIC_REPO: https://github.com/mikecarper/AEIC
+  AEIC_COMMIT: b00795ca709354f987e868f6b9e608961ec80831
+  RATE: ft2
+  SIZE: "512"
+  TAG: aeic-ncnn-ft2-512-v1
+  CKPT_SHA256: 519a0f935dc19fa7f8c5d4dd24df32c3d1c017f29834dd6a7bf68587b47a16a1
+  DRIVE_FOLDER: 1vioCW4EIxQiuLkWHKj7xbMi7WAVcWqJI
+  SAMPLE_URL: https://pixnio.com/free-images/2017/09/22/2017-09-22-08-14-44-1100x733.jpg
+  SAMPLE_SHA256: 206d4ef2885d0fc4a23aa066141c5a31aa415381446fa008a82c515f7577f275
+
+jobs:
+  export:
+    # "[no export]" in a commit message: change this file without a 30-minute
+    # re-export (to republish an existing export, see aeic-ncnn-publish.yml).
+    if: github.event_name != 'push' || !contains(github.event.head_commit.message, '[no export]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          df -h /
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Check out mikecarper/AEIC
+        run: |
+          git clone --quiet "$AEIC_REPO" aeic
+          git -C aeic checkout --quiet "$AEIC_COMMIT"
+
+      - name: Install exporter dependencies
+        run: |
+          python -m pip install --quiet torch==2.1.2 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install --quiet numpy==1.26.4 diffusers==0.25.1 peft==0.13.2 \
+            transformers==4.46.3 huggingface_hub==0.25.0 safetensors==0.8.0 \
+            scipy==1.15.3 Pillow==12.3.0 pnnx==20260526 gdown==5.2.0
+          which pnnx
+
+      - name: Build the original entropy coder
+        working-directory: aeic
+        run: |
+          cmake -S src/cpp -B build/entropy-host \
+            -DPYTHON_EXECUTABLE="$(which python)" \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+            -DCMAKE_CXX_FLAGS=-Wno-error=maybe-uninitialized
+          cmake --build build/entropy-host -j4
+          ls src/codec
+
+      - name: Fetch weights
+        working-directory: aeic
+        run: |
+          set -euo pipefail
+          mkdir -p weights inputs
+          # The authors' folder holds every rate point; take only ft2.
+          gdown --folder "https://drive.google.com/drive/folders/$DRIVE_FOLDER" -O drive --remaining-ok \
+            || gdown --folder "https://drive.google.com/drive/folders/$DRIVE_FOLDER" -O drive --remaining-ok
+          ckpt=$(find drive -name "AEIC_SE_${RATE}.pkl" | head -1)
+          test -n "$ckpt" || { echo "::error::AEIC_SE_${RATE}.pkl not in the Drive folder"; find drive; exit 1; }
+          mv "$ckpt" weights/
+          rm -rf drive
+          echo "$CKPT_SHA256  weights/AEIC_SE_${RATE}.pkl" | sha256sum -c
+          hf=https://huggingface.co
+          curl -fsSL -o weights/unet_config.json "$hf/stabilityai/sd-turbo/resolve/main/unet/config.json"
+          curl -fsSL -o weights/unet_fp16.safetensors "$hf/stabilityai/sd-turbo/resolve/main/unet/diffusion_pytorch_model.fp16.safetensors"
+          curl -fsSL -o weights/halfDecoder.ckpt "$hf/Guaishou74851/AdcSR/resolve/main/weight/pretrained/halfDecoder.ckpt"
+          curl -fsSL -o inputs/river.jpg "$SAMPLE_URL"
+          echo "$SAMPLE_SHA256  inputs/river.jpg" | sha256sum -c
+          sha256sum weights/*
+          python - <<'EOF'
+          import os
+          from PIL import Image, ImageOps
+          size = int(os.environ["SIZE"])
+          image = ImageOps.exif_transpose(Image.open("inputs/river.jpg")).convert("RGB")
+          scale = size / min(image.size)
+          dims = tuple(max(size, round(v * scale)) for v in image.size)
+          scaled = image.resize(dims, Image.Resampling.LANCZOS)
+          ImageOps.fit(scaled, (size, size), method=Image.Resampling.LANCZOS,
+                       centering=(0.5, 0.5)).save(f"inputs/river-{size}.png")
+          EOF
+
+      - name: Export codec (encoder, entropy, synthesis)
+        working-directory: aeic
+        run: |
+          python mobile/export_codec.py --checkpoint "weights/AEIC_SE_${RATE}.pkl" \
+            --output-dir "build/models/codec" --image "inputs/river-${SIZE}.png" \
+            --size "$SIZE" --threads 4 --include-encoder --pnnx "$(command -v pnnx)"
+          du -sh build/models/codec
+
+      - name: Export renderer
+        working-directory: aeic
+        run: |
+          python mobile/export_renderer.py \
+            --sd-unet-config weights/unet_config.json \
+            --sd-unet-weights weights/unet_fp16.safetensors \
+            --aeic-weights "weights/AEIC_SE_${RATE}.pkl" --vae-weights weights/halfDecoder.ckpt \
+            --output build/models/renderer --size "$SIZE" --threads 4 \
+            --l-t build/models/codec/l_T.f32 --residual build/models/codec/residual.f32 \
+            --pnnx "$(command -v pnnx)" --pnnx-timeout 5400
+          rm -f weights/unet_fp16.safetensors
+          du -sh build/models/renderer
+
+      - name: Collect the phone files and write the manifest
+        working-directory: aeic/build/models
+        run: |
+          python - <<'EOF'
+          import hashlib, json, os, pathlib, shutil
+          root = pathlib.Path(".")
+          out = pathlib.Path(os.environ["GITHUB_WORKSPACE"]) / "pack"
+          out.mkdir()
+          wanted = set()
+          for part, tsvs in (("codec", ("codec.tsv", "encoder.tsv", "metadata.tsv")),
+                             ("renderer", ("renderer.tsv",))):
+              for name in tsvs:
+                  tsv = root / part / name
+                  if not tsv.is_file():
+                      continue
+                  wanted.add(tsv)
+                  for row in tsv.read_text().splitlines():
+                      cols = row.split("\t")
+                      if cols[0] == "stage":
+                          wanted.add(root / part / cols[2])
+                          wanted.add(root / part / cols[3])
+          for name in ("z_cdf.bin", "y_cdf.bin", "z_medians.f32"):
+              wanted.add(root / "codec" / name)
+          # The sample stream and its CPU reference pixels: what the app's
+          # first-run self-test decodes and compares against.
+          for extra in ("codec/sample.aeic", "codec/input.ppm", "renderer/reference_rgb.f32"):
+              if (root / extra).is_file():
+                  wanted.add(root / extra)
+          files = []
+          for path in sorted(wanted):
+              if not path.is_file():
+                  raise SystemExit(f"missing {path}")
+              rel = path.as_posix()
+              asset = rel.replace("/", "__")
+              digest = hashlib.sha256(path.read_bytes()).hexdigest()
+              shutil.copy2(path, out / asset)
+              files.append({"path": rel, "asset": asset, "size": path.stat().st_size, "sha256": digest})
+          manifest = {
+              "format": 1, "codec": "AEIC-SE", "rate": os.environ["RATE"],
+              "size": int(os.environ["SIZE"]), "runtime": "ncnn",
+              "aeic_commit": os.environ["AEIC_COMMIT"],
+              "checkpoint_sha256": os.environ["CKPT_SHA256"],
+              "files": files,
+          }
+          (out / "manifest.json").write_text(json.dumps(manifest, indent=1))
+          total = sum(f["size"] for f in files)
+          print(f"{len(files)} files, {total / 2**30:.2f} GiB")
+          big = [f for f in files if f["size"] >= 2**31]
+          if big:
+              raise SystemExit(f"over GitHub's 2 GiB asset limit: {big}")
+          EOF
+          ls -la "$GITHUB_WORKSPACE/pack" | head -80
+          { echo "### AEIC ncnn pack"; echo; echo '```'; ls -la "$GITHUB_WORKSPACE/pack"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the export logs and manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aeic-ncnn-export-logs
+          path: |
+            aeic/build/models/**/*.json
+            aeic/build/models/**/*.log
+            pack/manifest.json
+          if-no-files-found: warn
+
+      - name: Keep the pack for the publish job
+        uses: actions/upload-artifact@v4
+        with:
+          name: aeic-ncnn-pack
+          path: pack/
+          retention-days: 3
+          compression-level: 0
+
+  # Separate so a failed upload can be re-run without re-exporting.
+  publish:
+    needs: export
+    if: github.event_name == 'push' || inputs.publish
+    uses: ./.github/workflows/aeic-ncnn-publish.yml
+    with:
+      run_id: ${{ github.run_id }}

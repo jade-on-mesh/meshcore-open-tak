@@ -15,6 +15,8 @@ on:
       - ".github/workflows/vox-image-compare.yml"
       - ".github/workflows/vox-fetch-compressai.yml"
       - ".github/workflows/vox-fetch-aom.yml"
+      - ".github/workflows/aeic-ncnn-models.yml"
+      - ".github/workflows/aeic-hd-native.yml"
   workflow_dispatch:
 
 # MeshCore Open TAK builds Android only. A newer push cancels an older,
@@ -89,6 +91,25 @@ jobs:
           cp /tmp/aom-build/libaom.a "$OUT/lib/"
           cp /tmp/aom/aom/*.h "$OUT/include/aom/"
           ls -la "$OUT/lib"
+      # AEIC HD photos: mikecarper/AEIC's ncnn codec program, shipped in
+      # jniLibs (tool/build_aeic_hd_android.sh explains why it is a .so).
+      - name: Cache AEIC HD codec (Android)
+        id: aeichdcache
+        uses: actions/cache@v4
+        with:
+          path: third_party/aeic-hd-android
+          key: aeic-hd-android-${{ hashFiles('tool/build_aeic_hd_android.sh') }}
+      - name: Build AEIC HD codec for Android
+        if: steps.aeichdcache.outputs.cache-hit != 'true'
+        timeout-minutes: 30
+        run: |
+          set -euo pipefail
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;29.0.14206865" >/dev/null
+          bash tool/build_aeic_hd_android.sh "$ANDROID_HOME/ndk/29.0.14206865" third_party/aeic-hd-android/arm64-v8a
+      - name: Add AEIC HD codec to jniLibs
+        run: |
+          mkdir -p android/app/src/main/jniLibs/arm64-v8a
+          cp third_party/aeic-hd-android/arm64-v8a/libaeic_codec_exec.so android/app/src/main/jniLibs/arm64-v8a/
       - run: flutter pub get
       - name: Release signing key
         env:
@@ -118,11 +139,12 @@ jobs:
         run: |
           unzip -l build/app/outputs/flutter-apk/app-release.apk > /tmp/apk.txt
           for f in lib/arm64-v8a/libvox_av1.so lib/arm64-v8a/libcodec2.so \
+                   lib/arm64-v8a/libaeic_codec_exec.so \
                    assets/flutter_assets/assets/vox/face_yunet_2023mar.onnx \
                    assets/flutter_assets/assets/vox/text_ppocrv3_det.onnx; do
             grep -q "$f" /tmp/apk.txt || { echo "missing from APK: $f"; exit 1; }
           done
-          grep -E "libvox_av1|libcodec2|assets/vox" /tmp/apk.txt
+          grep -E "libvox_av1|libcodec2|libaeic_codec_exec|assets/vox" /tmp/apk.txt
           ls -la build/app/outputs/flutter-apk/app-release.apk
           echo "Largest entries:"
           sort -k1 -n -r /tmp/apk.txt | head -15

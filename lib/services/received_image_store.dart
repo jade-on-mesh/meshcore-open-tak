@@ -915,7 +915,8 @@ class ReceivedImageStore extends ChangeNotifier {
     // `reassembled` would end in an endless "corrupt, retry" loop. Treat them
     // like an undecodable metadata byte: nothing to retry, no bytes kept.
     if (metadata != null &&
-        (metadata.rate != ImageCodecRatePoint.standard ||
+        ((metadata.rate != ImageCodecRatePoint.standard &&
+                metadata.rate != ImageCodecRatePoint.hd) ||
             metadata.squareSize != kImageCodecSquareSize)) {
       _queue.remove(entry.streamId);
       return _store(

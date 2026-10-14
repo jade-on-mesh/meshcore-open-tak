@@ -268,15 +268,25 @@ void main() {
       expect(AeicRatePoint.ft2.label, 'ft2');
     });
 
-    test('ft32 is the only shipping rate point', () {
+    test('ft32 is the only ONNX rate point; hd is ft2 on ncnn', () {
       expect(kShippingAeicRatePoint, AeicRatePoint.ft32);
-      // ft16 was dropped: 2-3 data chunks with 79 B of headroom. The UI mapping
-      // is constant now, so no selector value can reach another checkpoint.
+      // ft16 was dropped: 2-3 data chunks with 79 B of headroom. Every UI
+      // rate but AI sketch HD maps to the ONNX checkpoint.
       for (final rate in ImageCodecRatePoint.values) {
-        expect(aeicRatePointForUi(rate), AeicRatePoint.ft32);
+        expect(
+          aeicRatePointForUi(rate),
+          rate == ImageCodecRatePoint.hd
+              ? AeicRatePoint.ft2
+              : AeicRatePoint.ft32,
+        );
       }
       for (final rate in AeicRatePoint.values) {
-        expect(uiRatePointForAeic(rate), ImageCodecRatePoint.standard);
+        expect(
+          uiRatePointForAeic(rate),
+          rate == AeicRatePoint.ft2
+              ? ImageCodecRatePoint.hd
+              : ImageCodecRatePoint.standard,
+        );
       }
     });
 

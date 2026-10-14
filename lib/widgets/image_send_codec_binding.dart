@@ -50,6 +50,10 @@ enum ImageCodecRatePoint {
   /// registry ships ft32 weights only. Retained so the ordinal stays reserved
   /// and so bitstreams produced elsewhere can still be identified on the wire.
   high,
+
+  /// `ft2` on ncnn — MeshCore Open TAK's "AI sketch HD" (lib/vox/aeic_hd_service.dart).
+  /// About 1-2 KB. Decoded by AeicHdService, not the ONNX codec.
+  hd,
 }
 
 /// The single rate point the compose UI encodes at.
@@ -88,12 +92,22 @@ class ImageCodecRateStats {
     maxBytes: 409,
   );
 
+  /// AI sketch HD (ft2). One measured photo was 1,351 B; the ceiling is what
+  /// 15 data chunks carry.
+  static const ImageCodecRateStats hd = ImageCodecRateStats(
+    meanBytes: 1350,
+    minBytes: 400,
+    maxBytes: 2369,
+  );
+
   static ImageCodecRateStats forRate(ImageCodecRatePoint rate) {
     switch (rate) {
       case ImageCodecRatePoint.standard:
         return standard;
       case ImageCodecRatePoint.high:
         return high;
+      case ImageCodecRatePoint.hd:
+        return hd;
     }
   }
 }

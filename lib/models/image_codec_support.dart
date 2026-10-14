@@ -138,12 +138,14 @@ AeicRatePoint parseAeicRatePoint(int wireValue) {
 /// this file never names an [ImageCodecRatePoint] member — that enum is owned by
 /// `image_send_codec_binding.dart` and its membership is the UI's to shrink.
 AeicRatePoint aeicRatePointForUi(ImageCodecRatePoint rate) =>
-    kShippingAeicRatePoint;
+    rate == ImageCodecRatePoint.hd ? AeicRatePoint.ft2 : kShippingAeicRatePoint;
 
 /// Inverse of [aeicRatePointForUi]. Constant for the same reason: every rate
 /// point this build can produce is the standard one.
 ImageCodecRatePoint uiRatePointForAeic(AeicRatePoint rate) =>
-    ImageCodecRatePoint.standard;
+    rate == AeicRatePoint.ft2
+    ? ImageCodecRatePoint.hd
+    : ImageCodecRatePoint.standard;
 
 /// Bundle layout revision written into [ImageCodecModelRecord.bundleVersion].
 ///

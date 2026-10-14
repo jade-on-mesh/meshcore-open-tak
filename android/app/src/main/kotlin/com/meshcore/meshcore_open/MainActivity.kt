@@ -10,6 +10,7 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         usbFunctions.configureFlutterEngine(flutterEngine)
         TakBridgeHub.attach(flutterEngine)
+        AeicHdChannel.attach(applicationContext, flutterEngine)
     }
 
     override fun onDestroy() {

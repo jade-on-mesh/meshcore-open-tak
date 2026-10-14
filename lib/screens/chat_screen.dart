@@ -65,6 +65,7 @@ import '../theme/mesh_theme.dart';
 import '../widgets/future_timestamp_indicator.dart';
 import '../widgets/mesh_ui.dart';
 import 'telemetry_screen.dart';
+import '../vox/aeic_hd_screens.dart';
 import '../vox/image_send_sheet.dart';
 import '../vox/voice_message_bubble.dart';
 import '../vox/voice_record_sheet.dart';
@@ -732,6 +733,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       ),
                   send: (bytes, fileBytes) =>
                       _sendOtpAiSketch(connector, bytes, fileBytes),
+                  sendHd: (bytes, _) => _sendOtpAiSketchHd(connector, bytes),
                 )
               : null,
           recipientLabel: _resolveContact(connector).name,
@@ -884,6 +886,22 @@ class _ChatScreenState extends State<ChatScreen> {
     );
     if (result == null) return; // cancelled at the preview
     if (!mounted) return;
+    await _sendOtpImage(connector, contact, result, sourceBytes: sourceBytes);
+  }
+
+  /// AI sketch HD to this contact (lib/vox/aeic_hd_service.dart): encoded by
+  /// the ncnn codec, then sent like any other OTP image.
+  Future<void> _sendOtpAiSketchHd(
+    MeshCoreConnector connector,
+    Uint8List sourceBytes,
+  ) async {
+    final contact = _resolveContact(connector);
+    final result = await showAeicHdSendSheet(
+      context,
+      imageBytes: sourceBytes,
+      parity: false,
+    );
+    if (result == null || !mounted) return;
     await _sendOtpImage(connector, contact, result, sourceBytes: sourceBytes);
   }
 

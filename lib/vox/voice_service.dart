@@ -187,6 +187,21 @@ class VoxVoiceService extends ChangeNotifier {
 
   static const _kPhotoAiSketch = 'vox_photo_ai_sketch';
   bool _photoAiSketch = false;
+  static const _kPhotoAiSketchHd = 'vox_photo_ai_sketch_hd';
+  bool _photoAiSketchHd = false;
+
+  /// With [photoAiSketch]: the HD kind (AEIC ft2 on ncnn, ~1.4 KB,
+  /// lib/vox/aeic_hd_service.dart) rather than the ~150 B one.
+  bool get photoAiSketchHd => _photoAiSketchHd;
+
+  Future<void> setPhotoAiSketchHd(bool v) async {
+    _photoAiSketchHd = v;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kPhotoAiSketchHd, v);
+    } catch (_) {}
+  }
 
   /// Send photos as an AI sketch (AEIC, ~150 B) instead of a VOX photo
   /// (AV1, real pixels). Off by default: VOX is the default.
@@ -252,6 +267,7 @@ class VoxVoiceService extends ChangeNotifier {
       _forcedRepeaterKeys = prefs.getStringList(_kForceRouteKeys) ?? const [];
       _preferMimi = prefs.getBool(_kPreferMimi) ?? true;
       _photoAiSketch = prefs.getBool(_kPhotoAiSketch) ?? false;
+      _photoAiSketchHd = prefs.getBool(_kPhotoAiSketchHd) ?? false;
       _codec2Targets = (prefs.getStringList(_kCodec2Targets) ?? const [])
           .toSet();
       _autoPlay = prefs.getBool(_kAutoPlay) ?? true;
