@@ -10,7 +10,8 @@ import 'package:record/record.dart';
 
 import 'mimi.dart';
 import 'resample.dart';
-import 'voice_message_bubble.dart' show showVoxVoiceLog;
+import 'voice_message_bubble.dart'
+    show VoxCodec2QualityPicker, showVoxVoiceLog;
 import 'voice_service.dart';
 
 /// Mic button for a chat composer. Hidden when no voice codec is available.
@@ -305,6 +306,20 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
                         }
                       }
                     : null,
+              ),
+            if (mode.isCodec2)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: VoxCodec2QualityPicker(
+                  service: voice,
+                  enabled: _phase == _Phase.idle || _phase == _Phase.recorded,
+                  onChanged: (_) async {
+                    if (_clip != null && mounted) {
+                      _previewWav = null;
+                      await _encode();
+                    }
+                  },
+                ),
               ),
             const SizedBox(height: 12),
             Text(

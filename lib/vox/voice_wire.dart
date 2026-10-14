@@ -100,8 +100,19 @@ enum VoxVoiceMode {
   }
 }
 
-/// The mode VOX records in. 1200 bps keeps a 10 s clip to 10 packets.
+/// The Codec2 mode VOX records in unless the user picks another. 1200 bps
+/// keeps a 10 s clip to 10 packets.
 const VoxVoiceMode voxDefaultVoiceMode = VoxVoiceMode.mode1200;
+
+/// The Codec2 modes the user can record in (Voice settings), the same three
+/// Wadamesh offers on a T-Deck (Settings > Sound). 1600 uses a third more
+/// airtime than 1200, 3200 about 2.7 times as much; every VE3 app plays all
+/// three.
+const List<VoxVoiceMode> voxCodec2RecordModes = [
+  VoxVoiceMode.mode1200,
+  VoxVoiceMode.mode1600,
+  VoxVoiceMode.mode3200,
+];
 
 /// Codec2 payload budget per raw packet. A raw push frame is at most 172
 /// bytes: 4 bytes of push header + 6 bytes of voice header leaves 162; 156 is

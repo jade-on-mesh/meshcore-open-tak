@@ -316,6 +316,7 @@ void showVoxVoiceLog(BuildContext context, VoxVoiceService service) {
                   ),
                   const Divider(height: 1),
                   VoxMimiTile(service: service),
+                  VoxCodec2QualityTile(service: service),
                   VoxAutoPlayTile(service: service),
                   VoxForcedRouteTile(service: service),
                   ListTile(
@@ -561,6 +562,73 @@ Future<List<String>?> pickVoxRepeaters(
       ),
     ),
   );
+}
+
+/// The Codec2 rate: 1200 / 1600 / 3200 ([voxCodec2RecordModes]).
+class VoxCodec2QualityPicker extends StatelessWidget {
+  final VoxVoiceService service;
+
+  /// Called after the rate changes (the record sheet re-encodes its clip).
+  final ValueChanged<VoxVoiceMode>? onChanged;
+  final bool enabled;
+
+  const VoxCodec2QualityPicker({
+    super.key,
+    required this.service,
+    this.onChanged,
+    this.enabled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: service,
+      builder: (context, _) => SegmentedButton<VoxVoiceMode>(
+        showSelectedIcon: false,
+        segments: [
+          for (final m in voxCodec2RecordModes)
+            ButtonSegment(value: m, label: Text(m.label)),
+        ],
+        selected: {service.codec2Mode},
+        onSelectionChanged: enabled
+            ? (s) async {
+                await service.setCodec2Mode(s.first);
+                onChanged?.call(s.first);
+              }
+            : null,
+      ),
+    );
+  }
+}
+
+/// Voice settings: the Codec2 rate, with what each costs.
+class VoxCodec2QualityTile extends StatelessWidget {
+  final VoxVoiceService service;
+  const VoxCodec2QualityTile({super.key, required this.service});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.record_voice_over_outlined),
+      title: const Text('Codec2 quality (bps)'),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            VoxCodec2QualityPicker(service: service),
+            const SizedBox(height: 6),
+            const Text(
+              'For clips sent as Codec2. Higher is clearer but takes longer '
+              'to send: 1600 uses a third more airtime than 1200, 3200 '
+              'nearly three times as much. Every VE3 app, and Wadamesh on a '
+              'T-Deck, plays all three.',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// Mimi voice model: download / progress / ready, and the send preference.
