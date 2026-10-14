@@ -203,16 +203,55 @@ jobs:
             pack/manifest.json
           if-no-files-found: warn
 
+      - name: Keep the pack for the publish job
+        uses: actions/upload-artifact@v4
+        with:
+          name: aeic-ncnn-pack
+          path: pack/
+          retention-days: 3
+          compression-level: 0
+
+  # Separate so a failed upload can be re-run without re-exporting.
+  publish:
+    needs: export
+    if: github.event_name == 'push' || inputs.publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: aeic-ncnn-pack
+          path: pack
+      - name: Summarise the pack
+        run: |
+          python3 - <<'EOF'
+          import json
+          m = json.load(open("pack/manifest.json"))
+          total = sum(f["size"] for f in m["files"])
+          print(f"::notice::{len(m['files'])} files, {total / 2**30:.2f} GiB")
+          for f in sorted(m["files"], key=lambda f: -f["size"])[:8]:
+              print(f"::notice::{f['size']} {f['path']}")
+          EOF
       - name: Publish release
-        if: github.event_name == 'push' || inputs.publish
         env:
           GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
         run: |
-          set -euo pipefail
-          notes="AEIC-SE ${RATE} model pack for ncnn at ${SIZE} px, used by the AEIC HD photo option. Exported by .github/workflows/aeic-ncnn-models.yml from mikecarper/AEIC@${AEIC_COMMIT:0:7}. Not an app release."
-          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$TAG" pack/* --clobber -R "$GITHUB_REPOSITORY"
-          else
-            gh release create "$TAG" pack/* -R "$GITHUB_REPOSITORY" --prerelease \
-              --title "AEIC HD model pack (${RATE}, ${SIZE} px)" --notes "$notes"
+          set -uo pipefail
+          notes="AEIC-SE ${RATE} model pack for ncnn at ${SIZE} px, used by the AI sketch HD photo option. Exported by .github/workflows/aeic-ncnn-models.yml from mikecarper/AEIC@${AEIC_COMMIT:0:7}. Not an app release."
+          if ! gh release view "$TAG" -R "$REPO" >/dev/null 2>&1; then
+            out=$(gh release create "$TAG" -R "$REPO" --prerelease --latest=false \
+                    --title "AI sketch HD model pack (${RATE}, ${SIZE} px)" --notes "$notes" 2>&1) \
+              || { echo "::error::create release: $(echo "$out" | tr '\n' ' ')"; exit 1; }
           fi
+          failed=0
+          for f in pack/*; do
+            ok=0
+            for attempt in 1 2 3 4; do
+              if out=$(gh release upload "$TAG" "$f" --clobber -R "$REPO" 2>&1); then ok=1; break; fi
+              echo "::warning::upload $(basename "$f") attempt $attempt: $(echo "$out" | tail -3 | tr '\n' ' ')"
+              sleep $((attempt * 15))
+            done
+            [ $ok = 1 ] || { echo "::error::could not upload $(basename "$f")"; failed=1; }
+          done
+          exit $failed
