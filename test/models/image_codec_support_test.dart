@@ -275,7 +275,9 @@ void main() {
       for (final rate in ImageCodecRatePoint.values) {
         expect(
           aeicRatePointForUi(rate),
-          rate == ImageCodecRatePoint.hd ? AeicRatePoint.ft2 : AeicRatePoint.ft32,
+          rate == ImageCodecRatePoint.hd
+              ? AeicRatePoint.ft2
+              : AeicRatePoint.ft32,
         );
       }
       for (final rate in AeicRatePoint.values) {

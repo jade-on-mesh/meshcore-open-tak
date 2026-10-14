@@ -52,7 +52,9 @@ class AeicHdRunner {
 
   Future<Directory> _packDir() async {
     final support = await getApplicationSupportDirectory();
-    return Directory('${support.path}/aeic_hd/${Uri.parse(baseUrl).pathSegments.where((s) => s.isNotEmpty).last}');
+    return Directory(
+      '${support.path}/aeic_hd/${Uri.parse(baseUrl).pathSegments.where((s) => s.isNotEmpty).last}',
+    );
   }
 
   Future<File> get _completeMarker async =>
@@ -99,15 +101,14 @@ class AeicHdRunner {
         Uri.parse('${baseUrl}manifest.json'),
       );
       if (manifestResponse.statusCode != 200) {
-        throw HttpException(
-          'model list: HTTP ${manifestResponse.statusCode}',
-        );
+        throw HttpException('model list: HTTP ${manifestResponse.statusCode}');
       }
       final manifest =
           jsonDecode(utf8.decode(manifestResponse.bodyBytes))
               as Map<String, dynamic>;
       final files = [
-        for (final f in (manifest['files'] as List).cast<Map<String, dynamic>>())
+        for (final f
+            in (manifest['files'] as List).cast<Map<String, dynamic>>())
           _PackFile(
             // The program reads one flat directory (as mikecarper's
             // push_models.py lays it out), so keep just the file name.
@@ -174,8 +175,7 @@ class AeicHdRunner {
           final response = await client.send(request);
           if (response.statusCode == 200 && have > 0) {
             have = 0; // server ignored the range: start over
-          } else if (response.statusCode != 200 &&
-              response.statusCode != 206) {
+          } else if (response.statusCode != 200 && response.statusCode != 206) {
             throw HttpException('${f.name}: HTTP ${response.statusCode}');
           }
           final sink = part.openWrite(
@@ -237,17 +237,22 @@ class AeicHdRunner {
       final stages =
           await _stageCount(dir, 'encoder.tsv') +
           await _stageCount(dir, 'codec.tsv', only: _contextStage);
-      await _run([
-        '--encode',
-        '--model-dir',
-        dir.path,
-        '--input',
-        input.path,
-        '--bitstream-output',
-        output.path,
-        '--threads',
-        '$_threads',
-      ], 'ENCODE_COMPLETE', stages, onProgress);
+      await _run(
+        [
+          '--encode',
+          '--model-dir',
+          dir.path,
+          '--input',
+          input.path,
+          '--bitstream-output',
+          output.path,
+          '--threads',
+          '$_threads',
+        ],
+        'ENCODE_COMPLETE',
+        stages,
+        onProgress,
+      );
       final stream = await output.readAsBytes();
       return _stripHeader(stream);
     } finally {
@@ -275,16 +280,21 @@ class AeicHdRunner {
       final stages =
           await _stageCount(dir, 'codec.tsv') +
           await _stageCount(dir, 'renderer.tsv');
-      await _run([
-        '--model-dir',
-        dir.path,
-        '--bitstream',
-        input.path,
-        '--output',
-        output.path,
-        '--threads',
-        '$_threads',
-      ], 'DECODE_COMPLETE', stages, onProgress);
+      await _run(
+        [
+          '--model-dir',
+          dir.path,
+          '--bitstream',
+          input.path,
+          '--output',
+          output.path,
+          '--threads',
+          '$_threads',
+        ],
+        'DECODE_COMPLETE',
+        stages,
+        onProgress,
+      );
       return await output.readAsBytes();
     } finally {
       await work.delete(recursive: true);
@@ -312,8 +322,15 @@ class AeicHdRunner {
           await _stageCount(dir, 'codec.tsv', only: _contextStage);
       await _run(
         [
-          '--encode', '--model-dir', dir.path, '--input', input.path,
-          '--bitstream-output', encoded.path, '--threads', '$_threads',
+          '--encode',
+          '--model-dir',
+          dir.path,
+          '--input',
+          input.path,
+          '--bitstream-output',
+          encoded.path,
+          '--threads',
+          '$_threads',
         ],
         'ENCODE_COMPLETE',
         encodeStages,
@@ -337,8 +354,14 @@ class AeicHdRunner {
       final watch = Stopwatch()..start();
       await _run(
         [
-          '--model-dir', dir.path, '--bitstream', sample.path,
-          '--output', decoded.path, '--threads', '$_threads',
+          '--model-dir',
+          dir.path,
+          '--bitstream',
+          sample.path,
+          '--output',
+          decoded.path,
+          '--threads',
+          '$_threads',
         ],
         'DECODE_COMPLETE',
         decodeStages,
@@ -352,9 +375,10 @@ class AeicHdRunner {
           await reference.readAsBytes(),
         );
         if (psnr != null) {
-          quality = ' The decoded picture is ${psnr.toStringAsFixed(1)} dB '
+          quality =
+              ' The decoded picture is ${psnr.toStringAsFixed(1)} dB '
               'from the reference${psnr < 35 ? ', which is too far off: '
-                  'something is wrong' : ''}.';
+                        'something is wrong' : ''}.';
           if (psnr < 35) return 'FAILED:$quality';
         }
       }
@@ -391,7 +415,8 @@ class AeicHdRunner {
     _process?.kill(ProcessSignal.sigkill);
   }
 
-  static int get _threads => math.max(1, math.min(4, Platform.numberOfProcessors));
+  static int get _threads =>
+      math.max(1, math.min(4, Platform.numberOfProcessors));
 
   static bool _contextStage(String name) =>
       name == 'h_s' || name.startsWith('ctx');
@@ -425,7 +450,9 @@ class AeicHdRunner {
     var n = 0;
     for (final line in await f.readAsLines()) {
       final cols = line.split('\t');
-      if (cols.length > 1 && cols[0] == 'stage' && (only?.call(cols[1]) ?? true)) {
+      if (cols.length > 1 &&
+          cols[0] == 'stage' &&
+          (only?.call(cols[1]) ?? true)) {
         n++;
       }
     }

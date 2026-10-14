@@ -27,8 +27,7 @@ import 'package:flutter/foundation.dart';
 import '../models/image_codec_support.dart';
 import '../services/received_image_store.dart';
 import '../widgets/image_send_codec_binding.dart';
-import 'aeic_hd_runner_stub.dart'
-    if (dart.library.io) 'aeic_hd_runner_io.dart';
+import 'aeic_hd_runner_stub.dart' if (dart.library.io) 'aeic_hd_runner_io.dart';
 
 /// Where the model pack is published.
 const String kAeicHdPackTag = 'aeic-ncnn-ft2-512-v1';
@@ -245,9 +244,8 @@ class AeicHdRoutingDecoder implements ReceivedImageDecoder {
   }
 
   @override
-  ImageCodecAvailability get availability => hd.isReady
-      ? ImageCodecAvailability.ready
-      : inner.availability;
+  ImageCodecAvailability get availability =>
+      hd.isReady ? ImageCodecAvailability.ready : inner.availability;
 
   @override
   bool get isBusy => inner.isBusy || hd.isBusy;

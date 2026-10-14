@@ -20,9 +20,9 @@ String _mb(int bytes) => '${(bytes / (1024 * 1024)).round()} MB';
 class AeicHdScreen extends StatelessWidget {
   const AeicHdScreen({super.key});
 
-  static Future<void> open(BuildContext context) => Navigator.of(context).push(
-    MaterialPageRoute<void>(builder: (_) => const AeicHdScreen()),
-  );
+  static Future<void> open(BuildContext context) => Navigator.of(
+    context,
+  ).push(MaterialPageRoute<void>(builder: (_) => const AeicHdScreen()));
 
   @override
   Widget build(BuildContext context) {
@@ -349,10 +349,7 @@ class _AeicHdSendSheetState extends State<_AeicHdSendSheet> {
             ),
             const SizedBox(height: 12),
             if (_error != null)
-              Text(
-                _error!,
-                style: TextStyle(color: theme.colorScheme.error),
-              )
+              Text(_error!, style: TextStyle(color: theme.colorScheme.error))
             else if (payload == null)
               ListenableBuilder(
                 listenable: hd,
@@ -419,9 +416,7 @@ Future<Uint8List> _square512Rgb(Uint8List imageBytes) async {
     targetHeight: 512,
   );
   final frame = await codec.getNextFrame();
-  final data = await frame.image.toByteData(
-    format: ui.ImageByteFormat.rawRgba,
-  );
+  final data = await frame.image.toByteData(format: ui.ImageByteFormat.rawRgba);
   frame.image.dispose();
   codec.dispose();
   if (data == null) throw StateError('couldn\'t read the photo');
