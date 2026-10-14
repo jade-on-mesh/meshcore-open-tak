@@ -172,6 +172,7 @@ class WatchTab extends StatefulWidget {
 class _WatchTabState extends State<WatchTab> {
   String? _channel; // null = all
   final Set<WatchLevel> _levels = {};
+  bool _quakesOnly = false;
   final Set<String> _expanded = {};
   final _scroll = ScrollController();
   final _focusCard = GlobalKey();
@@ -328,7 +329,8 @@ class _WatchTabState extends State<WatchTab> {
     final items = [
       for (final i in all)
         if ((_channel == null || i.channel.name == _channel) &&
-            (_levels.isEmpty || _levels.contains(i.level)))
+            (_levels.isEmpty || _levels.contains(i.level)) &&
+            (!_quakesOnly || i.isQuake))
           i,
     ];
     if (_focusPending) {
@@ -397,6 +399,13 @@ class _WatchTabState extends State<WatchTab> {
                 ),
                 const SizedBox(width: 6),
               ],
+              if (all.any((i) => i.isQuake))
+                FilterChip(
+                  avatar: const Icon(Icons.waves, size: 16),
+                  label: Text('Quakes ${all.where((i) => i.isQuake).length}'),
+                  selected: _quakesOnly,
+                  onSelected: (sel) => setState(() => _quakesOnly = sel),
+                ),
             ],
           ),
         ),

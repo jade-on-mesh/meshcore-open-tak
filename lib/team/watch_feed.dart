@@ -66,6 +66,9 @@ class WatchItem {
   /// Direction of travel the sender reported, in degrees, if any.
   final double? bearing;
 
+  /// An earthquake report's magnitude ("Earthquake M3.9 …"), else null.
+  final double? magnitude;
+
   const WatchItem({
     required this.channel,
     required this.message,
@@ -85,6 +88,7 @@ class WatchItem {
     this.trackId,
     this.detail,
     this.bearing,
+    this.magnitude,
   });
 
   bool get hasSecondPosition => lat2 != null && lon2 != null;
@@ -93,6 +97,19 @@ class WatchItem {
   /// channel (#icewatch, or anything IceBot posts), else the channel's name.
   String get mapTag => watchMapTag(channel.name, message.senderName);
   bool get isDrone => trackId?.startsWith('DRONE') ?? false;
+  bool get isQuake => magnitude != null;
+
+  /// What the map writes beside a report's dot: "QUAKE M3.9 Castle Rock",
+  /// "ICE Portland NE …", "#channel place".
+  String get mapLabel {
+    if (isQuake) {
+      final p = place ?? '';
+      final of = p.toLowerCase().lastIndexOf(' of ');
+      final town = (of >= 0 ? p.substring(of + 4) : p).split(',').first.trim();
+      return 'QUAKE M${magnitude!.toStringAsFixed(1)} $town'.trim();
+    }
+    return '$mapTag ${place ?? statusWord ?? ''}'.trim();
+  }
 
   /// The map's label for a drone: "DRONE 1581F9DE h251m 1m/s 045° NE" (the
   /// first 8 letters and digits of its serial, then height, speed and
@@ -137,6 +154,7 @@ class WatchItem {
     trackId: trackId,
     detail: detail,
     bearing: bearing,
+    magnitude: magnitude,
   );
 
   bool get isStructured =>
@@ -167,6 +185,140 @@ final _whenRe = RegExp(r'^\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2}$');
 final _countRe = RegExp(r'(\d+)\s*-\s*([^\s\d]+)');
 final _urlRe = RegExp(r'https?://\S+');
 final _coordRe = RegExp(r'(-?\d{1,2}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})');
+// Other ways bots write a position:
+//   "46.22N 122.60W", "46.22° N, 122.60° W" (hemisphere after)
+final _hemiRe = RegExp(
+  r'(?<![\d.])(\d{1,2}(?:\.\d+)?)\s*°?\s*([NSns])(?![A-Za-z])[\s,;/]*'
+  r'(\d{1,3}(?:\.\d+)?)\s*°?\s*([EWew])(?![A-Za-z])',
+);
+//   "N46.22 W122.60" (hemisphere before)
+final _hemiPreRe = RegExp(
+  r'(?<![A-Za-z])([NSns])\s*(\d{1,2}(?:\.\d+)?)°?[\s,;/]+'
+  r'([EWew])\s*(\d{1,3}(?:\.\d+)?)°?(?![\d.])',
+);
+//   "lat 45.52 lon -122.68", "lat: 45.5, lng: -122.6", "latitude=… longitude=…"
+final _latLonWordRe = RegExp(
+  r'\blat(?:itude)?\s*[:=]?\s*(-?\d{1,2}(?:\.\d+)?)[^\d\n-]{1,12}?'
+  r'\b(?:lon|lng|long|longitude)\s*[:=]?\s*(-?\d{1,3}(?:\.\d+)?)',
+  caseSensitive: false,
+);
+//   "45.5625 -122.6108" (two plain decimals, 4+ places each)
+final _spaceCoordRe = RegExp(
+  r'(?<![\d.])(-?\d{1,2}\.\d{4,})\s+(-?\d{1,3}\.\d{4,})(?![\d.])',
+);
+
+//   45°31'30"N 122°40'30"W, 45° 31.5' N 122° 40.5' W, 45d31m30sN (DMS / DDM)
+const _dmsOne =
+    r'(\d{1,3}(?:\.\d+)?)\s*(?:°|d)\s*(?:(\d{1,2}(?:\.\d+)?)\s*(?:\x27|′|m)\s*'
+    r'(?:(\d{1,2}(?:\.\d+)?)\s*(?:"|″|\x27\x27|s)\s*)?)?';
+final _dmsRe = RegExp(
+  '(?<![\\d.])$_dmsOne([NSns])(?![A-Za-z])[\\s,;/]*$_dmsOne([EWew])(?![A-Za-z])',
+);
+//   Maidenhead: CN85pm, CN85pm42 (any case); a 4-character square (CN85) only
+//   after "grid" / "locator" / "loc".
+final _maidenheadRe = RegExp(
+  r'(?<![A-Za-z0-9_])([A-Ra-r]{2}\d{2})(?:([A-Xa-x]{2})(\d{2})?)?(?![A-Za-z0-9_])',
+);
+final _gridCueRe = RegExp(
+  r'\b(?:grid|locator|loc)\s*[:=]?\s*$',
+  caseSensitive: false,
+);
+
+/// The middle of a Maidenhead square: "CN85pm" -> 45.521, -122.708.
+(double, double)? maidenheadCenter(String loc) {
+  final s = loc.toUpperCase();
+  if (s.length < 4 || s.length.isOdd || s.length > 8) return null;
+  final a = s.codeUnitAt(0) - 65, b = s.codeUnitAt(1) - 65;
+  if (a < 0 || a > 17 || b < 0 || b > 17) return null;
+  var lon = a * 20.0 - 180 + int.parse(s[2]) * 2;
+  var lat = b * 10.0 - 90 + int.parse(s[3]);
+  var w = 2.0, h = 1.0;
+  if (s.length >= 6) {
+    final c = s.codeUnitAt(4) - 65, d = s.codeUnitAt(5) - 65;
+    if (c < 0 || c > 23 || d < 0 || d > 23) return null;
+    w = 2 / 24;
+    h = 1 / 24;
+    lon += c * w;
+    lat += d * h;
+    if (s.length == 8) {
+      w /= 10;
+      h /= 10;
+      lon += int.parse(s[6]) * w;
+      lat += int.parse(s[7]) * h;
+    }
+  }
+  return (lat + h / 2, lon + w / 2);
+}
+
+/// Every position written in [text], in order, as (start, end, lat, lon):
+/// the comma form first, then the others where they don't overlap it.
+List<(int, int, double, double)> watchPositions(String text) {
+  final out = <(int, int, double, double)>[];
+  bool free(int s, int e) => !out.any((o) => s < o.$2 && e > o.$1);
+  void add(int s, int e, double? la, double? lo) {
+    if (la == null || lo == null || la.abs() > 90 || lo.abs() > 180) return;
+    if (free(s, e)) out.add((s, e, la, lo));
+  }
+
+  for (final m in _coordRe.allMatches(text)) {
+    add(m.start, m.end, double.tryParse(m[1]!), double.tryParse(m[2]!));
+  }
+  double? signed(String n, String h) {
+    final v = double.tryParse(n);
+    if (v == null) return null;
+    return 'SWsw'.contains(h) ? -v : v;
+  }
+
+  double? dms(String? d, String? m, String? s, String h) {
+    final deg = double.tryParse(d ?? '');
+    if (deg == null) return null;
+    final v =
+        deg +
+        (double.tryParse(m ?? '') ?? 0) / 60 +
+        (double.tryParse(s ?? '') ?? 0) / 3600;
+    return 'SWsw'.contains(h) ? -v : v;
+  }
+
+  for (final m in _dmsRe.allMatches(text)) {
+    add(
+      m.start,
+      m.end,
+      dms(m[1], m[2], m[3], m[4]!),
+      dms(m[5], m[6], m[7], m[8]!),
+    );
+  }
+  for (final m in _hemiRe.allMatches(text)) {
+    add(m.start, m.end, signed(m[1]!, m[2]!), signed(m[3]!, m[4]!));
+  }
+  for (final m in _hemiPreRe.allMatches(text)) {
+    add(m.start, m.end, signed(m[2]!, m[1]!), signed(m[4]!, m[3]!));
+  }
+  for (final m in _latLonWordRe.allMatches(text)) {
+    add(m.start, m.end, double.tryParse(m[1]!), double.tryParse(m[2]!));
+  }
+  for (final m in _spaceCoordRe.allMatches(text)) {
+    add(m.start, m.end, double.tryParse(m[1]!), double.tryParse(m[2]!));
+  }
+  for (final m in _maidenheadRe.allMatches(text)) {
+    final full = m[0]!;
+    if (full.length == 4 && !_gridCueRe.hasMatch(text.substring(0, m.start))) {
+      continue;
+    }
+    final c = maidenheadCenter(full);
+    if (c != null) add(m.start, m.end, c.$1, c.$2);
+  }
+  out.sort((a, b) => a.$1.compareTo(b.$1));
+  return out;
+}
+
+// "Earthquake M3.9 mw | 24 km ESE of Castle Rock, Washington | 11:09:28 UTC |
+// depth 9 km | 46.22N 122.60W" (SeaBot and other quake feeds).
+final _quakeRe = RegExp(
+  r'\b(?:earthquake|quake)\b[^|\n]{0,20}?\bM\s?(\d(?:\.\d+)?)',
+  caseSensitive: false,
+);
+final _depthRe = RegExp(r'depth\s*(\d+(?:\.\d+)?)\s*km', caseSensitive: false);
+final _utcRe = RegExp(r'\b\d{1,2}:\d{2}(?::\d{2})?\s*UTC\b');
 // "DRONE <serial>" anywhere in the message (after an emoji, a bot's prefix,
 // on its own line...). The serial must hold a digit, so chat like "a drone
 // overhead" is not taken for a detection.
@@ -201,9 +353,11 @@ String watchBearingLabel(double b) {
 
 /// Lines that are only a position ("📍 45.5625,-122.6108"), not text.
 bool _onlyCoords(String line) {
-  final rest = line
-      .replaceAll(_coordRe, '')
-      .replaceAll(RegExp(r'[\s📍,;:]'), '');
+  var rest = line;
+  for (final p in watchPositions(line).reversed) {
+    rest = rest.replaceRange(p.$1, p.$2, '');
+  }
+  rest = rest.replaceAll(RegExp(r'[\s📍,;:]'), '');
   return rest.isEmpty;
 }
 
@@ -245,17 +399,15 @@ WatchItem parseWatchMessage(
   } else {
     // Every position in the message: the first is the report's; a second one
     // takes the word just before it as its label ("Op" for an operator).
-    final all = _coordRe.allMatches(m.text).toList();
     var prevEnd = 0;
-    for (final co in all) {
-      final v = valid(co.group(1), co.group(2));
-      if (v == null) continue;
+    for (final co in watchPositions(m.text)) {
+      final v = (co.$3, co.$4);
       if (lat == null) {
         (lat, lon) = (v.$1, v.$2);
       } else if (lat2 == null) {
         (lat2, lon2) = (v.$1, v.$2);
         final words = m.text
-            .substring(prevEnd, co.start)
+            .substring(prevEnd, co.$1)
             .split(RegExp(r'\s+'))
             .where(
               (w) => w.isNotEmpty && !w.contains('://') && !w.contains('='),
@@ -263,7 +415,7 @@ WatchItem parseWatchMessage(
             .toList();
         label2 = words.isEmpty ? null : words.last;
       }
-      prevEnd = co.end;
+      prevEnd = co.$2;
     }
   }
 
@@ -282,7 +434,32 @@ WatchItem parseWatchMessage(
     if (v != null && v <= 360) bearing = v;
   }
 
-  for (final raw in drone != null ? const <String>[] : m.text.split('\n')) {
+  // An earthquake: magnitude, where, how deep, when.
+  final quake = drone == null ? _quakeRe.firstMatch(m.text) : null;
+  double? magnitude;
+  if (quake != null) {
+    magnitude = double.tryParse(quake[1]!);
+    if (magnitude != null) {
+      level = magnitude >= 5
+          ? WatchLevel.critical
+          : magnitude >= 4
+          ? WatchLevel.active
+          : WatchLevel.other;
+      status = 'QUAKE M${magnitude.toStringAsFixed(1)}';
+      for (final seg in m.text.split(RegExp(r'[|\n]'))) {
+        final s = seg.trim();
+        if (place == null && s.toLowerCase().contains(' of ')) place = s;
+      }
+      final d = _depthRe.firstMatch(m.text);
+      if (d != null) detail = 'depth ${d[1]} km';
+      when = _utcRe.firstMatch(m.text)?.group(0);
+    }
+  }
+
+  for (final raw
+      in drone != null || magnitude != null
+          ? const <String>[]
+          : m.text.split('\n')) {
     var line = raw.trim();
     if (line.isEmpty) continue;
     final u = _urlRe.firstMatch(line);
@@ -354,6 +531,7 @@ WatchItem parseWatchMessage(
     trackId: trackId,
     detail: detail,
     bearing: bearing,
+    magnitude: magnitude,
   );
 }
 

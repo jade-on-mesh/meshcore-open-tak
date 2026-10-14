@@ -135,4 +135,56 @@ void main() {
     expect(watchMapTag('#ibtest', 'IceBot'), 'ICE');
     expect(watchMapTag('#dronewatch', 'DARS-C6L'), '#dronewatch');
   });
+
+  test('SeaBot earthquakes: magnitude, place, depth, position', () {
+    final it = _parse(
+      'Earthquake M3.9 mw | 24 km ESE of Castle Rock, Washington | '
+      '11:09:28 UTC | depth 9 km | 46.22N 122.60W',
+    );
+    expect(it.isQuake, isTrue);
+    expect(it.magnitude, 3.9);
+    expect(it.lat, closeTo(46.22, 1e-9));
+    expect(it.lon, closeTo(-122.60, 1e-9));
+    expect(it.place, '24 km ESE of Castle Rock, Washington');
+    expect(it.detail, 'depth 9 km');
+    expect(it.when, '11:09:28 UTC');
+    expect(it.level, WatchLevel.other);
+    expect(it.mapLabel, 'QUAKE M3.9 Castle Rock');
+    final big = _parse(
+      'Earthquake M5.2 ml | 5 km WNW of Wauna, Washington | 21:05:56 UTC | '
+      'depth 26 km | 47.40N 122.71W',
+    );
+    expect(big.level, WatchLevel.critical);
+    expect(big.mapLabel, 'QUAKE M5.2 Wauna');
+  });
+
+  test('other ways of writing a position', () {
+    LatLngPair p(String t) {
+      final it = _parse(t);
+      return (it.lat, it.lon);
+    }
+
+    expect(p('seen at 46.22N 122.60W'), (46.22, -122.60));
+    expect(p('fire 33.9° S, 18.4° E'), (-33.9, 18.4));
+    expect(p('N47.6 W122.3 smoke'), (47.6, -122.3));
+    expect(p('lat: 45.52 lon: -122.68'), (45.52, -122.68));
+    expect(p('Latitude=45.5 Longitude=-122.6'), (45.5, -122.6));
+    expect(p('pos 45.5625 -122.6108'), (45.5625, -122.6108));
+    (double, double) near(LatLngPair v) => (
+      (v.$1! * 1e4).roundToDouble() / 1e4,
+      (v.$2! * 1e4).roundToDouble() / 1e4,
+    );
+    expect(near(p('45°31\'30"N 122°40\'30"W')), (45.525, -122.675));
+    expect(near(p("45° 31.5' N, 122° 40.5' W")), (45.525, -122.675));
+    expect(near(p('net control CN85pm')), (45.5208, -122.7083));
+    expect(near(p('cn85pm42')), (45.5104, -122.7125));
+    expect(near(p('grid CN85')), (45.5, -123.0));
+    expect(p('the AB12 bus').$1, isNull); // a 4-character square needs a cue
+    // Not positions.
+    expect(p('M3.9 at 11:09 UTC, 5 km away').$1, isNull);
+    expect(p('Room 5 Steps north').$1, isNull);
+    expect(p('version 1.2.3 build 45').$1, isNull);
+  });
 }
+
+typedef LatLngPair = (double?, double?);
