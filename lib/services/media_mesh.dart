@@ -7,9 +7,9 @@ import '../models/radio_settings.dart';
 /// and writes the radio's settings through the local CLI, with the command
 /// names shared by Wadamesh and mikecarper/MeshCore:
 ///
-///   get radio2 / set radio2 <MHz>,<kHz>,<sf>,<cr>,rxtx / set radio2 off
-///   get tx.media / set tx.media radio|radio2
-///   set radio2.cross off   (never copy ordinary traffic onto radio2)
+/// - `get radio2`, `set radio2 MHz,kHz,sf,cr,rxtx`, `set radio2 off`
+/// - `get tx.media`, `set tx.media radio|radio2`
+/// - `set radio2.cross off` (never copy ordinary traffic onto radio2)
 ///
 /// See documentation/media-mesh.md.
 class MediaMeshSettings {
