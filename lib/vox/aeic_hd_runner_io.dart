@@ -243,14 +243,17 @@ class AeicHdRunner {
         }
 
         final name = field(0, 100).split('/').last;
-        final size = int.parse(field(124, 12).trim().isEmpty
-            ? '0'
-            : field(124, 12).trim(), radix: 8);
+        final size = int.parse(
+          field(124, 12).trim().isEmpty ? '0' : field(124, 12).trim(),
+          radix: 8,
+        );
         final type = header[156];
         pos += 512;
         final regular = type == 0 || type == 0x30; // '0' or NUL
         if (regular && name.isNotEmpty && !name.startsWith('.')) {
-          final out = await File('${dir.path}/$name').open(mode: FileMode.write);
+          final out = await File(
+            '${dir.path}/$name',
+          ).open(mode: FileMode.write);
           try {
             var left = size;
             await raf.setPosition(pos);

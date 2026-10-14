@@ -1117,7 +1117,9 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
               ),
             ),
             floatingActionButton:
-                (selectedContact == null && !_isBuildingPathTrace && !_tak.chatOpen)
+                (selectedContact == null &&
+                    !_isBuildingPathTrace &&
+                    !_tak.chatOpen)
                 ? FloatingActionButton(
                     onPressed: () => _showFilterSheet(context, settingsService),
                     tooltip: context.l10n.map_filterNodes,
