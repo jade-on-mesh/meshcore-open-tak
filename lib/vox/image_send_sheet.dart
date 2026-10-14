@@ -17,15 +17,40 @@ import 'image_message_bubble.dart' show voxRgbToUiImage;
 import 'voice_service.dart';
 import 'voice_wire.dart';
 
+/// The other way to send a picture: AEIC, MeshCore Open's neural image
+/// codec. About 150 bytes (1-2 packets) instead of a VOX photo's 2,750, but
+/// the receiver's phone redraws the picture from a description, so details
+/// can be invented, and only phones with the image model can show it.
+class VoxAiSketchOption {
+  /// The image model is installed and enabled.
+  final bool Function() ready;
+
+  /// Says why it isn't, with a way to set it up.
+  final VoidCallback explainNotReady;
+
+  /// Previews and sends the picked file as an AI sketch.
+  final Future<void> Function(Uint8List bytes, int fileBytes) send;
+
+  const VoxAiSketchOption({
+    required this.ready,
+    required this.explainNotReady,
+    required this.send,
+  });
+}
+
 /// Camera/gallery button for the chat input row.
 class VoxImageButton extends StatelessWidget {
   final String recipientLabel;
   final Future<void> Function(VoxEncodedImage image) onSend;
 
+  /// Offer AEIC as well (chats that can carry it); null: VOX photos only.
+  final VoxAiSketchOption? aiSketch;
+
   const VoxImageButton({
     super.key,
     required this.recipientLabel,
     required this.onSend,
+    this.aiSketch,
   });
 
   @override
@@ -37,6 +62,7 @@ class VoxImageButton extends StatelessWidget {
         context,
         recipientLabel: recipientLabel,
         onSend: onSend,
+        aiSketch: aiSketch,
       ),
     );
   }
@@ -49,9 +75,10 @@ Future<void> showVoxImagePicker(
   required String recipientLabel,
   required Future<void> Function(VoxEncodedImage image) onSend,
   String sendLabel = 'Send',
+  VoxAiSketchOption? aiSketch,
 }) async {
   final voice = context.read<VoxVoiceService>();
-  if (!voice.imagesAvailable) {
+  if (!voice.imagesAvailable && aiSketch == null) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Photo messages need the Android app.')),
     );
@@ -63,6 +90,7 @@ Future<void> showVoxImagePicker(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (aiSketch != null) const _PhotoKindChooser(),
           ListTile(
             leading: const Icon(Icons.photo_camera_outlined),
             title: const Text('Take photo'),
@@ -78,6 +106,12 @@ Future<void> showVoxImagePicker(
     ),
   );
   if (source == null || !context.mounted) return;
+  final sketch =
+      aiSketch != null && (voice.photoAiSketch || !voice.imagesAvailable);
+  if (sketch && !aiSketch.ready()) {
+    aiSketch.explainNotReady();
+    return;
+  }
   XFile? picked;
   try {
     picked = await ImagePicker().pickImage(
@@ -95,6 +129,23 @@ Future<void> showVoxImagePicker(
     return;
   }
   if (picked == null || !context.mounted) return;
+  if (sketch) {
+    final Uint8List bytes;
+    final int fileBytes;
+    try {
+      bytes = await picked.readAsBytes();
+      fileBytes = await picked.length();
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Couldn\'t read that photo: $e')),
+        );
+      }
+      return;
+    }
+    await aiSketch.send(bytes, fileBytes);
+    return;
+  }
   VoxRgbImage ref;
   try {
     ref = await voxLoadReference(await picked.readAsBytes());
@@ -465,6 +516,57 @@ class _VoxImageSendSheetState extends State<VoxImageSendSheet> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// VOX photo (default) or AI sketch, remembered like the Mimi choice.
+class _PhotoKindChooser extends StatelessWidget {
+  const _PhotoKindChooser();
+
+  @override
+  Widget build(BuildContext context) {
+    final voice = context.watch<VoxVoiceService>();
+    final sketch = voice.photoAiSketch || !voice.imagesAvailable;
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(
+                value: false,
+                icon: Icon(Icons.photo_outlined),
+                label: Text('VOX photo'),
+              ),
+              ButtonSegment(
+                value: true,
+                icon: Icon(Icons.auto_awesome_outlined),
+                label: Text('AI sketch'),
+              ),
+            ],
+            selected: {sketch},
+            onSelectionChanged: voice.imagesAvailable
+                ? (s) => voice.setPhotoAiSketch(s.first)
+                : null,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            sketch
+                ? 'AEIC, about 150 bytes (1-2 packets). The receiver\'s phone '
+                      'redraws the picture from a description, so faces, text '
+                      'and small details can be invented. Phones with the '
+                      'image model only; radios can\'t show it.'
+                : 'Real pixels, about 2.7 KB. Everyone can view it, '
+                      'Wadamesh radios included. The default.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }

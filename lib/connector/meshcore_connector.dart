@@ -7823,14 +7823,13 @@ class MeshCoreConnector extends ChangeNotifier {
         if (_isSyncingQueuedMessages) {
           _handleQueuedMessageReceived();
         }
-        // Advance the sync state machine ALWAYS (above), but only reassemble
-        // when the feature is actually on. Without this the "disabled" feature
-        // still reassembles, persists and displays received images: the store
-        // keeps them and channel_chat_screen renders every stored entry, so a
-        // user who never enabled image messages would see them appear.
-        if (_appSettingsService?.settings.imageMessagesEnabled ?? false) {
-          _handleIncomingChannelData(frame);
-        }
+        // MeshCore Open TAK: a received AI sketch (AEIC) is always kept and
+        // shown, whatever this phone's own setting: the photo button offers
+        // AI sketches next to VOX photos, so a receiver has to recognise one
+        // without having set anything up. Its bubble says what it is, and
+        // tapping it explains how to get the image model; nothing is decoded
+        // (or downloaded) until then.
+        _handleIncomingChannelData(frame);
         break;
       case respCodeSent:
         _handleMessageSent(frame);
