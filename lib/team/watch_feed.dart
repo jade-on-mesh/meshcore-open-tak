@@ -219,7 +219,10 @@ final _dmsRe = RegExp(
 final _maidenheadRe = RegExp(
   r'(?<![A-Za-z0-9_])([A-Ra-r]{2}\d{2})(?:([A-Xa-x]{2})(\d{2})?)?(?![A-Za-z0-9_])',
 );
-final _gridCueRe = RegExp(r'\b(?:grid|locator|loc)\s*[:=]?\s*$', caseSensitive: false);
+final _gridCueRe = RegExp(
+  r'\b(?:grid|locator|loc)\s*[:=]?\s*$',
+  caseSensitive: false,
+);
 
 /// The middle of a Maidenhead square: "CN85pm" -> 45.521, -122.708.
 (double, double)? maidenheadCenter(String loc) {
@@ -298,8 +301,7 @@ List<(int, int, double, double)> watchPositions(String text) {
   }
   for (final m in _maidenheadRe.allMatches(text)) {
     final full = m[0]!;
-    if (full.length == 4 &&
-        !_gridCueRe.hasMatch(text.substring(0, m.start))) {
+    if (full.length == 4 && !_gridCueRe.hasMatch(text.substring(0, m.start))) {
       continue;
     }
     final c = maidenheadCenter(full);
