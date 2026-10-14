@@ -173,10 +173,6 @@ void main() async {
     // store together with the channel index (which ImageChunkOutcome itself
     // does not carry), so onImageChunk would be a second, channel-blind path.
     onImageSenderPrefix: (prefix) => imageReassembler.selfPrefix = prefix,
-    // OTP DM image transfer (see otp_image_transport.dart) reuses this same
-    // store for its receive-side state/decode-queue/eviction rather than
-    // duplicating it for the DM-only path.
-    receivedImageStore: receivedImageStore,
   );
 
   // MeshCore Open TAK: on-demand Codec2 voice messages (VE3).

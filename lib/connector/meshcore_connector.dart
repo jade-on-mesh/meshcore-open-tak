@@ -335,7 +335,6 @@ class MeshCoreConnector extends ChangeNotifier {
   // frames (chunks of one image arrive in separate GRP_DATA frames, and via the
   // firmware offline queue they may be minutes apart).
   ImageChunkTransport? _imageTransport;
-  ReceivedImageStore? _receivedImageStore;
   void Function(ImageChunkOutcome outcome)? _onImageChunk;
   void Function(int senderPrefix)? _onImageSenderPrefix;
   // OTP-encrypted DM image transfer (see otp_image_transport.dart) reuses
@@ -706,8 +705,6 @@ class MeshCoreConnector extends ChangeNotifier {
   static const Duration _waitingFlushCooldown = Duration(seconds: 10);
   Timer? _waitingQueueTickTimer;
   static const Duration _waitingQueueTickInterval = Duration(minutes: 10);
-  bool _lastSentWasCliCommand =
-      false; // Track if last sent message was a CLI command
   // Radio-stored default flood scope (GET_DEFAULT_FLOOD_SCOPE, ver 11+).
   // Null when the radio has none or has not reported it yet.
   String? _defaultFloodScopeName;
@@ -1941,12 +1938,7 @@ class MeshCoreConnector extends ChangeNotifier {
                 final list = _channelMessages[channelIndex];
                 if (list != null) {
                   list.removeWhere((e) => e.messageId == m.messageId);
-                  unawaited(
-                    _channelMessageStore.saveChannelMessages(
-                      channelIndex,
-                      list,
-                    ),
-                  );
+                  unawaited(_saveChannelMessages(channelIndex, list));
                 }
                 notifyListeners();
                 for (final c in _channels) {
@@ -4141,7 +4133,6 @@ class MeshCoreConnector extends ChangeNotifier {
     ReceivedImageStore? receivedImageStore,
     void Function(ImageChunkOutcome outcome)? onImageChunk,
     void Function(int senderPrefix)? onImageSenderPrefix,
-    ReceivedImageStore? receivedImageStore,
   }) {
     _retryService = retryService;
     _pathHistoryService = pathHistoryService;
@@ -4152,7 +4143,6 @@ class MeshCoreConnector extends ChangeNotifier {
     _receivedImageStore = receivedImageStore;
     _onImageChunk = onImageChunk;
     _onImageSenderPrefix = onImageSenderPrefix;
-    _receivedImageStore = receivedImageStore;
     _bleDebugLogService = bleDebugLogService;
     _appDebugLogService = appDebugLogService;
     _backgroundService = backgroundService;
@@ -10641,7 +10631,7 @@ class MeshCoreConnector extends ChangeNotifier {
       if (message.messageId != messageId) continue;
       channelMessages[i] = message.copyWith(text: cipherHex);
       unawaited(
-        _channelMessageStore.saveChannelMessages(channelIndex, channelMessages),
+        _saveChannelMessages(channelIndex, channelMessages),
       );
       notifyListeners();
       return true;
