@@ -728,8 +728,8 @@ class TeamMapLayer extends StatelessWidget {
     }
     return Marker(
       point: LatLng(w.lat!, w.lon!),
-      width: 110,
-      height: 50,
+      width: 140,
+      height: w.isQuake ? 64 : 50,
       child: GestureDetector(
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute<void>(
@@ -739,16 +739,29 @@ class TeamMapLayer extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 16,
-              height: 16,
-              decoration: BoxDecoration(
-                color: c,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.black87, width: 2),
+            if (w.isQuake)
+              // An earthquake: a ringed dot that grows with the magnitude.
+              Container(
+                width: (14 + (w.magnitude! - 2).clamp(0, 6) * 4).toDouble(),
+                height: (14 + (w.magnitude! - 2).clamp(0, 6) * 4).toDouble(),
+                decoration: BoxDecoration(
+                  color: c.withValues(alpha: 0.55),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: c, width: 3),
+                ),
+                child: const Icon(Icons.waves, size: 12, color: Colors.black),
+              )
+            else
+              Container(
+                width: 16,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: c,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.black87, width: 2),
+                ),
               ),
-            ),
-            _label('${w.mapTag} ${w.place ?? w.statusWord ?? ''}'.trim()),
+            _label(w.mapLabel),
           ],
         ),
       ),
