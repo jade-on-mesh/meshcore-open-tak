@@ -2091,7 +2091,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get chat_invalidLink => 'Formato di link non valido';
 
   @override
-  String get map_title => 'Mappa nodi';
+  String get map_title => 'Mappa';
 
   @override
   String get map_searchHint => 'Cerca il nome o l\'ID del nodo';

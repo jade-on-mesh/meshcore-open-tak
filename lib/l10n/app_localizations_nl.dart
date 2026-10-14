@@ -2076,7 +2076,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get chat_invalidLink => 'Ongeldig linkformaat';
 
   @override
-  String get map_title => 'Nodekaart';
+  String get map_title => 'Kaart';
 
   @override
   String get map_searchHint => 'Zoek op nodenaam of ID';

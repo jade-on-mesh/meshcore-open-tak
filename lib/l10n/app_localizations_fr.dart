@@ -2092,7 +2092,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get chat_invalidLink => 'Format de lien invalide';
 
   @override
-  String get map_title => 'Carte des nœuds';
+  String get map_title => 'Carte';
 
   @override
   String get map_searchHint => 'Rechercher par nom ou ID de nœud';

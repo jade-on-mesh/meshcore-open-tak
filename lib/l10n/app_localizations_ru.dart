@@ -2094,7 +2094,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get chat_invalidLink => 'Неправильный формат ссылки';
 
   @override
-  String get map_title => 'Карта нод';
+  String get map_title => 'Карта';
 
   @override
   String get map_searchHint => 'Поиск по имени или ID узла';

@@ -2080,7 +2080,7 @@ class AppLocalizationsHu extends AppLocalizations {
   String get chat_invalidLink => 'Érvénytelen linkformátum';
 
   @override
-  String get map_title => 'Csomópont térkép';
+  String get map_title => 'Térkép';
 
   @override
   String get map_searchHint =>

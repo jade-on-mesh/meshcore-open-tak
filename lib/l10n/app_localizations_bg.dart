@@ -2093,7 +2093,7 @@ class AppLocalizationsBg extends AppLocalizations {
   String get chat_invalidLink => 'Невалиден формат на връзката';
 
   @override
-  String get map_title => 'Карта на възлите';
+  String get map_title => 'Карта';
 
   @override
   String get map_searchHint => 'Търсене по име или идентификатор на възел';

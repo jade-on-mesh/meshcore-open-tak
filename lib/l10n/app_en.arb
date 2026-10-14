@@ -1106,7 +1106,7 @@
     }
   },
   "chat_invalidLink": "Invalid link format",
-  "map_title": "Node Map",
+  "map_title": "Map",
   "map_searchHint": "Search node name or ID",
   "map_activity": "Activity",
   "map_online": "Online",

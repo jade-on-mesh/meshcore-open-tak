@@ -2108,7 +2108,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get chat_invalidLink => 'Nieprawidłowy format linku';
 
   @override
-  String get map_title => 'Mapa węzłów';
+  String get map_title => 'Mapa';
 
   @override
   String get map_searchHint => 'Wyszukaj nazwę lub identyfikator węzła';

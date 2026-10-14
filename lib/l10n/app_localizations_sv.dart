@@ -2065,7 +2065,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get chat_invalidLink => 'Ogiltigt länkformat';
 
   @override
-  String get map_title => 'Nodkarta';
+  String get map_title => 'Karta';
 
   @override
   String get map_searchHint => 'Sök efter nodens namn eller ID';

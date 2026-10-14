@@ -2002,7 +2002,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get chat_invalidLink => '유효하지 않은 링크 형식';
 
   @override
-  String get map_title => '노드 매핑';
+  String get map_title => '지도';
 
   @override
   String get map_searchHint => '노드 이름 또는 ID 검색';

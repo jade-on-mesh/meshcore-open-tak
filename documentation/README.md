@@ -16,7 +16,7 @@ MeshCore Open is an open-source Flutter client for MeshCore LoRa mesh networking
 3. [Contacts](contacts.md) - Contact management, groups, discovery, and sharing
 4. [Chat & Messaging](chat-and-messaging.md) - Direct messages, message status, reactions, and retries
 5. [Channels](channels.md) - Broadcast channels, communities, and channel chat
-6. [Map & Location](map-and-location.md) - Node map, path tracing, line-of-sight, and offline caching
+6. [Map & Location](map-and-location.md) - The map (nodes, team, watched reports), path tracing, line-of-sight, and offline caching
 7. [Settings](settings.md) - Device settings, app settings, radio configuration, and exports
 8. [Notifications](notifications.md) - System notifications, replies from watches and Android Auto, unread badges, and notification preferences
 9. [Repeater Management](repeater-management.md) - Repeater hub, status, CLI, telemetry, and neighbors

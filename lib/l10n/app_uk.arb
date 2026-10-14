@@ -659,7 +659,7 @@
     }
   },
   "chat_invalidLink": "Невірний формат посилання",
-  "map_title": "Карта вузлів",
+  "map_title": "Карта",
   "map_noNodesWithLocation": "Немає вузлів з даними про геопозицію",
   "map_nodesNeedGps": "Вузли мають надавати свої GPS координати,\nщоб з'явитись на карті.",
   "map_nodesCount": "Вузли: {count}",

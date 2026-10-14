@@ -393,7 +393,7 @@
   "chat_unread": "Непрочитанных: {count}",
   "chat_markAsUnread": "Пометить как непрочитанные",
   "chat_newMessages": "Новые сообщения",
-  "map_title": "Карта нод",
+  "map_title": "Карта",
   "map_noNodesWithLocation": "Нет нод с данными о местоположении",
   "map_nodesNeedGps": "Ноды должны передавать свои GPS-координаты, чтобы отображаться на карте",
   "map_nodesCount": "Нод: {count}",

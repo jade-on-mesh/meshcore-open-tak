@@ -2084,7 +2084,7 @@ class AppLocalizationsUk extends AppLocalizations {
   String get chat_invalidLink => 'Невірний формат посилання';
 
   @override
-  String get map_title => 'Карта вузлів';
+  String get map_title => 'Карта';
 
   @override
   String get map_searchHint => 'Назва або ID вузла';

@@ -2074,7 +2074,7 @@ class AppLocalizationsSl extends AppLocalizations {
   String get chat_invalidLink => 'Neveljavna oblika povezave';
 
   @override
-  String get map_title => 'Mapa omrežja';
+  String get map_title => 'Zemljevid';
 
   @override
   String get map_searchHint => 'Iščite ime ali ID vozlišča';
