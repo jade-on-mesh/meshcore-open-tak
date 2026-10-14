@@ -106,44 +106,56 @@ class AeicHdRunner {
       final manifest =
           jsonDecode(utf8.decode(manifestResponse.bodyBytes))
               as Map<String, dynamic>;
-      final files = [
-        for (final f
-            in (manifest['files'] as List).cast<Map<String, dynamic>>())
+      // Format 2: the files come bundled in tar archives (GitHub release
+      // uploads are slow per file; see aeic-ncnn-publish.yml).
+      final archives = [
+        for (final a
+            in (manifest['archives'] as List).cast<Map<String, dynamic>>())
           _PackFile(
-            // The program reads one flat directory (as mikecarper's
-            // push_models.py lays it out), so keep just the file name.
-            (f['path'] as String).split('/').last,
-            f['asset'] as String,
-            (f['size'] as num).toInt(),
-            f['sha256'] as String,
+            a['asset'] as String,
+            a['asset'] as String,
+            (a['size'] as num).toInt(),
+            a['sha256'] as String,
           ),
       ];
-      final total = files.fold<int>(0, (a, f) => a + f.size);
+      final wantFiles = {
+        for (final f
+            in (manifest['files'] as List).cast<Map<String, dynamic>>())
+          // The program reads one flat directory (as mikecarper's
+          // push_models.py lays it out), so just the file name.
+          (f['path'] as String).split('/').last: (f['size'] as num).toInt(),
+      };
+      final total = archives.fold<int>(0, (a, f) => a + f.size);
       onTotal(total);
 
-      // Files already downloaded and checked on an earlier attempt.
+      // Archives already downloaded, checked and unpacked on an earlier try.
       final verifiedFile = File('${dir.path}/.verified');
       final verified = <String>{
         if (await verifiedFile.exists())
           ...(await verifiedFile.readAsLines()).where((l) => l.isNotEmpty),
       };
       var done = 0;
-      for (final f in files) {
-        final target = File('${dir.path}/${f.name}');
-        final key = '${f.name} ${f.sha256}';
-        if (verified.contains(key) &&
-            await target.exists() &&
-            await target.length() == f.size) {
-          done += f.size;
-          onProgress(done / total);
-          continue;
+      for (final a in archives) {
+        final key = '${a.name} ${a.sha256}';
+        if (!verified.contains(key)) {
+          final tar = File('${dir.path}/${a.name}');
+          await _download(client, a, tar, (got) {
+            onProgress((done + got) / total);
+          });
+          await _untar(tar, dir);
+          await tar.delete();
+          verified.add(key);
+          await verifiedFile.writeAsString('${verified.join('\n')}\n');
         }
-        await _download(client, f, target, (got) {
-          onProgress((done + got) / total);
-        });
-        done += f.size;
-        verified.add(key);
-        await verifiedFile.writeAsString('${verified.join('\n')}\n');
+        done += a.size;
+        onProgress(done / total);
+      }
+      for (final e in wantFiles.entries) {
+        final f = File('${dir.path}/${e.key}');
+        if (!await f.exists() || await f.length() != e.value) {
+          await verifiedFile.delete();
+          throw StateError('model file ${e.key} is missing; download again');
+        }
       }
       await (await _completeMarker).writeAsString(
         manifest['checkpoint_sha256'] as String? ?? 'ok',
@@ -210,6 +222,54 @@ class AeicHdRunner {
   }
 
   void cancelDownload() => _cancelDownload = true;
+
+  /// Unpacks a plain ustar archive (what Python's tarfile writes with
+  /// USTAR_FORMAT) into [dir], flat: file names only, never a path.
+  static Future<void> _untar(File tar, Directory dir) async {
+    final raf = await tar.open();
+    try {
+      final length = await raf.length();
+      var pos = 0;
+      while (pos + 512 <= length) {
+        await raf.setPosition(pos);
+        final header = await raf.read(512);
+        if (header.every((b) => b == 0)) break;
+        String field(int from, int len) {
+          var end = from;
+          while (end < from + len && header[end] != 0) {
+            end++;
+          }
+          return ascii.decode(header.sublist(from, end), allowInvalid: true);
+        }
+
+        final name = field(0, 100).split('/').last;
+        final size = int.parse(field(124, 12).trim().isEmpty
+            ? '0'
+            : field(124, 12).trim(), radix: 8);
+        final type = header[156];
+        pos += 512;
+        final regular = type == 0 || type == 0x30; // '0' or NUL
+        if (regular && name.isNotEmpty && !name.startsWith('.')) {
+          final out = await File('${dir.path}/$name').open(mode: FileMode.write);
+          try {
+            var left = size;
+            await raf.setPosition(pos);
+            while (left > 0) {
+              final chunk = await raf.read(math.min(left, 1 << 20));
+              if (chunk.isEmpty) throw const FormatException('truncated tar');
+              await out.writeFrom(chunk);
+              left -= chunk.length;
+            }
+          } finally {
+            await out.close();
+          }
+        }
+        pos += (size + 511) ~/ 512 * 512;
+      }
+    } finally {
+      await raf.close();
+    }
+  }
 
   Future<void> remove() async {
     final dir = await _packDir();
