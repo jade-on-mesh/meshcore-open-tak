@@ -37,18 +37,16 @@ jobs:
             grep -h Pkg.Revision "$ANDROID_HOME/cmdline-tools/latest/source.properties" 2>&1
             which cmake ninja git; cmake --version | head -1
           } 2>&1 | while IFS= read -r l; do echo "::warning title=env::$l"; done
-      - name: sdkmanager, as build.yml runs it
-        if: always()
+      - name: Fixed line, under build.yml's set -euo pipefail
         run: |
-          set -uo pipefail
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;29.0.14206865" > /tmp/sdk.log 2>&1
-          echo "::warning title=sdkmanager::pipeline exit ${PIPESTATUS[*]}"
-          tail -25 /tmp/sdk.log | while IFS= read -r l; do echo "::warning title=sdkmanager log::$l"; done
-          ls "$ANDROID_HOME/ndk/29.0.14206865/build/cmake/android.toolchain.cmake" 2>&1 | while IFS= read -r l; do echo "::warning title=toolchain::$l"; done
-      - name: The build script
-        if: always()
+          set -euo pipefail
+          (yes || true) | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;29.0.14206865" >/dev/null
+          test -f "$ANDROID_HOME/ndk/29.0.14206865/build/cmake/android.toolchain.cmake"
+          echo "::warning title=fixed::sdkmanager line passed"
+      - name: A real sdkmanager failure must still fail the step
         run: |
-          set -uo pipefail
-          bash -x tool/build_aeic_hd_android.sh "$ANDROID_HOME/ndk/29.0.14206865" /tmp/out > /tmp/b.log 2>&1
-          echo "::warning title=script::exit $?"
-          tail -40 /tmp/b.log | while IFS= read -r l; do echo "::warning title=script log::$l"; done
+          set -euo pipefail
+          if (yes || true) | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;0.0.0-nonexistent" >/dev/null 2>&1; then
+            echo "::error title=fixed::a bad package did NOT fail the pipeline"; exit 1
+          fi
+          echo "::warning title=fixed::a bad package still fails the pipeline"
