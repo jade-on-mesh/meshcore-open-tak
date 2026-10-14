@@ -268,7 +268,9 @@ class MediaMeshController {
       await _cli('set tx.media radio');
       final off = await _cli('set radio2 off');
       if (off == null || !isCliOk(off)) {
-        throw MediaMeshException(_reason(off, 'The radio did not turn radio2 off'));
+        throw MediaMeshException(
+          _reason(off, 'The radio did not turn radio2 off'),
+        );
       }
     }
   }
