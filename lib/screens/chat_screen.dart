@@ -52,8 +52,6 @@ import '../widgets/gif_message.dart';
 import '../widgets/image_send_codec_binding.dart';
 import '../widgets/image_send_preview_sheet.dart';
 import '../widgets/jump_to_bottom_button.dart';
-import '../widgets/gif_picker.dart';
-import '../widgets/message_translation_button.dart';
 import '../widgets/received_image_message.dart';
 import '../widgets/routing_sheet.dart';
 import '../widgets/radio_stats_entry.dart';
