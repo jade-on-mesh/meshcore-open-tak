@@ -531,7 +531,7 @@ void main() {
       r.addChunk(set.blobs[0], now: start);
       final late = r.addChunk(
         set.blobs[1],
-        now: start.add(const Duration(minutes: 2)),
+        now: start.add(kImageReassemblyTtl + const Duration(minutes: 1)),
       );
       // Chunk 0 expired, so chunk 1 alone cannot complete anything.
       expect(late.status, ImageChunkStatus.accepted);
