@@ -142,7 +142,12 @@ const int kImageMaxPayloadBytes =
 const int kImageSenderPrefixBytes = 2;
 
 /// How long a partially received image is kept before it is abandoned.
-const Duration kImageReassemblyTtl = Duration(seconds: 60);
+///
+/// MeshCore Open TAK: 3 minutes rather than 60 s. An AI sketch HD photo is
+/// 8-15 paced packets, which on a slow preset (SF12/125 kHz: ~3.5 s airtime
+/// plus the same again as pacing per packet) takes well over a minute to
+/// send; with a 60 s window the receiver gave up before the last chunk.
+const Duration kImageReassemblyTtl = Duration(minutes: 3);
 
 // ---------------------------------------------------------------------------
 // Rate point <-> wire code
