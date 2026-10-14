@@ -114,6 +114,7 @@ class ChannelMessage {
 
   /// See Message.displayText — same reasoning, channel-side.
   String get displayText => otpPlaintext ?? text;
+
   /// True when the sender's clock put [timestamp] clearly ahead of the time
   /// this device received the message.
   bool get hasFutureTimestamp =>

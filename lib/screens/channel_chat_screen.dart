@@ -2434,25 +2434,25 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             )
           : null,
       counterColorBuilder: otpEnabled
-          ? (used, max, defaultColor) => _otpComposeCounterColor(
-              context.read<MeshCoreConnector>(),
-              used,
-            )
+          ? (used, max, defaultColor) =>
+                _otpComposeCounterColor(context.read<MeshCoreConnector>(), used)
           : null,
       leading: [
         VoxImageButton(
           aiSketch: _aiSketchOption,
           recipientLabel: widget.channel.name,
-          onSend: (image) => context
-              .read<VoxVoiceService>()
-              .sendImageToChannel(widget.channel, image),
+          onSend: (image) => context.read<VoxVoiceService>().sendImageToChannel(
+            widget.channel,
+            image,
+          ),
         ),
         VoxMicButton(
           recipientLabel: widget.channel.name,
           codecTarget: VoxVoiceService.channelTarget(widget.channel),
-          onSend: (clip) => context
-              .read<VoxVoiceService>()
-              .sendClipToChannel(widget.channel, clip),
+          onSend: (clip) => context.read<VoxVoiceService>().sendClipToChannel(
+            widget.channel,
+            clip,
+          ),
         ),
       ],
       header: [

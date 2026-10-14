@@ -723,8 +723,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   _imageCodec != null
               ? VoxAiSketchOption(
                   ready: () =>
-                      _imageCodec?.availability ==
-                      ImageCodecAvailability.ready,
+                      _imageCodec?.availability == ImageCodecAvailability.ready,
                   explainNotReady: () =>
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -739,18 +738,20 @@ class _ChatScreenState extends State<ChatScreen> {
                 )
               : null,
           recipientLabel: _resolveContact(connector).name,
-          onSend: (image) => context
-              .read<VoxVoiceService>()
-              .sendImageToContact(_resolveContact(connector), image),
+          onSend: (image) => context.read<VoxVoiceService>().sendImageToContact(
+            _resolveContact(connector),
+            image,
+          ),
         ),
         VoxMicButton(
           recipientLabel: _resolveContact(connector).name,
           codecTarget: VoxVoiceService.contactTarget(
             _resolveContact(connector),
           ),
-          onSend: (clip) => context
-              .read<VoxVoiceService>()
-              .sendClipToContact(_resolveContact(connector), clip),
+          onSend: (clip) => context.read<VoxVoiceService>().sendClipToContact(
+            _resolveContact(connector),
+            clip,
+          ),
         ),
       ],
       onSend: () => _sendMessage(connector),
@@ -768,7 +769,7 @@ class _ChatScreenState extends State<ChatScreen> {
             id: 'otp-image',
             icon: Icons.enhanced_encryption_outlined,
             label: context.l10n.chat_sendImageLora,
-        ),
+          ),
         ChatComposerAction(
           id: 'send-my-location',
           icon: Icons.my_location,

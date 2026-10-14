@@ -2237,6 +2237,7 @@ class _ChannelsScreenState extends State<ChannelsScreen>
       },
     );
   }
+
   void _showCommunityQrDialog(BuildContext context, Community community) {
     QrCodeShareDialog.show(
       context: context,

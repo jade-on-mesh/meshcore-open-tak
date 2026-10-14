@@ -148,6 +148,7 @@ class AppSettings {
   /// same request) — it costs real vertical space on every channel screen,
   /// so someone has to opt in rather than opt out.
   final bool channelParticipantStripEnabled;
+
   /// Opt-in upload of header-only packet records to the network map.
   final bool networkMapUploadEnabled;
 
