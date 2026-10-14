@@ -288,8 +288,7 @@ bool _onlyCoords(String line) {
   for (final p in watchPositions(line).reversed) {
     rest = rest.replaceRange(p.$1, p.$2, '');
   }
-  rest = rest
-      .replaceAll(RegExp(r'[\s📍,;:]'), '');
+  rest = rest.replaceAll(RegExp(r'[\s📍,;:]'), '');
   return rest.isEmpty;
 }
 
