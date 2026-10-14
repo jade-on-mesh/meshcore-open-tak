@@ -159,7 +159,7 @@ Future<void> showVoxImagePicker(
       }
       return;
     }
-    await (hd ? sendHd! : aiSketch.send)(bytes, fileBytes);
+    await (hd ? sendHd : aiSketch.send)(bytes, fileBytes);
     return;
   }
   VoxRgbImage ref;

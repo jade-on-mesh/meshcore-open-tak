@@ -21,7 +21,6 @@
 //   * aeic_hd_runner_io.dart, which downloads, and runs the program.
 
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 

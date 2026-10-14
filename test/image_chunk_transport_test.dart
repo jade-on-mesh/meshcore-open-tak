@@ -95,10 +95,13 @@ void main() {
     test('an unknown RATE code is what signals a format break', () {
       // The byte is aspect(4) | resolution(2) | rate(2). Resolution is now a
       // closed 2-bit field: all four codes are legal, so an unknown resolution
-      // is no longer expressible. Rate keeps two spare codes (2 and 3), and
-      // that is the channel a future incompatible format must use so older
-      // receivers reject it instead of guessing.
-      expect(ImageStreamMetadata.decode(0x02), isNull); // rate code 2
+      // is no longer expressible. Rate code 2 is MeshCore Open TAK's AI
+      // sketch HD; code 3 is the one spare, the channel a future
+      // incompatible format must use so older receivers reject it.
+      expect(
+        ImageStreamMetadata.decode(0x02)?.rate,
+        ImageCodecRatePoint.hd,
+      ); // rate code 2
       expect(ImageStreamMetadata.decode(0x03), isNull); // rate code 3
       // 0xF0 is aspect 15 (unknown shape), resolution 0, rate 0 — all legal.
       final legal = ImageStreamMetadata.decode(0xF0);
