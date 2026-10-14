@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
+import 'review_mode/review_mode_storage.dart';
 import 'screens/chrome_required_screen.dart';
 import 'utils/platform_info.dart';
 
@@ -22,6 +23,7 @@ import 'services/storage_service.dart';
 import 'services/message_retry_service.dart';
 import 'services/path_history_service.dart';
 import 'services/app_settings_service.dart';
+import 'services/network_map/network_map_upload_service.dart';
 import 'services/notification_service.dart';
 import 'services/ble_debug_log_service.dart';
 import 'services/app_debug_log_service.dart';
@@ -54,6 +56,13 @@ void main() async {
     debugPrint = (String? message, {int? wrapWidth}) {};
   }
 
+  // Android 15+ forces edge-to-edge for apps targeting SDK 35; opt Android
+  // 10-14 in too so they lay out the same way under the bars. Flutter ignores
+  // this mode before Android 10, where the old layout remains.
+  if (PlatformInfo.isAndroid) {
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  }
+
   // Initialize SharedPreferences cache
   await PrefsManager.initialize();
 
@@ -79,6 +88,8 @@ void main() async {
   // `appSettingsService.settings`, so this cannot stay where it used to be
   // (after the constructions) without those two starting out wrong.
   await appSettingsService.loadSettings();
+  // Undo a review-mode session the app was killed in before it could exit.
+  await endReviewModeSession(appSettingsService);
 
   // ---- image messages (AEIC over GRP_DATA) --------------------------------
   // The codec owns the ONNX decoder; the store owns received-image state and
@@ -105,7 +116,10 @@ void main() async {
   // Availability/isBusy changes are the only thing that un-parks a decode
   // queue that stopped because the codec was unusable or busy.
   imageCodecService.addListener(receivedImageStore.notifyDecoderChanged);
-  final imageReassembler = ImageStreamReassembler(store: receivedImageStore);
+  final imageReassembler = ImageStreamReassembler(
+    store: receivedImageStore,
+    channelIdForSlot: connector.channelIdForSlot,
+  );
   final imageTransport = ImageChunkTransport(
     reassembler: imageReassembler,
     // The UI sends whole chunk sets through connector.sendImageChunks so it
@@ -154,25 +168,23 @@ void main() async {
     timeoutPredictionService: timeoutPredictionService,
     imageCodecService: imageCodecService,
     imageTransport: imageTransport,
+    receivedImageStore: receivedImageStore,
     // ImageStreamReassembler.addChunk already forwards every outcome to the
     // store together with the channel index (which ImageChunkOutcome itself
     // does not carry), so onImageChunk would be a second, channel-blind path.
     onImageSenderPrefix: (prefix) => imageReassembler.selfPrefix = prefix,
-    // OTP DM image transfer (see otp_image_transport.dart) reuses this same
-    // store for its receive-side state/decode-queue/eviction rather than
-    // duplicating it for the DM-only path.
-    receivedImageStore: receivedImageStore,
   );
 
   // MeshCore Open TAK: on-demand Codec2 voice messages (VE3).
   final voxVoiceService = VoxVoiceService(connector);
 
-  await connector.loadContactCache();
-  await connector.loadChannelSettings();
-  await connector.loadCachedChannels();
+  final networkMapUploadService = NetworkMapUploadService(
+    connector: connector,
+    settings: appSettingsService,
+  );
 
-  // Load persisted channel messages
-  await connector.loadAllChannelMessages();
+  await connector.loadContactCache();
+  await connector.loadCachedChannels();
   await connector.loadUnreadState();
 
   runApp(
@@ -193,6 +205,7 @@ void main() async {
       receivedImageStore: receivedImageStore,
       imageReassembler: imageReassembler,
       voxVoiceService: voxVoiceService,
+      networkMapUploadService: networkMapUploadService,
     ),
   );
 }
@@ -255,7 +268,7 @@ class AppSettingsImageCodecStore implements ImageCodecSettingsStore {
 
 /// An [ImageReassembler] that (a) learns the local sender prefix after
 /// SELF_INFO and (b) forwards every outcome to [ReceivedImageStore] together
-/// with the channel index.
+/// with the channel index and the channel ID that slot holds.
 ///
 /// Both exist because of upstream shapes this file cannot change:
 ///  * `ImageReassembler.selfPrefix` is `final`, but the local public key does
@@ -269,9 +282,12 @@ class AppSettingsImageCodecStore implements ImageCodecSettingsStore {
 class ImageStreamReassembler extends ImageReassembler {
   final ReceivedImageStore store;
 
+  /// Resolves the radio slot a chunk arrived on to its [Channel.storageId].
+  final String? Function(int channelIndex)? channelIdForSlot;
+
   int? _selfPrefix;
 
-  ImageStreamReassembler({required this.store})
+  ImageStreamReassembler({required this.store, this.channelIdForSlot})
     : super(onFailed: ((failure) => unawaited(store.handleFailure(failure))));
 
   @override
@@ -286,7 +302,13 @@ class ImageStreamReassembler extends ImageReassembler {
     DateTime? now,
   }) {
     final outcome = super.addChunk(blob, channelIndex: channelIndex, now: now);
-    unawaited(store.handleOutcome(outcome, channelIndex: channelIndex));
+    unawaited(
+      store.handleOutcome(
+        outcome,
+        channelIndex: channelIndex,
+        channelId: channelIdForSlot?.call(channelIndex),
+      ),
+    );
     return outcome;
   }
 }
@@ -342,6 +364,7 @@ class MeshCoreApp extends StatefulWidget {
   final ReceivedImageStore receivedImageStore;
   final ImageStreamReassembler imageReassembler;
   final VoxVoiceService? voxVoiceService;
+  final NetworkMapUploadService networkMapUploadService;
 
   const MeshCoreApp({
     super.key,
@@ -361,6 +384,7 @@ class MeshCoreApp extends StatefulWidget {
     required this.receivedImageStore,
     required this.imageReassembler,
     this.voxVoiceService,
+    required this.networkMapUploadService,
   });
 
   @override
@@ -409,7 +433,11 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    widget.receivedImageStore.setForeground(state == AppLifecycleState.resumed);
+    // `inactive` is still on screen (iOS Control Center, a call banner, a Face
+    // ID prompt), so it must not cancel a decode and mark the image corrupt.
+    widget.receivedImageStore.setForeground(
+      state == AppLifecycleState.resumed || state == AppLifecycleState.inactive,
+    );
     if (state == AppLifecycleState.resumed) {
       // See MeshCoreConnector.resumeStalledOtpChunkSends: a backgrounded
       // app can have its OTP chunk-send retry Timers suspended well past
@@ -419,11 +447,15 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
     }
     // ~2.7 GiB resident in a backgrounded app is a low-memory-killer kill, so
     // unlike the translation stack the graph is dropped on background rather
-    // than held until the radio disconnects.
+    // than held until the radio disconnects. The store keeps its queue: the
+    // cancelled decode goes back on it and resumes when the app returns. Only
+    // a real memory warning (didHaveMemoryPressure) parks everything.
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
       unawaited(widget.imageCodecService.handleMemoryPressure());
-      unawaited(widget.receivedImageStore.handleMemoryPressure());
+    }
+    if (state == AppLifecycleState.resumed) {
+      widget.connector.syncAppBadge();
     }
   }
 
@@ -459,6 +491,7 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
         ChangeNotifierProvider<TakService>.value(value: _takService),
         ChangeNotifierProvider<WatchFeedService>.value(value: _watchFeed),
         Provider<AtakPluginBridge>.value(value: _atakBridge),
+        ChangeNotifierProvider.value(value: widget.networkMapUploadService),
       ],
       child: Consumer<AppSettingsService>(
         builder: (context, settingsService, child) {
@@ -511,19 +544,22 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
 
   SystemUiOverlayStyle _systemUiOverlayStyle(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     final iconBrightness = isDark ? Brightness.light : Brightness.dark;
 
-    // Keep Android system bars aligned with the resolved Flutter theme.
+    // The app draws edge-to-edge, so both system bars stay transparent and
+    // their icon brightness follows the resolved Flutter theme. Contrast
+    // enforcement keeps a scrim behind three-button navigation in case a
+    // route paints a dark surface under light-theme icons; dark full-screen
+    // routes also set light icons themselves.
     return SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: iconBrightness,
       statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
-      systemNavigationBarColor: colorScheme.surface,
+      systemNavigationBarColor: Colors.transparent,
       systemNavigationBarIconBrightness: iconBrightness,
-      systemNavigationBarDividerColor: colorScheme.surface,
-      systemNavigationBarContrastEnforced: false,
+      systemNavigationBarDividerColor: Colors.transparent,
+      systemNavigationBarContrastEnforced: true,
     );
   }
 
