@@ -828,7 +828,7 @@
     }
   },
   "chat_invalidLink": "Érvénytelen linkformátum",
-  "map_title": "Csomópont térkép",
+  "map_title": "Térkép",
   "map_lineOfSight": "Látóvonal",
   "map_losScreenTitle": "Látóvonal",
   "map_noNodesWithLocation": "Nincsenek helyadatokkal rendelkező csomópontok",

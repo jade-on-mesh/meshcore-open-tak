@@ -1996,7 +1996,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get chat_invalidLink => '無効なリンク形式';
 
   @override
-  String get map_title => 'ノードマップ';
+  String get map_title => 'マップ';
 
   @override
   String get map_searchHint => 'ノード名またはIDで検索';

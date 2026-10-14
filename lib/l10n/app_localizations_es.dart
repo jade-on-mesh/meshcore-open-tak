@@ -2085,7 +2085,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get chat_invalidLink => 'Formato de enlace no válido';
 
   @override
-  String get map_title => 'Mapa de nodos';
+  String get map_title => 'Mapa';
 
   @override
   String get map_searchHint => 'Buscar por nombre o ID del nodo';

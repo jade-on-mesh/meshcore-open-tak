@@ -2081,7 +2081,7 @@ class AppLocalizationsSk extends AppLocalizations {
   String get chat_invalidLink => 'Neplatný formát odkazu';
 
   @override
-  String get map_title => 'Mapa uzlov';
+  String get map_title => 'Mapa';
 
   @override
   String get map_searchHint => 'Vyhľadajte podľa názvu alebo ID uzla';

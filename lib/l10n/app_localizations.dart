@@ -3727,7 +3727,7 @@ abstract class AppLocalizations {
   /// No description provided for @map_title.
   ///
   /// In en, this message translates to:
-  /// **'Node Map'**
+  /// **'Map'**
   String get map_title;
 
   /// No description provided for @map_searchHint.

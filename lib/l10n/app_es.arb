@@ -677,7 +677,7 @@
     }
   },
   "chat_invalidLink": "Formato de enlace no válido",
-  "map_title": "Mapa de nodos",
+  "map_title": "Mapa",
   "map_noNodesWithLocation": "No hay nodos con datos de ubicación",
   "map_nodesNeedGps": "Los nodos necesitan compartir sus coordenadas GPS\npara aparecer en el mapa",
   "map_nodesCount": "Nodos: {count}",

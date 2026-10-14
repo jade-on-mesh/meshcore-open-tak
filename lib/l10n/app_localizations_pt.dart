@@ -2088,7 +2088,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get chat_invalidLink => 'Formato de link inválido';
 
   @override
-  String get map_title => 'Mapa de Nós';
+  String get map_title => 'Mapa';
 
   @override
   String get map_searchHint => 'Pesquisar por nome ou ID do nó';

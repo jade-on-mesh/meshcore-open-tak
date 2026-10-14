@@ -674,7 +674,7 @@
     }
   },
   "chat_invalidLink": "Ongeldig linkformaat",
-  "map_title": "Nodekaart",
+  "map_title": "Kaart",
   "map_noNodesWithLocation": "Geen nodes met locatiegegevens",
   "map_noNodesLocationHint": "Geen nodes met een recente locatie. Verruim het tijdfilter of stel je eigen locatie in bij Instellingen.",
   "map_nodesNeedGps": "Nodes moeten hun GPS-coördinaten delen\nom op de kaart te verschijnen",

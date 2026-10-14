@@ -655,7 +655,7 @@
     }
   },
   "chat_invalidLink": "Невалиден формат на връзката",
-  "map_title": "Карта на възлите",
+  "map_title": "Карта",
   "map_noNodesWithLocation": "Няма възли с данни за местоположение.",
   "map_nodesNeedGps": "Възлите трябва да споделят GPS координатите си,\nза да се появят на картата.",
   "map_nodesCount": "Възли: {count}",
