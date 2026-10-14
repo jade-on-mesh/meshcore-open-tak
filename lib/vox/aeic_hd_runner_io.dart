@@ -10,6 +10,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data' show Endian;
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
