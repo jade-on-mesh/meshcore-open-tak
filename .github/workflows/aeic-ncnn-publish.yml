@@ -1,0 +1,111 @@
+name: AEIC ncnn models (publish)
+
+# Publishes a model pack exported by aeic-ncnn-models.yml as a GitHub release
+# (tag below). The pack is ~1,050 files; GitHub release uploads cost ~25 s
+# each, so the files are bundled into ~250 MB tar archives, which the app
+# downloads and unpacks (lib/vox/aeic_hd_runner_io.dart).
+#
+# manifest.json (format 2): every file (name, size, sha256) and every archive
+# (asset, size, sha256, the files in it).
+#
+# Called by aeic-ncnn-models.yml after an export. On a push that changes this
+# file it republishes the pack from run 38501332975 (the v1 export), which is
+# how v1 was published without exporting twice.
+
+on:
+  workflow_call:
+    inputs:
+      run_id:
+        type: string
+        required: true
+  push:
+    paths:
+      - .github/workflows/aeic-ncnn-publish.yml
+    branches-ignore:
+      - main
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  TAG: aeic-ncnn-ft2-512-v1
+  RUN_ID: ${{ inputs.run_id || '38501332975' }}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: aeic-ncnn-pack
+          path: pack
+          run-id: ${{ env.RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Bundle into archives
+        run: |
+          python3 - <<'EOF'
+          import hashlib, json, os, pathlib, tarfile
+          pack = pathlib.Path("pack")
+          out = pathlib.Path("release"); out.mkdir()
+          m = json.loads((pack / "manifest.json").read_text())
+          limit = 256 * 1024 * 1024
+          archives, current, size = [], [], 0
+          for f in m["files"]:
+              f["name"] = f["path"].split("/")[-1]
+              if current and size + f["size"] > limit:
+                  archives.append(current); current, size = [], 0
+              current.append(f); size += f["size"]
+          if current:
+              archives.append(current)
+          entries = []
+          for i, files in enumerate(archives, 1):
+              name = f"pack-{i:02d}.tar"
+              with tarfile.open(out / name, "w", format=tarfile.USTAR_FORMAT) as tar:
+                  for f in files:
+                      src = pack / f["asset"]
+                      if hashlib.sha256(src.read_bytes()).hexdigest() != f["sha256"]:
+                          raise SystemExit(f"checksum mismatch: {f['path']}")
+                      tar.add(src, arcname=f["name"])
+              data = (out / name).read_bytes()
+              entries.append({"asset": name, "size": len(data),
+                              "sha256": hashlib.sha256(data).hexdigest(),
+                              "files": [f["name"] for f in files]})
+              print(f"::notice::{name}: {len(files)} files, {len(data) / 2**20:.0f} MiB")
+          for f in m["files"]:
+              f.pop("asset", None)
+          m["format"] = 2
+          m["archives"] = entries
+          (out / "manifest.json").write_text(json.dumps(m, indent=1))
+          total = sum(e["size"] for e in entries)
+          print(f"::notice::{len(m['files'])} files in {len(entries)} archives, {total / 2**30:.2f} GiB")
+          EOF
+          ls -la release
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          rate=$(python3 -c "import json;print(json.load(open('release/manifest.json'))['rate'])")
+          commit=$(python3 -c "import json;print(json.load(open('release/manifest.json'))['aeic_commit'][:7])")
+          notes="AEIC-SE ${rate} model pack for ncnn at 512 px, used by MeshCore Open TAK's AI sketch HD photo option. Exported by .github/workflows/aeic-ncnn-models.yml from mikecarper/AEIC@${commit}. Not an app release."
+          # A clean slate: an earlier attempt may have left loose files.
+          gh release delete "$TAG" -R "$REPO" -y >/dev/null 2>&1 || true
+          out=$(gh release create "$TAG" -R "$REPO" --prerelease --latest=false \
+                  --title "AI sketch HD model pack (${rate}, 512 px)" --notes "$notes" 2>&1) \
+            || { echo "::error::create release: $(echo "$out" | tr '\n' ' ')"; exit 1; }
+          failed=0
+          for f in release/*; do
+            ok=0
+            for attempt in 1 2 3 4; do
+              if out=$(gh release upload "$TAG" "$f" --clobber -R "$REPO" 2>&1); then ok=1; break; fi
+              echo "::warning::upload $(basename "$f") attempt $attempt: $(echo "$out" | tail -3 | tr '\n' ' ')"
+              sleep $((attempt * 15))
+            done
+            [ $ok = 1 ] || { echo "::error::could not upload $(basename "$f")"; failed=1; }
+          done
+          exit $failed
