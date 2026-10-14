@@ -254,6 +254,9 @@ class MeshCoreConnector extends ChangeNotifier {
   final PendingCommandReplies _pendingGenericAckQueue = PendingCommandReplies(
     staleAfter: _commandAckTimeout * 2,
   );
+  // RESP_CODE_CLI_REPLY texts, consumed in order by runLocalCliCommand.
+  final List<String> _cliReplies = [];
+  Future<void> _cliChain = Future<void>.value();
   static const String _reactionSendQueuePrefix = '__reaction_send__';
   // TXT_TYPE_CLI_COMMAND (firmware TxtDataHelpers.h).
   static const int _txtTypeCliCommand = 3;
@@ -6471,6 +6474,26 @@ class MeshCoreConnector extends ChangeNotifier {
     }
   }
 
+  /// Runs a local CLI command on the connected radio (CMD_RUN_CLI_COMMAND)
+  /// and returns the reply text. Commands run one at a time. Throws when the
+  /// firmware has no local CLI (it answers RESP_CODE_ERR) or does not answer.
+  Future<String> runLocalCliCommand(String command) {
+    final run = _cliChain.then((_) async {
+      _cliReplies.clear();
+      await sendFrame(
+        buildRunCliCommandFrame(command),
+        waitForGenericAck: true,
+      );
+      // The newest reply is this command's; an older one is a late answer to
+      // a command that already timed out.
+      final reply = _cliReplies.isEmpty ? '' : _cliReplies.last;
+      _cliReplies.clear();
+      return reply;
+    });
+    _cliChain = run.then<void>((_) {}, onError: (Object _) {});
+    return run;
+  }
+
   Future<void> requestBatteryStatus({bool force = false}) async {
     if (!isConnected) return;
     if (_batteryRequested && !force) return;
@@ -8948,6 +8971,9 @@ class MeshCoreConnector extends ChangeNotifier {
         break;
       case respCodeCustomVars:
         _handleCustomVars(frame);
+        break;
+      case respCodeCliReply:
+        _cliReplies.add(parseCliReplyFrame(frame));
         break;
       // RESP_CODE_ERR is a defined firmware response (code 1), not an unknown frame.
       case respCodeErr:

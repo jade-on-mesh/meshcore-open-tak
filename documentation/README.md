@@ -30,6 +30,7 @@ MeshCore Open is an open-source Flutter client for MeshCore LoRa mesh networking
 17. [Review Mode](review-mode.md) - Simulated radio and reviewer instructions for Google Play and App Store review
 18. [Network Map](network-map.md) - Online repeater map, adding and managing repeaters from it, opt-in uploads, and hiding a repeater
 19. [ATAK Plugin](atak-plugin.md) - Sharing the radio with the MeshCore ATAK plugin, and items shared from ATAK
+20. [MediaMesh](media-mesh.md) - Photos and voice on a second frequency (`radio2`) of the same radio
 
 ## App Overview
 
