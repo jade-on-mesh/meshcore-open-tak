@@ -711,6 +711,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                       );
                     },
                     mapCenter: _mapController.camera.center,
+                    mapArea: _mapController.camera.visibleBounds,
                   ),
                 ),
                 PopupMenuButton(

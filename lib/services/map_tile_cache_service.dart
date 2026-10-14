@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -7,6 +8,7 @@ import 'package:flutter_map/flutter_map.dart';
 
 import '../models/app_settings.dart';
 import 'app_settings_service.dart';
+import 'map_packs.dart';
 
 enum MapRasterSourcePreset {
   osmAuto('osm_auto'),
@@ -333,6 +335,7 @@ class MapTileCacheService extends ChangeNotifier {
              ),
            ) {
     tileProvider = CachedNetworkTileProvider(cacheManager: this.cacheManager);
+    unawaited(MapPackService.instance.load()); // offline map packs, if any
     appSettingsService.addListener(_handleSettingsChanged);
   }
 
@@ -838,6 +841,13 @@ class CachedNetworkTileProvider extends TileProvider {
 
   @override
   ImageProvider getImage(TileCoordinates coordinates, TileLayer options) {
+    // An imported offline map pack first, in any map style.
+    final packed = MapPackService.instance.tile(
+      coordinates.z,
+      coordinates.x,
+      coordinates.y,
+    );
+    if (packed != null) return MemoryImage(packed);
     final url = getTileUrl(coordinates, options);
     return CachedNetworkImageProvider(
       url,

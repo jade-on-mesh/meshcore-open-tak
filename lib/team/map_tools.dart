@@ -3,9 +3,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart' show LatLngBounds;
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
+import '../screens/map_packs_screen.dart';
 import '../vox/image_send_sheet.dart';
 import '../vox/voice_service.dart';
 import 'team_casevac_ui.dart';
@@ -56,6 +58,7 @@ Future<void> showMapTools(
   required VoidCallback onMeasure,
   required ValueChanged<LatLng> onGoTo,
   required LatLng mapCenter,
+  LatLngBounds? mapArea,
 }) {
   final team = context.read<TeamService>();
   final tools = <_Tool>[
@@ -112,6 +115,13 @@ Future<void> showMapTools(
     _Tool(Icons.straighten, 'Range & Bearing', (_) => onMeasure()),
     _Tool(Icons.my_location, 'Go To', (c) => _showGoTo(c, team, onGoTo)),
     _Tool(Icons.timeline, 'Track History', (c) => _showTrackHistory(c)),
+    _Tool(
+      Icons.download_for_offline_outlined,
+      'Offline Maps',
+      (c) => Navigator.of(c).push(
+        MaterialPageRoute<void>(builder: (_) => MapPacksScreen(area: mapArea)),
+      ),
+    ),
     _Tool(
       Icons.track_changes,
       'Bloodhound',
