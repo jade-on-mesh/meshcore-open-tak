@@ -217,6 +217,7 @@ const int cmdGetAllowedRepeatFreq = 60;
 const int cmdSetPathHashMode = 61;
 const int cmdSetDefaultFloodScope = 63; // FIRMWARE_VER_CODE 11+
 const int cmdGetDefaultFloodScope = 64; // FIRMWARE_VER_CODE 11+
+const int cmdRunCliCommand = 0x42; // local CLI text (protocol v14+)
 
 // Text message types
 const int txtTypePlain = 0;
@@ -268,6 +269,7 @@ const int respCodeAutoAddConfig = 25;
 const int respCodeAllowedRepeatFreq = 26;
 const int respCodeStats = 24;
 const int respCodeDefaultFloodScope = 28;
+const int respCodeCliReply = 29; // reply to CMD_RUN_CLI_COMMAND
 
 /// Region name field width in SET/GET_DEFAULT_FLOOD_SCOPE frames (NUL padded,
 /// so at most 30 name bytes).
@@ -1296,4 +1298,25 @@ class RawDataPush {
       payload: Uint8List.fromList(frame.sublist(4)),
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Local CLI (CMD_RUN_CLI_COMMAND): [0x42][command text]. The radio answers
+// with RESP_CODE_CLI_REPLY: [29][reply text]. Firmware without a local CLI
+// answers RESP_CODE_ERR instead.
+Uint8List buildRunCliCommandFrame(String command) {
+  final writer = BufferWriter();
+  writer.writeByte(cmdRunCliCommand);
+  writer.writeBytes(Uint8List.fromList(utf8.encode(command)));
+  return writer.toBytes();
+}
+
+/// Reply text of a RESP_CODE_CLI_REPLY frame, without trailing NULs.
+String parseCliReplyFrame(Uint8List frame) {
+  if (frame.length < 2 || frame[0] != respCodeCliReply) return '';
+  var end = frame.length;
+  while (end > 1 && frame[end - 1] == 0) {
+    end--;
+  }
+  return utf8.decode(frame.sublist(1, end), allowMalformed: true);
 }

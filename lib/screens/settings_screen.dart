@@ -16,6 +16,7 @@ import '../helpers/snack_bar_builder.dart';
 import '../helpers/utf8_length_limiter.dart';
 import '../widgets/mesh_nav_tile.dart';
 import '../widgets/mesh_ui.dart';
+import '../widgets/media_mesh_settings_dialog.dart';
 import '../widgets/radio_settings_dialog.dart';
 import 'app_settings_screen.dart';
 import 'app_debug_log_screen.dart';
@@ -539,6 +540,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
           subtitle: connected ? l10n.settings_radioSettingsSubtitle : offline,
           onTap: connected
               ? () => _showRadioSettings(context, connector)
+              : null,
+        ),
+        const Divider(height: 1, indent: 16),
+        MeshNavTile(
+          icon: Icons.perm_media_outlined,
+          title: 'MediaMesh Settings',
+          subtitle: connected
+              ? 'Photos and voice on a second frequency'
+              : offline,
+          onTap: connected
+              ? () => showDialog(
+                  context: context,
+                  builder: (context) =>
+                      MediaMeshSettingsDialog(connector: connector),
+                )
               : null,
         ),
         const Divider(height: 1, indent: 16),

@@ -60,6 +60,13 @@ Opens a dialog pre-populated with the device's current radio settings. Contains:
 - **TX Power** (dBm): Validated 0 to device max (typically 22 dBm)
 - **Client Repeat** toggle: Only shown on firmware v9+; requires frequency to be exactly 433.000, 869.000, or 918.000 MHz (the Off-Grid presets). Save is blocked with a warning if enabled on other frequencies
 
+### MediaMesh Settings
+Below Radio Settings. Sends and receives photos and voice clips on a second frequency of the same radio (its `radio2` profile), while text stays on the main mesh:
+- **Photos & voice on MediaMesh** toggle
+- **MediaMesh frequency** (MHz), **Bandwidth**, **Spreading factor**, **Coding rate**: default 916.000 MHz, 250 kHz, SF7, 4/5. Must differ from the main radio.
+
+Needs radio firmware with MediaMesh (Wadamesh, or MeshCore with `radio2` and `tx.media`). See [MediaMesh](media-mesh.md).
+
 ### Regions
 
 Open region management to add/fetch names and select a default flood scope. Channel chat can override it; clearing an override inherits the default. See [Regions](regions.md), including message labels and temporary reply-region choices.
