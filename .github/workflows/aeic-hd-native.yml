@@ -1,0 +1,39 @@
+name: AEIC HD native codec
+
+# Checks the AEIC HD codec program builds for Android (and its host entropy
+# tests pass) whenever its build script changes on a branch. The APK build
+# (build.yml) builds it again for the app.
+
+on:
+  push:
+    branches-ignore:
+      - main
+    paths:
+      - tool/build_aeic_hd_android.sh
+      - .github/workflows/aeic-hd-native.yml
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install NDK 29.0.14206865
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;29.0.14206865" >/dev/null
+      - name: Build
+        run: bash tool/build_aeic_hd_android.sh "$ANDROID_HOME/ndk/29.0.14206865" out/arm64-v8a
+      - name: Host entropy and recovery tests
+        run: |
+          cmake -S /tmp/aeic-hd-build/aeic/mobile/native -B /tmp/aeic-entropy -DAEIC_ENTROPY_TEST_ONLY=ON >/dev/null
+          cmake --build /tmp/aeic-entropy -j4
+          ctest --test-dir /tmp/aeic-entropy --output-on-failure
+      - name: Check it is an arm64 PIE executable
+        run: |
+          file out/arm64-v8a/libaeic_codec_exec.so
+          file out/arm64-v8a/libaeic_codec_exec.so | grep -q "ARM aarch64" 
+          file out/arm64-v8a/libaeic_codec_exec.so | grep -qE "pie executable|shared object"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aeic-hd-codec-arm64-v8a
+          path: out/arm64-v8a/libaeic_codec_exec.so
