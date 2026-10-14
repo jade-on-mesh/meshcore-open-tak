@@ -1,0 +1,133 @@
+name: Upstream canary
+
+# Early warning for the release sync (upstream-sync.yml). Every day this
+# merges MeshCore Open's main branch — what will be in the next release —
+# into a scratch branch, replaying earlier conflict resolutions (rerere), and
+# runs Check on the result. Nothing here touches main.
+#
+#   clean and Check passes   -> the open canary issue (if any) is closed
+#   conflicts / Check fails  -> one issue, kept up to date, naming the files
+#                               and the upstream changes behind them
+#
+# Fixing a conflict while it is one or two upstream changes old (on a branch,
+# or by moving fork code out of the file upstream is changing) means the
+# release sync later finds it already resolved.
+
+on:
+  schedule:
+    - cron: "23 14 * * *" # daily, 07:23 Pacific (daylight time)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: upstream-canary
+  cancel-in-progress: true
+
+env:
+  UPSTREAM: zjs81/meshcore-open
+  BRANCH: upstream-canary
+  TITLE: "Upstream MeshCore Open main conflicts with the fork"
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    outputs:
+      state: ${{ steps.m.outputs.state }}
+      files: ${{ steps.m.outputs.files }}
+      upstream: ${{ steps.m.outputs.upstream }}
+      commits: ${{ steps.m.outputs.commits }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Merge upstream main (with earlier resolutions)
+        id: m
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --quiet --no-tags "https://github.com/$UPSTREAM" '+refs/heads/main:refs/upstream/main'
+          up=$(git rev-parse refs/upstream/main)
+          echo "upstream=$(git rev-parse --short "$up")" >> "$GITHUB_OUTPUT"
+          if git merge-base --is-ancestor "$up" HEAD; then
+            echo "state=current" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          bash .github/scripts/rerere-train.sh 60 HEAD
+          git checkout -q -B "$BRANCH"
+          if git merge --no-ff --no-edit -m "Canary: merge MeshCore Open main $(git rev-parse --short "$up")" "$up" \
+             || [ -z "$(git diff --name-only --diff-filter=U)" ]; then
+            git diff --quiet --cached || git commit -q --no-edit
+            if git push -q -f origin "$BRANCH"; then
+              echo "state=merged" >> "$GITHUB_OUTPUT"
+            else
+              # Upstream changed .github/workflows: the default token may not
+              # push that (see SYNC_TOKEN in upstream-sync.yml).
+              echo "state=blocked" >> "$GITHUB_OUTPUT"
+            fi
+            exit 0
+          fi
+          files=$(git diff --name-only --diff-filter=U)
+          base=$(git merge-base HEAD "$up")
+          # The upstream changes behind each conflicting file.
+          commits=$(git log --format='- %h %s' "$base..$up" -- $files | head -30 | sed 's/`/'"'"'/g')
+          git merge --abort
+          {
+            echo "files<<EOF"; echo "$files" | sed 's/^/- `/; s/$/`/'; echo "EOF"
+            echo "commits<<EOF"; echo "$commits"; echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "state=conflict" >> "$GITHUB_OUTPUT"
+
+  check:
+    needs: merge
+    if: needs.merge.outputs.state == 'merged'
+    uses: ./.github/workflows/check.yml
+    with:
+      ref: upstream-canary
+
+  report:
+    needs: [merge, check]
+    if: always() && needs.merge.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open, update or close the canary issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          STATE: ${{ needs.merge.outputs.state }}
+          CHECK: ${{ needs.check.result }}
+          FILES: ${{ needs.merge.outputs.files }}
+          COMMITS: ${{ needs.merge.outputs.commits }}
+          UP: ${{ needs.merge.outputs.upstream }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          num=$(gh api "repos/$REPO/issues?state=open&per_page=100" \
+                  --jq "[.[] | select(.title == \"$TITLE\")][0].number // empty")
+          if [ "$STATE" = current ] || { [ "$STATE" = merged ] && [ "$CHECK" = success ]; }; then
+            if [ -n "$num" ]; then
+              gh api "repos/$REPO/issues/$num/comments" -f body="Upstream main ($UP) now merges cleanly and passes Check. Closing." >/dev/null
+              gh api -X PATCH "repos/$REPO/issues/$num" -f state=closed >/dev/null
+            fi
+            echo "Upstream main $UP: fine."
+            exit 0
+          fi
+          if [ "$STATE" = blocked ]; then
+            echo "::warning::Upstream main merges cleanly but changes .github/workflows, which this token can't push; nothing to report."
+            exit 0
+          fi
+          if [ "$STATE" = conflict ]; then
+            body="Upstream main (\`$UP\`) conflicts with the fork in:"$'\n\n'"$FILES"$'\n\n'"Upstream changes behind them:"$'\n\n'"$COMMITS"$'\n\n'"Resolving these now (merge upstream main on a branch, or move fork code out of these files) keeps the next release sync automatic: its resolutions are recorded and replayed. From the [canary run]($RUN)."
+          else
+            body="Upstream main (\`$UP\`) merges cleanly, but Check fails on the result (branch \`upstream-canary\`): upstream changed something the fork's code relies on. From the [canary run]($RUN)."
+          fi
+          if [ -n "$num" ]; then
+            gh api -X PATCH "repos/$REPO/issues/$num" -f body="$body" >/dev/null
+            echo "Updated issue #$num"
+          else
+            gh api "repos/$REPO/issues" -f title="$TITLE" -f body="$body" --jq .html_url
+          fi

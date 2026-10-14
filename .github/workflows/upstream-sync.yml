@@ -10,6 +10,12 @@ name: Upstream sync
 # A release that conflicts with this fork's changes, or fails Check, is left
 # as a pull request (and an issue) for a person to finish.
 #
+# Conflicts that were resolved before are resolved again automatically: git's
+# rerere is taught every resolution in this repository's merge history
+# (.github/scripts/rerere-train.sh) and replays them. Only new conflicts stop
+# the sync. upstream-canary.yml merges upstream's main every day, so those
+# show up early, one upstream change at a time.
+#
 # Pushes made with the default token can't change files under
 # .github/workflows. When an upstream release touches those, add a repo secret
 # SYNC_TOKEN (a fine-grained token with Contents and Workflows: read/write on
@@ -98,8 +104,18 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          bash .github/scripts/rerere-train.sh 60 HEAD
           git checkout -q -b "$branch"
+          merged=false
           if git merge --no-ff --no-edit -m "Merge MeshCore Open $REL" "$up"; then
+            merged=true
+          elif [ -z "$(git diff --name-only --diff-filter=U)" ]; then
+            # Every conflict was one resolved before: rerere replayed it.
+            git commit -q --no-edit
+            echo "::notice::All conflicts with $REL were resolved from earlier resolutions (rerere)."
+            merged=true
+          fi
+          if [ "$merged" = true ]; then
             if git push -q origin "$branch"; then
               echo "state=merged" >> "$GITHUB_OUTPUT"
             else
