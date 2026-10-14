@@ -156,8 +156,11 @@ const int kImageRateWireStandard = 0;
 /// agree on the nibble.
 const int kImageRateWireHigh = 1;
 
+/// Wire code for MeshCore Open TAK's AI sketch HD (`ft2`, decoded by ncnn).
+const int kImageRateWireHd = 2;
+
 /// Number of rate codes this build knows how to name.
-const int kImageRateWireCodeCount = 2;
+const int kImageRateWireCodeCount = 3;
 
 /// Maps a UI rate point to the wire code written into the metadata byte.
 ///
@@ -181,6 +184,8 @@ int imageRateWireCode(ImageCodecRatePoint rate) {
       return kImageRateWireStandard;
     case ImageCodecRatePoint.high:
       return kImageRateWireHigh;
+    case ImageCodecRatePoint.hd:
+      return kImageRateWireHd;
   }
 }
 
@@ -191,6 +196,8 @@ ImageCodecRatePoint? imageRatePointFromWireCode(int code) {
       return ImageCodecRatePoint.standard;
     case kImageRateWireHigh:
       return ImageCodecRatePoint.high;
+    case kImageRateWireHd:
+      return ImageCodecRatePoint.hd;
     default:
       return null;
   }

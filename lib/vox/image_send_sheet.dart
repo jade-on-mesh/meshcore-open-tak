@@ -10,6 +10,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../connector/meshcore_connector.dart';
+import 'aeic_hd_screens.dart';
+import 'aeic_hd_service.dart';
 import 'av1_ffi.dart';
 import 'image_codec.dart';
 import 'image_focus.dart';
@@ -31,10 +33,15 @@ class VoxAiSketchOption {
   /// Previews and sends the picked file as an AI sketch.
   final Future<void> Function(Uint8List bytes, int fileBytes) send;
 
+  /// Encodes and sends the picked file as an AI sketch HD
+  /// (aeic_hd_service.dart); null where the chat can't carry one.
+  final Future<void> Function(Uint8List bytes, int fileBytes)? sendHd;
+
   const VoxAiSketchOption({
     required this.ready,
     required this.explainNotReady,
     required this.send,
+    this.sendHd,
   });
 }
 
@@ -90,7 +97,7 @@ Future<void> showVoxImagePicker(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (aiSketch != null) const _PhotoKindChooser(),
+          if (aiSketch != null) _PhotoKindChooser(hd: aiSketch.sendHd != null),
           ListTile(
             leading: const Icon(Icons.photo_camera_outlined),
             title: const Text('Take photo'),
@@ -108,7 +115,16 @@ Future<void> showVoxImagePicker(
   if (source == null || !context.mounted) return;
   final sketch =
       aiSketch != null && (voice.photoAiSketch || !voice.imagesAvailable);
-  if (sketch && !aiSketch.ready()) {
+  final sendHd = aiSketch?.sendHd;
+  final hd = sketch && voice.photoAiSketchHd && sendHd != null;
+  if (hd) {
+    await AeicHdService.instance.init();
+    if (!context.mounted) return;
+    if (!AeicHdService.instance.isReady) {
+      await AeicHdScreen.open(context);
+      return;
+    }
+  } else if (sketch && !aiSketch.ready()) {
     aiSketch.explainNotReady();
     return;
   }
@@ -143,7 +159,7 @@ Future<void> showVoxImagePicker(
       }
       return;
     }
-    await aiSketch.send(bytes, fileBytes);
+    await (hd ? sendHd! : aiSketch.send)(bytes, fileBytes);
     return;
   }
   VoxRgbImage ref;
@@ -521,51 +537,97 @@ class _VoxImageSendSheetState extends State<VoxImageSendSheet> {
   }
 }
 
-/// VOX photo (default) or AI sketch, remembered like the Mimi choice.
+/// VOX photo (default), AI sketch, or AI sketch HD, remembered like the
+/// Mimi choice.
+enum _PhotoKind { vox, sketch, hd }
+
 class _PhotoKindChooser extends StatelessWidget {
-  const _PhotoKindChooser();
+  /// Offer AI sketch HD as well.
+  final bool hd;
+  const _PhotoKindChooser({required this.hd});
 
   @override
   Widget build(BuildContext context) {
     final voice = context.watch<VoxVoiceService>();
     final sketch = voice.photoAiSketch || !voice.imagesAvailable;
+    final kind = !sketch
+        ? _PhotoKind.vox
+        : (hd && voice.photoAiSketchHd ? _PhotoKind.hd : _PhotoKind.sketch);
     final theme = Theme.of(context);
+    final String about;
+    switch (kind) {
+      case _PhotoKind.vox:
+        about =
+            'Real pixels, about 2.7 KB. Everyone can view it, '
+            'Wadamesh radios included. The default.';
+      case _PhotoKind.sketch:
+        about =
+            'AEIC, about 150 bytes (1-2 packets). The receiver\'s phone '
+            'redraws the picture from a description, so faces, text '
+            'and small details can be invented. Phones with the '
+            'image model only; radios can\'t show it.';
+      case _PhotoKind.hd:
+        about =
+            'AEIC HD, about 1-2 KB (8-15 packets): much closer to the real '
+            'photo than an AI sketch, half the airtime of a VOX photo. The '
+            'receiver\'s phone takes a few minutes to draw it and needs the '
+            'AI sketch HD model; radios can\'t show it.';
+    }
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment(
-                value: false,
+          SegmentedButton<_PhotoKind>(
+            segments: [
+              const ButtonSegment(
+                value: _PhotoKind.vox,
                 icon: Icon(Icons.photo_outlined),
                 label: Text('VOX photo'),
               ),
-              ButtonSegment(
-                value: true,
+              const ButtonSegment(
+                value: _PhotoKind.sketch,
                 icon: Icon(Icons.auto_awesome_outlined),
                 label: Text('AI sketch'),
               ),
+              if (hd)
+                const ButtonSegment(
+                  value: _PhotoKind.hd,
+                  icon: Icon(Icons.hd_outlined),
+                  label: Text('Sketch HD'),
+                ),
             ],
-            selected: {sketch},
-            onSelectionChanged: voice.imagesAvailable
-                ? (s) => voice.setPhotoAiSketch(s.first)
-                : null,
+            selected: {kind},
+            onSelectionChanged: (s) {
+              final k = s.first;
+              if (k == _PhotoKind.vox && !voice.imagesAvailable) return;
+              voice.setPhotoAiSketch(k != _PhotoKind.vox);
+              if (k != _PhotoKind.vox) {
+                voice.setPhotoAiSketchHd(k == _PhotoKind.hd);
+              }
+            },
           ),
           const SizedBox(height: 6),
           Text(
-            sketch
-                ? 'AEIC, about 150 bytes (1-2 packets). The receiver\'s phone '
-                      'redraws the picture from a description, so faces, text '
-                      'and small details can be invented. Phones with the '
-                      'image model only; radios can\'t show it.'
-                : 'Real pixels, about 2.7 KB. Everyone can view it, '
-                      'Wadamesh radios included. The default.',
+            about,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
+          if (kind == _PhotoKind.hd)
+            ListenableBuilder(
+              listenable: AeicHdService.instance,
+              builder: (context, _) => AeicHdService.instance.isReady
+                  ? const SizedBox.shrink()
+                  : Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        icon: const Icon(Icons.download, size: 18),
+                        label: const Text('Set up AI sketch HD'),
+                        onPressed: () => AeicHdScreen.open(context),
+                      ),
+                    ),
+            ),
         ],
       ),
     );

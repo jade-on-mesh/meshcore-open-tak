@@ -22,6 +22,7 @@ import '../widgets/network_map_settings_section.dart';
 import '../widgets/sync_progress_overlay.dart';
 import '../widgets/translation_settings_section.dart';
 import '../helpers/snack_bar_builder.dart';
+import '../vox/aeic_hd_screens.dart';
 import 'map_cache_screen.dart';
 import 'map_packs_screen.dart';
 
@@ -706,6 +707,19 @@ class AppSettingsScreen extends StatelessWidget {
               await codec?.setEnabled(value);
             },
           ),
+        ),
+        // MeshCore Open TAK: the AI sketch HD model (lib/vox/aeic_hd_screens.dart).
+        const Divider(height: 1, indent: 16),
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          leading: const Icon(Icons.hd_outlined, size: 24),
+          title: const Text('AI sketch HD'),
+          subtitle: const Text(
+            'A third photo option: ~1-2 KB, far closer to the real photo. '
+            'Separate ~2 GB model download.',
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => AeicHdScreen.open(context),
         ),
         if (settingsService.settings.imageMessagesEnabled) ...[
           const Divider(height: 1, indent: 16),

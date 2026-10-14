@@ -1141,7 +1141,7 @@ void main() {
       );
       // ...and an AeicRatePoint ordinal on the wire is refused outright.
       expect(imageRatePointFromWireCode(AeicRatePoint.ft32.wireValue), isNull);
-      expect(imageRatePointFromWireCode(AeicRatePoint.ft8.wireValue), isNull);
+      expect(imageRatePointFromWireCode(AeicRatePoint.ft16.wireValue), isNull);
     });
 
     test('every wire code round-trips and unknown codes are null', () {
@@ -1167,11 +1167,11 @@ void main() {
         senderPrefix: senderA,
         imgId: 80,
       );
-      // Overwrite the 2-bit rate field with 2 — a code no shipping build
-      // emits. Without an explicit rate table this would have decoded as a
-      // valid rate point and fed the wrong model.
+      // Overwrite the 2-bit rate field with 3 — a code no build emits (2 is
+      // AI sketch HD). Without an explicit rate table this would have decoded
+      // as a valid rate point and fed the wrong model.
       final bad = Uint8List.fromList(set.blobs[0]);
-      bad[kImageChunkHeaderBytes] = (bad[kImageChunkHeaderBytes] & 0xFC) | 0x02;
+      bad[kImageChunkHeaderBytes] = (bad[kImageChunkHeaderBytes] & 0xFC) | 0x03;
 
       final delivered = <ImageReassemblyResult>[];
       final failures = <ImageReassemblyFailure>[];

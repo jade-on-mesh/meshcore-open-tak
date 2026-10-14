@@ -67,6 +67,7 @@ import 'channel_message_path_screen.dart';
 import 'map_screen.dart';
 import 'region_management_screen.dart';
 import '../storage/region_store.dart';
+import '../vox/aeic_hd_screens.dart';
 import '../vox/image_send_sheet.dart';
 import '../vox/voice_message_bubble.dart';
 import '../vox/voice_record_sheet.dart';
@@ -1704,6 +1705,19 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       ready: () => codec.availability == ImageCodecAvailability.ready,
       explainNotReady: () => _explainImageCodecNotReady(codec),
       send: _sendAiSketch,
+      sendHd: (bytes, _) => _sendAiSketchHd(bytes),
+    );
+  }
+
+  /// AI sketch HD (lib/vox/aeic_hd_service.dart): encoded by the ncnn codec,
+  /// then chunked onto the channel like any image message.
+  Future<void> _sendAiSketchHd(Uint8List sourceBytes) async {
+    final result = await showAeicHdSendSheet(context, imageBytes: sourceBytes);
+    if (result == null || !mounted) return;
+    await _sendImage(
+      context.read<MeshCoreConnector>(),
+      result,
+      sourceBytes: sourceBytes,
     );
   }
 
