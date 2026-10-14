@@ -170,6 +170,16 @@ void main() {
     expect(p('lat: 45.52 lon: -122.68'), (45.52, -122.68));
     expect(p('Latitude=45.5 Longitude=-122.6'), (45.5, -122.6));
     expect(p('pos 45.5625 -122.6108'), (45.5625, -122.6108));
+    (double, double) near(LatLngPair v) => (
+      (v.$1! * 1e4).roundToDouble() / 1e4,
+      (v.$2! * 1e4).roundToDouble() / 1e4,
+    );
+    expect(near(p('45°31\'30"N 122°40\'30"W')), (45.525, -122.675));
+    expect(near(p("45° 31.5' N, 122° 40.5' W")), (45.525, -122.675));
+    expect(near(p('net control CN85pm')), (45.5208, -122.7083));
+    expect(near(p('cn85pm42')), (45.5104, -122.7125));
+    expect(near(p('grid CN85')), (45.5, -123.0));
+    expect(p('the AB12 bus').$1, isNull); // a 4-character square needs a cue
     // Not positions.
     expect(p('M3.9 at 11:09 UTC, 5 km away').$1, isNull);
     expect(p('Room 5 Steps north').$1, isNull);

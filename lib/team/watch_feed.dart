@@ -207,6 +207,46 @@ final _spaceCoordRe = RegExp(
   r'(?<![\d.])(-?\d{1,2}\.\d{4,})\s+(-?\d{1,3}\.\d{4,})(?![\d.])',
 );
 
+//   45°31'30"N 122°40'30"W, 45° 31.5' N 122° 40.5' W, 45d31m30sN (DMS / DDM)
+const _dmsOne =
+    r'(\d{1,3}(?:\.\d+)?)\s*(?:°|d)\s*(?:(\d{1,2}(?:\.\d+)?)\s*(?:\x27|′|m)\s*'
+    r'(?:(\d{1,2}(?:\.\d+)?)\s*(?:"|″|\x27\x27|s)\s*)?)?';
+final _dmsRe = RegExp(
+  '(?<![\\d.])$_dmsOne([NSns])(?![A-Za-z])[\\s,;/]*$_dmsOne([EWew])(?![A-Za-z])',
+);
+//   Maidenhead: CN85pm, CN85pm42 (any case); a 4-character square (CN85) only
+//   after "grid" / "locator" / "loc".
+final _maidenheadRe = RegExp(
+  r'(?<![A-Za-z0-9_])([A-Ra-r]{2}\d{2})(?:([A-Xa-x]{2})(\d{2})?)?(?![A-Za-z0-9_])',
+);
+final _gridCueRe = RegExp(r'\b(?:grid|locator|loc)\s*[:=]?\s*$', caseSensitive: false);
+
+/// The middle of a Maidenhead square: "CN85pm" -> 45.521, -122.708.
+(double, double)? maidenheadCenter(String loc) {
+  final s = loc.toUpperCase();
+  if (s.length < 4 || s.length.isOdd || s.length > 8) return null;
+  final a = s.codeUnitAt(0) - 65, b = s.codeUnitAt(1) - 65;
+  if (a < 0 || a > 17 || b < 0 || b > 17) return null;
+  var lon = a * 20.0 - 180 + int.parse(s[2]) * 2;
+  var lat = b * 10.0 - 90 + int.parse(s[3]);
+  var w = 2.0, h = 1.0;
+  if (s.length >= 6) {
+    final c = s.codeUnitAt(4) - 65, d = s.codeUnitAt(5) - 65;
+    if (c < 0 || c > 23 || d < 0 || d > 23) return null;
+    w = 2 / 24;
+    h = 1 / 24;
+    lon += c * w;
+    lat += d * h;
+    if (s.length == 8) {
+      w /= 10;
+      h /= 10;
+      lon += int.parse(s[6]) * w;
+      lat += int.parse(s[7]) * h;
+    }
+  }
+  return (lat + h / 2, lon + w / 2);
+}
+
 /// Every position written in [text], in order, as (start, end, lat, lon):
 /// the comma form first, then the others where they don't overlap it.
 List<(int, int, double, double)> watchPositions(String text) {
@@ -226,6 +266,24 @@ List<(int, int, double, double)> watchPositions(String text) {
     return 'SWsw'.contains(h) ? -v : v;
   }
 
+  double? dms(String? d, String? m, String? s, String h) {
+    final deg = double.tryParse(d ?? '');
+    if (deg == null) return null;
+    final v =
+        deg +
+        (double.tryParse(m ?? '') ?? 0) / 60 +
+        (double.tryParse(s ?? '') ?? 0) / 3600;
+    return 'SWsw'.contains(h) ? -v : v;
+  }
+
+  for (final m in _dmsRe.allMatches(text)) {
+    add(
+      m.start,
+      m.end,
+      dms(m[1], m[2], m[3], m[4]!),
+      dms(m[5], m[6], m[7], m[8]!),
+    );
+  }
   for (final m in _hemiRe.allMatches(text)) {
     add(m.start, m.end, signed(m[1]!, m[2]!), signed(m[3]!, m[4]!));
   }
@@ -237,6 +295,15 @@ List<(int, int, double, double)> watchPositions(String text) {
   }
   for (final m in _spaceCoordRe.allMatches(text)) {
     add(m.start, m.end, double.tryParse(m[1]!), double.tryParse(m[2]!));
+  }
+  for (final m in _maidenheadRe.allMatches(text)) {
+    final full = m[0]!;
+    if (full.length == 4 &&
+        !_gridCueRe.hasMatch(text.substring(0, m.start))) {
+      continue;
+    }
+    final c = maidenheadCenter(full);
+    if (c != null) add(m.start, m.end, c.$1, c.$2);
   }
   out.sort((a, b) => a.$1.compareTo(b.$1));
   return out;
