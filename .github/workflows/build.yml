@@ -104,7 +104,10 @@ jobs:
         timeout-minutes: 30
         run: |
           set -euo pipefail
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;29.0.14206865" >/dev/null
+          # `yes` fails with a broken pipe when sdkmanager exits without reading
+          # all of it (the runner already has this NDK), and pipefail would turn
+          # that into a failed step. Only sdkmanager's own status counts.
+          (yes || true) | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;29.0.14206865" >/dev/null
           bash tool/build_aeic_hd_android.sh "$ANDROID_HOME/ndk/29.0.14206865" third_party/aeic-hd-android/arm64-v8a
       - name: Add AEIC HD codec to jniLibs
         run: |
