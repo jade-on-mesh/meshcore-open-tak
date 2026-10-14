@@ -101,11 +101,7 @@ class VoxCodecChoice {
     for (final e in _heard.entries) e.key: [e.value.$1, e.value.$2],
   });
 
-  void load({
-    List<String>? codec2,
-    List<String>? mimi,
-    String? heardJson,
-  }) {
+  void load({List<String>? codec2, List<String>? mimi, String? heardJson}) {
     _codec2
       ..clear()
       ..addAll(codec2 ?? const []);

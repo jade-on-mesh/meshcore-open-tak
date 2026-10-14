@@ -5,7 +5,8 @@ import 'package:meshcore_open/vox/voice_wire.dart';
 void main() {
   final t0 = DateTime.utc(2026, 10, 14, 9);
   DateTime at(Duration d) => t0.add(d);
-  const dm = 'c:aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899';
+  const dm =
+      'c:aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899';
   const ch = 'ch:0123456789abcdef0123456789abcdef';
 
   group('receiving tells the codecs apart', () {
