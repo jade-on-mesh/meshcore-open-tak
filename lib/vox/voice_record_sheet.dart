@@ -284,8 +284,16 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
                 contentPadding: EdgeInsets.zero,
                 secondary: const Icon(Icons.router_outlined),
                 title: const Text('Codec2 for this chat'),
-                subtitle: const Text(
-                  'Plays on radios without Mimi, like Wadamesh on a T-Deck',
+                subtitle: Text(
+                  !voice.manualCodec2(widget.codecTarget) &&
+                          voice.forcesCodec2(widget.codecTarget)
+                      ? widget.codecTarget!.startsWith('ch:')
+                            ? 'On automatically: someone here sent Codec2 '
+                                  'voice, so radios like Wadamesh can play it'
+                            : 'On automatically: they send Codec2 voice, '
+                                  'so they may be on a radio without Mimi'
+                      : 'Plays on radios without Mimi, like Wadamesh on a '
+                            'T-Deck',
                 ),
                 value: voice.forcesCodec2(widget.codecTarget),
                 onChanged: _phase == _Phase.idle || _phase == _Phase.recorded

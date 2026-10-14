@@ -33,6 +33,7 @@ import 'image_codec.dart';
 import 'mimi.dart';
 import 'resample.dart';
 import 'voice_codec.dart';
+import 'voice_codec_choice.dart';
 import 'voice_wire.dart';
 import 'wav.dart';
 
@@ -155,7 +156,9 @@ class VoxVoiceService extends ChangeNotifier {
   // ----------------------------------- per-chat codec: Codec2 for radios
 
   static const _kCodec2Targets = 'vox_codec2_targets';
-  Set<String> _codec2Targets = {};
+  static const _kMimiTargets = 'vox_mimi_targets';
+  static const _kCodecHeard = 'vox_codec_heard';
+  final VoxCodecChoice _codecs = VoxCodecChoice();
 
   /// Key for a contact's per-chat voice settings.
   static String contactTarget(Contact c) => 'c:${c.publicKeyHex}';
@@ -163,20 +166,76 @@ class VoxVoiceService extends ChangeNotifier {
   /// Key for a channel's per-chat voice settings.
   static String channelTarget(Channel ch) => 'ch:${ch.pskHex}';
 
-  /// Whether clips to [target] are always sent with Codec2, so radios that
-  /// can't run Mimi (Wadamesh on a T-Deck, say) can play them.
+  /// Whether clips to [target] go out as Codec2, so radios that can't run Mimi
+  /// (Wadamesh on a T-Deck, say) can play them: switched on for the chat, or
+  /// chosen automatically from what the chat sends us ([autoCodec2]).
   bool forcesCodec2(String? target) =>
-      target != null && _codec2Targets.contains(target);
+      _codecs.forcesCodec2(target, now: DateTime.now());
+
+  /// Codec2 because of what the chat sent: a contact whose latest clip was
+  /// Codec2, or a channel where someone sent Codec2 in the last two weeks.
+  bool autoCodec2(String? target) =>
+      _codecs.autoCodec2(target, now: DateTime.now());
+
+  /// The per-chat switch is on (rather than Codec2 being automatic).
+  bool manualCodec2(String? target) => _codecs.manualCodec2(target);
+
+  /// The switch was turned off against the automatic choice.
+  bool manualMimi(String? target) => _codecs.manualMimi(target);
 
   Future<void> setForcesCodec2(String target, bool v) async {
-    final next = {..._codec2Targets};
-    v ? next.add(target) : next.remove(target);
-    _codec2Targets = next;
+    if (!_codecs.setManual(target, v, now: DateTime.now())) return;
     notifyListeners();
+    await _saveCodecChoices(heard: false);
+  }
+
+  Future<void> _saveCodecChoices({bool heard = true}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList(_kCodec2Targets, next.toList());
+      await prefs.setStringList(_kCodec2Targets, _codecs.manualCodec2Targets);
+      await prefs.setStringList(_kMimiTargets, _codecs.manualMimiTargets);
+      if (heard) await prefs.setString(_kCodecHeard, _codecs.heardJson());
     } catch (_) {}
+  }
+
+  /// Notes which codec a chat's incoming clip used (see [VoxCodecChoice]).
+  void _learnCodec(
+    VoxVoiceEnvelope env, {
+    String? senderKeyHex,
+    int? channelIndex,
+    DateTime? at,
+  }) {
+    if (!env.mode.isAudio) return;
+    String? target;
+    if (channelIndex != null) {
+      for (final ch in _connector.channels) {
+        if (ch.index == channelIndex) {
+          target = channelTarget(ch);
+          break;
+        }
+      }
+    } else if (senderKeyHex != null && senderKeyHex.isNotEmpty) {
+      final c = contactByKeyHex(senderKeyHex);
+      target = c != null ? contactTarget(c) : 'c:$senderKeyHex';
+    }
+    if (target == null) return;
+    final now = DateTime.now();
+    final changed = _codecs.learn(
+      target,
+      mimi: env.mode.isMimi,
+      at: at != null && at.isBefore(now) ? at : now,
+      now: now,
+    );
+    if (changed) {
+      _logEvent(
+        forcesCodec2(target)
+            ? 'replies to this chat now go out as Codec2 (it sent Codec2)'
+            : 'replies to this chat go out as ${sendMode.label} again',
+        env.sessionId,
+      );
+      notifyListeners();
+    }
+    unawaited(_saveCodecChoices());
   }
 
   /// The codec the next recording to [target] will be sent with.
@@ -268,8 +327,11 @@ class VoxVoiceService extends ChangeNotifier {
       _preferMimi = prefs.getBool(_kPreferMimi) ?? true;
       _photoAiSketch = prefs.getBool(_kPhotoAiSketch) ?? false;
       _photoAiSketchHd = prefs.getBool(_kPhotoAiSketchHd) ?? false;
-      _codec2Targets = (prefs.getStringList(_kCodec2Targets) ?? const [])
-          .toSet();
+      _codecs.load(
+        codec2: prefs.getStringList(_kCodec2Targets),
+        mimi: prefs.getStringList(_kMimiTargets),
+        heardJson: prefs.getString(_kCodecHeard),
+      );
       _autoPlay = prefs.getBool(_kAutoPlay) ?? true;
       _autoDownloadChannels = prefs.getBool(_kAutoChannels) ?? false;
       notifyListeners();
@@ -1137,7 +1199,14 @@ class VoxVoiceService extends ChangeNotifier {
     DateTime? timestamp,
   }) {
     final env = VoxVoiceEnvelope.tryParse(text);
-    if (env == null || !_autoPlay) return;
+    if (env == null) return;
+    _learnCodec(
+      env,
+      senderKeyHex: senderKeyHex,
+      channelIndex: channelIndex,
+      at: timestamp,
+    );
+    if (!_autoPlay) return;
     final sid = env.sessionId;
     // Don't auto-play a backlog synced from the radio after a reconnect.
     if (timestamp != null &&
