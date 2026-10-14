@@ -22,6 +22,9 @@ class ByteCountedTextField extends StatelessWidget {
   /// Optional focus node forwarded to the inner [TextField].
   final FocusNode? focusNode;
 
+  /// Whether the inner [TextField] requests focus when first built.
+  final bool autofocus;
+
   /// Hint text shown when the field is empty.
   final String? hintText;
 
@@ -72,6 +75,7 @@ class ByteCountedTextField extends StatelessWidget {
     required this.maxBytes,
     required this.controller,
     this.focusNode,
+    this.autofocus = false,
     this.hintText,
     this.textInputAction = TextInputAction.send,
     this.onSubmitted,
@@ -128,6 +132,7 @@ class ByteCountedTextField extends StatelessWidget {
               maxLines: null,
               controller: controller,
               focusNode: focusNode,
+              autofocus: autofocus,
               inputFormatters: [
                 ...extraFormatters,
                 Utf8LengthLimitingTextInputFormatter(
@@ -160,7 +165,7 @@ class ByteCountedTextField extends StatelessWidget {
                           ? Text(
                               softLimitNote!,
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 12,
                                 color: Theme.of(context).colorScheme.tertiary,
                               ),
                             )

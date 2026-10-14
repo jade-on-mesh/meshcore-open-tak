@@ -12,12 +12,34 @@ import 'translation_support.dart';
 // a path" bubble.
 enum MessageStatus { pending, sent, delivered, failed, waiting }
 
+/// How far a sender timestamp may run ahead of the local receive time before
+/// the UI flags it as a wrong clock.
+const Duration futureTimestampTolerance = Duration(minutes: 5);
+
+/// Receive time for a persisted message JSON record. Records written before
+/// `receivedAt` existed fall back to the sender timestamp, capped at now so a
+/// stored future-dated message stops sorting below everything received later.
+DateTime legacyAwareReceivedAt(Map<String, dynamic> json) {
+  final stored = json['receivedAt'];
+  if (stored is int) return DateTime.fromMillisecondsSinceEpoch(stored);
+  final timestamp = DateTime.fromMillisecondsSinceEpoch(
+    json['timestamp'] as int,
+  );
+  final now = DateTime.now();
+  return timestamp.isAfter(now) ? now : timestamp;
+}
+
 class Message {
   static const Object _unset = Object();
 
   final Uint8List senderKey; // For outgoing msgs, gets used as recipientKey
   final String text;
   final DateTime timestamp;
+
+  /// Local clock time when this message was added (received or sent). Feeds
+  /// are ordered by it so a sender clock running ahead cannot pin a message
+  /// to the bottom; [timestamp] stays the sender's identity time.
+  final DateTime receivedAt;
   final bool isOutgoing;
   final bool isCli;
   final MessageStatus status;
@@ -67,6 +89,7 @@ class Message {
     required this.senderKey,
     required this.text,
     required this.timestamp,
+    DateTime? receivedAt,
     required this.isOutgoing,
     this.isCli = false,
     this.status = MessageStatus.pending,
@@ -94,12 +117,18 @@ class Message {
   }) : messageId =
            messageId ??
            '${timestamp.millisecondsSinceEpoch}_${pubKeyToHex(senderKey)}_${text.hashCode}',
+       receivedAt = receivedAt ?? timestamp,
        pathBytes = pathBytes ?? Uint8List(0),
        fourByteRoomContactKey = fourByteRoomContactKey ?? Uint8List(0),
        reactions = reactions ?? {},
        reactionStatuses = reactionStatuses ?? {};
 
   String get senderKeyHex => pubKeyToHex(senderKey);
+
+  /// True when the sender's clock put [timestamp] clearly ahead of the time
+  /// this device received the message.
+  bool get hasFutureTimestamp =>
+      timestamp.difference(receivedAt) > futureTimestampTolerance;
 
   Message copyWith({
     String? text,
@@ -130,6 +159,7 @@ class Message {
       senderKey: senderKey,
       text: text ?? this.text,
       timestamp: timestamp,
+      receivedAt: receivedAt,
       isOutgoing: isOutgoing,
       isCli: isCli ?? this.isCli,
       status: status ?? this.status,
@@ -191,6 +221,7 @@ class Message {
         senderKey: senderKey,
         text: text,
         timestamp: DateTime.fromMillisecondsSinceEpoch(timestampRaw * 1000),
+        receivedAt: DateTime.now(),
         isOutgoing: false,
         isCli: false,
         status: MessageStatus.delivered,

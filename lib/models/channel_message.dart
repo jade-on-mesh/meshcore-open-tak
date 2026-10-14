@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import '../connector/meshcore_protocol.dart';
 import '../helpers/reaction_helper.dart';
 import '../helpers/smaz.dart';
+import 'message.dart' show futureTimestampTolerance;
 import 'translation_support.dart';
 import '../utils/app_logger.dart';
 
@@ -36,6 +37,11 @@ class ChannelMessage {
   final MessageTranslationStatus translationStatus;
   final String? translationModelId;
   final DateTime timestamp;
+
+  /// Local clock time when this message was added (received or sent). Feeds
+  /// are ordered by it so a sender clock running ahead cannot pin a message
+  /// to the bottom; [timestamp] stays the sender's identity time.
+  final DateTime receivedAt;
   final bool isOutgoing;
   final ChannelMessageStatus status;
   final List<Repeat> repeats;
@@ -73,6 +79,7 @@ class ChannelMessage {
     this.translationModelId,
     this.otpPlaintext,
     required this.timestamp,
+    DateTime? receivedAt,
     required this.isOutgoing,
     this.status = ChannelMessageStatus.pending,
     this.repeats = const [],
@@ -94,6 +101,7 @@ class ChannelMessage {
   }) : messageId =
            messageId ??
            '${timestamp.millisecondsSinceEpoch}_${senderName.hashCode}_${text.hashCode}',
+       receivedAt = receivedAt ?? timestamp,
        reactions = reactions ?? {},
        pathBytes = pathBytes ?? Uint8List(0),
        pathVariants = _mergePathVariants(
@@ -106,6 +114,10 @@ class ChannelMessage {
 
   /// See Message.displayText — same reasoning, channel-side.
   String get displayText => otpPlaintext ?? text;
+  /// True when the sender's clock put [timestamp] clearly ahead of the time
+  /// this device received the message.
+  bool get hasFutureTimestamp =>
+      timestamp.difference(receivedAt) > futureTimestampTolerance;
 
   ChannelMessage copyWith({
     // Two call sites: replacing ciphertext with plaintext after an OTP
@@ -136,6 +148,7 @@ class ChannelMessage {
     Map<String, List<String?>>? reactions,
     int? chunkIndex,
     int? chunkTotal,
+    int? channelIndex,
   }) {
     return ChannelMessage(
       senderKey: senderKey,
@@ -158,6 +171,7 @@ class ChannelMessage {
           ? this.otpPlaintext
           : otpPlaintext as String?,
       timestamp: timestamp,
+      receivedAt: receivedAt,
       isOutgoing: isOutgoing,
       status: status ?? this.status,
       repeats: repeats ?? this.repeats,
@@ -166,7 +180,7 @@ class ChannelMessage {
       pathHashWidth: pathHashWidth ?? this.pathHashWidth,
       pathBytes: pathBytes ?? this.pathBytes,
       pathVariants: pathVariants ?? this.pathVariants,
-      channelIndex: channelIndex,
+      channelIndex: channelIndex ?? this.channelIndex,
       region: region == _unset ? this.region : region as String?,
       messageId: messageId,
       packetHash: packetHash ?? this.packetHash,
@@ -255,6 +269,7 @@ class ChannelMessage {
         senderName: senderName,
         text: decodedText,
         timestamp: DateTime.fromMillisecondsSinceEpoch(timestampRaw * 1000),
+        receivedAt: DateTime.now(),
         isOutgoing: false,
         status: ChannelMessageStatus.sent,
         pathLength: pathLen,

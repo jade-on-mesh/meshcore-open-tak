@@ -37,10 +37,12 @@ import '../services/otp_service.dart';
 import '../services/path_history_service.dart';
 import '../services/received_image_store.dart';
 import '../services/translation_service.dart';
-import '../theme/mesh_theme.dart';
 import '../theme/otp_bubble_colors.dart';
+import '../widgets/chat_composer.dart';
+import '../widgets/chat_send_pipeline.dart';
 import '../widgets/chat_zoom_wrapper.dart';
-import '../widgets/byte_count_input.dart';
+import '../widgets/message_bubble_frame.dart';
+import '../widgets/reaction_chips.dart';
 import '../widgets/chat_day_separator.dart';
 import 'app_settings_screen.dart';
 import 'channel_message_path_screen.dart';
@@ -62,6 +64,8 @@ import '../widgets/translated_message_content.dart';
 import '../l10n/l10n.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../widgets/unread_divider.dart';
+import '../theme/mesh_theme.dart';
+import '../widgets/future_timestamp_indicator.dart';
 import '../widgets/mesh_ui.dart';
 import 'telemetry_screen.dart';
 import '../vox/image_send_sheet.dart';
@@ -106,15 +110,22 @@ class _ChatScreenState extends State<ChatScreen> {
   MeshCoreConnector? _connector;
   Message? _pendingUnreadScrollTarget;
   String? _unreadDividerMessageId;
-  DateTime? _lastTextSendAt;
   // OTP DM image send progress — mirrors channel_chat_screen.dart's own
   // _imageSendTotal/_imageSendSent, but this is chunk progress from the OTP
   // chunk-ack pipeline, not GRP_DATA blob-send progress.
   bool _sendingOtpImage = false;
+  final ChatSendGuard _sendGuard = ChatSendGuard();
+
+  /// Contact keys of the chat screens currently on the navigation stack, in
+  /// push order. A room chat can push a nested ChatScreen for one of its
+  /// posters; when that one is popped, the room underneath must become the
+  /// active conversation again rather than none at all.
+  static final List<String> _activeContactStack = [];
 
   @override
   void initState() {
     super.initState();
+    _activeContactStack.add(widget.contact.publicKeyHex);
     _textFieldFocusNode.addListener(_onTextFieldFocusChange);
     _scrollController.onScrollNearTop = _loadOlderMessages;
     _scrollController.showJumpToBottom.addListener(_clearDividerAtBottom);
@@ -207,7 +218,16 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
-    _connector?.setActiveContact(null);
+    final index = _activeContactStack.lastIndexOf(widget.contact.publicKeyHex);
+    final wasTop = index == _activeContactStack.length - 1;
+    if (index >= 0) _activeContactStack.removeAt(index);
+    if (wasTop) {
+      // Restore whichever chat is now on top (e.g. the room this nested chat
+      // was opened from), or clear when this was the only one.
+      _connector?.setActiveContact(
+        _activeContactStack.isEmpty ? null : _activeContactStack.last,
+      );
+    }
     _scrollController.showJumpToBottom.removeListener(_clearDividerAtBottom);
     _textFieldFocusNode.removeListener(_onTextFieldFocusChange);
     _textFieldFocusNode.dispose();
@@ -240,15 +260,26 @@ class _ChatScreenState extends State<ChatScreen> {
                       ContactRoutingSheet.show(context, contact: contact),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Text(
-                      pathLabel,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.normal,
-                        decoration: TextDecoration.underline,
-                        decorationStyle: TextDecorationStyle.dotted,
-                      ),
+                    child: Builder(
+                      builder: (context) {
+                        // Follows the chat text size, capped so the two-line
+                        // title still fits the app bar.
+                        final textScale = context
+                            .select<ChatTextScaleService, double>(
+                              (service) => service.scale,
+                            )
+                            .clamp(1.0, 1.3);
+                        return Text(
+                          pathLabel,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12 * textScale,
+                            fontWeight: FontWeight.normal,
+                            decoration: TextDecoration.underline,
+                            decorationStyle: TextDecorationStyle.dotted,
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -605,14 +636,15 @@ class _ChatScreenState extends State<ChatScreen> {
               final startsDay =
                   messageIndex == reversedMessages.length - 1 ||
                   !isSameChatDay(
-                    reversedMessages[messageIndex + 1].timestamp,
-                    message.timestamp,
+                    reversedMessages[messageIndex + 1].receivedAt,
+                    message.receivedAt,
                   );
               final child = isUnreadAnchor || startsDay
                   ? Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (startsDay) ChatDaySeparator(day: message.timestamp),
+                        if (startsDay)
+                          ChatDaySeparator(day: message.receivedAt),
                         if (isUnreadAnchor) const UnreadDivider(),
                         bubble,
                       ],
@@ -642,257 +674,130 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildInputBar(MeshCoreConnector connector) {
+    final keyHex = widget.contact.publicKeyHex;
     final contactKeyHex = _resolveContact(connector).publicKeyHex;
     final otpEnabled = connector.isContactOtpEnabled(contactKeyHex);
-    final maxBytes = otpEnabled
-        // Longer OTP messages now get automatically split into multiple
-        // packets (see otp_chunk_service.dart), so the compose-box limit is
-        // the much larger multi-chunk cap, not the single-packet one.
-        ? OtpChunkService.maxChunkedPlaintextBytesForContact()
-        : maxContactMessageBytes();
-    final scheme = Theme.of(context).colorScheme;
-    final settings = context.watch<AppSettingsService>().settings;
-    // Only ever offered on an OTP-enabled DM: the codec bitstream rides the
-    // OTP chunk-send pipeline (see the note at the top of this file), which
-    // has nothing to encrypt with otherwise.
+    final useEncoder =
+        connector.isContactSmazEnabled(keyHex) ||
+        connector.isContactCyr2LatEnabled(keyHex);
+    // OTP image: only on an OTP-enabled DM, since the codec bitstream rides
+    // the OTP chunk-send pipeline (see the note at the top of this file).
     final showImageAction =
         otpEnabled &&
         !_sendingOtpImage &&
-        connector.canSendOtpImageToContact(contactKeyHex);
-    return Container(
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        border: Border(top: BorderSide(color: scheme.outlineVariant, width: 1)),
+        connector.canSendOtpImageToContact(contactKeyHex) &&
+        _imageCodec?.availability == ImageCodecAvailability.ready;
+    return ChatComposer(
+      controller: _textController,
+      focusNode: _textFieldFocusNode,
+      // Longer OTP messages are split into several packets (see
+      // otp_chunk_service.dart), so an OTP chat takes the multi-chunk cap.
+      maxBytes: otpEnabled
+          ? OtpChunkService.maxChunkedPlaintextBytesForContact()
+          : maxContactMessageBytes(),
+      softLimitBytes: maxTextPayloadBytesAfterFullLengthAttempts,
+      softLimitNote: context.l10n.chat_longMessageRetryNote(
+        maxFullLengthTextAttempt + 1,
       ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.gif_box_outlined),
-                tooltip: context.l10n.chat_sendGif,
-                onPressed: () => _showGifPicker(context),
-              ),
-              if (showImageAction)
-                IconButton(
-                  icon: const Icon(Icons.enhanced_encryption_outlined),
-                  tooltip: context.l10n.chat_sendImageLora,
-                  onPressed:
-                      _imageCodec?.availability == ImageCodecAvailability.ready
-                      ? () => _showOtpImageSendPreview(connector)
-                      : null,
-                ),
-              VoxImageButton(
-                // AI sketches to a person ride the OTP pipeline, so they are
-                // offered only once this contact has a pad.
-                aiSketch:
-                    connector.canSendOtpImageToContact(contactKeyHex) &&
-                        _imageCodec != null
-                    ? VoxAiSketchOption(
-                        ready: () =>
-                            _imageCodec?.availability ==
-                            ImageCodecAvailability.ready,
-                        explainNotReady: () =>
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'AI sketches need the image model: turn on '
-                                  'Image messages in App settings.',
-                                ),
-                              ),
-                            ),
-                        send: (bytes, fileBytes) =>
-                            _sendOtpAiSketch(connector, bytes, fileBytes),
-                      )
-                    : null,
-                recipientLabel: _resolveContact(connector).name,
-                onSend: (image) => context
-                    .read<VoxVoiceService>()
-                    .sendImageToContact(_resolveContact(connector), image),
-              ),
-              VoxMicButton(
-                recipientLabel: _resolveContact(connector).name,
-                codecTarget: VoxVoiceService.contactTarget(
-                  _resolveContact(connector),
-                ),
-                onSend: (clip) => context
-                    .read<VoxVoiceService>()
-                    .sendClipToContact(_resolveContact(connector), clip),
-              ),
-              if (settings.translationEnabled)
-                MessageTranslationButton(
-                  enabled: settings.composerTranslationEnabled,
-                  languageCode: settings.translationTargetLanguageCode,
-                  onPressed: _showTranslationOptions,
-                ),
-              // No image button here: the image wire format is GRP_DATA, a
-              // channel primitive with no DM equivalent (see the note at the
-              // top of this file).
-              Expanded(
-                child: ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: _textController,
-                  builder: (context, value, child) {
-                    final gifId = GifHelper.parseGif(value.text);
-                    if (gifId != null) {
-                      return Focus(
-                        autofocus: true,
-                        onKeyEvent: (node, event) {
-                          if (event is KeyDownEvent &&
-                              (event.logicalKey == LogicalKeyboardKey.enter ||
-                                  event.logicalKey ==
-                                      LogicalKeyboardKey.numpadEnter)) {
-                            _sendMessage(connector);
-                            return KeyEventResult.handled;
-                          }
-                          return KeyEventResult.ignored;
-                        },
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: GifMessage(
-                                  url:
-                                      'https://media.giphy.com/media/$gifId/giphy.gif',
-                                  backgroundColor:
-                                      scheme.surfaceContainerHighest,
-                                  fallbackTextColor: scheme.onSurface
-                                      .withValues(alpha: 0.6),
-                                  maxSize: 160,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              icon: const Icon(Icons.close),
-                              tooltip: context.l10n.chat_removeGif,
-                              onPressed: () {
-                                _textController.clear();
-                                _textFieldFocusNode.requestFocus();
-                              },
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                    return ByteCountedTextField(
-                      maxBytes: maxBytes,
-                      softLimitBytes:
-                          maxTextPayloadBytesAfterFullLengthAttempts,
-                      softLimitNote: context.l10n.chat_longMessageRetryNote(
-                        maxFullLengthTextAttempt + 1,
-                      ),
-                      controller: _textController,
-                      focusNode: _textFieldFocusNode,
-                      hintText: context.l10n.chat_typeMessage,
-                      onSubmitted: (_) => _sendMessage(connector),
-                      counterTextBuilder: otpEnabled
-                          ? (used, max) => _otpComposeCounterText(
-                              connector,
-                              contactKeyHex,
-                              used,
-                            )
-                          : null,
-                      counterColorBuilder: otpEnabled
-                          ? (used, max, defaultColor) =>
-                                _otpComposeCounterColor(
-                                  connector,
-                                  contactKeyHex,
-                                  used,
-                                  defaultColor,
-                                )
-                          : null,
-                      encoder:
-                          (connector.isContactSmazEnabled(
-                                widget.contact.publicKeyHex,
-                              ) ||
-                              connector.isContactCyr2LatEnabled(
-                                widget.contact.publicKeyHex,
-                              ))
-                          ? (text) => connector.prepareContactOutboundText(
-                              widget.contact,
-                              text,
-                            )
-                          : null,
-                      decoration: InputDecoration(
-                        hintText: context.l10n.chat_typeMessage,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(MeshRadii.md),
-                          borderSide: BorderSide(color: scheme.outlineVariant),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(MeshRadii.md),
-                          borderSide: BorderSide(color: scheme.outlineVariant),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(MeshRadii.md),
-                          borderSide: BorderSide(
-                            color: scheme.primary,
-                            width: 1.5,
+      encoder: useEncoder
+          ? (text) => connector.prepareContactOutboundText(widget.contact, text)
+          : null,
+      counterTextBuilder: otpEnabled
+          ? (used, max) =>
+                _otpComposeCounterText(connector, contactKeyHex, used)
+          : null,
+      counterColorBuilder: otpEnabled
+          ? (used, max, defaultColor) => _otpComposeCounterColor(
+              connector,
+              contactKeyHex,
+              used,
+              defaultColor,
+            )
+          : null,
+      leading: [
+        VoxImageButton(
+          // AI sketches to a person ride the OTP pipeline, so they are
+          // offered only once this contact has a pad.
+          aiSketch:
+              connector.canSendOtpImageToContact(contactKeyHex) &&
+                  _imageCodec != null
+              ? VoxAiSketchOption(
+                  ready: () =>
+                      _imageCodec?.availability ==
+                      ImageCodecAvailability.ready,
+                  explainNotReady: () =>
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'AI sketches need the image model: turn on '
+                            'Image messages in App settings.',
                           ),
                         ),
-                        filled: true,
-                        fillColor: scheme.surfaceContainerLow,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 18,
-                          vertical: 12,
-                        ),
                       ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 6),
-              ValueListenableBuilder<TextEditingValue>(
-                valueListenable: _textController,
-                builder: (context, value, _) {
-                  final hasText = value.text.trim().isNotEmpty;
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    curve: Curves.easeInOut,
-                    child: IconButton.filled(
-                      icon: const Icon(Icons.send, size: 20),
-                      tooltip: context.l10n.chat_sendMessageTo(
-                        _resolveContact(connector).name,
-                      ),
-                      style: IconButton.styleFrom(
-                        backgroundColor: hasText
-                            ? scheme.primary
-                            : scheme.surfaceContainerHighest,
-                        foregroundColor: hasText
-                            ? scheme.onPrimary
-                            : scheme.onSurfaceVariant,
-                        minimumSize: const Size(40, 40),
-                        shape: const CircleBorder(),
-                      ),
-                      onPressed: hasText
-                          ? () {
-                              HapticFeedback.lightImpact();
-                              _sendMessage(connector);
-                            }
-                          : null,
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
+                  send: (bytes, fileBytes) =>
+                      _sendOtpAiSketch(connector, bytes, fileBytes),
+                )
+              : null,
+          recipientLabel: _resolveContact(connector).name,
+          onSend: (image) => context
+              .read<VoxVoiceService>()
+              .sendImageToContact(_resolveContact(connector), image),
         ),
+        VoxMicButton(
+          recipientLabel: _resolveContact(connector).name,
+          codecTarget: VoxVoiceService.contactTarget(
+            _resolveContact(connector),
+          ),
+          onSend: (clip) => context
+              .read<VoxVoiceService>()
+              .sendClipToContact(_resolveContact(connector), clip),
+        ),
+      ],
+      onSend: () => _sendMessage(connector),
+      sendTooltip: context.l10n.chat_sendMessageTo(
+        _resolveContact(connector).name,
       ),
+      actionsBuilder: () => [
+        ChatComposerAction(
+          id: 'gif',
+          icon: Icons.gif_box,
+          label: context.l10n.chat_sendGif,
+        ),
+        if (showImageAction)
+          ChatComposerAction(
+            id: 'otp-image',
+            icon: Icons.enhanced_encryption_outlined,
+            label: context.l10n.chat_sendImageLora,
+        ),
+        ChatComposerAction(
+          id: 'send-my-location',
+          icon: Icons.my_location,
+          label: context.l10n.chat_shareMyLocation,
+        ),
+      ],
+      onAction: (action) {
+        if (!mounted) return;
+        switch (action) {
+          case 'gif':
+            showChatGifPicker(context, _textController);
+          case 'otp-image':
+            _showOtpImageSendPreview(context.read<MeshCoreConnector>());
+          case 'send-my-location':
+            _shareMyLocation(context.read<MeshCoreConnector>());
+        }
+      },
     );
   }
 
-  void _showGifPicker(BuildContext context) {
-    showModalBottomSheet(
+  /// Shares the radio's own position as a map marker. Shares the text send
+  /// guard and cooldown so it can't race or flood alongside typed messages.
+  Future<void> _shareMyLocation(MeshCoreConnector connector) {
+    return shareMyLocationMarker(
       context: context,
-      isScrollControlled: true,
-      builder: (context) => GifPicker(
-        onGifSelected: (gifId) {
-          _textController.text = GifHelper.encodeGif(gifId);
-        },
-      ),
+      connector: connector,
+      guard: _sendGuard,
+      send: (markerText) =>
+          connector.sendMessage(_resolveContact(connector), markerText),
     );
   }
 
@@ -1092,62 +997,19 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Future<void> _showTranslationOptions() async {
-    final settingsService = context.read<AppSettingsService>();
-    final settings = settingsService.settings;
-    await showMessageTranslationSheet(
-      context: context,
-      enabled: settings.composerTranslationEnabled,
-      selectedLanguageCode: settings.translationTargetLanguageCode,
-      onEnabledChanged: settingsService.setComposerTranslationEnabled,
-      onLanguageSelected: settingsService.setTranslationTargetLanguageCode,
-    );
+  Future<void> _sendMessage(MeshCoreConnector connector) {
+    return _sendGuard.runExclusive(() => _sendMessageInner(connector));
   }
 
-  Future<void> _sendMessage(MeshCoreConnector connector) async {
+  Future<void> _sendMessageInner(MeshCoreConnector connector) async {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
+    if (!_sendGuard.checkCooldown(context)) return;
 
-    final now = DateTime.now();
-    if (_lastTextSendAt != null &&
-        now.difference(_lastTextSendAt!) < const Duration(seconds: 1)) {
-      showDismissibleSnackBar(
-        context,
-        content: Text(context.l10n.chat_sendCooldown),
-      );
-      return;
-    }
-    _lastTextSendAt = now;
+    final translation = await translateOutgoingText(context, text);
+    if (translation == null || !mounted) return;
+    var outgoingText = translation.text;
 
-    final settings = context.read<AppSettingsService>().settings;
-    final translationService = context.read<TranslationService>();
-    var outgoingText = text;
-    String? originalText;
-    String? translatedLanguageCode;
-    String? translationModelId;
-    if (settings.translationEnabled) {
-      final targetLanguageCode = translationService.resolvedTargetLanguageCode(
-        Localizations.localeOf(context).languageCode,
-      );
-      if (translationService.shouldTranslateOutgoing(
-        text: text,
-        targetLanguageCode: targetLanguageCode,
-      )) {
-        final result = await translationService.translateOutgoingText(
-          text: text,
-          targetLanguageCode: targetLanguageCode,
-        );
-        if (!mounted) return;
-        if (result != null &&
-            result.status == MessageTranslationStatus.completed &&
-            result.translatedText.isNotEmpty) {
-          outgoingText = result.translatedText;
-          originalText = text;
-          translatedLanguageCode = result.targetLanguageCode;
-          translationModelId = result.modelId;
-        }
-      }
-    }
     final otpEnabled = connector.isContactOtpEnabled(
       _resolveContact(connector).publicKeyHex,
     );
@@ -1201,41 +1063,31 @@ class _ChatScreenState extends State<ChatScreen> {
       // end transform
     }
 
-    _textController.clear();
+    // Keep anything the user typed while translation was running.
+    if (_textController.text.trim() == text) {
+      _textController.clear();
+    }
     _textFieldFocusNode.requestFocus();
     connector.sendMessage(
       _resolveContact(connector),
       outgoingText,
-      originalText: originalText,
-      translatedLanguageCode: translatedLanguageCode,
-      translationModelId: translationModelId,
+      originalText: translation.originalText,
+      translatedLanguageCode: translation.languageCode,
+      translationModelId: translation.modelId,
     );
+    // Only a dispatched send starts the cooldown.
+    _sendGuard.markDispatched();
   }
 
   Future<void> _confirmClearChat(
     BuildContext context,
     MeshCoreConnector connector,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(context.l10n.contact_clearChat),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(context.l10n.common_cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
-            ),
-            child: Text(context.l10n.common_delete),
-          ),
-        ],
-      ),
+    final confirmed = await confirmClearChat(
+      context,
+      message: context.l10n.chat_clearChatConfirm,
     );
-    if (confirmed == true) {
+    if (confirmed) {
       connector.clearMessagesForContact(widget.contact);
     }
   }
@@ -1358,7 +1210,9 @@ class _ChatScreenState extends State<ChatScreen> {
     );
     connector.ensureContactSmazSettingLoaded(widget.contact.publicKeyHex);
     connector.ensureContactCyr2LatSettingLoaded(widget.contact.publicKeyHex);
-    final contact = widget.contact;
+    // The live contact carries the current telemetry flags; widget.contact
+    // is the snapshot this screen was opened with.
+    final contact = _resolveContact(connector);
     bool smazEnabled = connector.isContactSmazEnabled(contact.publicKeyHex);
     bool cyr2latEnabled = connector.isContactCyr2LatEnabled(
       contact.publicKeyHex,
@@ -1372,6 +1226,18 @@ class _ChatScreenState extends State<ChatScreen> {
     bool teleBaseEnabled = contact.teleBaseEnabled;
     bool teleLocEnabled = contact.teleLocEnabled;
     bool teleEnvEnabled = contact.teleEnvEnabled;
+    // Each toggle is committed immediately, like the compression switches,
+    // so dismissing the dialog by tapping outside keeps the change. All three
+    // flags are sent every time so overlapping writes can't undo each other.
+    void commitTelemetryFlags() {
+      connector.setContactFlags(
+        contact,
+        teleBase: teleBaseEnabled,
+        teleLoc: teleLocEnabled,
+        teleEnv: teleEnvEnabled,
+      );
+    }
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -1485,6 +1351,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   value: teleBaseEnabled,
                   onChanged: (value) {
                     setDialogState(() => teleBaseEnabled = value);
+                    commitTelemetryFlags();
                   },
                 ),
                 const Divider(height: 8),
@@ -1495,6 +1362,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   value: teleLocEnabled,
                   onChanged: (value) {
                     setDialogState(() => teleLocEnabled = value);
+                    commitTelemetryFlags();
                   },
                 ),
                 const Divider(height: 8),
@@ -1505,6 +1373,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   value: teleEnvEnabled,
                   onChanged: (value) {
                     setDialogState(() => teleEnvEnabled = value);
+                    commitTelemetryFlags();
                   },
                 ),
               ],
@@ -1512,15 +1381,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                connector.setContactFlags(
-                  contact,
-                  teleBase: teleBaseEnabled,
-                  teleLoc: teleLocEnabled,
-                  teleEnv: teleEnvEnabled,
-                );
-                Navigator.pop(context);
-              },
+              onPressed: () => Navigator.pop(context),
               child: Text(context.l10n.common_close),
             ),
           ],
@@ -1679,7 +1540,7 @@ class _ChatScreenState extends State<ChatScreen> {
               title: Text(context.l10n.common_copy),
               onTap: () {
                 Navigator.pop(sheetContext);
-                _copyMessageText(message.displayText);
+                copyChatMessageText(context, message.displayText);
               },
             ),
             if (canTranslateMessage)
@@ -1752,14 +1613,6 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  void _copyMessageText(String text) {
-    Clipboard.setData(ClipboardData(text: text));
-    showDismissibleSnackBar(
-      context,
-      content: Text(context.l10n.chat_messageCopied),
     );
   }
 
@@ -1867,12 +1720,11 @@ class _MessageBubble extends StatelessWidget {
       (connector) => connector.isContactUrlImagesEnabled(sourceId),
     );
 
-    // Bubble colors — outgoing uses MeshPalette.me / meBorder / meInk,
-    // unless OTP is active for this contact: then every bubble is colored
-    // by the chosen OTP theme and the message's own state (sent/delivered/
-    // retrying/waiting/failed on the outgoing side, or the sender's own
-    // assigned color on the incoming side) — ported from OTP_3_RC1.lua's
-    // refresh_chat_view, see otp_bubble_colors.dart.
+    // Bubble colors: the usual ones, unless OTP is active for this contact:
+    // then every bubble is colored by the chosen OTP theme and the message's
+    // own state (sent/delivered/retrying/waiting/failed on the outgoing side,
+    // or the sender's own assigned color on the incoming side) — ported from
+    // OTP_3_RC1.lua's refresh_chat_view, see otp_bubble_colors.dart.
     final otpColors = otpActive
         ? (isOutgoing
               ? otpOutgoingBubbleColors(
@@ -1895,48 +1747,21 @@ class _MessageBubble extends StatelessWidget {
                   failed: isFailed,
                 ))
         : null;
-
-    final bubbleColor =
-        otpColors?.fill ??
-        (isFailed
-            ? scheme.errorContainer
-            : isOutgoing
-            ? MeshPalette.me
-            : scheme.surfaceContainerLow);
-    final bubbleBorder =
-        otpColors?.outline ??
-        (isFailed
-            ? scheme.error
-            : isOutgoing
-            ? MeshPalette.meBorder
-            : scheme.outlineVariant);
-    final textColor =
-        otpColors?.text ??
-        (isFailed
-            ? scheme.onErrorContainer
-            : isOutgoing
-            ? MeshPalette.meInk
-            : scheme.onSurface);
-    final metaColor = textColor.withValues(alpha: 0.65);
-    const bodyFontSize = 14.0;
-
-    // Asymmetric radius: outgoing — top-left large, others also large; outgoing bottom-right tight.
-    // Follows layoutOutgoing (not isOutgoing) - the tight "tail" corner
-    // should point toward whichever edge the bubble is actually drawn at.
-    final borderRadius = layoutOutgoing
-        ? const BorderRadius.only(
-            topLeft: Radius.circular(MeshRadii.lg),
-            topRight: Radius.circular(MeshRadii.lg),
-            bottomLeft: Radius.circular(MeshRadii.lg),
-            bottomRight: Radius.circular(MeshRadii.xs),
+    final colors = otpColors != null
+        ? MessageBubbleColors(
+            background: otpColors.fill,
+            border: otpColors.outline,
+            text: otpColors.text,
+            meta: otpColors.text.withValues(alpha: 0.65),
           )
-        : const BorderRadius.only(
-            topLeft: Radius.circular(MeshRadii.xs),
-            topRight: Radius.circular(MeshRadii.lg),
-            bottomLeft: Radius.circular(MeshRadii.lg),
-            bottomRight: Radius.circular(MeshRadii.lg),
+        : MessageBubbleColors.of(
+            scheme,
+            isOutgoing: isOutgoing,
+            isFailed: isFailed,
           );
-
+    final textColor = colors.text;
+    final metaColor = colors.meta;
+    const bodyFontSize = 14.0;
     // Do not strip room-server author bytes here: the parser stores them in
     // fourByteRoomContactKey, so message.text is safe to render as-is.
     // displayText resolves to the sender's own typed plaintext for an
@@ -2000,21 +1825,12 @@ class _MessageBubble extends StatelessWidget {
                     const SizedBox(width: 6),
                   ],
                   Flexible(
-                    child: Container(
-                      padding: compactChrome
-                          ? const EdgeInsets.all(4)
-                          : const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                      constraints: BoxConstraints(
-                        maxWidth: constraints.maxWidth * 0.72,
-                      ),
-                      decoration: BoxDecoration(
-                        color: bubbleColor,
-                        borderRadius: borderRadius,
-                        border: Border.all(color: bubbleBorder, width: 1),
-                      ),
+                    child: MessageBubbleFrame(
+                      isOutgoing: layoutOutgoing,
+                      isFailed: isFailed,
+                      colors: colors,
+                      compact: compactChrome,
+                      maxWidth: constraints.maxWidth,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -2030,9 +1846,9 @@ class _MessageBubble extends StatelessWidget {
                               child: Text(
                                 senderName,
                                 style: MeshTheme.mono(
-                                  fontSize: 11,
+                                  fontSize: 13 * textScale,
                                   fontWeight: FontWeight.w700,
-                                  color: _colorForName(senderName),
+                                  color: senderNameColor(senderName),
                                 ),
                               ),
                             ),
@@ -2154,7 +1970,7 @@ class _MessageBubble extends StatelessWidget {
                                       context.l10n.urlImage_possible,
                                       style: TextStyle(
                                         color: metaColor,
-                                        fontSize: 11 * textScale,
+                                        fontSize: 12 * textScale,
                                       ),
                                     ),
                                   ),
@@ -2178,7 +1994,7 @@ class _MessageBubble extends StatelessWidget {
                                       .maxMessageRetries,
                                 ),
                                 style: MeshTheme.mono(
-                                  fontSize: 9.5 * textScale,
+                                  fontSize: 12 * textScale,
                                   color: metaColor,
                                 ),
                               ),
@@ -2205,6 +2021,10 @@ class _MessageBubble extends StatelessWidget {
                                     color: metaColor,
                                   ),
                                 ),
+                                if (message.hasFutureTimestamp)
+                                  FutureTimestampIndicator(
+                                    size: 16 * textScale,
+                                  ),
                                 if (isOutgoing) ...[
                                   const SizedBox(width: 2),
                                   // Slick-UI: a multi-part OTP send has a
@@ -2263,7 +2083,7 @@ class _MessageBubble extends StatelessWidget {
                                   const SizedBox(width: 2),
                                   Icon(
                                     Icons.speed,
-                                    size: 10 * textScale,
+                                    size: 14 * textScale,
                                     color: isOutgoing
                                         ? metaColor
                                         : scheme.tertiary,
@@ -2271,7 +2091,7 @@ class _MessageBubble extends StatelessWidget {
                                   Text(
                                     '${(message.tripTimeMs! / 1000).toStringAsFixed(1)}s',
                                     style: MeshTheme.mono(
-                                      fontSize: 11 * textScale,
+                                      fontSize: 12 * textScale,
                                       color: isOutgoing
                                           ? metaColor
                                           : scheme.tertiary,
@@ -2293,7 +2113,13 @@ class _MessageBubble extends StatelessWidget {
             const SizedBox(height: 4),
             Padding(
               padding: EdgeInsets.only(left: layoutOutgoing ? 0 : 42),
-              child: _buildReactionsDisplay(context, message, scheme),
+              child: ReactionChips(
+                reactions: message.reactions,
+                statuses: message.reactionStatuses,
+                onRetry: onRetryReaction == null
+                    ? null
+                    : (emoji) => onRetryReaction!(message, emoji),
+              ),
             ),
           ],
         ],
@@ -2367,86 +2193,6 @@ class _MessageBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildReactionsDisplay(
-    BuildContext context,
-    Message message,
-    ColorScheme scheme,
-  ) {
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: message.reactions.entries.map((entry) {
-        final emoji = entry.key;
-        final count = entry.value.length;
-        final status = message.reactionStatuses[emoji];
-        final isPending =
-            status == MessageStatus.pending || status == MessageStatus.sent;
-        final isFailed = status == MessageStatus.failed;
-
-        return GestureDetector(
-          onTap: isFailed && onRetryReaction != null
-              ? () => onRetryReaction!(message, emoji)
-              : null,
-          child: Opacity(
-            opacity: isPending ? 0.5 : 1.0,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: isFailed
-                    ? scheme.errorContainer
-                    : scheme.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(MeshRadii.pill),
-                border: Border.all(
-                  color: isFailed ? scheme.error : scheme.outlineVariant,
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    emoji,
-                    style: MeshTheme.emoji(fontSize: 16),
-                    textHeightBehavior: const TextHeightBehavior(
-                      applyHeightToFirstAscent: false,
-                      applyHeightToLastDescent: false,
-                    ),
-                  ),
-                  if (count > 1) ...[
-                    const SizedBox(width: 4),
-                    Text(
-                      '$count',
-                      style: MeshTheme.mono(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                  ],
-                  if (isPending) ...[
-                    const SizedBox(width: 2),
-                    SizedBox(
-                      width: 8,
-                      height: 8,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 1.5,
-                        color: scheme.primary,
-                      ),
-                    ),
-                  ],
-                  if (isFailed) ...[
-                    const SizedBox(width: 2),
-                    Icon(Icons.replay, size: 10, color: scheme.error),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
   Widget _buildAvatar(String senderName) {
     return AvatarCircle(name: senderName, size: 32);
   }
@@ -2463,23 +2209,6 @@ class _MessageBubble extends StatelessWidget {
     if (diff.inHours < 24) return ' (${diff.inHours}h)';
     return ' (${diff.inDays}d)';
   }
-}
-
-/// Deterministic name-to-hue mapping consistent with [AvatarCircle].
-Color _colorForName(String name) {
-  const hues = [
-    MeshPalette.blue,
-    MeshPalette.magenta,
-    MeshPalette.signal,
-    MeshPalette.warn,
-    Color(0xFF8FA8F0),
-    Color(0xFF6FD9CE),
-  ];
-  var h = 0;
-  for (final c in name.codeUnits) {
-    h = (h * 31 + c) & 0x7fffffff;
-  }
-  return hues[h % hues.length];
 }
 
 /// Mirrors `channel_chat_screen.dart`'s private helper of the same name —
