@@ -79,7 +79,7 @@ void main() {
     test('set radio2 uses kHz without trailing zeros', () {
       expect(
         buildSetRadio2Command(MediaMeshSettings.defaults),
-        'set radio2 916.000,250,7,5,rxtx',
+        'set radio2 911.500,250,7,5,rxtx',
       );
       expect(
         buildSetRadio2Command(

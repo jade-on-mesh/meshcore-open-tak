@@ -27,10 +27,10 @@ class MediaMeshSettings {
     required this.codingRate,
   });
 
-  /// 916 MHz, 250 kHz, SF7, CR 4/5: about four times faster than SF7/62.5.
+  /// 911.5 MHz, 250 kHz, SF7, CR 4/5: about four times faster than SF7/62.5.
   static const defaults = MediaMeshSettings(
     enabled: false,
-    frequencyMHz: 916.0,
+    frequencyMHz: 911.5,
     bandwidth: LoRaBandwidth.bw250,
     spreadingFactor: LoRaSpreadingFactor.sf7,
     codingRate: LoRaCodingRate.cr4_5,

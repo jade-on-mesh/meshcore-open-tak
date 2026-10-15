@@ -63,7 +63,7 @@ Opens a dialog pre-populated with the device's current radio settings. Contains:
 ### MediaMesh Settings
 Below Radio Settings. Sends and receives photos and voice clips on a second frequency of the same radio (its `radio2` profile), while text stays on the main mesh:
 - **Photos & voice on MediaMesh** toggle
-- **MediaMesh frequency** (MHz), **Bandwidth**, **Spreading factor**, **Coding rate**: default 916.000 MHz, 250 kHz, SF7, 4/5. Must differ from the main radio.
+- **MediaMesh frequency** (MHz), **Bandwidth**, **Spreading factor**, **Coding rate**: default 911.500 MHz, 250 kHz, SF7, 4/5. Must differ from the main radio.
 
 Needs radio firmware with MediaMesh (Wadamesh, or MeshCore with `radio2` and `tx.media`). See [MediaMesh](media-mesh.md).
 

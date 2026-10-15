@@ -11,7 +11,7 @@ switching between them, so you keep hearing the main mesh.
 
 1. Turn on **Photos & voice on MediaMesh**.
 2. Set the **MediaMesh frequency**, **Bandwidth**, **Spreading factor** and
-   **Coding rate**. The default is 916.000 MHz, 250 kHz, SF7, 4/5: about four
+   **Coding rate**. The default is 911.500 MHz, 250 kHz, SF7, 4/5: about four
    times faster than SF7/62.5, for roughly 6 dB less range. It must differ from
    the main radio.
 3. **Save**. The settings live on the radio, so they also apply when you are not
