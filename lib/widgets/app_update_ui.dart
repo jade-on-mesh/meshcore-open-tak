@@ -55,7 +55,7 @@ class AppUpdateBanner extends StatelessWidget {
                   minimum: const EdgeInsets.only(bottom: 84),
                   child: _BannerCard(
                     version: latest.version,
-                    build: latest.build,
+                    buildNumber: latest.build,
                   ),
                 ),
               ),
@@ -69,8 +69,8 @@ class AppUpdateBanner extends StatelessWidget {
 
 class _BannerCard extends StatelessWidget {
   final String version;
-  final int build;
-  const _BannerCard({required this.version, required this.build});
+  final int buildNumber;
+  const _BannerCard({required this.version, required this.buildNumber});
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +100,7 @@ class _BannerCard extends StatelessWidget {
                             ?.copyWith(color: scheme.onPrimaryContainer),
                       ),
                       Text(
-                        l10n.appUpdate_bannerSubtitle(version, build),
+                        l10n.appUpdate_bannerSubtitle(version, buildNumber),
                         style: Theme.of(context).textTheme.bodySmall
                             ?.copyWith(color: scheme.onPrimaryContainer),
                       ),
