@@ -10,7 +10,7 @@ import 'package:provider/provider.dart';
 import '../connector/meshcore_connector.dart';
 import '../models/contact.dart';
 import 'av1_ffi.dart';
-import 'voice_message_bubble.dart' show showVoxVoiceLog;
+import 'voice_message_bubble.dart' show showVoxVoiceLog, VoxReceivedViaLabel;
 import 'voice_service.dart';
 import 'voice_wire.dart';
 
@@ -285,6 +285,11 @@ class _VoxImageMessageContentState extends State<VoxImageMessageContent> {
             ),
           ],
         ),
+        if (!widget.isOutgoing &&
+            st.status == VoxClipStatus.complete &&
+            !_failed &&
+            st.via != null)
+          VoxReceivedViaLabel(via: st.via!, color: meta),
       ],
     );
   }

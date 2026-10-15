@@ -34,6 +34,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../services/received_image_store.dart';
+import '../vox/voice_message_bubble.dart' show VoxReceivedViaLabel;
+import '../vox/voice_service.dart' show VoxReceivedVia;
 import 'image_send_codec_binding.dart' show ImageCodecAvailability;
 
 /// User-visible strings for the NON-decoded states.
@@ -509,6 +511,12 @@ class _ReceivedImageMessageState extends State<ReceivedImageMessage> {
             SizedBox(
               width: size,
               child: _SyntheticCaption(bytes: entry.bitstreamByteCount),
+            ),
+          if (!entry.isOutgoing &&
+              VoxReceivedVia.fromMask(entry.viaMask) != null)
+            VoxReceivedViaLabel(
+              via: VoxReceivedVia.fromMask(entry.viaMask)!,
+              color: widget.fallbackTextColor.withValues(alpha: 0.65),
             ),
         ],
       ),

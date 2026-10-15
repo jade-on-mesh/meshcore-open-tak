@@ -306,6 +306,7 @@ class ImageStreamReassembler extends ImageReassembler {
     Uint8List blob, {
     int channelIndex = 0,
     DateTime? now,
+    int? via,
   }) {
     final outcome = super.addChunk(blob, channelIndex: channelIndex, now: now);
     unawaited(
@@ -313,6 +314,7 @@ class ImageStreamReassembler extends ImageReassembler {
         outcome,
         channelIndex: channelIndex,
         channelId: channelIdForSlot?.call(channelIndex),
+        via: via,
       ),
     );
     return outcome;

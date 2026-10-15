@@ -1277,15 +1277,28 @@ Uint8List buildSendRawDataFrame({
   return writer.toBytes();
 }
 
+/// The radio profile a received frame arrived on, from the byte Wadamesh's
+/// MediaMesh fills in (stock firmware leaves it reserved): 0 the main mesh,
+/// 1 radio2 (MediaMesh), null unknown.
+int? mediaMeshViaFromTag(int tag) => switch (tag) {
+  0xA0 => 0,
+  0xA1 => 1,
+  _ => null,
+};
+
 /// Parsed PUSH_CODE_RAW_DATA frame.
 class RawDataPush {
   final double snr;
   final int rssi;
   final Uint8List payload;
+
+  /// The radio profile it arrived on (see [mediaMeshViaFromTag]).
+  final int? via;
   const RawDataPush({
     required this.snr,
     required this.rssi,
     required this.payload,
+    this.via,
   });
 
   static RawDataPush? tryParse(Uint8List frame) {
@@ -1296,6 +1309,7 @@ class RawDataPush {
       snr: snrRaw / 4.0,
       rssi: rssiRaw,
       payload: Uint8List.fromList(frame.sublist(4)),
+      via: mediaMeshViaFromTag(frame[3]),
     );
   }
 }

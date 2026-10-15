@@ -3600,5 +3600,8 @@
   "appUpdate_view": "Update",
   "appUpdate_bannerTitle": "A new version of MeshCore Open TAK is ready",
   "appUpdate_bannerSubtitle": "{version} (build {build})",
-  "@appUpdate_bannerSubtitle": {"placeholders": {"version": {"type": "String"}, "build": {"type": "int"}}}
+  "@appUpdate_bannerSubtitle": {"placeholders": {"version": {"type": "String"}, "build": {"type": "int"}}},
+  "vox_receivedViaMediaMesh": "Received via MediaMesh",
+  "vox_receivedViaMainMesh": "Received via main mesh",
+  "vox_receivedViaBoth": "Received via MediaMesh and main mesh"
 }

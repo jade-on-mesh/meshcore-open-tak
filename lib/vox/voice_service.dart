@@ -14,6 +14,7 @@
 //      transfer serves everyone who taps the clip.
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -43,17 +44,37 @@ enum VoxClipStatus { remote, requesting, receiving, complete, unavailable }
 enum VoxPlayback { idle, preparing, playing }
 
 @immutable
+/// How a downloaded clip's packets reached this radio (Wadamesh MediaMesh).
+enum VoxReceivedVia {
+  mainMesh,
+  mediaMesh,
+  both;
+
+  /// From a bit mask: bit 0 main mesh, bit 1 radio2. Null for 0.
+  static VoxReceivedVia? fromMask(int? mask) => switch ((mask ?? 0) & 3) {
+    1 => VoxReceivedVia.mainMesh,
+    2 => VoxReceivedVia.mediaMesh,
+    3 => VoxReceivedVia.both,
+    _ => null,
+  };
+}
+
 class VoxClipState {
   final VoxClipStatus status;
   final int received;
   final int total;
   final String? message;
 
+  /// For a finished download: which radio profile it came over, when the
+  /// radio said (Wadamesh with MediaMesh on).
+  final VoxReceivedVia? via;
+
   const VoxClipState(
     this.status, {
     this.received = 0,
     this.total = 0,
     this.message,
+    this.via,
   });
 
   double get progress => total == 0 ? 0 : received / total;
@@ -137,7 +158,54 @@ class VoxVoiceService extends ChangeNotifier {
     _connector.voxControlTextInterceptor = _onControlText;
     _connector.voxIncomingTextObserver = _onIncomingText;
     unawaited(_loadTestSettings());
+    unawaited(_loadReceivedVia());
     mimi.addListener(notifyListeners);
+  }
+
+  // ------------------------------- which radio profile clips came over
+
+  static const _kReceivedVia = 'vox_received_via';
+  static const _maxReceivedVia = 400;
+
+  /// sid -> bit mask of the profiles its packets arrived on (bit 0 main mesh,
+  /// bit 1 radio2). Kept for finished clips so the label survives a restart.
+  final Map<String, int> _viaMask = {};
+
+  Future<void> _loadReceivedVia() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kReceivedVia);
+      if (raw == null) return;
+      final map = jsonDecode(raw);
+      if (map is! Map) return;
+      for (final e in map.entries) {
+        if (e.key is String && e.value is int) {
+          _viaMask.putIfAbsent(e.key as String, () => e.value as int);
+        }
+      }
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  void _noteVia(String sid, int? via) {
+    if (via == null) return;
+    // Re-inserted, so the most recent clips are the ones kept.
+    final old = _viaMask.remove(sid) ?? 0;
+    _viaMask[sid] = old | (1 << via);
+    while (_viaMask.length > _maxReceivedVia) {
+      _viaMask.remove(_viaMask.keys.first);
+    }
+  }
+
+  Future<void> _saveReceivedVia() async {
+    try {
+      final done = {
+        for (final e in _viaMask.entries)
+          if (_bits.containsKey(e.key)) e.key: e.value,
+      };
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kReceivedVia, jsonEncode(done));
+    } catch (_) {}
   }
 
   /// The Mimi neural codec (download state + inference).
@@ -622,6 +690,9 @@ class VoxVoiceService extends ChangeNotifier {
         VoxClipStatus.complete,
         received: env.totalPackets,
         total: env.totalPackets,
+        via: _ownClips.contains(sid)
+            ? null
+            : VoxReceivedVia.fromMask(_viaMask[sid]),
       );
     }
     final clip = _incoming[sid];
@@ -1305,17 +1376,25 @@ class VoxVoiceService extends ChangeNotifier {
           'raw rx $what, ${p.length}B, SNR ${push.snr} RSSI ${push.rssi}',
           sid,
         );
-        _onPayload(push.payload, channelIndex: null);
+        _onPayload(push.payload, channelIndex: null, via: push.via);
       }
     } else if (frame[0] == respCodeChannelDataRecv) {
       final parsed = parseChannelDataFrame(frame);
       if (parsed != null && parsed.dataType == voxChannelDataType) {
-        _onPayload(parsed.payload, channelIndex: parsed.channelIndex);
+        _onPayload(
+          parsed.payload,
+          channelIndex: parsed.channelIndex,
+          via: parsed.via,
+        );
       }
     }
   }
 
-  void _onPayload(Uint8List payload, {required int? channelIndex}) {
+  void _onPayload(
+    Uint8List payload, {
+    required int? channelIndex,
+    int? via,
+  }) {
     if (payload.isEmpty) return;
     switch (payload[0]) {
       case voxVoicePacketMagic:
@@ -1325,7 +1404,7 @@ class VoxVoiceService extends ChangeNotifier {
         if (channelIndex != null) {
           _lastChannelPacket[pkt.sessionId] = DateTime.now();
         }
-        _onPacket(pkt);
+        _onPacket(pkt, via: via);
       case _pingMagic:
         _onPing(payload);
         return;
@@ -1360,9 +1439,10 @@ class VoxVoiceService extends ChangeNotifier {
     return true; // never show VR3 control messages in the chat
   }
 
-  void _onPacket(VoxVoicePacket pkt) {
+  void _onPacket(VoxVoicePacket pkt, {int? via}) {
     final sid = pkt.sessionId;
     if (_bits.containsKey(sid)) return;
+    _noteVia(sid, via);
     final clip = _incoming[sid];
     if (clip == null) {
       final o = _orphans.putIfAbsent(sid, () => {});
@@ -1386,6 +1466,7 @@ class VoxVoiceService extends ChangeNotifier {
       clip.watchdog?.cancel();
       clip.status = VoxClipStatus.complete;
       _remember(sid, clip.envelope.mode, clip.joined());
+      if (_viaMask.containsKey(sid)) unawaited(_saveReceivedVia());
       _onClipComplete(clip.envelope);
     } else if (clip.status == VoxClipStatus.requesting ||
         clip.status == VoxClipStatus.receiving) {
