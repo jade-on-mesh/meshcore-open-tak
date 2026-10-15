@@ -37,9 +37,11 @@ import 'storage/prefs_manager.dart';
 import 'theme/mesh_theme.dart';
 import 'utils/app_logger.dart';
 import 'widgets/image_send_codec_binding.dart';
+import 'services/app_update_service.dart';
 import 'team/tak/atak_plugin_bridge.dart';
 import 'team/tak/tak_service.dart';
 import 'team/team_alert_host.dart';
+import 'widgets/app_update_ui.dart';
 import 'team/team_service.dart';
 import 'team/watch_feed.dart';
 import 'vox/aeic_hd_service.dart';
@@ -66,6 +68,9 @@ void main() async {
 
   // Initialize SharedPreferences cache
   await PrefsManager.initialize();
+
+  // Android: look for a newer build on the GitHub "Latest build" release.
+  unawaited(AppUpdateService.instance.start());
 
   // Initialize services
   final storage = StorageService();
@@ -498,6 +503,7 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
         builder: (context, settingsService, child) {
           return MaterialApp(
             title: 'MeshCore Open TAK',
+            navigatorKey: appNavigatorKey,
             debugShowCheckedModeBanner: false,
             localizationsDelegates: const [
               AppLocalizations.delegate,
@@ -520,7 +526,11 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
               NotificationService().setLocale(locale);
               return AnnotatedRegion<SystemUiOverlayStyle>(
                 value: _systemUiOverlayStyle(context),
-                child: TeamAlertHost(child: child ?? const SizedBox.shrink()),
+                child: TeamAlertHost(
+                  child: AppUpdateBanner(
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                ),
               );
             },
             home: (PlatformInfo.isWeb && !PlatformInfo.isChrome)

@@ -189,7 +189,7 @@ jobs:
             echo
             echo "Signed with the $signed."
             echo
-            echo "Download **meshcore-open-tak.apk** below and open it on your phone."
+            echo "Download **meshcore-open-tak.apk** below and open it on your phone. Once installed, the app offers later builds itself (Settings → App updates)."
             echo
             echo "Recent changes:"
             git log -8 --no-merges --pretty='- %s' 2>/dev/null || true
@@ -202,4 +202,23 @@ jobs:
           else
             gh release create latest-build --title "MeshCore Open TAK $version (build $build)" --notes-file notes.md --latest
           fi
-          gh release upload latest-build meshcore-open-tak.apk --clobber
+          # version.json: what the app's update check reads (AppUpdateService).
+          BUILD="$build" VERSION="$version" SIGNED="$([ -f android/key.properties ] && echo true || echo false)" \
+            python3 - <<'PY'
+          import hashlib, json, os, subprocess
+          apk = "meshcore-open-tak.apk"
+          data = open(apk, "rb").read()
+          log = subprocess.run(["git", "log", "-8", "--no-merges", "--pretty=%s"],
+                               capture_output=True, text=True).stdout.splitlines()
+          json.dump({
+              "version": os.environ["VERSION"],
+              "build": int(os.environ["BUILD"]),
+              "sha256": hashlib.sha256(data).hexdigest(),
+              "size": len(data),
+              "commit": os.environ["GITHUB_SHA"][:7],
+              "signed": os.environ["SIGNED"] == "true",
+              "changes": [l for l in log if l.strip()],
+          }, open("version.json", "w"), indent=2)
+          PY
+          cat version.json
+          gh release upload latest-build meshcore-open-tak.apk version.json --clobber

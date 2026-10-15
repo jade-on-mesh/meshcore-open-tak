@@ -11,6 +11,8 @@ import '../connector/meshcore_protocol.dart';
 import '../l10n/l10n.dart';
 import '../services/app_settings_service.dart';
 import '../theme/mesh_theme.dart';
+import '../services/app_update_service.dart';
+import '../widgets/app_update_ui.dart';
 import '../widgets/app_bar.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../helpers/utf8_length_limiter.dart';
@@ -178,16 +180,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SectionHeader(l10n.settings_about),
             MeshCard(
               padding: EdgeInsets.zero,
-              child: MeshNavTile(
-                icon: Icons.info_outline,
-                title: l10n.settings_about,
-                subtitle: l10n.settings_aboutVersion(
-                  _appVersion.isEmpty
-                      ? l10n.common_loading
-                      : _appVersionWithOtpBuild,
-                ),
-                showChevron: false,
-                onTap: () => _showAbout(context),
+              child: Column(
+                children: [
+                  if (AppUpdateService.instance.supported) ...[
+                    ListenableBuilder(
+                      listenable: AppUpdateService.instance,
+                      builder: (context, _) {
+                        final updates = AppUpdateService.instance;
+                        final latest = updates.latest;
+                        return MeshNavTile(
+                          icon: Icons.system_update,
+                          iconColor: updates.updateAvailable
+                              ? Theme.of(context).colorScheme.primary
+                              : null,
+                          trailing: UpdateDot(
+                            child: Icon(
+                              Icons.chevron_right,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          title: l10n.appUpdate_settingsTile,
+                          subtitle: updates.updateAvailable && latest != null
+                              ? l10n.appUpdate_available(
+                                  latest.version,
+                                  latest.build,
+                                )
+                              : updates.status == AppUpdateStatus.checking
+                              ? l10n.appUpdate_checking
+                              : latest != null
+                              ? l10n.appUpdate_upToDate
+                              : l10n.appUpdate_notChecked,
+                          onTap: () => showAppUpdateDialog(context),
+                        );
+                      },
+                    ),
+                    const Divider(height: 1, indent: 16),
+                  ],
+                  MeshNavTile(
+                    icon: Icons.info_outline,
+                    title: l10n.settings_about,
+                    subtitle: l10n.settings_aboutVersion(
+                      _appVersion.isEmpty
+                          ? l10n.common_loading
+                          : _appVersionWithOtpBuild,
+                    ),
+                    showChevron: false,
+                    onTap: () => _showAbout(context),
+                  ),
+                ],
               ),
             ),
           ],

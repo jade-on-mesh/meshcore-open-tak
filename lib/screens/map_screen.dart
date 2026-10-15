@@ -31,6 +31,7 @@ import '../utils/contact_search.dart';
 import '../utils/disconnect_navigation_mixin.dart';
 import '../utils/battery_utils.dart';
 import '../utils/route_transitions.dart';
+import '../widgets/app_update_ui.dart';
 import '../widgets/map_poi_cluster.dart';
 import '../widgets/marker_label_dialog.dart';
 import '../widgets/network_map_online_layer.dart';
@@ -844,7 +845,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                     PopupMenuItem(
                       child: Row(
                         children: [
-                          const Icon(Icons.settings),
+                          const UpdateDot(child: Icon(Icons.settings)),
                           const SizedBox(width: 8),
                           Text(context.l10n.settings_title),
                         ],
@@ -857,7 +858,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                       ),
                     ),
                   ],
-                  icon: const Icon(Icons.more_vert),
+                  icon: const UpdateDot(child: Icon(Icons.more_vert)),
                 ),
               ],
             ),
