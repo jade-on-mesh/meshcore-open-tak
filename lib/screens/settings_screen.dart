@@ -545,10 +545,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const Divider(height: 1, indent: 16),
         MeshNavTile(
           icon: Icons.perm_media_outlined,
-          title: 'MediaMesh Settings',
-          subtitle: connected
-              ? 'Photos and voice on a second frequency'
-              : offline,
+          title: l10n.mediaMesh_title,
+          subtitle: connected ? l10n.mediaMesh_settingsSubtitle : offline,
           onTap: connected
               ? () => showDialog(
                   context: context,

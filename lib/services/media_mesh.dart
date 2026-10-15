@@ -7,29 +7,70 @@ import '../models/radio_settings.dart';
 /// and writes the radio's settings through the local CLI, with the command
 /// names shared by Wadamesh and mikecarper/MeshCore:
 ///
-/// - `get radio2`, `set radio2 MHz,kHz,sf,cr,rxtx`, `set radio2 off`
-/// - `get tx.media`, `set tx.media radio|radio2`
-/// - `set radio2.cross off` (never copy ordinary traffic onto radio2)
+/// - `get radio2`, `set radio2 MHz,kHz,sf,cr,rx|rxtx`, `set radio2 off`
+/// - `get tx.media`, `set tx.media auto|radio|radio2|both|off`
+/// - `get/set radio2.cross auto|on|off` (copy ordinary traffic onto radio2)
+/// - `get radio2.status`, `get/set tempradio2 ...,minutes|off`
+/// - `get/set tx.user key:<hex> <choice>`, `get/set tx.channel <slot> <choice>`
 ///
 /// See documentation/media-mesh.md.
+/// radio2's mode: off, listen only, or listen and send.
+enum Radio2Mode {
+  off('off'),
+  rx('rx'),
+  rxtx('rxtx');
+
+  final String cli;
+  const Radio2Mode(this.cli);
+
+  static Radio2Mode fromCli(String text) => switch (text) {
+    'rx' => Radio2Mode.rx,
+    'rxtx' || 'rx&tx' => Radio2Mode.rxtx,
+    _ => Radio2Mode.off,
+  };
+}
+
+/// What goes on radio2.
+enum MediaChoice {
+  /// Photos and voice only: `tx.media radio2`, `radio2.cross off`.
+  photosAndVoice,
+
+  /// Everything, photos and voice included: `tx.media auto`,
+  /// `radio2.cross on`.
+  everything,
+
+  /// Any other mix, set from the radio console.
+  custom;
+
+  static MediaChoice from({required String? media, required String? cross}) {
+    if (media == 'radio2' && cross == 'off') return MediaChoice.photosAndVoice;
+    if (media == 'auto' && cross == 'on') return MediaChoice.everything;
+    return MediaChoice.custom;
+  }
+}
+
 class MediaMeshSettings {
-  final bool enabled;
+  final Radio2Mode mode;
+  final MediaChoice media;
   final double frequencyMHz;
   final LoRaBandwidth bandwidth;
   final LoRaSpreadingFactor spreadingFactor;
   final LoRaCodingRate codingRate;
 
   const MediaMeshSettings({
-    required this.enabled,
+    required this.mode,
+    this.media = MediaChoice.photosAndVoice,
     required this.frequencyMHz,
     required this.bandwidth,
     required this.spreadingFactor,
     required this.codingRate,
   });
 
+  bool get enabled => mode != Radio2Mode.off;
+
   /// 911.5 MHz, 250 kHz, SF7, CR 4/5: about four times faster than SF7/62.5.
   static const defaults = MediaMeshSettings(
-    enabled: false,
+    mode: Radio2Mode.off,
     frequencyMHz: 911.5,
     bandwidth: LoRaBandwidth.bw250,
     spreadingFactor: LoRaSpreadingFactor.sf7,
@@ -37,13 +78,15 @@ class MediaMeshSettings {
   );
 
   MediaMeshSettings copyWith({
-    bool? enabled,
+    Radio2Mode? mode,
+    MediaChoice? media,
     double? frequencyMHz,
     LoRaBandwidth? bandwidth,
     LoRaSpreadingFactor? spreadingFactor,
     LoRaCodingRate? codingRate,
   }) => MediaMeshSettings(
-    enabled: enabled ?? this.enabled,
+    mode: mode ?? this.mode,
+    media: media ?? this.media,
     frequencyMHz: frequencyMHz ?? this.frequencyMHz,
     bandwidth: bandwidth ?? this.bandwidth,
     spreadingFactor: spreadingFactor ?? this.spreadingFactor,
@@ -67,12 +110,20 @@ class MediaMeshState {
   final MediaMeshSupport support;
   final MediaMeshSettings settings;
 
+  /// The live `get radio2.status` figures, when the radio has them.
+  final Radio2Status? status;
+
+  /// A running `tempradio2`, or null.
+  final TempRadio2? temp;
+
   /// The radio's own reason when it cannot run radio2 (e.g. an LR1110 board).
   final String? detail;
 
   const MediaMeshState({
     required this.support,
     required this.settings,
+    this.status,
+    this.temp,
     this.detail,
   });
 }
@@ -157,10 +208,168 @@ String formatBandwidthKHz(LoRaBandwidth bw) {
   return text;
 }
 
-String buildSetRadio2Command(MediaMeshSettings s) =>
-    'set radio2 ${s.frequencyMHz.toStringAsFixed(3)},'
+String _profileTuple(MediaMeshSettings s, Radio2Mode mode) =>
+    '${s.frequencyMHz.toStringAsFixed(3)},'
     '${formatBandwidthKHz(s.bandwidth)},'
-    '${s.spreadingFactor.value},${s.codingRate.value},rxtx';
+    '${s.spreadingFactor.value},${s.codingRate.value},${mode.cli}';
+
+/// `set radio2 ...`; an off mode still writes the profile as `rxtx`.
+String buildSetRadio2Command(MediaMeshSettings s) => 'set radio2 '
+    '${_profileTuple(s, s.mode == Radio2Mode.off ? Radio2Mode.rxtx : s.mode)}';
+
+/// `set tempradio2 f,bw,sf,cr,rxtx,minutes`: [s] replaces radio2 for
+/// [minutes] (1-10080).
+String buildTempRadio2Command(MediaMeshSettings s, int minutes) =>
+    'set tempradio2 ${_profileTuple(s, Radio2Mode.rxtx)},$minutes';
+
+String _stripTag(String reply) {
+  var text = reply.trim();
+  if (text.indexOf('|') == 2) text = text.substring(3);
+  return text;
+}
+
+/// `get radio2.cross`: `auto`, `on` or `off`, or null.
+String? parseCrossReply(String reply) {
+  final text = _stripTag(reply);
+  if (!text.startsWith('>')) return null;
+  final value = text.substring(1).trim().split(RegExp(r'[\s;]')).first;
+  return const {'auto', 'on', 'off'}.contains(value) ? value : null;
+}
+
+/// The figures of `get radio2.status`:
+/// `> rxtx; RX=12,40 TX=3,9 switches=5120 errors=0 max=1203us
+/// preamble=32,64; test=4/4 ready budget=1324us; WARN ...`.
+class Radio2Status {
+  final String mode;
+  final List<int> rx;
+  final List<int> tx;
+  final int? switchUs;
+  final bool switchMeasured;
+  final List<String> warnings;
+
+  const Radio2Status({
+    required this.mode,
+    required this.rx,
+    required this.tx,
+    this.switchUs,
+    this.switchMeasured = false,
+    this.warnings = const [],
+  });
+
+  static Radio2Status? tryParse(String reply) {
+    final text = _stripTag(reply);
+    if (!text.startsWith('>')) return null;
+    final body = text.substring(1).trim();
+    final mode = body.split(RegExp(r'[\s;]')).first;
+    List<int> pair(String key) {
+      final m = RegExp('$key=(\\d+),(\\d+)').firstMatch(body);
+      if (m == null) return const [0, 0];
+      return [int.parse(m.group(1)!), int.parse(m.group(2)!)];
+    }
+
+    final budget = RegExp(r'budget=(\d+)us').firstMatch(body);
+    final warnings = <String>[];
+    for (final part in body.split(';')) {
+      final p = part.trim();
+      if (p.startsWith('WARN') || p.startsWith('short override')) {
+        warnings.add(p.startsWith('WARN ') ? p.substring(5) : p);
+      }
+    }
+    return Radio2Status(
+      mode: mode,
+      rx: pair('RX'),
+      tx: pair('TX'),
+      switchUs: budget == null ? null : int.parse(budget.group(1)!),
+      switchMeasured: body.contains(' ready'),
+      warnings: warnings,
+    );
+  }
+}
+
+/// A running `tempradio2`: `> 910.500,500.000,8,5,rxtx,40 (auto);
+/// 0d2h0m (120 min) left`.
+class TempRadio2 {
+  final double frequencyMHz;
+  final int minutesLeft;
+
+  const TempRadio2({required this.frequencyMHz, required this.minutesLeft});
+
+  /// Null for `> off` and anything that is not an answer.
+  static TempRadio2? tryParse(String reply) {
+    final r = Radio2Reply.tryParse(reply);
+    if (r == null || r.off) return null;
+    final m = RegExp(r'\((\d+) min\) left').firstMatch(reply);
+    return TempRadio2(
+      frequencyMHz: r.frequencyMHz,
+      minutesLeft: m == null ? 0 : int.parse(m.group(1)!),
+    );
+  }
+}
+
+/// Where one contact's or channel's traffic is sent (`tx.user`, `tx.channel`).
+enum TxChoice {
+  auto('auto'),
+  radio('radio'),
+  radio2('radio2'),
+  both('both'),
+  off('off');
+
+  final String cli;
+  const TxChoice(this.cli);
+
+  static TxChoice? fromCli(String text) {
+    for (final c in TxChoice.values) {
+      if (c.cli == text) return c;
+    }
+    return null;
+  }
+}
+
+/// One `get/set tx.user` or `tx.channel` answer:
+/// `> tx.user "Alice" key:0123456789AB radio2; active=radio2` or
+/// `OK - tx.channel 2 "#r2-ops" radio2; active=radio2 (#r2- channel)`.
+class TxRouteReply {
+  final TxChoice choice;
+
+  /// Where the next packet would go now: `radio`, `radio2`, `both` or `none`.
+  final String active;
+
+  /// An `#r2-` channel: always radio2, set by its name.
+  final bool boundByName;
+
+  /// radio2 was chosen but cannot send right now.
+  final bool radio2Unavailable;
+
+  const TxRouteReply({
+    required this.choice,
+    required this.active,
+    this.boundByName = false,
+    this.radio2Unavailable = false,
+  });
+
+  static TxRouteReply? tryParse(String reply) {
+    final text = _stripTag(reply);
+    final m = RegExp(
+      r'^(?:OK - |> )tx\.(?:user|channel) .* (auto|radio|radio2|both|off); '
+      r'active=(\S+)',
+    ).firstMatch(text);
+    if (m == null) return null;
+    final choice = TxChoice.fromCli(m.group(1)!);
+    if (choice == null) return null;
+    return TxRouteReply(
+      choice: choice,
+      active: m.group(2)!,
+      boundByName: text.contains('(#r2- channel)'),
+      radio2Unavailable: text.contains('radio2 unavailable'),
+    );
+  }
+}
+
+/// `key:` + the first 16 bytes of a contact's public key, as `tx.user` takes it.
+String txUserTarget(String publicKeyHex) {
+  final hex = publicKeyHex.replaceAll(RegExp(r'[^0-9a-fA-F]'), '');
+  return 'key:${hex.length > 32 ? hex.substring(0, 32) : hex}';
+}
 
 /// The tx.media choice (`auto`, `radio`, `radio2`, `both` or `off`; newer
 /// firmware adds `; active=...`), or null when the firmware does not know
@@ -232,6 +441,8 @@ class MediaMeshController {
     }
     final mediaText = await _cli('get tx.media');
     final route = mediaText == null ? null : parseTxMediaReply(mediaText);
+    final crossText = await _cli('get radio2.cross');
+    final cross = crossText == null ? null : parseCrossReply(crossText);
     var settings = MediaMeshSettings.defaults;
     if (!radio2.off) {
       settings = settings.copyWith(
@@ -242,40 +453,98 @@ class MediaMeshController {
       );
     }
     settings = settings.copyWith(
-      enabled: radio2.canTransmit && (route == 'radio2' || route == 'both'),
+      mode: radio2.off ? Radio2Mode.off : Radio2Mode.fromCli(radio2.mode),
+      // Untouched routing (auto/auto) reads as the photos-and-voice preset
+      // that turning radio2 on applies.
+      media: radio2.off && route == 'auto' && cross == 'auto'
+          ? MediaChoice.photosAndVoice
+          : MediaChoice.from(media: route, cross: cross),
     );
+    final statusText = await _cli('get radio2.status');
+    final tempText = await _cli('get tempradio2');
     return MediaMeshState(
       support: route == null
           ? MediaMeshSupport.noMediaRouting
           : MediaMeshSupport.full,
       settings: settings,
+      status: statusText == null ? null : Radio2Status.tryParse(statusText),
+      temp: tempText == null ? null : TempRadio2.tryParse(tempText),
     );
   }
 
-  /// Applies [s]: on = radio2 listening and sending, no crossing, media on
-  /// radio2; off = media back on the main radio and radio2 off.
+  /// The live figures only, for a periodic refresh.
+  Future<(Radio2Status?, TempRadio2?)> refreshStatus() async {
+    final statusText = await _cli('get radio2.status');
+    final tempText = await _cli('get tempradio2');
+    return (
+      statusText == null ? null : Radio2Status.tryParse(statusText),
+      tempText == null ? null : TempRadio2.tryParse(tempText),
+    );
+  }
+
+  /// Applies [s]: the radio2 profile and mode, then (with radio2 on) what
+  /// goes on it. Off sends media back to the main radio and turns radio2 off.
+  /// A [MediaChoice.custom] choice leaves the routing as the radio has it.
   Future<void> apply(MediaMeshSettings s) async {
     if (s.enabled) {
-      final set = await _cli(buildSetRadio2Command(s));
-      if (set == null || !isCliOk(set)) {
-        throw MediaMeshException(_reason(set, 'The radio rejected radio2'));
-      }
-      await _cli('set radio2.cross off');
-      final media = await _cli('set tx.media radio2');
-      if (media == null || !isCliOk(media)) {
-        throw MediaMeshException(
-          _reason(media, 'This firmware cannot send media on radio2'),
-        );
+      await _ok(buildSetRadio2Command(s), 'The radio rejected radio2');
+      switch (s.media) {
+        case MediaChoice.photosAndVoice:
+          await _ok('set radio2.cross off', 'The radio kept radio2.cross');
+          await _ok(
+            'set tx.media radio2',
+            'This firmware cannot send media on radio2',
+          );
+        case MediaChoice.everything:
+          await _ok('set radio2.cross on', 'The radio kept radio2.cross');
+          await _ok('set tx.media auto', 'The radio kept tx.media');
+        case MediaChoice.custom:
+          break;
       }
     } else {
       await _cli('set tx.media radio');
-      final off = await _cli('set radio2 off');
-      if (off == null || !isCliOk(off)) {
-        throw MediaMeshException(
-          _reason(off, 'The radio did not turn radio2 off'),
-        );
-      }
+      await _ok('set radio2 off', 'The radio did not turn radio2 off');
     }
+  }
+
+  /// Replaces radio2 with [s] for [minutes]; the saved radio2 comes back
+  /// afterwards (or on a reboot).
+  Future<void> startTemporary(MediaMeshSettings s, int minutes) =>
+      _ok(buildTempRadio2Command(s, minutes), 'The radio rejected tempradio2');
+
+  Future<void> stopTemporary() =>
+      _ok('set tempradio2 off', 'The radio kept tempradio2');
+
+  /// `get tx.user` for a contact, or null when the firmware has no tx.user.
+  Future<TxRouteReply?> getUserRoute(String publicKeyHex) async {
+    final r = await _cli('get tx.user ${txUserTarget(publicKeyHex)}');
+    return r == null ? null : TxRouteReply.tryParse(r);
+  }
+
+  Future<TxRouteReply> setUserRoute(String publicKeyHex, TxChoice c) =>
+      _route('set tx.user ${txUserTarget(publicKeyHex)} ${c.cli}');
+
+  /// `get tx.channel` for a channel slot.
+  Future<TxRouteReply?> getChannelRoute(int slot) async {
+    final r = await _cli('get tx.channel $slot');
+    return r == null ? null : TxRouteReply.tryParse(r);
+  }
+
+  Future<TxRouteReply> setChannelRoute(int slot, TxChoice c) =>
+      _route('set tx.channel $slot ${c.cli}');
+
+  Future<TxRouteReply> _route(String command) async {
+    final r = await _cli(command);
+    final parsed = r == null ? null : TxRouteReply.tryParse(r);
+    if (parsed == null) {
+      throw MediaMeshException(_reason(r, 'The radio did not save this'));
+    }
+    return parsed;
+  }
+
+  Future<void> _ok(String command, String fallback) async {
+    final r = await _cli(command);
+    if (r == null || !isCliOk(r)) throw MediaMeshException(_reason(r, fallback));
   }
 
   static String _reason(String? reply, String fallback) {

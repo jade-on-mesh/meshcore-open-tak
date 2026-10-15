@@ -10662,6 +10662,354 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unnamed repeater'**
   String get networkMap_unnamed;
+
+  /// No description provided for @mediaMesh_title.
+  ///
+  /// In en, this message translates to:
+  /// **'MediaMesh Settings'**
+  String get mediaMesh_title;
+
+  /// No description provided for @mediaMesh_settingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos and voice on a second frequency'**
+  String get mediaMesh_settingsSubtitle;
+
+  /// No description provided for @mediaMesh_noFirmware.
+  ///
+  /// In en, this message translates to:
+  /// **'This radio\'s firmware has no MediaMesh (radio2). Use Wadamesh, or MeshCore firmware with radio2 and media routing.'**
+  String get mediaMesh_noFirmware;
+
+  /// No description provided for @mediaMesh_cantRun.
+  ///
+  /// In en, this message translates to:
+  /// **'This radio can\'t run MediaMesh.'**
+  String get mediaMesh_cantRun;
+
+  /// No description provided for @mediaMesh_noMediaRouting.
+  ///
+  /// In en, this message translates to:
+  /// **'This firmware has radio2 but cannot route media to it yet. Saving with radio2 on will fail until the radio is updated.'**
+  String get mediaMesh_noMediaRouting;
+
+  /// No description provided for @mediaMesh_mode.
+  ///
+  /// In en, this message translates to:
+  /// **'radio2'**
+  String get mediaMesh_mode;
+
+  /// No description provided for @mediaMesh_modeOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get mediaMesh_modeOff;
+
+  /// No description provided for @mediaMesh_modeListen.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen'**
+  String get mediaMesh_modeListen;
+
+  /// No description provided for @mediaMesh_modeListenSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen + send'**
+  String get mediaMesh_modeListenSend;
+
+  /// No description provided for @mediaMesh_modeHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen hears photos and voice sent on radio2 but never sends there. Listen + send also sends. The main mesh is always heard.'**
+  String get mediaMesh_modeHelp;
+
+  /// No description provided for @mediaMesh_sentOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent on radio2'**
+  String get mediaMesh_sentOn;
+
+  /// No description provided for @mediaMesh_photosVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos & voice'**
+  String get mediaMesh_photosVoice;
+
+  /// No description provided for @mediaMesh_everything.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything'**
+  String get mediaMesh_everything;
+
+  /// No description provided for @mediaMesh_custom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get mediaMesh_custom;
+
+  /// No description provided for @mediaMesh_photosVoiceHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos and voice clips go on radio2. Text, adverts and ACKs stay on the main mesh.'**
+  String get mediaMesh_photosVoiceHelp;
+
+  /// No description provided for @mediaMesh_everythingHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Messages go on both radios and media follows each contact or channel, so radio2-only nodes hear everything.'**
+  String get mediaMesh_everythingHelp;
+
+  /// No description provided for @mediaMesh_customHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Set from the radio console. Saving leaves it as it is.'**
+  String get mediaMesh_customHelp;
+
+  /// No description provided for @mediaMesh_frequency.
+  ///
+  /// In en, this message translates to:
+  /// **'radio2 frequency (MHz)'**
+  String get mediaMesh_frequency;
+
+  /// No description provided for @mediaMesh_frequencyRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a frequency between 150 and 960 MHz'**
+  String get mediaMesh_frequencyRange;
+
+  /// No description provided for @mediaMesh_frequencyMain.
+  ///
+  /// In en, this message translates to:
+  /// **'Must differ from the main radio'**
+  String get mediaMesh_frequencyMain;
+
+  /// No description provided for @mediaMesh_footer.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone sharing photos must use the same radio2 settings. The radio switches between both frequencies, so heavy media traffic costs some main-mesh reception.'**
+  String get mediaMesh_footer;
+
+  /// No description provided for @mediaMesh_saved.
+  ///
+  /// In en, this message translates to:
+  /// **'radio2 settings saved'**
+  String get mediaMesh_saved;
+
+  /// No description provided for @mediaMesh_turnedOff.
+  ///
+  /// In en, this message translates to:
+  /// **'MediaMesh off'**
+  String get mediaMesh_turnedOff;
+
+  /// No description provided for @mediaMesh_status.
+  ///
+  /// In en, this message translates to:
+  /// **'Right now'**
+  String get mediaMesh_status;
+
+  /// No description provided for @mediaMesh_packets.
+  ///
+  /// In en, this message translates to:
+  /// **'Received {rxMain} main, {rxRadio2} radio2 · Sent {txMain} main, {txRadio2} radio2'**
+  String mediaMesh_packets(int rxMain, int rxRadio2, int txMain, int txRadio2);
+
+  /// No description provided for @mediaMesh_switchTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch time {micros} µs'**
+  String mediaMesh_switchTime(int micros);
+
+  /// No description provided for @mediaMesh_switchMeasuring.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch time: measuring'**
+  String get mediaMesh_switchMeasuring;
+
+  /// No description provided for @mediaMesh_warning.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning: {text}'**
+  String mediaMesh_warning(String text);
+
+  /// No description provided for @mediaMesh_temporary.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporary radio2'**
+  String get mediaMesh_temporary;
+
+  /// No description provided for @mediaMesh_temporaryHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Try the profile above for a while without saving it. The saved radio2 comes back afterwards, or on a reboot.'**
+  String get mediaMesh_temporaryHelp;
+
+  /// No description provided for @mediaMesh_temp15.
+  ///
+  /// In en, this message translates to:
+  /// **'15 min'**
+  String get mediaMesh_temp15;
+
+  /// No description provided for @mediaMesh_temp60.
+  ///
+  /// In en, this message translates to:
+  /// **'1 hour'**
+  String get mediaMesh_temp60;
+
+  /// No description provided for @mediaMesh_temp120.
+  ///
+  /// In en, this message translates to:
+  /// **'2 hours'**
+  String get mediaMesh_temp120;
+
+  /// No description provided for @mediaMesh_tempStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get mediaMesh_tempStop;
+
+  /// No description provided for @mediaMesh_tempRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running: {frequency} MHz, {minutes} min left'**
+  String mediaMesh_tempRunning(String frequency, int minutes);
+
+  /// No description provided for @mediaMesh_tempStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporary radio2 started'**
+  String get mediaMesh_tempStarted;
+
+  /// No description provided for @mediaMesh_tempStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved radio2 restored'**
+  String get mediaMesh_tempStopped;
+
+  /// No description provided for @mediaMesh_openConsole.
+  ///
+  /// In en, this message translates to:
+  /// **'Radio console'**
+  String get mediaMesh_openConsole;
+
+  /// No description provided for @mediaMesh_openConsoleSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedules, tempradio, diagnostics'**
+  String get mediaMesh_openConsoleSubtitle;
+
+  /// No description provided for @txRoute_menu.
+  ///
+  /// In en, this message translates to:
+  /// **'Send on…'**
+  String get txRoute_menu;
+
+  /// No description provided for @txRoute_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Send {name} on'**
+  String txRoute_title(String name);
+
+  /// No description provided for @txRoute_auto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get txRoute_auto;
+
+  /// No description provided for @txRoute_radio.
+  ///
+  /// In en, this message translates to:
+  /// **'Main only'**
+  String get txRoute_radio;
+
+  /// No description provided for @txRoute_radio2.
+  ///
+  /// In en, this message translates to:
+  /// **'radio2 only'**
+  String get txRoute_radio2;
+
+  /// No description provided for @txRoute_both.
+  ///
+  /// In en, this message translates to:
+  /// **'Both'**
+  String get txRoute_both;
+
+  /// No description provided for @txRoute_off.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t send'**
+  String get txRoute_off;
+
+  /// No description provided for @txRoute_help.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto follows the MediaMesh settings. Only sending changes; this radio still hears both.'**
+  String get txRoute_help;
+
+  /// No description provided for @txRoute_boundByName.
+  ///
+  /// In en, this message translates to:
+  /// **'This #r2- channel always uses radio2. Rename it to change that.'**
+  String get txRoute_boundByName;
+
+  /// No description provided for @txRoute_unsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This radio\'s firmware can\'t choose a radio per contact or channel.'**
+  String get txRoute_unsupported;
+
+  /// No description provided for @txRoute_radio2Unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'radio2 can\'t send right now (off or listen only).'**
+  String get txRoute_radio2Unavailable;
+
+  /// No description provided for @txRoute_active.
+  ///
+  /// In en, this message translates to:
+  /// **'Next message goes on: {where}'**
+  String txRoute_active(String where);
+
+  /// No description provided for @txRoute_none.
+  ///
+  /// In en, this message translates to:
+  /// **'nothing'**
+  String get txRoute_none;
+
+  /// No description provided for @radioConsole_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Radio console'**
+  String get radioConsole_title;
+
+  /// No description provided for @radioConsole_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. get radio2.status'**
+  String get radioConsole_hint;
+
+  /// No description provided for @radioConsole_send.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get radioConsole_send;
+
+  /// No description provided for @radioConsole_intro.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands run on the connected radio. Try: get mediamesh, get radio2.status, get radio2.timing, set tempradio2 off, tempradio, normalradio, get radioat2, get tx.media.'**
+  String get radioConsole_intro;
+
+  /// No description provided for @radioConsole_noReply.
+  ///
+  /// In en, this message translates to:
+  /// **'(no reply)'**
+  String get radioConsole_noReply;
+
+  /// No description provided for @radioConsole_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'No answer from the radio'**
+  String get radioConsole_failed;
 }
 
 class _AppLocalizationsDelegate
