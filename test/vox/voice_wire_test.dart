@@ -12,6 +12,23 @@ String _toHex(List<int> b) =>
     b.map((v) => v.toRadixString(16).padLeft(2, '0')).join();
 
 void main() {
+  group('recording quality', () {
+    test('offers the three rates Wadamesh records in', () {
+      expect(voxCodec2RecordModes.map((m) => m.wireId), [1, 5, 6]);
+      expect(voxCodec2RecordModes.first, voxDefaultVoiceMode);
+    });
+
+    test('a 20 s clip fits the packet limit at every rate', () {
+      for (final m in voxCodec2RecordModes) {
+        final bytes = 20 * m.bytesPerSecond;
+        final packets = (bytes / m.bytesPerPacket).ceil();
+        expect(packets, lessThanOrEqualTo(voxMaxPackets), reason: m.label);
+      }
+      expect(VoxVoiceMode.mode1600.bytesPerSecond, 200);
+      expect(VoxVoiceMode.mode3200.bytesPerSecond, 400);
+    });
+  });
+
   group('VE3 envelope', () {
     test('parses the VE3 reference example', () {
       final env = VoxVoiceEnvelope.tryParse('VE3:a:1:4:4')!;

@@ -149,9 +149,26 @@ class VoxVoiceService extends ChangeNotifier {
   /// Send new clips with Mimi when its model is downloaded (else Codec2).
   bool get preferMimi => _preferMimi;
 
+  static const _kCodec2Mode = 'vox_codec2_mode';
+  VoxVoiceMode _codec2Mode = voxDefaultVoiceMode;
+
+  /// The Codec2 rate clips are recorded in when they go out as Codec2 (one of
+  /// [voxCodec2RecordModes]).
+  VoxVoiceMode get codec2Mode => _codec2Mode;
+
+  Future<void> setCodec2Mode(VoxVoiceMode mode) async {
+    if (!voxCodec2RecordModes.contains(mode) || mode == _codec2Mode) return;
+    _codec2Mode = mode;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_kCodec2Mode, mode.wireId);
+    } catch (_) {}
+  }
+
   /// The codec the next recording will be sent with.
   VoxVoiceMode get sendMode =>
-      _preferMimi && mimi.isReady ? VoxVoiceMode.mimi : voxDefaultVoiceMode;
+      _preferMimi && mimi.isReady ? VoxVoiceMode.mimi : _codec2Mode;
 
   // ----------------------------------- per-chat codec: Codec2 for radios
 
@@ -240,7 +257,7 @@ class VoxVoiceService extends ChangeNotifier {
 
   /// The codec the next recording to [target] will be sent with.
   VoxVoiceMode sendModeFor(String? target) =>
-      forcesCodec2(target) ? voxDefaultVoiceMode : sendMode;
+      forcesCodec2(target) ? _codec2Mode : sendMode;
 
   // ------------------------------------------- photos: VOX or AI sketch
 
@@ -325,6 +342,12 @@ class VoxVoiceService extends ChangeNotifier {
       _forceRepeaterRoute = prefs.getBool(_kForceRoute) ?? false;
       _forcedRepeaterKeys = prefs.getStringList(_kForceRouteKeys) ?? const [];
       _preferMimi = prefs.getBool(_kPreferMimi) ?? true;
+      final c2 = VoxVoiceMode.fromWireId(
+        prefs.getInt(_kCodec2Mode) ?? voxDefaultVoiceMode.wireId,
+      );
+      _codec2Mode = c2 != null && voxCodec2RecordModes.contains(c2)
+          ? c2
+          : voxDefaultVoiceMode;
       _photoAiSketch = prefs.getBool(_kPhotoAiSketch) ?? false;
       _photoAiSketchHd = prefs.getBool(_kPhotoAiSketchHd) ?? false;
       _codecs.load(
