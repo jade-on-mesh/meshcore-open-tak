@@ -638,6 +638,21 @@ class _ChannelsScreenState extends State<ChannelsScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
+              leading: const Icon(Icons.qr_code_2),
+              title: Text(sheetContext.l10n.channels_shareQr),
+              onTap: () async {
+                Navigator.pop(sheetContext);
+                await Future.delayed(const Duration(milliseconds: 100));
+                if (parentContext.mounted) {
+                  _showChannelShareQr(
+                    parentContext,
+                    channel.name,
+                    channel.pskHex,
+                  );
+                }
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.edit_outlined),
               title: Text(sheetContext.l10n.channels_editChannel),
               onTap: () async {
