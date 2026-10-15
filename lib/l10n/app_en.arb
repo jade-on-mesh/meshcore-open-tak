@@ -3567,5 +3567,6 @@
   "radioConsole_send": "Send",
   "radioConsole_intro": "Commands run on the connected radio. Try: get mediamesh, get radio2.status, get radio2.timing, set tempradio2 off, tempradio, normalradio, get radioat2, get tx.media.",
   "radioConsole_noReply": "(no reply)",
-  "radioConsole_failed": "No answer from the radio"
+  "radioConsole_failed": "No answer from the radio",
+  "channels_scannedPrivateChannel": "That code is for a private channel, so it is filled in under Join a Private Channel."
 }
