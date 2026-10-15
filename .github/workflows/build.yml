@@ -290,7 +290,7 @@ jobs:
           # A broken third-party source on the runner must not stop the build.
           sudo apt-get update -q 2>&1 | tail -5 || true
           pkgs="clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev \
-            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libsecret-1-dev libudev-dev libfuse2 file"
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libsecret-1-dev libudev-dev libfuse2 file desktop-file-utils"
           # The runner's LLVM libunwind-14-dev conflicts with libgstreamer1.0-dev's
           # libunwind-dev ("held broken packages"); GStreamer is needed for audio.
           sudo apt-get remove -y -q libunwind-14-dev > /dev/null 2>&1 || true
