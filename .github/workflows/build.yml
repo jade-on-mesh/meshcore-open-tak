@@ -322,6 +322,7 @@ jobs:
       - name: Package (tar.gz and AppImage)
         run: |
           set -euo pipefail
+          trap 'echo "::error::packaging failed at line $LINENO: $BASH_COMMAND"' ERR
           bundle=build/linux/x64/release/bundle
           mkdir -p dist
           tar -czf dist/meshcore-open-tak-linux-x86_64.tar.gz -C "$bundle" --transform 's,^\.,meshcore-open-tak,' .
@@ -351,7 +352,11 @@ jobs:
           curl -fsSL -o /tmp/appimagetool https://github.com/AppImage/appimagetool/releases/download/1.9.0/appimagetool-x86_64.AppImage \
             || curl -fsSL -o /tmp/appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x /tmp/appimagetool
-          ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 /tmp/appimagetool --no-appstream "$appdir" dist/meshcore-open-tak-linux-x86_64.AppImage
+          if ! ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 /tmp/appimagetool --no-appstream "$appdir" \
+               dist/meshcore-open-tak-linux-x86_64.AppImage > /tmp/appimagetool.log 2>&1; then
+            tail -15 /tmp/appimagetool.log | while IFS= read -r l; do echo "::error::appimagetool: $l"; done
+            exit 1
+          fi
           ls -la dist
       - uses: actions/upload-artifact@v4
         with:
