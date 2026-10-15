@@ -287,10 +287,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Desktop build dependencies
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev \
-            libstdc++-12-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libsecret-1-dev \
-            libudev-dev libfuse2 file
+          # A broken third-party source on the runner must not stop the build.
+          sudo apt-get update -q 2>&1 | tail -5 || true
+          pkgs="clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libsecret-1-dev libudev-dev libfuse2 file"
+          if ! sudo apt-get install -y -q $pkgs > /tmp/apt.log 2>&1; then
+            grep -E "^E:|Unable|has no installation candidate" /tmp/apt.log | head -10 | while IFS= read -r l; do echo "::error::apt: $l"; done
+            exit 1
+          fi
       - uses: subosito/flutter-action@v2
         with:
           channel: "stable"
