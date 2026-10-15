@@ -26,6 +26,7 @@ import '../widgets/network_map_opt_in_dialog.dart';
 import '../widgets/qr_code_display.dart';
 import '../widgets/quick_switch_bar.dart';
 import '../widgets/sync_progress_overlay.dart';
+import '../widgets/tx_route_dialog.dart';
 import '../widgets/unread_badge.dart';
 import '../helpers/gif_helper.dart';
 import '../helpers/snack_bar_builder.dart';
@@ -644,6 +645,22 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                 await Future.delayed(const Duration(milliseconds: 100));
                 if (parentContext.mounted) {
                   _showEditChannelDialog(parentContext, connector, channel);
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.alt_route),
+              title: Text(sheetContext.l10n.txRoute_menu),
+              onTap: () async {
+                Navigator.pop(sheetContext);
+                await Future.delayed(const Duration(milliseconds: 100));
+                if (parentContext.mounted) {
+                  showTxRouteDialog(
+                    parentContext,
+                    connector: connector,
+                    name: channel.name,
+                    channelSlot: channel.index,
+                  );
                 }
               },
             ),

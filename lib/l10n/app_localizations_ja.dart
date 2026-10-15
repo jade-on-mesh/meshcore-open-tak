@@ -6060,4 +6060,190 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get networkMap_unnamed => '名前のないリピータ';
+
+  @override
+  String get mediaMesh_title => 'MediaMesh Settings';
+
+  @override
+  String get mediaMesh_settingsSubtitle => 'Photos and voice on a second frequency';
+
+  @override
+  String get mediaMesh_noFirmware => 'This radio\'s firmware has no MediaMesh (radio2). Use Wadamesh, or MeshCore firmware with radio2 and media routing.';
+
+  @override
+  String get mediaMesh_cantRun => 'This radio can\'t run MediaMesh.';
+
+  @override
+  String get mediaMesh_noMediaRouting => 'This firmware has radio2 but cannot route media to it yet. Saving with radio2 on will fail until the radio is updated.';
+
+  @override
+  String get mediaMesh_mode => 'radio2';
+
+  @override
+  String get mediaMesh_modeOff => 'Off';
+
+  @override
+  String get mediaMesh_modeListen => 'Listen';
+
+  @override
+  String get mediaMesh_modeListenSend => 'Listen + send';
+
+  @override
+  String get mediaMesh_modeHelp => 'Listen hears photos and voice sent on radio2 but never sends there. Listen + send also sends. The main mesh is always heard.';
+
+  @override
+  String get mediaMesh_sentOn => 'Sent on radio2';
+
+  @override
+  String get mediaMesh_photosVoice => 'Photos & voice';
+
+  @override
+  String get mediaMesh_everything => 'Everything';
+
+  @override
+  String get mediaMesh_custom => 'Custom';
+
+  @override
+  String get mediaMesh_photosVoiceHelp => 'Photos and voice clips go on radio2. Text, adverts and ACKs stay on the main mesh.';
+
+  @override
+  String get mediaMesh_everythingHelp => 'Messages go on both radios and media follows each contact or channel, so radio2-only nodes hear everything.';
+
+  @override
+  String get mediaMesh_customHelp => 'Set from the radio console. Saving leaves it as it is.';
+
+  @override
+  String get mediaMesh_frequency => 'radio2 frequency (MHz)';
+
+  @override
+  String get mediaMesh_frequencyRange => 'Enter a frequency between 150 and 960 MHz';
+
+  @override
+  String get mediaMesh_frequencyMain => 'Must differ from the main radio';
+
+  @override
+  String get mediaMesh_footer => 'Everyone sharing photos must use the same radio2 settings. The radio switches between both frequencies, so heavy media traffic costs some main-mesh reception.';
+
+  @override
+  String get mediaMesh_saved => 'radio2 settings saved';
+
+  @override
+  String get mediaMesh_turnedOff => 'MediaMesh off';
+
+  @override
+  String get mediaMesh_status => 'Right now';
+
+  @override
+  String mediaMesh_packets(int rxMain, int rxRadio2, int txMain, int txRadio2) {
+    return 'Received $rxMain main, $rxRadio2 radio2 · Sent $txMain main, $txRadio2 radio2';
+  }
+
+  @override
+  String mediaMesh_switchTime(int micros) {
+    return 'Switch time $micros µs';
+  }
+
+  @override
+  String get mediaMesh_switchMeasuring => 'Switch time: measuring';
+
+  @override
+  String mediaMesh_warning(String text) {
+    return 'Warning: $text';
+  }
+
+  @override
+  String get mediaMesh_temporary => 'Temporary radio2';
+
+  @override
+  String get mediaMesh_temporaryHelp => 'Try the profile above for a while without saving it. The saved radio2 comes back afterwards, or on a reboot.';
+
+  @override
+  String get mediaMesh_temp15 => '15 min';
+
+  @override
+  String get mediaMesh_temp60 => '1 hour';
+
+  @override
+  String get mediaMesh_temp120 => '2 hours';
+
+  @override
+  String get mediaMesh_tempStop => 'Stop';
+
+  @override
+  String mediaMesh_tempRunning(String frequency, int minutes) {
+    return 'Running: $frequency MHz, $minutes min left';
+  }
+
+  @override
+  String get mediaMesh_tempStarted => 'Temporary radio2 started';
+
+  @override
+  String get mediaMesh_tempStopped => 'Saved radio2 restored';
+
+  @override
+  String get mediaMesh_openConsole => 'Radio console';
+
+  @override
+  String get mediaMesh_openConsoleSubtitle => 'Schedules, tempradio, diagnostics';
+
+  @override
+  String get txRoute_menu => 'Send on…';
+
+  @override
+  String txRoute_title(String name) {
+    return 'Send $name on';
+  }
+
+  @override
+  String get txRoute_auto => 'Auto';
+
+  @override
+  String get txRoute_radio => 'Main only';
+
+  @override
+  String get txRoute_radio2 => 'radio2 only';
+
+  @override
+  String get txRoute_both => 'Both';
+
+  @override
+  String get txRoute_off => 'Don\'t send';
+
+  @override
+  String get txRoute_help => 'Auto follows the MediaMesh settings. Only sending changes; this radio still hears both.';
+
+  @override
+  String get txRoute_boundByName => 'This #r2- channel always uses radio2. Rename it to change that.';
+
+  @override
+  String get txRoute_unsupported => 'This radio\'s firmware can\'t choose a radio per contact or channel.';
+
+  @override
+  String get txRoute_radio2Unavailable => 'radio2 can\'t send right now (off or listen only).';
+
+  @override
+  String txRoute_active(String where) {
+    return 'Next message goes on: $where';
+  }
+
+  @override
+  String get txRoute_none => 'nothing';
+
+  @override
+  String get radioConsole_title => 'Radio console';
+
+  @override
+  String get radioConsole_hint => 'e.g. get radio2.status';
+
+  @override
+  String get radioConsole_send => 'Send';
+
+  @override
+  String get radioConsole_intro => 'Commands run on the connected radio. Try: get mediamesh, get radio2.status, get radio2.timing, set tempradio2 off, tempradio, normalradio, get radioat2, get tx.media.';
+
+  @override
+  String get radioConsole_noReply => '(no reply)';
+
+  @override
+  String get radioConsole_failed => 'No answer from the radio';
 }

@@ -153,4 +153,89 @@ void main() {
       );
     });
   });
+
+  group('radio2 UI replies', () {
+    test('mode and media choice', () {
+      expect(Radio2Mode.fromCli('rx'), Radio2Mode.rx);
+      expect(Radio2Mode.fromCli('rx&tx'), Radio2Mode.rxtx);
+      expect(Radio2Mode.fromCli('off'), Radio2Mode.off);
+      expect(
+        MediaChoice.from(media: 'radio2', cross: 'off'),
+        MediaChoice.photosAndVoice,
+      );
+      expect(
+        MediaChoice.from(media: 'auto', cross: 'on'),
+        MediaChoice.everything,
+      );
+      expect(MediaChoice.from(media: 'both', cross: 'off'), MediaChoice.custom);
+      expect(parseCrossReply('> off'), 'off');
+      expect(parseCrossReply('ab|> auto'), 'auto');
+      expect(parseCrossReply('Unknown command'), isNull);
+    });
+
+    test('listen-only radio2 command', () {
+      expect(
+        buildSetRadio2Command(
+          MediaMeshSettings.defaults.copyWith(mode: Radio2Mode.rx),
+        ),
+        'set radio2 911.500,250,7,5,rx',
+      );
+      expect(
+        buildTempRadio2Command(MediaMeshSettings.defaults, 60),
+        'set tempradio2 911.500,250,7,5,rxtx,60',
+      );
+    });
+
+    test('radio2.status', () {
+      final s = Radio2Status.tryParse(
+        '> rxtx; RX=12,40 TX=3,9 switches=5120 errors=0 max=1203us '
+        'preamble=32,64; test=4/4 ready budget=1324us; '
+        'WARN recommended preamble: radio2=64',
+      )!;
+      expect(s.mode, 'rxtx');
+      expect(s.rx, [12, 40]);
+      expect(s.tx, [3, 9]);
+      expect(s.switchUs, 1324);
+      expect(s.switchMeasured, isTrue);
+      expect(s.warnings, ['recommended preamble: radio2=64']);
+      final pending = Radio2Status.tryParse(
+        '> rx; RX=0,0 TX=0,0 switches=3 errors=0 max=0us preamble=32,64; '
+        'test=1/4 pending budget=1500us',
+      )!;
+      expect(pending.switchMeasured, isFalse);
+      expect(Radio2Status.tryParse('Error: x'), isNull);
+    });
+
+    test('tempradio2', () {
+      final t = TempRadio2.tryParse(
+        '> 910.500,500.000,8,5,rxtx,40 (auto); 0d2h0m (120 min) left',
+      )!;
+      expect(t.frequencyMHz, 910.5);
+      expect(t.minutesLeft, 120);
+      expect(TempRadio2.tryParse('> off'), isNull);
+    });
+
+    test('tx.user and tx.channel', () {
+      final u = TxRouteReply.tryParse(
+        '> tx.user "Alice Smith" key:0123456789AB radio2; active=radio2',
+      )!;
+      expect(u.choice, TxChoice.radio2);
+      expect(u.active, 'radio2');
+      expect(u.boundByName, isFalse);
+      final c = TxRouteReply.tryParse(
+        'OK - tx.channel 2 "#r2-ops" radio2; active=none '
+        '(radio2 unavailable for TX) (#r2- channel)',
+      )!;
+      expect(c.boundByName, isTrue);
+      expect(c.radio2Unavailable, isTrue);
+      expect(c.active, 'none');
+      expect(
+        TxRouteReply.tryParse('> tx.channel 0 "Public" auto; active=radio')!
+            .choice,
+        TxChoice.auto,
+      );
+      expect(TxRouteReply.tryParse('Error: user not found'), isNull);
+      expect(txUserTarget('ab' * 32), 'key:${'ab' * 16}');
+    });
+  });
 }
