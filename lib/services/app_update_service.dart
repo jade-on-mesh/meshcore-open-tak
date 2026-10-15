@@ -10,9 +10,19 @@ import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../storage/prefs_manager.dart';
 import '../utils/platform_info.dart';
+
+/// The release file each platform updates from, as named by
+/// .github/workflows/build.yml.
+const Map<String, String> appUpdateAssetNames = {
+  'android': 'meshcore-open-tak.apk',
+  'windows': 'meshcore-open-tak-windows-setup.exe',
+  'macos': 'meshcore-open-tak-macos.dmg',
+  'linux': 'meshcore-open-tak-linux-x86_64.AppImage',
+};
 
 /// One build on the GitHub "Latest build" release, from its `version.json`
 /// (written by .github/workflows/build.yml) or, for older releases, from the
@@ -20,7 +30,11 @@ import '../utils/platform_info.dart';
 class AppUpdateInfo {
   final String version;
   final int build;
-  final String apkUrl;
+
+  /// This platform's file on the release, or null when this build has none
+  /// for it (for example a desktop build that failed).
+  final String? downloadUrl;
+  final String? fileName;
   final String? sha256;
   final int? size;
   final String? commit;
@@ -30,7 +44,8 @@ class AppUpdateInfo {
   const AppUpdateInfo({
     required this.version,
     required this.build,
-    required this.apkUrl,
+    this.downloadUrl,
+    this.fileName,
     this.sha256,
     this.size,
     this.commit,
@@ -40,22 +55,43 @@ class AppUpdateInfo {
 
   bool isNewerThan(int installedBuild) => build > installedBuild;
 
-  /// From `version.json`; [apkUrl] is the release asset's download URL.
-  static AppUpdateInfo? fromVersionJson(Object? json, {required String apkUrl}) {
+  static final _sha = RegExp(r'^[0-9a-f]{64}$');
+
+  /// From `version.json`. [assetUrls] maps the release's file names to their
+  /// download URLs; [platform] is a key of [appUpdateAssetNames].
+  static AppUpdateInfo? fromVersionJson(
+    Object? json, {
+    required Map<String, String> assetUrls,
+    required String platform,
+  }) {
     if (json is! Map) return null;
     final build = json['build'];
     final version = json['version'];
     if (build is! int || version is! String) return null;
-    final sha = json['sha256'];
+    String? name;
+    Object? sha;
+    Object? size;
+    final assets = json['assets'];
+    if (assets is Map && assets[platform] is Map) {
+      final a = assets[platform] as Map;
+      name = a['name'] is String ? a['name'] as String : null;
+      sha = a['sha256'];
+      size = a['size'];
+    } else if (platform == 'android') {
+      // version.json before desktop builds: the top level is the APK.
+      name = appUpdateAssetNames['android'];
+      sha = json['sha256'];
+      size = json['size'];
+    }
+    final url = name == null ? null : assetUrls[name];
     final changes = json['changes'];
     return AppUpdateInfo(
       version: version,
       build: build,
-      apkUrl: apkUrl,
-      sha256: sha is String && RegExp(r'^[0-9a-f]{64}$').hasMatch(sha)
-          ? sha
-          : null,
-      size: json['size'] is int ? json['size'] as int : null,
+      downloadUrl: url,
+      fileName: url == null ? null : name,
+      sha256: url != null && sha is String && _sha.hasMatch(sha) ? sha : null,
+      size: url != null && size is int ? size : null,
       commit: json['commit'] is String ? json['commit'] as String : null,
       signedWithReleaseKey: json['signed'] != false,
       changes: changes is List ? changes.whereType<String>().toList() : const [],
@@ -63,15 +99,22 @@ class AppUpdateInfo {
   }
 
   /// From the release title, when the release has no `version.json` yet.
-  static AppUpdateInfo? fromTitle(String title, {required String apkUrl}) {
+  static AppUpdateInfo? fromTitle(
+    String title, {
+    required Map<String, String> assetUrls,
+    required String platform,
+  }) {
     final m = RegExp(
       r'MeshCore Open TAK (\S+) \(build (\d+)\)',
     ).firstMatch(title);
     if (m == null) return null;
+    final name = appUpdateAssetNames[platform];
+    final url = name == null ? null : assetUrls[name];
     return AppUpdateInfo(
       version: m.group(1)!,
       build: int.parse(m.group(2)!),
-      apkUrl: apkUrl,
+      downloadUrl: url,
+      fileName: url == null ? null : name,
     );
   }
 }
@@ -86,20 +129,32 @@ enum AppUpdateStatus {
   error,
 }
 
-/// Checks the GitHub "Latest build" release for a newer APK, downloads it
-/// and hands it to Android's installer (AppUpdateChannel.kt). Android only.
+/// Checks the GitHub "Latest build" release for a newer build, downloads this
+/// platform's file and installs it:
+///
+/// - Android: Android's package installer (AppUpdateChannel.kt) asks to confirm.
+/// - Windows: the installer runs silently, closes this app, updates it and
+///   starts it again.
+/// - macOS: the disk image opens; drag the app to Applications.
+/// - Linux AppImage: the AppImage replaces itself and restarts. Other Linux
+///   installs (the .tar.gz) open the release page.
 class AppUpdateService extends ChangeNotifier {
   AppUpdateService._();
   static final AppUpdateService instance = AppUpdateService._();
 
-  static const _releaseUrl =
+  static const releasePage =
+      'https://github.com/jade-on-mesh/meshcore-open-tak/releases/tag/latest-build';
+  static const _releaseApi =
       'https://api.github.com/repos/jade-on-mesh/meshcore-open-tak/releases/tags/latest-build';
-  static const _apkName = 'meshcore-open-tak.apk';
   static const _checkEvery = Duration(hours: 6);
   static const _channel = MethodChannel('meshcore_open/app_update');
   static const _prefLastCheck = 'app_update_last_check_ms';
   static const _prefDismissed = 'app_update_dismissed_build';
   static const _prefAuto = 'app_update_auto_check';
+
+  /// Set by CI (--dart-define); local builds leave them empty.
+  static const _definedVersion = String.fromEnvironment('APP_VERSION');
+  static const _definedBuild = int.fromEnvironment('APP_BUILD');
 
   /// CI builds are numbered 1000 and up; a lower number is a local build.
   static const firstCiBuild = 1000;
@@ -114,12 +169,36 @@ class AppUpdateService extends ChangeNotifier {
   Timer? _timer;
   bool _started = false;
 
-  bool get supported => PlatformInfo.isAndroid;
+  /// The platform key in [appUpdateAssetNames], or null where updates are
+  /// not offered (web, iOS).
+  static String? get platform {
+    if (PlatformInfo.isAndroid) return 'android';
+    if (PlatformInfo.isWindows) return 'windows';
+    if (PlatformInfo.isMacOS) return 'macos';
+    if (PlatformInfo.isLinux) return 'linux';
+    return null;
+  }
+
+  bool get supported => platform != null;
   AppUpdateStatus get status => _status;
   AppUpdateInfo? get latest => _latest;
   String get installedVersion => _installedVersion;
   int get installedBuild => _installedBuild;
   bool get isLocalBuild => _installedBuild < firstCiBuild;
+
+  /// The running AppImage's path on Linux, or null.
+  String? get _appImage {
+    if (!PlatformInfo.isLinux) return null;
+    final path = Platform.environment['APPIMAGE'];
+    return path == null || path.isEmpty ? null : path;
+  }
+
+  /// Linux outside an AppImage (the .tar.gz): updates are downloaded by hand.
+  bool get needsManualDownload => PlatformInfo.isLinux && _appImage == null;
+
+  /// This build can download and install the update itself.
+  bool get canSelfInstall =>
+      !needsManualDownload && _latest?.downloadUrl != null;
 
   /// 0..1 while downloading, null when the size is unknown.
   double? get progress => _progress;
@@ -156,11 +235,15 @@ class AppUpdateService extends ChangeNotifier {
   Future<void> start() async {
     if (!supported || _started) return;
     _started = true;
-    try {
-      final info = await PackageInfo.fromPlatform();
-      _installedVersion = info.version;
-      _installedBuild = int.tryParse(info.buildNumber) ?? 0;
-    } catch (_) {}
+    _installedVersion = _definedVersion;
+    _installedBuild = _definedBuild;
+    if (_installedBuild == 0) {
+      try {
+        final info = await PackageInfo.fromPlatform();
+        _installedVersion = info.version;
+        _installedBuild = int.tryParse(info.buildNumber) ?? 0;
+      } catch (_) {}
+    }
     notifyListeners();
     if (isLocalBuild) return; // a developer build: check only by hand
     _timer = Timer.periodic(_checkEvery, (_) {
@@ -213,7 +296,7 @@ class AppUpdateService extends ChangeNotifier {
   Future<AppUpdateInfo?> _fetchLatest() async {
     final res = await http
         .get(
-          Uri.parse(_releaseUrl),
+          Uri.parse(_releaseApi),
           headers: {'Accept': 'application/vnd.github+json'},
         )
         .timeout(const Duration(seconds: 20));
@@ -222,19 +305,18 @@ class AppUpdateService extends ChangeNotifier {
     }
     final release = jsonDecode(res.body);
     if (release is! Map) return null;
+    final urls = <String, String>{};
     final assets = release['assets'];
-    String? apkUrl;
-    String? versionUrl;
     if (assets is List) {
       for (final a in assets) {
         if (a is! Map) continue;
+        final name = a['name'];
         final url = a['browser_download_url'];
-        if (url is! String) continue;
-        if (a['name'] == _apkName) apkUrl = url;
-        if (a['name'] == 'version.json') versionUrl = url;
+        if (name is String && url is String) urls[name] = url;
       }
     }
-    if (apkUrl == null) return null;
+    final key = platform!;
+    final versionUrl = urls['version.json'];
     if (versionUrl != null) {
       final v = await http
           .get(Uri.parse(versionUrl))
@@ -242,20 +324,22 @@ class AppUpdateService extends ChangeNotifier {
       if (v.statusCode == 200) {
         final info = AppUpdateInfo.fromVersionJson(
           jsonDecode(v.body),
-          apkUrl: apkUrl,
+          assetUrls: urls,
+          platform: key,
         );
         if (info != null) return info;
       }
     }
     final title = release['name'];
     return title is String
-        ? AppUpdateInfo.fromTitle(title, apkUrl: apkUrl)
+        ? AppUpdateInfo.fromTitle(title, assetUrls: urls, platform: key)
         : null;
   }
 
-  /// Whether Android lets this app open the installer ("Install unknown
-  /// apps"). The person grants it once in system settings.
+  /// Android: whether this app may open the installer ("Install unknown
+  /// apps"), granted once in system settings. Always true elsewhere.
   Future<bool> canInstall() async {
+    if (!PlatformInfo.isAndroid) return true;
     try {
       return await _channel.invokeMethod<bool>('canInstall') ?? false;
     } catch (_) {
@@ -269,11 +353,22 @@ class AppUpdateService extends ChangeNotifier {
     } catch (_) {}
   }
 
-  /// Downloads the APK (checking its SHA-256 when published) and opens
-  /// Android's installer, which asks the person to confirm.
+  Future<void> openReleasePage() async {
+    try {
+      await launchUrl(
+        Uri.parse(releasePage),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (_) {}
+  }
+
+  /// Downloads this platform's file (checking its SHA-256 when published)
+  /// and installs it.
   Future<void> downloadAndInstall() async {
     final latest = _latest;
-    if (latest == null || _status == AppUpdateStatus.downloading) return;
+    final url = latest?.downloadUrl;
+    if (latest == null || url == null) return;
+    if (_status == AppUpdateStatus.downloading) return;
     _progress = 0;
     _set(AppUpdateStatus.downloading);
     final client = http.Client();
@@ -282,9 +377,11 @@ class AppUpdateService extends ChangeNotifier {
       final dir = Directory('${(await getTemporaryDirectory()).path}/updates');
       if (dir.existsSync()) dir.deleteSync(recursive: true);
       dir.createSync(recursive: true);
-      file = File('${dir.path}/$_apkName');
+      file = File(
+        '${dir.path}/${latest.fileName ?? appUpdateAssetNames[platform]}',
+      );
       final res = await client
-          .send(http.Request('GET', Uri.parse(latest.apkUrl)))
+          .send(http.Request('GET', Uri.parse(url)))
           .timeout(const Duration(seconds: 30));
       if (res.statusCode != 200) {
         throw HttpException('download answered ${res.statusCode}');
@@ -321,17 +418,57 @@ class AppUpdateService extends ChangeNotifier {
       }
       _progress = 1;
       _set(AppUpdateStatus.installing);
-      await _channel.invokeMethod<void>('install', {'path': file.path});
-      // Android's installer is now on screen; if the person backs out the
-      // update is still available.
+      await _install(file);
+      // The installer (or the disk image) is now open; if the person backs
+      // out, the update is still available.
       _set(AppUpdateStatus.available);
     } catch (e) {
       try {
         if (file != null && file.existsSync()) file.deleteSync();
       } catch (_) {}
-      _fail(AppUpdateStatus.available, '${e is PlatformException ? e.message : e}');
+      _fail(
+        AppUpdateStatus.available,
+        '${e is PlatformException ? e.message : e}',
+      );
     } finally {
       client.close();
+    }
+  }
+
+  Future<void> _install(File file) async {
+    if (PlatformInfo.isAndroid) {
+      await _channel.invokeMethod<void>('install', {'path': file.path});
+    } else if (PlatformInfo.isWindows) {
+      // Inno Setup: /SILENT shows only a progress window; it closes this app
+      // (CloseApplications), updates it and starts it again ([Run]).
+      await Process.start(file.path, const [
+        '/SILENT',
+        '/SUPPRESSMSGBOXES',
+        '/NORESTART',
+      ], mode: ProcessStartMode.detached);
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      exit(0);
+    } else if (PlatformInfo.isMacOS) {
+      final opened = await launchUrl(Uri.file(file.path));
+      if (!opened) {
+        final r = await Process.run('open', [file.path]);
+        if (r.exitCode != 0) throw ProcessException('open', [file.path]);
+      }
+    } else if (PlatformInfo.isLinux) {
+      final target = _appImage;
+      if (target == null) throw const FileSystemException('not an AppImage');
+      // Next to the running AppImage, then renamed over it: a rename is
+      // atomic, and the running copy keeps working until it exits.
+      final staged = File('$target.new');
+      await file.copy(staged.path);
+      final chmod = await Process.run('chmod', ['755', staged.path]);
+      if (chmod.exitCode != 0) {
+        throw FileSystemException('chmod failed', staged.path);
+      }
+      await staged.rename(target);
+      await Process.start(target, const [], mode: ProcessStartMode.detached);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      exit(0);
     }
   }
 

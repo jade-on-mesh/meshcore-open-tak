@@ -6637,4 +6637,22 @@ class AppLocalizationsEs extends AppLocalizations {
   String appUpdate_bannerSubtitle(String version, int build) {
     return '$version (build $build)';
   }
+
+  @override
+  String get appUpdate_installerHintWindows => 'The installer runs by itself: MeshCore Open TAK closes, updates and opens again. Your messages and settings stay.';
+
+  @override
+  String get appUpdate_installerHintMacos => 'The disk image opens. Drag MeshCore Open TAK to Applications, replace the old one, then open it again. Your messages and settings stay.';
+
+  @override
+  String get appUpdate_installerHintLinux => 'The AppImage replaces itself and MeshCore Open TAK restarts. Your messages and settings stay.';
+
+  @override
+  String get appUpdate_manualDownload => 'Updates install themselves only when you run the AppImage. Download the new build from GitHub.';
+
+  @override
+  String get appUpdate_noFileForPlatform => 'This build has no download for this computer yet. Check again later, or open the download page.';
+
+  @override
+  String get appUpdate_openDownloadPage => 'Open download page';
 }

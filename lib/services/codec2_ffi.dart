@@ -61,8 +61,20 @@ class Codec2Ffi {
   static DynamicLibrary _openLibrary() {
     if (Platform.isAndroid) return DynamicLibrary.open('libcodec2.so');
     if (Platform.isIOS || Platform.isMacOS) return DynamicLibrary.process();
+    // Desktop release builds ship their own Codec2 (.github/workflows/build.yml):
+    // Windows next to the exe, Linux in the bundle's lib/.
+    final exeDir = File(Platform.resolvedExecutable).parent.path;
+    if (Platform.isWindows) {
+      for (final name in ['$exeDir\\libcodec2.dll', 'libcodec2.dll', 'codec2.dll']) {
+        try {
+          return DynamicLibrary.open(name);
+        } catch (_) {}
+      }
+      throw UnsupportedError('libcodec2.dll not found');
+    }
     if (Platform.isLinux) {
-      for (final name in const [
+      for (final name in [
+        '$exeDir/lib/libcodec2.so',
         'libcodec2.so',
         'libcodec2.so.1.2',
         'libcodec2.so.1.1',

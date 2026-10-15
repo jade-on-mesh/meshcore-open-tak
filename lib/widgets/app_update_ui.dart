@@ -257,7 +257,19 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
                 ],
                 if (available && !busy) ...[
                   const SizedBox(height: 12),
-                  Text(l10n.appUpdate_installerHint, style: small),
+                  Text(
+                    _updates.needsManualDownload
+                        ? l10n.appUpdate_manualDownload
+                        : !_updates.canSelfInstall
+                        ? l10n.appUpdate_noFileForPlatform
+                        : switch (AppUpdateService.platform) {
+                            'windows' => l10n.appUpdate_installerHintWindows,
+                            'macos' => l10n.appUpdate_installerHintMacos,
+                            'linux' => l10n.appUpdate_installerHintLinux,
+                            _ => l10n.appUpdate_installerHint,
+                          },
+                    style: small,
+                  ),
                 ],
                 if (_needsPermission) ...[
                   const SizedBox(height: 12),
@@ -300,6 +312,11 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
               TextButton(
                 onPressed: busy ? null : _updates.check,
                 child: Text(l10n.appUpdate_checkNow),
+              )
+            else if (!_updates.canSelfInstall)
+              FilledButton(
+                onPressed: _updates.openReleasePage,
+                child: Text(l10n.appUpdate_openDownloadPage),
               )
             else
               FilledButton(

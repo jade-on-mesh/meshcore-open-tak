@@ -7,7 +7,8 @@ Pod::Spec.new do |s|
   s.license          = { :type => 'LGPL-2.1', :file => 'COPYING' }
   s.author           = { 'David Rowe' => 'david@rowetel.com' }
   s.source           = { :path => '.' }
-  s.platform         = :ios, '12.0'
+  s.ios.deployment_target = '12.0'
+  s.osx.deployment_target = '10.15'
   # Only the library sources (same list as android/app/src/main/cpp/codec2_sources.cmake);
   # src/ also holds test programs and tools that must not be compiled.
   s.source_files     = 'src/{dump,lpc,nlp,postfilter,sine,codec2,codec2_fft,kiss_fft,kiss_fftr,interp,lsp,mbest,newamp1,phase,quantise,pack,codebook,codebookd,codebookjmv,codebookge,codebooknewamp1,codebooknewamp1_energy,codebooknewamp2,codebooknewamp2_energy}.c', 'src/*.h', 'include/**/*.h'

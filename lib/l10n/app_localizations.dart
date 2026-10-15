@@ -11172,6 +11172,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{version} (build {build})'**
   String appUpdate_bannerSubtitle(String version, int build);
+
+  /// No description provided for @appUpdate_installerHintWindows.
+  ///
+  /// In en, this message translates to:
+  /// **'The installer runs by itself: MeshCore Open TAK closes, updates and opens again. Your messages and settings stay.'**
+  String get appUpdate_installerHintWindows;
+
+  /// No description provided for @appUpdate_installerHintMacos.
+  ///
+  /// In en, this message translates to:
+  /// **'The disk image opens. Drag MeshCore Open TAK to Applications, replace the old one, then open it again. Your messages and settings stay.'**
+  String get appUpdate_installerHintMacos;
+
+  /// No description provided for @appUpdate_installerHintLinux.
+  ///
+  /// In en, this message translates to:
+  /// **'The AppImage replaces itself and MeshCore Open TAK restarts. Your messages and settings stay.'**
+  String get appUpdate_installerHintLinux;
+
+  /// No description provided for @appUpdate_manualDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Updates install themselves only when you run the AppImage. Download the new build from GitHub.'**
+  String get appUpdate_manualDownload;
+
+  /// No description provided for @appUpdate_noFileForPlatform.
+  ///
+  /// In en, this message translates to:
+  /// **'This build has no download for this computer yet. Check again later, or open the download page.'**
+  String get appUpdate_noFileForPlatform;
+
+  /// No description provided for @appUpdate_openDownloadPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Open download page'**
+  String get appUpdate_openDownloadPage;
 }
 
 class _AppLocalizationsDelegate

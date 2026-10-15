@@ -19,8 +19,9 @@ on:
       - ".github/workflows/aeic-hd-native.yml"
   workflow_dispatch:
 
-# MeshCore Open TAK builds Android only. A newer push cancels an older,
-# still-running build so minutes aren't spent on superseded commits.
+# MeshCore Open TAK builds Android, Windows, macOS and Linux; the publish job
+# puts whatever built onto the "Latest build" release. A newer push cancels an
+# older, still-running build so minutes aren't spent on superseded commits.
 concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
@@ -32,6 +33,8 @@ jobs:
   android:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      signed: ${{ steps.signing.outputs.signed }}
     steps:
       - name: Free runner disk space
         uses: jlumbroso/free-disk-space@v1.3.1
@@ -115,6 +118,7 @@ jobs:
           cp third_party/aeic-hd-android/arm64-v8a/libaeic_codec_exec.so android/app/src/main/jniLibs/arm64-v8a/
       - run: flutter pub get
       - name: Release signing key
+        id: signing
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -125,7 +129,9 @@ jobs:
             printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
               "$KEYSTORE_PASSWORD" "${KEY_ALIAS:-meshcore-open-tak}" "$KEYSTORE_PASSWORD" > android/key.properties
             echo "Signing with the permanent release key"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
           else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
             echo "::warning::No ANDROID_KEYSTORE_BASE64 secret: this APK is signed with a throwaway key and will not install over an earlier build"
           fi
       # The version follows MeshCore Open's (pubspec.yaml, kept current by the
@@ -137,7 +143,8 @@ jobs:
           upstream=$(sed -n 's/^version:[[:space:]]*\([^+[:space:]]*\).*/\1/p' pubspec.yaml)
           echo "Version ${upstream}-tak, build $((1000 + GITHUB_RUN_NUMBER))"
           flutter build apk --release --no-pub --target-platform android-arm64 \
-            --build-name="${upstream}-tak" --build-number=$((1000 + GITHUB_RUN_NUMBER))
+            --build-name="${upstream}-tak" --build-number=$((1000 + GITHUB_RUN_NUMBER)) \
+            --dart-define=APP_VERSION="${upstream}-tak" --dart-define=APP_BUILD=$((1000 + GITHUB_RUN_NUMBER))
       - name: Check VOX native libraries and models are in the APK
         run: |
           unzip -l build/app/outputs/flutter-apk/app-release.apk > /tmp/apk.txt
@@ -171,29 +178,258 @@ jobs:
           name: meshcore-open-tak-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30
+
+  # Desktop builds. Version x.y.z (numeric, as Windows and macOS want it) plus
+  # APP_VERSION / APP_BUILD for the app's own display and update check.
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          cache: true
+      # Codec2 uses C99 variable-length arrays, which MSVC lacks, so it is
+      # built with MinGW and loaded next to the exe (lib/services/codec2_ffi.dart).
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: mingw-w64-x86_64-gcc
+      - name: Build libcodec2.dll
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          src=third_party/codec2/src
+          files=""
+          for f in dump lpc nlp postfilter sine codec2 codec2_fft kiss_fft kiss_fftr interp lsp mbest \
+                   newamp1 phase quantise pack codebook codebookd codebookjmv codebookge \
+                   codebooknewamp1 codebooknewamp1_energy codebooknewamp2 codebooknewamp2_energy; do
+            files="$files $src/$f.c"
+          done
+          gcc -O2 -std=gnu11 -shared -DGIT_HASH='"Unknown"' -I$src -Ithird_party/codec2/include \
+            $files -o libcodec2.dll -static-libgcc -Wl,--export-all-symbols -lm
+          ls -la libcodec2.dll
+      - run: flutter pub get
+      - name: Build
+        shell: bash
+        run: |
+          set -euo pipefail
+          upstream=$(sed -n 's/^version:[[:space:]]*\([^+[:space:]]*\).*/\1/p' pubspec.yaml)
+          build=$((1000 + GITHUB_RUN_NUMBER))
+          flutter build windows --release --no-pub --build-name="$upstream" --build-number=$build \
+            --dart-define=APP_VERSION="${upstream}-tak" --dart-define=APP_BUILD=$build
+          cp libcodec2.dll build/windows/x64/runner/Release/
+          echo "VERSION=${upstream}-tak" >> "$GITHUB_ENV"
+          echo "NUMERIC_VERSION=$upstream" >> "$GITHUB_ENV"
+          echo "BUILD=$build" >> "$GITHUB_ENV"
+      - name: Package (zip and installer)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dist/meshcore-open-tak-windows-x64.zip
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup -y --no-progress | Out-Null
+          }
+          & $iscc /Qp "/DAppVersion=$env:VERSION" "/DNumericVersion=$env:NUMERIC_VERSION.$env:BUILD" `
+            "/DSourceDir=$PWD\build\windows\x64\runner\Release" "/DOutputDir=$PWD\dist" windows\installer.iss
+          Get-ChildItem dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-windows
+          path: dist/*
+          retention-days: 30
+
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          cache: true
+      - run: flutter pub get
+      - name: Build
+        run: |
+          set -euo pipefail
+          upstream=$(sed -n 's/^version:[[:space:]]*\([^+[:space:]]*\).*/\1/p' pubspec.yaml)
+          build=$((1000 + GITHUB_RUN_NUMBER))
+          flutter build macos --release --no-pub --build-name="$upstream" --build-number=$build \
+            --dart-define=APP_VERSION="${upstream}-tak" --dart-define=APP_BUILD=$build
+      # Unsigned (ad-hoc): the first open needs right-click -> Open. A .dmg
+      # with an Applications link, so it installs by dragging.
+      - name: Package (dmg)
+        run: |
+          set -euo pipefail
+          app=$(ls -d build/macos/Build/Products/Release/*.app | head -1)
+          stage=$(mktemp -d)
+          cp -R "$app" "$stage/MeshCore Open TAK.app"
+          ln -s /Applications "$stage/Applications"
+          codesign -dv "$stage/MeshCore Open TAK.app" 2>&1 | head -5 || true
+          lipo -info "$stage/MeshCore Open TAK.app/Contents/MacOS/"* || true
+          mkdir -p dist
+          hdiutil create -volname "MeshCore Open TAK" -srcfolder "$stage" -ov -format UDZO dist/meshcore-open-tak-macos.dmg
+          ls -la dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-macos
+          path: dist/*
+          retention-days: 30
+
+  linux:
+    # 22.04 so the AppImage runs on older distributions too (glibc 2.35).
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Desktop build dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev \
+            libstdc++-12-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libsecret-1-dev \
+            libudev-dev libfuse2 file
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          cache: true
+      - run: flutter pub get
+      - name: Build
+        run: |
+          set -euo pipefail
+          upstream=$(sed -n 's/^version:[[:space:]]*\([^+[:space:]]*\).*/\1/p' pubspec.yaml)
+          build=$((1000 + GITHUB_RUN_NUMBER))
+          flutter build linux --release --no-pub --build-name="$upstream" --build-number=$build \
+            --dart-define=APP_VERSION="${upstream}-tak" --dart-define=APP_BUILD=$build
+          src=third_party/codec2/src
+          files=""
+          for f in dump lpc nlp postfilter sine codec2 codec2_fft kiss_fft kiss_fftr interp lsp mbest \
+                   newamp1 phase quantise pack codebook codebookd codebookjmv codebookge \
+                   codebooknewamp1 codebooknewamp1_energy codebooknewamp2 codebooknewamp2_energy; do
+            files="$files $src/$f.c"
+          done
+          gcc -O2 -std=gnu11 -shared -fPIC -DGIT_HASH='"Unknown"' -I$src -Ithird_party/codec2/include \
+            $files -o build/linux/x64/release/bundle/lib/libcodec2.so -lm
+      - name: Package (tar.gz and AppImage)
+        run: |
+          set -euo pipefail
+          bundle=build/linux/x64/release/bundle
+          mkdir -p dist
+          tar -czf dist/meshcore-open-tak-linux-x86_64.tar.gz -C "$bundle" --transform 's,^\.,meshcore-open-tak,' .
+          appdir=$(mktemp -d)/MeshCoreOpenTAK.AppDir
+          mkdir -p "$appdir"
+          cp -R "$bundle"/. "$appdir/"
+          cp web/icons/Icon-512.png "$appdir/meshcore-open-tak.png"
+          cat > "$appdir/meshcore-open-tak.desktop" <<'DESKTOP'
+          [Desktop Entry]
+          Type=Application
+          Name=MeshCore Open TAK
+          Comment=MeshCore mesh radio messaging, voice, photos and team maps
+          Exec=meshcore_open
+          Icon=meshcore-open-tak
+          Categories=Network;Chat;
+          Terminal=false
+          DESKTOP
+          sed -i 's/^ *//' "$appdir/meshcore-open-tak.desktop"
+          cat > "$appdir/AppRun" <<'APPRUN'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "$0")")"
+          export LD_LIBRARY_PATH="$HERE/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          exec "$HERE/meshcore_open" "$@"
+          APPRUN
+          sed -i 's/^ *//' "$appdir/AppRun"
+          chmod +x "$appdir/AppRun"
+          curl -fsSL -o /tmp/appimagetool https://github.com/AppImage/appimagetool/releases/download/1.9.0/appimagetool-x86_64.AppImage \
+            || curl -fsSL -o /tmp/appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x /tmp/appimagetool
+          ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 /tmp/appimagetool --no-appstream "$appdir" dist/meshcore-open-tak-linux-x86_64.AppImage
+          ls -la dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-linux
+          path: dist/*
+          retention-days: 30
+
+  # Puts whatever built onto the "Latest build" release, with version.json for
+  # the app's update check (AppUpdateService). Android must have built; a
+  # failed desktop build is left out rather than holding the release back.
+  publish:
+    if: always() && github.ref == 'refs/heads/main' && needs.android.result == 'success'
+    needs: [android, windows, macos, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 20 # recent commits for the release notes
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
       - name: Publish to the "Latest build" release
-        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
+          SIGNED: ${{ needs.android.outputs.signed }}
         run: |
           set -e
-          cp build/app/outputs/flutter-apk/app-release.apk meshcore-open-tak.apk
+          mkdir -p dist
+          cp artifacts/meshcore-open-tak-apk/app-release.apk dist/meshcore-open-tak.apk
+          for d in artifacts/desktop-*; do [ -d "$d" ] && cp "$d"/* dist/; done
+          ls -la dist
           build=$((1000 + GITHUB_RUN_NUMBER))
           version="$(sed -n 's/^version:[[:space:]]*\([^+[:space:]]*\).*/\1/p' pubspec.yaml)-tak"
           signed="debug key (uninstall the old app before installing)"
-          [ -f android/key.properties ] && signed="permanent release key (installs over the previous build)"
+          [ "$SIGNED" = "true" ] && signed="permanent release key (installs over the previous build)"
+          have() { [ -f "dist/$1" ]; }
           {
             echo "**MeshCore Open TAK $version** (build $build) · $(date -u '+%Y-%m-%d %H:%M UTC') · commit ${GITHUB_SHA::7}"
             echo
             echo "Follows MeshCore Open ${version%-tak} with the TAK fork's features added."
             echo
-            echo "Signed with the $signed."
+            echo "| Platform | Download |"
+            echo "| --- | --- |"
+            echo "| Android (arm64) | **meshcore-open-tak.apk**, signed with the $signed |"
+            have meshcore-open-tak-windows-setup.exe && echo "| Windows (x64) | **meshcore-open-tak-windows-setup.exe** (installer), or the .zip to run without installing |"
+            have meshcore-open-tak-macos.dmg && echo "| macOS 14+ | **meshcore-open-tak-macos.dmg**: drag to Applications |"
+            have meshcore-open-tak-linux-x86_64.AppImage && echo "| Linux (x86_64) | **meshcore-open-tak-linux-x86_64.AppImage** (chmod +x and run), or the .tar.gz |"
             echo
-            echo "Download **meshcore-open-tak.apk** below and open it on your phone. Once installed, the app offers later builds itself (Settings → App updates)."
+            echo "The desktop builds are unsigned: on Windows choose *More info → Run anyway*; on macOS right-click the app → *Open* the first time."
+            echo "Once installed, the app offers later builds itself (Settings → App updates)."
             echo
             echo "Recent changes:"
             git log -8 --no-merges --pretty='- %s' 2>/dev/null || true
           } > notes.md
+          # version.json: what the app's update check reads (AppUpdateService).
+          BUILD="$build" VERSION="$version" python3 - <<'PY'
+          import hashlib, json, os, subprocess
+          def asset(name):
+              path = os.path.join("dist", name)
+              if not os.path.exists(path):
+                  return None
+              data = open(path, "rb").read()
+              return {"name": name, "sha256": hashlib.sha256(data).hexdigest(), "size": len(data)}
+          apk = asset("meshcore-open-tak.apk")
+          assets = {k: a for k, a in {
+              "android": apk,
+              "windows": asset("meshcore-open-tak-windows-setup.exe"),
+              "macos": asset("meshcore-open-tak-macos.dmg"),
+              "linux": asset("meshcore-open-tak-linux-x86_64.AppImage"),
+          }.items() if a}
+          log = subprocess.run(["git", "log", "-8", "--no-merges", "--pretty=%s"],
+                               capture_output=True, text=True).stdout.splitlines()
+          json.dump({
+              "version": os.environ["VERSION"],
+              "build": int(os.environ["BUILD"]),
+              # Top-level fields describe the APK (app builds before desktop support read these).
+              "sha256": apk["sha256"],
+              "size": apk["size"],
+              "commit": os.environ["GITHUB_SHA"][:7],
+              "signed": os.environ.get("SIGNED") == "true",
+              "changes": [l for l in log if l.strip()],
+              "assets": assets,
+          }, open("dist/version.json", "w"), indent=2)
+          PY
+          cat dist/version.json
           # Move the tag to this commit, then create or update the release.
           git tag -f latest-build "$GITHUB_SHA"
           git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" refs/tags/latest-build
@@ -202,23 +438,11 @@ jobs:
           else
             gh release create latest-build --title "MeshCore Open TAK $version (build $build)" --notes-file notes.md --latest
           fi
-          # version.json: what the app's update check reads (AppUpdateService).
-          BUILD="$build" VERSION="$version" SIGNED="$([ -f android/key.properties ] && echo true || echo false)" \
-            python3 - <<'PY'
-          import hashlib, json, os, subprocess
-          apk = "meshcore-open-tak.apk"
-          data = open(apk, "rb").read()
-          log = subprocess.run(["git", "log", "-8", "--no-merges", "--pretty=%s"],
-                               capture_output=True, text=True).stdout.splitlines()
-          json.dump({
-              "version": os.environ["VERSION"],
-              "build": int(os.environ["BUILD"]),
-              "sha256": hashlib.sha256(data).hexdigest(),
-              "size": len(data),
-              "commit": os.environ["GITHUB_SHA"][:7],
-              "signed": os.environ["SIGNED"] == "true",
-              "changes": [l for l in log if l.strip()],
-          }, open("version.json", "w"), indent=2)
-          PY
-          cat version.json
-          gh release upload latest-build meshcore-open-tak.apk version.json --clobber
+          # Desktop files of an older build that failed this time are removed, so
+          # nothing on the release is older than its title says.
+          for old in meshcore-open-tak-windows-setup.exe meshcore-open-tak-windows-x64.zip \
+                     meshcore-open-tak-macos.dmg meshcore-open-tak-linux-x86_64.AppImage \
+                     meshcore-open-tak-linux-x86_64.tar.gz; do
+            [ -f "dist/$old" ] || gh release delete-asset latest-build "$old" -y 2>/dev/null || true
+          done
+          gh release upload latest-build dist/* --clobber
