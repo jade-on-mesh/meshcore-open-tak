@@ -6453,4 +6453,94 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get channels_scannedPrivateChannel => 'That code is for a private channel, so it is filled in under Join a Private Channel.';
+
+  @override
+  String get appUpdate_title => 'App update';
+
+  @override
+  String get appUpdate_settingsTile => 'App updates';
+
+  @override
+  String appUpdate_installed(String version, int build) {
+    return 'Installed: $version (build $build)';
+  }
+
+  @override
+  String appUpdate_available(String version, int build) {
+    return 'Update available: $version (build $build)';
+  }
+
+  @override
+  String get appUpdate_upToDate => 'You have the latest build';
+
+  @override
+  String get appUpdate_checking => 'Checking for updates…';
+
+  @override
+  String get appUpdate_notChecked => 'Not checked yet';
+
+  @override
+  String get appUpdate_localBuild => 'This is a local build, so updates are only checked when you ask. Installing a published build may need the app uninstalled first.';
+
+  @override
+  String get appUpdate_checkNow => 'Check now';
+
+  @override
+  String get appUpdate_install => 'Download and install';
+
+  @override
+  String get appUpdate_downloading => 'Downloading…';
+
+  @override
+  String appUpdate_downloadingPercent(int percent) {
+    return 'Downloading… $percent%';
+  }
+
+  @override
+  String get appUpdate_installing => 'Opening the installer…';
+
+  @override
+  String get appUpdate_installerHint => 'Android asks you to confirm the install. Your messages and settings stay.';
+
+  @override
+  String get appUpdate_permissionNeeded => 'Android needs your permission for MeshCore Open TAK to install updates. Turn on "Allow from this source", then come back and tap Download and install again.';
+
+  @override
+  String get appUpdate_openPermission => 'Open settings';
+
+  @override
+  String get appUpdate_debugSigned => 'This build is signed with a debug key, so Android will refuse to install it over the app you have. Uninstall first, or wait for a release-signed build.';
+
+  @override
+  String get appUpdate_changes => 'Recent changes';
+
+  @override
+  String get appUpdate_autoCheck => 'Check automatically';
+
+  @override
+  String get appUpdate_autoCheckHint => 'Every few hours, from the Latest build on GitHub';
+
+  @override
+  String appUpdate_checkFailed(String reason) {
+    return 'Couldn\'t check for updates: $reason';
+  }
+
+  @override
+  String appUpdate_installFailed(String reason) {
+    return 'Update didn\'t install: $reason';
+  }
+
+  @override
+  String get appUpdate_later => 'Later';
+
+  @override
+  String get appUpdate_view => 'Update';
+
+  @override
+  String get appUpdate_bannerTitle => 'A new version of MeshCore Open TAK is ready';
+
+  @override
+  String appUpdate_bannerSubtitle(String version, int build) {
+    return '$version (build $build)';
+  }
 }

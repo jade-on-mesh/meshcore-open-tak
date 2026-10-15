@@ -11,6 +11,7 @@ class MainActivity : FlutterActivity() {
         usbFunctions.configureFlutterEngine(flutterEngine)
         TakBridgeHub.attach(flutterEngine)
         AeicHdChannel.attach(applicationContext, flutterEngine)
+        AppUpdateChannel.attach(this, flutterEngine)
     }
 
     override fun onDestroy() {

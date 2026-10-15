@@ -19,6 +19,7 @@ import '../theme/mesh_theme.dart';
 import '../utils/dialog_utils.dart';
 import '../utils/disconnect_navigation_mixin.dart';
 import '../utils/route_transitions.dart';
+import '../widgets/app_update_ui.dart';
 import '../widgets/list_filter_widget.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/mesh_ui.dart';
@@ -150,7 +151,7 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                 PopupMenuItem(
                   child: Row(
                     children: [
-                      const Icon(Icons.settings),
+                      const UpdateDot(child: Icon(Icons.settings)),
                       const SizedBox(width: 8),
                       Text(menuContext.l10n.settings_title),
                     ],
@@ -163,7 +164,7 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                   ),
                 ),
               ],
-              icon: const Icon(Icons.more_vert),
+              icon: const UpdateDot(child: Icon(Icons.more_vert)),
             ),
           ],
         ),

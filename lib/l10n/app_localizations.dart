@@ -11016,6 +11016,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'That code is for a private channel, so it is filled in under Join a Private Channel.'**
   String get channels_scannedPrivateChannel;
+
+  /// No description provided for @appUpdate_title.
+  ///
+  /// In en, this message translates to:
+  /// **'App update'**
+  String get appUpdate_title;
+
+  /// No description provided for @appUpdate_settingsTile.
+  ///
+  /// In en, this message translates to:
+  /// **'App updates'**
+  String get appUpdate_settingsTile;
+
+  /// No description provided for @appUpdate_installed.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed: {version} (build {build})'**
+  String appUpdate_installed(String version, int build);
+
+  /// No description provided for @appUpdate_available.
+  ///
+  /// In en, this message translates to:
+  /// **'Update available: {version} (build {build})'**
+  String appUpdate_available(String version, int build);
+
+  /// No description provided for @appUpdate_upToDate.
+  ///
+  /// In en, this message translates to:
+  /// **'You have the latest build'**
+  String get appUpdate_upToDate;
+
+  /// No description provided for @appUpdate_checking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking for updates…'**
+  String get appUpdate_checking;
+
+  /// No description provided for @appUpdate_notChecked.
+  ///
+  /// In en, this message translates to:
+  /// **'Not checked yet'**
+  String get appUpdate_notChecked;
+
+  /// No description provided for @appUpdate_localBuild.
+  ///
+  /// In en, this message translates to:
+  /// **'This is a local build, so updates are only checked when you ask. Installing a published build may need the app uninstalled first.'**
+  String get appUpdate_localBuild;
+
+  /// No description provided for @appUpdate_checkNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Check now'**
+  String get appUpdate_checkNow;
+
+  /// No description provided for @appUpdate_install.
+  ///
+  /// In en, this message translates to:
+  /// **'Download and install'**
+  String get appUpdate_install;
+
+  /// No description provided for @appUpdate_downloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading…'**
+  String get appUpdate_downloading;
+
+  /// No description provided for @appUpdate_downloadingPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading… {percent}%'**
+  String appUpdate_downloadingPercent(int percent);
+
+  /// No description provided for @appUpdate_installing.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening the installer…'**
+  String get appUpdate_installing;
+
+  /// No description provided for @appUpdate_installerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Android asks you to confirm the install. Your messages and settings stay.'**
+  String get appUpdate_installerHint;
+
+  /// No description provided for @appUpdate_permissionNeeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Android needs your permission for MeshCore Open TAK to install updates. Turn on "Allow from this source", then come back and tap Download and install again.'**
+  String get appUpdate_permissionNeeded;
+
+  /// No description provided for @appUpdate_openPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get appUpdate_openPermission;
+
+  /// No description provided for @appUpdate_debugSigned.
+  ///
+  /// In en, this message translates to:
+  /// **'This build is signed with a debug key, so Android will refuse to install it over the app you have. Uninstall first, or wait for a release-signed build.'**
+  String get appUpdate_debugSigned;
+
+  /// No description provided for @appUpdate_changes.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent changes'**
+  String get appUpdate_changes;
+
+  /// No description provided for @appUpdate_autoCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Check automatically'**
+  String get appUpdate_autoCheck;
+
+  /// No description provided for @appUpdate_autoCheckHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Every few hours, from the Latest build on GitHub'**
+  String get appUpdate_autoCheckHint;
+
+  /// No description provided for @appUpdate_checkFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t check for updates: {reason}'**
+  String appUpdate_checkFailed(String reason);
+
+  /// No description provided for @appUpdate_installFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Update didn\'t install: {reason}'**
+  String appUpdate_installFailed(String reason);
+
+  /// No description provided for @appUpdate_later.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get appUpdate_later;
+
+  /// No description provided for @appUpdate_view.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get appUpdate_view;
+
+  /// No description provided for @appUpdate_bannerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A new version of MeshCore Open TAK is ready'**
+  String get appUpdate_bannerTitle;
+
+  /// No description provided for @appUpdate_bannerSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{version} (build {build})'**
+  String appUpdate_bannerSubtitle(String version, int build);
 }
 
 class _AppLocalizationsDelegate

@@ -23,6 +23,7 @@ import '../utils/dialog_utils.dart';
 import '../utils/disconnect_navigation_mixin.dart';
 import '../utils/emoji_utils.dart';
 import '../utils/route_transitions.dart';
+import '../widgets/app_update_ui.dart';
 import '../widgets/tx_route_dialog.dart';
 import '../widgets/contact_visuals.dart';
 import '../widgets/list_filter_widget.dart';
@@ -500,7 +501,7 @@ class _ContactsScreenState extends State<ContactsScreen>
                 PopupMenuItem(
                   child: Row(
                     children: [
-                      const Icon(Icons.settings),
+                      const UpdateDot(child: Icon(Icons.settings)),
                       const SizedBox(width: 8),
                       Text(context.l10n.settings_title),
                     ],
@@ -513,7 +514,7 @@ class _ContactsScreenState extends State<ContactsScreen>
                   ),
                 ),
               ],
-              icon: const Icon(Icons.more_vert),
+              icon: const UpdateDot(child: Icon(Icons.more_vert)),
             ),
           ],
         ),

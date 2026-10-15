@@ -24,6 +24,9 @@
     <!-- Camera permission for QR code scanning -->
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <!-- In-app updates from the GitHub "Latest build" release (AppUpdateChannel.kt).
+         Google Play restricts this permission; a Play build would leave it out. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
     <uses-feature android:name="android.hardware.usb.host" android:required="false"/>
 
     <application
@@ -45,6 +48,16 @@
                 <action android:name="com.jadeonmesh.meshcore.TAK_BRIDGE" />
             </intent-filter>
         </service>
+        <!-- In-app updates: shares the downloaded APK with the package installer -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.appupdate"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/app_update_paths" />
+        </provider>
         <!-- Handles reply / mark-as-read actions on message notifications -->
         <receiver
             android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver"
