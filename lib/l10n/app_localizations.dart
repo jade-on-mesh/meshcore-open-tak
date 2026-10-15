@@ -11010,6 +11010,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No answer from the radio'**
   String get radioConsole_failed;
+
+  /// No description provided for @channels_scannedPrivateChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'That code is for a private channel, so it is filled in under Join a Private Channel.'**
+  String get channels_scannedPrivateChannel;
 }
 
 class _AppLocalizationsDelegate

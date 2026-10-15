@@ -6507,4 +6507,7 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get radioConsole_failed => 'No answer from the radio';
+
+  @override
+  String get channels_scannedPrivateChannel => 'That code is for a private channel, so it is filled in under Join a Private Channel.';
 }

@@ -638,6 +638,21 @@ class _ChannelsScreenState extends State<ChannelsScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
+              leading: const Icon(Icons.qr_code_2),
+              title: Text(sheetContext.l10n.channels_shareQr),
+              onTap: () async {
+                Navigator.pop(sheetContext);
+                await Future.delayed(const Duration(milliseconds: 100));
+                if (parentContext.mounted) {
+                  _showChannelShareQr(
+                    parentContext,
+                    channel.name,
+                    channel.pskHex,
+                  );
+                }
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.edit_outlined),
               title: Text(sheetContext.l10n.channels_editChannel),
               onTap: () async {
@@ -1184,6 +1199,55 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                   case 3: // Join Hashtag Channel
                     return Column(
                       children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.qr_code_scanner),
+                              label: Text(
+                                sheetContext.l10n.channels_scanChannelQr,
+                              ),
+                              onPressed: () async {
+                                final scanned = await Navigator.of(sheetContext)
+                                    .push<ScannedChannel>(
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const ChannelQrScannerScreen(),
+                                      ),
+                                    );
+                                if (scanned == null || !sheetContext.mounted) {
+                                  return;
+                                }
+                                final match = _matchScannedHashtag(scanned);
+                                if (match == null) {
+                                  // A private channel: open it under Join a
+                                  // Private Channel, filled in.
+                                  setSheetState(() {
+                                    selectedOption = 1;
+                                    nameController.text = scanned.name;
+                                    pskController.text = scanned.secretHex;
+                                    hashtagController.clear();
+                                  });
+                                  showDismissibleSnackBar(
+                                    sheetContext,
+                                    content: Text(
+                                      sheetContext
+                                          .l10n
+                                          .channels_scannedPrivateChannel,
+                                    ),
+                                  );
+                                  return;
+                                }
+                                setSheetState(() {
+                                  isRegularHashtag = match.community == null;
+                                  selectedCommunity = match.community;
+                                  hashtagController.text = match.tag;
+                                });
+                              },
+                            ),
+                          ),
+                        ),
                         // Only show type selection if user has communities
                         if (_communities.isNotEmpty) ...[
                           RadioGroup<bool>(
@@ -1238,6 +1302,7 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                               vertical: 8,
                             ),
                             child: DropdownButtonFormField<Community>(
+                              key: ValueKey(selectedCommunity?.id),
                               initialValue: selectedCommunity,
                               items: _communities
                                   .map(
@@ -2186,6 +2251,33 @@ class _ChannelsScreenState extends State<ChannelsScreen>
 
   /// Shows the channel as a QR code (and copyable link) so others can join
   /// it, which matters most for private channels whose key can't be guessed.
+  /// A scanned channel code as a hashtag channel: a regular `#tag` whose key
+  /// is derived from its name, or one of our communities' `Name #tag`
+  /// channels. Null when the key matches neither (a private channel).
+  ({String tag, Community? community})? _matchScannedHashtag(
+    ScannedChannel scanned,
+  ) {
+    String hex(Uint8List bytes) =>
+        bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    final secret = scanned.secretHex.toLowerCase();
+    final name = scanned.name.trim();
+    if (name.isEmpty) return null;
+    final tag = name.startsWith('#') ? name.substring(1).trim() : name;
+    if (tag.isNotEmpty && hex(Channel.derivePskFromHashtag(tag)) == secret) {
+      return (tag: tag, community: null);
+    }
+    for (final community in _communities) {
+      final prefix = '${community.name} #';
+      if (!name.startsWith(prefix)) continue;
+      final communityTag = name.substring(prefix.length).trim();
+      if (communityTag.isEmpty) continue;
+      if (hex(community.deriveCommunityHashtagPsk(communityTag)) == secret) {
+        return (tag: communityTag, community: community);
+      }
+    }
+    return null;
+  }
+
   void _showChannelShareQr(BuildContext context, String name, String pskHex) {
     final link = channelShareLink(name, pskHex);
     if (link == null) {
