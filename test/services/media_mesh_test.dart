@@ -54,6 +54,13 @@ void main() {
       expect(r.canTransmit, isFalse);
     });
 
+    test('automatic preamble marker', () {
+      final r = Radio2Reply.tryParse('> 911.500,250.000,7,5,rxtx,32 (auto)')!;
+      expect(r.frequencyMHz, 911.5);
+      expect(r.mode, 'rxtx');
+      expect(r.canTransmit, isTrue);
+    });
+
     test('off variants and correlation tag', () {
       expect(Radio2Reply.tryParse('> off')!.off, isTrue);
       expect(Radio2Reply.tryParse('> off (manual)')!.off, isTrue);
@@ -100,7 +107,10 @@ void main() {
       expect(parseTxMediaReply('> radio2'), 'radio2');
       expect(parseTxMediaReply('> radio'), 'radio');
       expect(parseTxMediaReply('Unknown command'), isNull);
-      expect(parseTxMediaReply('> auto'), isNull);
+      expect(parseTxMediaReply('> auto'), 'auto');
+      expect(parseTxMediaReply('> both; active=both'), 'both');
+      expect(parseTxMediaReply('> radio2; active=radio2'), 'radio2');
+      expect(parseTxMediaReply('> sideways'), isNull);
     });
 
     test('OK detection', () {
