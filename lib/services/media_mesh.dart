@@ -162,13 +162,16 @@ String buildSetRadio2Command(MediaMeshSettings s) =>
     '${formatBandwidthKHz(s.bandwidth)},'
     '${s.spreadingFactor.value},${s.codingRate.value},rxtx';
 
-/// `> radio2` / `> radio`, or null when the firmware does not know tx.media.
+/// The tx.media choice (`auto`, `radio`, `radio2`, `both` or `off`; newer
+/// firmware adds `; active=...`), or null when the firmware does not know
+/// tx.media.
 String? parseTxMediaReply(String reply) {
   var text = reply.trim();
   if (text.indexOf('|') == 2) text = text.substring(3);
   if (!text.startsWith('>')) return null;
   final value = text.substring(1).trim().split(RegExp(r'[\s;]')).first;
-  return value == 'radio' || value == 'radio2' ? value : null;
+  const known = {'auto', 'radio', 'radio2', 'both', 'off'};
+  return known.contains(value) ? value : null;
 }
 
 bool isCliOk(String reply) {
@@ -239,7 +242,7 @@ class MediaMeshController {
       );
     }
     settings = settings.copyWith(
-      enabled: radio2.canTransmit && route == 'radio2',
+      enabled: radio2.canTransmit && (route == 'radio2' || route == 'both'),
     );
     return MediaMeshState(
       support: route == null
