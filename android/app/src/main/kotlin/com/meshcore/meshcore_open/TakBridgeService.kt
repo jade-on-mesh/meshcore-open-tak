@@ -262,6 +262,9 @@ object TakBridgeHub {
                 putStringArray("cNames", strings(a["cNames"]))
                 putIntArray("cPath", ints(a["cPath"]))
                 putIntArray("cType", ints(a["cType"]))
+                putIntArray("cLatE6", ints(a["cLatE6"]))
+                putIntArray("cLonE6", ints(a["cLonE6"]))
+                putLongArray("cAdv", longs(a["cAdv"]))
                 putBoolean("mimi", a["mimi"] as? Boolean ?: false)
                 putBoolean("av1", a["av1"] as? Boolean ?: false)
                 putBoolean("codec2", a["codec2"] as? Boolean ?: false)
@@ -323,6 +326,12 @@ object TakBridgeHub {
         is IntArray -> v
         is List<*> -> v.map { (it as? Number)?.toInt() ?: 0 }.toIntArray()
         else -> IntArray(0)
+    }
+
+    private fun longs(v: Any?): LongArray = when (v) {
+        is LongArray -> v
+        is List<*> -> v.map { (it as? Number)?.toLong() ?: 0L }.toLongArray()
+        else -> LongArray(0)
     }
 
     private fun strings(v: Any?): Array<String> =

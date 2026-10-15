@@ -126,6 +126,26 @@ public final class Companion {
         return new byte[] { (byte) CMD_GET_CONTACTS };
     }
 
+    /** Only contacts changed after [sinceSec] (the radio's lastmod clock). */
+    public static byte[] getContacts(long sinceSec) {
+        if (sinceSec <= 0)
+            return getContacts();
+        return new LE().u8(CMD_GET_CONTACTS).u32(sinceSec).done();
+    }
+
+    /** RESP_END_OF_CONTACTS: [4][most recent lastmod x4], or 0 if absent. */
+    public static long endOfContactsLastMod(byte[] f) {
+        return f.length >= 5 && (f[0] & 0xFF) == RESP_END_OF_CONTACTS
+                ? Bytes.u32le(f, 1) : 0;
+    }
+
+    /** PUSH_SEND_CONFIRMED: [0x82][ack code x4][round trip ms x4]; {ack, ms} or null. */
+    public static long[] sendConfirmed(byte[] f) {
+        if (f.length < 9 || (f[0] & 0xFF) != PUSH_SEND_CONFIRMED)
+            return null;
+        return new long[] { Bytes.u32le(f, 1), Bytes.u32le(f, 5) };
+    }
+
     public static byte[] getChannel(int idx) {
         return new byte[] { (byte) CMD_GET_CHANNEL, (byte) idx };
     }
@@ -148,8 +168,17 @@ public final class Companion {
 
     /** [cmd][txt_type][attempt][ts x4][pubkey prefix x6][text]\0 */
     public static byte[] sendText(byte[] pubKey, String text, int attempt) {
+        return sendText(pubKey, text, attempt, nowSec());
+    }
+
+    /**
+     * A retry keeps the first try's [timestampSec] and counts [attempt] up
+     * (the recipient's ack code covers both), as the MeshCore apps do.
+     */
+    public static byte[] sendText(byte[] pubKey, String text, int attempt,
+            long timestampSec) {
         return new LE().u8(CMD_SEND_TXT_MSG).u8(TXT_PLAIN)
-                .u8(Math.max(0, Math.min(255, attempt))).u32(nowSec())
+                .u8(Math.max(0, Math.min(3, attempt))).u32(timestampSec)
                 .bytes(Arrays.copyOf(pubKey, 6)).cstr(text).done();
     }
 
@@ -313,8 +342,31 @@ public final class Companion {
             return Bytes.hex(psk).equals(PUBLIC_CHANNEL_PSK);
         }
 
+        /**
+         * A #name channel whose key is the one anyone can derive from its
+         * name (first 16 bytes of SHA-256 of the name). A #name with its own
+         * key is private.
+         */
         public boolean isHashtag() {
-            return name.startsWith("#");
+            if (!name.startsWith("#") || psk == null)
+                return false;
+            // Also accept the key of a case- or space-normalised name, in
+            // case another app derived it that way: when unsure, treat the
+            // channel as one strangers can read.
+            String t = name.trim();
+            for (String n : new String[] { name, t, t.toLowerCase(java.util.Locale.ROOT) })
+                if (Arrays.equals(psk, hashtagKey(n)))
+                    return true;
+            return false;
+        }
+
+        public static byte[] hashtagKey(String name) {
+            try {
+                return Arrays.copyOf(java.security.MessageDigest
+                        .getInstance("SHA-256").digest(Bytes.utf8(name)), 16);
+            } catch (java.security.NoSuchAlgorithmException e) {
+                return new byte[16];
+            }
         }
 
         /** Private channels only: public and hashtag channels reach strangers. */

@@ -129,6 +129,13 @@ class AtakPluginBridge {
       'cNames': [for (final c in contacts) c.name],
       'cPath': Int32List.fromList([for (final c in contacts) c.pathLength]),
       'cType': Int32List.fromList([for (final c in contacts) c.type]),
+      // Positions and last advert (seconds) for the plugin's mesh map; plain
+      // lists, since Int64List isn't available on every platform.
+      'cLatE6': [for (final c in contacts) ((c.latitude ?? 0) * 1e6).round()],
+      'cLonE6': [for (final c in contacts) ((c.longitude ?? 0) * 1e6).round()],
+      'cAdv': [
+        for (final c in contacts) c.lastSeen.millisecondsSinceEpoch ~/ 1000,
+      ],
       'mimi': _voice.mimi.isReady,
       'av1': _voice.imagesAvailable,
       'codec2': voxCodecAvailable,

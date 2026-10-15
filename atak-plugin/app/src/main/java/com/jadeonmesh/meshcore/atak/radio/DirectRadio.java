@@ -14,6 +14,7 @@ import android.os.SystemClock;
 
 import com.jadeonmesh.meshcore.atak.core.Bytes;
 import com.jadeonmesh.meshcore.atak.core.Companion;
+import com.jadeonmesh.meshcore.atak.core.RecentKeys;
 import com.jadeonmesh.meshcore.atak.core.TeamWire;
 
 /**
@@ -54,6 +55,37 @@ public final class DirectRadio implements MeshRadio {
     private boolean syncing, syncAgain;
     private long lastRfRx;
     private boolean stopped;
+
+    // Contacts: a full read on connect and every FULL_REFRESH_TICKS minutes,
+    // otherwise only what changed since the radio's last lastmod.
+    private static final int FULL_REFRESH_TICKS = 15;
+    private long contactsSince, pendingLastMod;
+    private int periodicTicks;
+    /** Adverts from nodes the radio didn't save (manual-add radios). */
+    private final Map<String, Companion.Contact> heard = Collections
+            .synchronizedMap(new LinkedHashMap<String, Companion.Contact>());
+    private static final int MAX_HEARD = 300;
+
+    // Typed chat: acknowledged, up to MAX_CHAT_TRIES tries, the last flooded.
+    private static final int MAX_CHAT_TRIES = 3;
+    private static final int MAX_CHATS_WAITING = 5;
+    private static final long MIN_ACK_WAIT_MS = 2_000, MAX_ACK_WAIT_MS = 60_000,
+            ACK_MARGIN_MS = 2_000;
+    private static final class Chat {
+        byte[] pubKey;
+        String text;
+        long timestampSec;
+        int attempt;
+        final java.util.Set<Long> acks = new java.util.HashSet<>();
+        long ackDeadline;
+        ChatResult result;
+    }
+    private final Map<Integer, Chat> chats = new LinkedHashMap<>();
+    private int nextChatId = 1;
+    private Companion.Sent lastSent;
+    private boolean ticking;
+    /** A sender re-sends with the same timestamp when our ack was lost. */
+    private final RecentKeys dmSeen = new RecentKeys(64, 15 * 60_000L);
 
     private static final class Cmd {
         final byte[] frame;
@@ -177,7 +209,7 @@ public final class DirectRadio implements MeshRadio {
             setState(State.CONNECTED, self.name);
             enqueue(Companion.setDeviceTime(Companion.nowSec()), null,
                     CMD_TIMEOUT_MS, false);
-            refreshContacts();
+            loadContacts(true);
             loadChannel(0);
             h.postDelayed(this::syncMessages, 1500);
             h.postDelayed(this::periodic, 60_000);
@@ -217,24 +249,43 @@ public final class DirectRadio implements MeshRadio {
         if (stopped || state != State.CONNECTED)
             return;
         syncMessages();
+        if (++periodicTicks % FULL_REFRESH_TICKS == 0)
+            loadContacts(true); // catches contacts deleted on the radio
         h.postDelayed(this::periodic, 60_000);
     }
 
     @Override
     public void refreshContacts() {
-        if (h == null)
-            return;
-        h.post(() -> enqueue(Companion.getContacts(), (ok, msg) -> {
+        if (h != null)
+            h.post(() -> loadContacts(true));
+    }
+
+    /**
+     * Full: replace the list. Otherwise ask only for contacts changed since
+     * the last read and merge them in (much less Bluetooth traffic on a busy
+     * mesh, where adverts arrive every few seconds).
+     */
+    private void loadContacts(boolean full) {
+        long since = full ? 0 : contactsSince;
+        pendingLastMod = 0;
+        enqueue(Companion.getContacts(since), (ok, msg) -> {
             if (ok) {
                 synchronized (contacts) {
-                    contacts.clear();
+                    if (since <= 0)
+                        contacts.clear();
                     for (Companion.Contact c : contactsLoading)
                         contacts.put(c.keyHex(), c);
                 }
+                synchronized (heard) {
+                    for (Companion.Contact c : contactsLoading)
+                        heard.remove(c.keyHex());
+                }
+                if (pendingLastMod > contactsSince)
+                    contactsSince = pendingLastMod;
                 infoChanged();
             }
             contactsLoading.clear();
-        }, 15000, false));
+        }, 15000, false);
     }
 
     private void syncMessages() {
@@ -293,6 +344,8 @@ public final class DirectRadio implements MeshRadio {
         }
         queue.poll();
         current = c;
+        if (c.code() == Companion.CMD_SEND_TXT_MSG)
+            lastSent = null; // so a timed-out send can't pick up an old ack code
         c.sentAt = SystemClock.elapsedRealtime();
         transport.send(c.frame);
         final Cmd sent = c;
@@ -325,6 +378,10 @@ public final class DirectRadio implements MeshRadio {
                 q.done.done(false, why);
         }
         syncing = false;
+        for (Chat pending : new ArrayList<>(chats.values()))
+            pending.result.onResult(ChatOutcome.UNCONFIRMED,
+                    "the radio link dropped before an acknowledgement");
+        chats.clear();
     }
 
     // ---------------------------------------------------------- inbound
@@ -348,6 +405,12 @@ public final class DirectRadio implements MeshRadio {
                 break;
             case Companion.RESP_CONTACTS_START:
                 contactsLoading.clear();
+                break;
+            case Companion.RESP_END_OF_CONTACTS:
+                pendingLastMod = Companion.endOfContactsLastMod(f);
+                break;
+            case Companion.RESP_SENT:
+                lastSent = Companion.Sent.parse(f);
                 break;
             case Companion.RESP_CONTACT: {
                 Companion.Contact c = Companion.Contact.parse(f);
@@ -374,7 +437,10 @@ public final class DirectRadio implements MeshRadio {
             case Companion.RESP_CONTACT_MSG_RECV_V3: {
                 Companion.DirectText m = Companion.DirectText.parse(f);
                 Listener l = listener;
-                if (m != null && l != null)
+                // Drop a re-send of a message we already have (the sender
+                // retries with the same timestamp when our ack was lost).
+                if (m != null && l != null && dmSeen.firstTime(
+                        m.senderPrefixHex() + "|" + m.timestamp + "|" + m.text))
                     l.onDirectText(m.senderPrefixHex(), m.text, m.timestamp);
                 break;
             }
@@ -415,11 +481,31 @@ public final class DirectRadio implements MeshRadio {
             case Companion.PUSH_LOG_RX_DATA:
                 lastRfRx = SystemClock.elapsedRealtime();
                 break;
-            case Companion.PUSH_NEW_ADVERT:
+            case Companion.PUSH_NEW_ADVERT: {
+                // A node the radio hasn't saved: keep it for the map.
+                Companion.Contact c = Companion.Contact.parse(f);
+                if (c != null && !contacts.containsKey(c.keyHex())) {
+                    synchronized (heard) {
+                        heard.remove(c.keyHex());
+                        heard.put(c.keyHex(), c);
+                        while (heard.size() > MAX_HEARD)
+                            heard.remove(heard.keySet().iterator().next());
+                    }
+                    infoChanged();
+                }
+                scheduleContactRefresh();
+                break;
+            }
             case Companion.PUSH_ADVERT:
             case Companion.PUSH_PATH_UPDATED:
                 scheduleContactRefresh();
                 break;
+            case Companion.PUSH_SEND_CONFIRMED: {
+                long[] ack = Companion.sendConfirmed(f);
+                if (ack != null)
+                    confirmChat(ack[0]);
+                break;
+            }
             default:
                 break;
         }
@@ -433,7 +519,8 @@ public final class DirectRadio implements MeshRadio {
         refreshPending = true;
         h.postDelayed(() -> {
             refreshPending = false;
-            refreshContacts();
+            if (!stopped && state == State.CONNECTED)
+                loadContacts(false);
         }, 3000);
     }
 
@@ -549,6 +636,104 @@ public final class DirectRadio implements MeshRadio {
     public void sendDirectText(byte[] pubKey, String text, Done done) {
         post(() -> enqueue(Companion.sendText(pubKey, text, 0), done,
                 SEND_TIMEOUT_MS, true), done);
+    }
+
+    @Override
+    public List<Companion.Contact> heard() {
+        synchronized (heard) {
+            return new ArrayList<>(heard.values());
+        }
+    }
+
+    @Override
+    public void sendChatText(byte[] pubKey, String text, ChatResult result) {
+        if (h == null || !isConnected()) {
+            result.onResult(ChatOutcome.REFUSED, "Radio not connected");
+            return;
+        }
+        h.post(() -> {
+            if (chats.size() >= MAX_CHATS_WAITING) {
+                result.onResult(ChatOutcome.REFUSED,
+                        "too many messages waiting for an acknowledgement");
+                return;
+            }
+            Chat c = new Chat();
+            c.pubKey = pubKey;
+            c.text = text;
+            c.timestampSec = Companion.nowSec();
+            c.result = result;
+            int id = nextChatId++;
+            chats.put(id, c);
+            sendChatTry(id);
+            if (!ticking) {
+                ticking = true;
+                h.postDelayed(this::chatTick, 1000);
+            }
+        });
+    }
+
+    private void sendChatTry(int id) {
+        Chat c = chats.get(id);
+        if (c == null)
+            return;
+        enqueue(Companion.sendText(c.pubKey, c.text, c.attempt, c.timestampSec),
+                (ok, msg) -> {
+                    Chat cc = chats.get(id);
+                    if (cc == null)
+                        return; // acknowledged already
+                    Companion.Sent s = lastSent;
+                    if (!ok || s == null) {
+                        chats.remove(id);
+                        cc.result.onResult(ChatOutcome.REFUSED,
+                                msg == null ? "the radio refused it" : msg);
+                        return;
+                    }
+                    cc.acks.add(s.ackCode);
+                    cc.ackDeadline = SystemClock.elapsedRealtime()
+                            + Math.max(MIN_ACK_WAIT_MS, Math.min(MAX_ACK_WAIT_MS,
+                                    s.timeoutMs))
+                            + ACK_MARGIN_MS;
+                }, SEND_TIMEOUT_MS, true);
+    }
+
+    private void chatTick() {
+        long now = SystemClock.elapsedRealtime();
+        for (Map.Entry<Integer, Chat> e : new ArrayList<>(chats.entrySet())) {
+            Chat c = e.getValue();
+            if (c.ackDeadline == 0 || now < c.ackDeadline)
+                continue;
+            if (c.attempt + 1 < MAX_CHAT_TRIES) {
+                c.attempt++;
+                c.ackDeadline = 0;
+                int id = e.getKey();
+                if (c.attempt == MAX_CHAT_TRIES - 1)
+                    // Last try: forget the stored route so it floods, as the
+                    // MeshCore apps do.
+                    enqueue(Companion.resetPath(c.pubKey),
+                            (ok, msg) -> sendChatTry(id), CMD_TIMEOUT_MS, false);
+                else
+                    sendChatTry(id);
+            } else {
+                chats.remove(e.getKey());
+                c.result.onResult(ChatOutcome.UNCONFIRMED, "no acknowledgement after "
+                        + MAX_CHAT_TRIES + " tries; it may still have arrived");
+            }
+        }
+        if (chats.isEmpty() || stopped)
+            ticking = false;
+        else
+            h.postDelayed(this::chatTick, 1000);
+    }
+
+    /** An ack can come late and more than once; only the first counts. */
+    private void confirmChat(long ackCode) {
+        for (Map.Entry<Integer, Chat> e : new ArrayList<>(chats.entrySet())) {
+            if (e.getValue().acks.contains(ackCode)) {
+                chats.remove(e.getKey());
+                e.getValue().result.onResult(ChatOutcome.DELIVERED, null);
+                return;
+            }
+        }
     }
 
     @Override

@@ -13,6 +13,8 @@ With the plugin installed in ATAK on the same phone, it binds to this app the wa
 
 The app must be running (it can be in the background). If it isn't, the plugin's mesh icon turns amber and asks you to open it.
 
+The app also passes the radio's contacts, with their positions and last-advert times, and every channel's messages, so the plugin can show the wider mesh in ATAK: nodes on the map, and each channel other than the team channel as a contact to chat on. In app mode, direct messages from ATAK are sent and retried by the app as usual.
+
 ## Items shared from ATAK
 
 ATAK users can share markers, 2525 units, shapes, routes and other CoT. The app shows them on the team map:

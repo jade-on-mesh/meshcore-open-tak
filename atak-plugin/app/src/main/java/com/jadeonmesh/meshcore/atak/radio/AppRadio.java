@@ -338,6 +338,9 @@ public final class AppRadio implements MeshRadio {
         String[] cn = b.getStringArray(BridgeProtocol.K_CONTACT_NAMES);
         int[] cp = b.getIntArray(BridgeProtocol.K_CONTACT_PATH);
         int[] ct = b.getIntArray(BridgeProtocol.K_CONTACT_TYPE);
+        int[] clat = b.getIntArray(BridgeProtocol.K_CONTACT_LAT);
+        int[] clon = b.getIntArray(BridgeProtocol.K_CONTACT_LON);
+        long[] cadv = b.getLongArray(BridgeProtocol.K_CONTACT_ADVERT);
         List<Companion.Contact> cs = new ArrayList<>();
         if (keys != null && cn != null) {
             int n = Math.min(keys.length / 32, cn.length);
@@ -347,6 +350,14 @@ public final class AppRadio implements MeshRadio {
                 c.name = cn[i];
                 c.pathLength = cp != null && i < cp.length ? cp[i] : -1;
                 c.type = ct != null && i < ct.length ? ct[i] : Companion.ADV_CHAT;
+                // Older app builds don't send these; nodes then stay off the map.
+                if (clat != null && clon != null && i < clat.length && i < clon.length
+                        && (clat[i] != 0 || clon[i] != 0)) {
+                    c.lat = clat[i] / 1e6;
+                    c.lon = clon[i] / 1e6;
+                }
+                if (cadv != null && i < cadv.length)
+                    c.lastAdvert = cadv[i];
                 cs.add(c);
             }
         }

@@ -81,6 +81,10 @@ public final class BridgeProtocol {
     public static final String K_CONTACT_NAMES = "cNames";
     public static final String K_CONTACT_PATH = "cPath";
     public static final String K_CONTACT_TYPE = "cType";
+    /** Latitude/longitude x 1e6 (0, 0 = none) and last advert, Unix seconds. */
+    public static final String K_CONTACT_LAT = "cLatE6";
+    public static final String K_CONTACT_LON = "cLonE6";
+    public static final String K_CONTACT_ADVERT = "cAdv";
     public static final String K_CODEC_MIMI = "mimi";
     public static final String K_CODEC_AV1 = "av1";
     public static final String K_CODEC_CODEC2 = "codec2";

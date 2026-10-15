@@ -115,13 +115,40 @@ public final class Settings {
         return p.getInt("max_cot_packets", 6);
     }
 
-    /** Show companions from the radio's contact list on the map. */
-    public boolean showRadioContacts() {
-        return p.getBoolean("show_radio_contacts", false);
+    /** Show mesh nodes the radio knows (with a position) on the map. */
+    public boolean showMeshNodes() {
+        return p.getBoolean("show_mesh_nodes", true);
     }
 
-    public void setShowRadioContacts(boolean v) {
-        p.edit().putBoolean("show_radio_contacts", v).apply();
+    public void setShowMeshNodes(boolean v) {
+        p.edit().putBoolean("show_mesh_nodes", v).apply();
+    }
+
+    /** Node types on the map, as bits: 1 companions, 2 repeaters, 4 rooms, 8 sensors. */
+    public int meshNodeTypes() {
+        return p.getInt("mesh_node_types", 15);
+    }
+
+    public void setMeshNodeTypes(int bits) {
+        p.edit().putInt("mesh_node_types", bits).apply();
+    }
+
+    /** Hide nodes not heard for this many days; 0 shows all. */
+    public int meshNodeMaxAgeDays() {
+        return p.getInt("mesh_node_max_age_days", 7);
+    }
+
+    public void setMeshNodeMaxAgeDays(int days) {
+        p.edit().putInt("mesh_node_max_age_days", days).apply();
+    }
+
+    /** Every channel on the radio (except the team channel) as an ATAK contact. */
+    public boolean channelContacts() {
+        return p.getBoolean("channel_contacts", true);
+    }
+
+    public void setChannelContacts(boolean v) {
+        p.edit().putBoolean("channel_contacts", v).apply();
     }
 
     public boolean autoPlayVoice() {

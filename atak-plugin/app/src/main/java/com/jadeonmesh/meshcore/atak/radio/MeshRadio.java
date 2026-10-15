@@ -87,6 +87,42 @@ public interface MeshRadio {
 
     void sendDirectText(byte[] pubKey, String text, Done done);
 
+    /** How a chat message from {@link #sendChatText} ended. */
+    enum ChatOutcome {
+        /** The recipient acknowledged it. */
+        DELIVERED,
+        /** Handed to the MeshCore Open TAK app, which retries on its own. */
+        SENT,
+        /** Sent, but no acknowledgement after every try; it may still have arrived. */
+        UNCONFIRMED,
+        /** Not sent: not connected, too many waiting, or not a radio contact. */
+        REFUSED
+    }
+
+    interface ChatResult {
+        /** Called once. message explains REFUSED and UNCONFIRMED. */
+        void onResult(ChatOutcome outcome, String message);
+    }
+
+    /**
+     * A typed chat message to a contact. Direct mode waits for the
+     * recipient's acknowledgement and tries up to three times (the last as
+     * a flood), as the MeshCore apps do; app mode hands it to the app.
+     */
+    default void sendChatText(byte[] pubKey, String text, ChatResult result) {
+        sendDirectText(pubKey, text, (ok, msg) -> result.onResult(
+                ok ? ChatOutcome.SENT : ChatOutcome.REFUSED, msg));
+    }
+
+    /**
+     * Nodes the radio heard advertise but hasn't saved as contacts (radios
+     * set to add contacts manually). For the map only: they can't be
+     * messaged until saved.
+     */
+    default List<Companion.Contact> heard() {
+        return java.util.Collections.emptyList();
+    }
+
     /** Direct-path raw data. Unsupported in app mode. */
     void sendRawData(byte[] path, byte[] payload, Done done);
 

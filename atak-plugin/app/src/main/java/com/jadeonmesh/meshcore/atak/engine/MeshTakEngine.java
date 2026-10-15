@@ -21,6 +21,7 @@ import com.jadeonmesh.meshcore.atak.core.Blob;
 import com.jadeonmesh.meshcore.atak.core.Bytes;
 import com.jadeonmesh.meshcore.atak.core.Companion;
 import com.jadeonmesh.meshcore.atak.core.CotConvert;
+import com.jadeonmesh.meshcore.atak.core.MeshNodes;
 import com.jadeonmesh.meshcore.atak.core.TeamWire;
 import com.jadeonmesh.meshcore.atak.core.VoiceWire;
 import com.jadeonmesh.meshcore.atak.core.XNode;
@@ -100,6 +101,12 @@ public final class MeshTakEngine implements MeshRadio.Listener,
     private long lastPublishAt;
     private XNode lastSelfPli;
     private long lastSelfPliAt;
+    private final MeshNodes meshNodes = new MeshNodes();
+    /** Full keys of companions a direct message passed with (this radio). */
+    private final java.util.Set<String> talkedTo = Collections
+            .synchronizedSet(new java.util.HashSet<String>());
+    private boolean meshMapPending;
+    private int ticks;
     private int alertId = -1;
     private int alertType;
     private volatile int beacons, received;
@@ -161,6 +168,9 @@ public final class MeshTakEngine implements MeshRadio.Listener,
         MediaBackend m = media;
         radio = null;
         media = null;
+        for (XNode ev : meshNodes.clear(System.currentTimeMillis()))
+            sink.dispatch(ev);
+        talkedTo.clear();
         if (m != null)
             m.stop();
         if (r != null) {
@@ -215,7 +225,9 @@ public final class MeshTakEngine implements MeshRadio.Listener,
         for (Companion.Channel c : chs) {
             if (!want.isEmpty() && c.name.equals(want))
                 return c.index;
-            if (c.isPrivate()) {
+            // Auto-pick only plainly private channels; a #name channel with
+            // its own key can still be picked by hand in the pane.
+            if (c.isPrivate() && !c.name.startsWith("#")) {
                 privates++;
                 onlyPrivate = c;
             }
@@ -302,19 +314,31 @@ public final class MeshTakEngine implements MeshRadio.Listener,
         log.add("Radio " + state.name().toLowerCase(Locale.US)
                 + (detail.isEmpty() ? "" : ": " + detail));
         sink.onEngineChanged();
+        if (state == MeshRadio.State.CONNECTED)
+            reconnectTries = 0;
         if (state == MeshRadio.State.ERROR && radio instanceof DirectRadio) {
-            // Retry a lost direct link.
+            // Retry a lost direct link, backing off: 3, 5, 10, 20, 30, then
+            // every 60 seconds.
+            final MeshRadio failed = radio;
+            long wait = RECONNECT_BACKOFF_MS[Math.min(reconnectTries,
+                    RECONNECT_BACKOFF_MS.length - 1)];
+            reconnectTries++;
+            log.add("Reconnecting in " + wait / 1000 + " s");
             h.postDelayed(() -> {
                 MeshRadio r = radio;
-                if (r instanceof DirectRadio && r.state() == MeshRadio.State.ERROR)
+                if (r == failed && r.state() == MeshRadio.State.ERROR)
                     reconnect();
-            }, 15_000);
+            }, wait);
         }
     }
 
+    private static final long[] RECONNECT_BACKOFF_MS = { 3_000, 5_000, 10_000,
+            20_000, 30_000, 60_000 };
+    private volatile int reconnectTries;
+
     @Override
     public void onRadioInfoChanged() {
-        h.post(this::maybeShowRadioContacts);
+        h.post(this::requestMeshMap);
         sink.onEngineChanged();
     }
 
@@ -346,9 +370,12 @@ public final class MeshTakEngine implements MeshRadio.Listener,
             long timestampSec, int hops) {
         h.post(() -> {
             MeshRadio r = radio;
-            if (r == null || channel != r.teamChannel())
+            if (r == null)
                 return;
-            handleTeamChat(senderName, text, timestampSec);
+            if (channel == r.teamChannel())
+                handleTeamChat(senderName, text, timestampSec);
+            else
+                handleChannelChat(r, channel, senderName, text, timestampSec);
         });
     }
 
@@ -532,8 +559,32 @@ public final class MeshTakEngine implements MeshRadio.Listener,
                 "mc-" + Long.toHexString(rng.nextLong()), tsMs(tsSec), at[0], at[1]));
     }
 
+    /** A message on a channel other than the team's: from its channel contact. */
+    private void handleChannelChat(MeshRadio r, int channel, String senderName,
+            String text, long tsSec) {
+        if (!settings.channelContacts())
+            return;
+        Companion.Channel ch = null;
+        for (Companion.Channel c : r.channels())
+            if (c.index == channel)
+                ch = c;
+        if (ch == null)
+            return;
+        String uid = MeshNodes.channelUid(channel);
+        if (!meshNodes.has(uid))
+            refreshMeshMap(); // make sure ATAK has the contact to reply to
+        String line = senderName == null || senderName.isEmpty() ? text
+                : senderName + ": " + text;
+        double[] at = positionFor(null);
+        sink.dispatch(CotConvert.chat(uid, MeshNodes.channelCallsign(ch,
+                r.channels()), sink.selfUid(), line,
+                "mc-" + Long.toHexString(rng.nextLong()), tsMs(tsSec), at[0], at[1]));
+    }
+
     private void handleDirectChat(String prefixHex, String text, long tsSec) {
         Companion.Contact c = contactByPrefix(prefixHex);
+        if (c != null && MeshNodes.isCompanion(c) && talkedTo.add(c.keyHex()))
+            refreshMeshMap(); // reachable in ATAK even with no position
         String key4 = prefixHex.substring(0, 8);
         String callsign = members.containsKey(key4) ? callsignFor(key4)
                 : c != null ? c.name : key4.toUpperCase(Locale.US);
@@ -634,24 +685,58 @@ public final class MeshTakEngine implements MeshRadio.Listener,
         return null;
     }
 
-    private void maybeShowRadioContacts() {
-        MeshRadio r = radio;
-        if (r == null || !settings.showRadioContacts())
+    /** Coalesces bursts of radio updates (adverts) into one map update. */
+    private void requestMeshMap() {
+        if (meshMapPending)
             return;
+        meshMapPending = true;
+        h.postDelayed(() -> {
+            meshMapPending = false;
+            refreshMeshMap();
+        }, 1000);
+    }
+
+    /** Settings changed in the pane. */
+    public void meshMapSettingsChanged() {
+        h.post(this::refreshMeshMap);
+    }
+
+    private void refreshMeshMap() {
+        MeshRadio r = radio;
         long now = System.currentTimeMillis();
-        for (Companion.Contact c : r.contacts()) {
-            if (c.type != Companion.ADV_CHAT || c.lat == null
-                    || members.containsKey(c.key4()))
-                continue;
-            XNode ev = CotConvert.event(CotConvert.memberUid(c.key4()),
-                    "a-f-G-U-C", "h-e", c.lat, c.lon, null, null, now,
-                    2 * 3600_000L);
-            XNode d = CotConvert.detail(ev);
-            d.add("contact").attr("callsign", c.name).attr("endpoint",
-                    CotConvert.MESH_ENDPOINT);
-            d.add("remarks").text("MeshCore companion (advert position)");
-            sink.dispatch(ev);
+        if (r == null || !r.isConnected()) {
+            for (XNode ev : meshNodes.clear(now))
+                sink.dispatch(ev);
+            return;
         }
+        MeshNodes.Input in = new MeshNodes.Input();
+        in.contacts = r.contacts();
+        in.heard = r.heard();
+        in.channels = r.channels();
+        in.teamChannel = r.teamChannel();
+        in.showNodes = settings.showMeshNodes();
+        in.channelContacts = settings.channelContacts();
+        int bits = settings.meshNodeTypes();
+        in.filter.companions = (bits & 1) != 0;
+        in.filter.repeaters = (bits & 2) != 0;
+        in.filter.rooms = (bits & 4) != 0;
+        in.filter.sensors = (bits & 8) != 0;
+        in.filter.maxAgeSec = settings.meshNodeMaxAgeDays() * 86400L;
+        synchronized (members) {
+            in.skipKey4.addAll(members.keySet());
+        }
+        String self4 = selfKey4();
+        if (self4 != null)
+            in.skipKey4.add(self4);
+        synchronized (talkedTo) {
+            in.talkedTo.addAll(talkedTo);
+        }
+        for (XNode ev : meshNodes.update(in, now))
+            sink.dispatch(ev);
+    }
+
+    public int meshItemsOnMap() {
+        return meshNodes.count();
     }
 
     // --------------------------------------------------- ATAK -> mesh
@@ -877,6 +962,11 @@ public final class MeshTakEngine implements MeshRadio.Listener,
         if (targets.isEmpty())
             targets.add(c.roomId);
         for (String t : targets) {
+            int chIdx = MeshNodes.channelIndex(t);
+            if (chIdx >= 0) {
+                sendToChannel(r, chIdx, c.text);
+                continue;
+            }
             String key4 = CotConvert.key4FromMemberUid(t);
             if (key4 == null)
                 continue; // a TAK contact, not someone on the mesh
@@ -889,15 +979,54 @@ public final class MeshTakEngine implements MeshRadio.Listener,
                         + " is not in the radio's contacts yet; message not sent");
                 continue;
             }
-            for (String part : split(c.text, Companion.maxDirectTextBytes())) {
-                final String who = contact.name;
-                r.sendDirectText(contact.publicKey, part, (ok, msg) -> {
-                    if (!ok)
-                        sink.toast("Message to " + who + " not sent: " + msg);
+            if (!MeshNodes.isCompanion(contact)) {
+                // Repeaters and room servers read plain text as admin commands.
+                sink.toast(contact.name + " is a repeater or room server;"
+                        + " chat isn't sent to those");
+                continue;
+            }
+            final String who = contact.name;
+            List<String> parts = split(c.text, Companion.maxDirectTextBytes());
+            for (String part : parts) {
+                r.sendChatText(contact.publicKey, part, (outcome, msg) -> {
+                    switch (outcome) {
+                        case DELIVERED:
+                            log.add("Delivered to " + who);
+                            break;
+                        case SENT:
+                            break;
+                        case UNCONFIRMED:
+                            log.add("Not confirmed by " + who + ": " + msg);
+                            sink.toast("No acknowledgement from " + who
+                                    + " after 3 tries; it may still have arrived");
+                            break;
+                        default:
+                            sink.toast("Message to " + who + " not sent: " + msg);
+                    }
                 });
+            }
+            synchronized (talkedTo) {
+                if (talkedTo.add(contact.publicKey == null ? key4 : contact.keyHex()))
+                    h.post(this::refreshMeshMap);
             }
             log.add("DM to " + contact.name + ": " + c.text);
         }
+    }
+
+    private void sendToChannel(MeshRadio r, int channel, String text) {
+        Companion.SelfInfo s = r.self();
+        int max = Companion.maxChannelTextBytes(s == null ? null : s.name);
+        String name = "channel " + channel;
+        for (Companion.Channel ch : r.channels())
+            if (ch.index == channel)
+                name = MeshNodes.channelCallsign(ch, r.channels());
+        final String label = name;
+        for (String part : split(text, max))
+            r.sendChannelText(channel, part, (ok, msg) -> {
+                if (!ok)
+                    sink.toast(label + ": not sent (" + msg + ")");
+            });
+        log.add("Chat to " + label + ": " + text);
     }
 
     /** Splits text into parts of at most maxBytes UTF-8 bytes, "(1/2) " tagged. */
@@ -967,6 +1096,8 @@ public final class MeshTakEngine implements MeshRadio.Listener,
         try {
             beaconTick();
             expireMembers();
+            if (++ticks % 12 == 0)
+                refreshMeshMap(); // re-sends before markers go stale
         } catch (RuntimeException e) {
             log.add("Beacon error: " + e);
         }

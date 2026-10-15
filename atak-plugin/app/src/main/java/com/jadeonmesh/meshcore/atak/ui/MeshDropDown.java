@@ -167,7 +167,8 @@ public final class MeshDropDown extends DropDownReceiver
         hs.addView(modes);
         link.addView(hs);
         LinearLayout actions = Ui.row(c);
-        actions.addView(Ui.button(c, "Find Bluetooth radios", v -> scanBle()));
+        scanButton = Ui.button(c, "Find Bluetooth radios", v -> scanBle());
+        actions.addView(scanButton);
         actions.addView(Ui.button(c, "USB", v -> pickUsb()));
         actions.addView(Ui.button(c, "Reconnect", v -> engine.reconnect()));
         link.addView(actions);
@@ -241,9 +242,11 @@ public final class MeshDropDown extends DropDownReceiver
                 settings.shareItems(), (b, on) -> settings.setShareItems(on)));
         opt.addView(Ui.toggle(c, "Relay other CoT (casevac, etc.) compressed",
                 settings.relayOtherCot(), (b, on) -> settings.setRelayOtherCot(on)));
-        opt.addView(Ui.toggle(c, "Show radio contacts on the map",
-                settings.showRadioContacts(),
-                (b, on) -> settings.setShowRadioContacts(on)));
+        opt.addView(Ui.toggle(c, "Mesh channels as ATAK contacts (chat on"
+                + " Public, #hashtags…)", settings.channelContacts(), (b, on) -> {
+                    settings.setChannelContacts(on);
+                    engine.meshMapSettingsChanged();
+                }));
         opt.addView(Ui.toggle(c, "Download team clips and photos as they arrive",
                 settings.autoFetchTeamMedia(),
                 (b, on) -> settings.setAutoFetchTeamMedia(on)));
@@ -255,6 +258,40 @@ public final class MeshDropDown extends DropDownReceiver
                 settings.photoDetail() >= 1,
                 (b, on) -> settings.setPhotoDetail(on ? 1 : 0)));
         content.addView(opt);
+
+        // Mesh nodes on the map
+        LinearLayout nodes = Ui.card(c, "Mesh nodes on the map");
+        nodes.addView(Ui.toggle(c, "Show nodes that share a position",
+                settings.showMeshNodes(), (b, on) -> {
+                    settings.setShowMeshNodes(on);
+                    engine.meshMapSettingsChanged();
+                }));
+        String[] kinds = { "Companions", "Repeaters", "Room servers", "Sensors" };
+        for (int i = 0; i < kinds.length; i++) {
+            final int bit = 1 << i;
+            nodes.addView(Ui.toggle(c, kinds[i],
+                    (settings.meshNodeTypes() & bit) != 0, (b, on) -> {
+                        int bits = settings.meshNodeTypes();
+                        settings.setMeshNodeTypes(on ? bits | bit : bits & ~bit);
+                        engine.meshMapSettingsChanged();
+                    }));
+        }
+        Button age = Ui.button(c, ageLabel(settings.meshNodeMaxAgeDays()), null);
+        age.setOnClickListener(v -> {
+            int[] steps = { 1, 7, 30, 0 };
+            int now = settings.meshNodeMaxAgeDays(), next = steps[0];
+            for (int i = 0; i < steps.length; i++)
+                if (steps[i] == now)
+                    next = steps[(i + 1) % steps.length];
+            settings.setMeshNodeMaxAgeDays(next);
+            age.setText(ageLabel(next));
+            engine.meshMapSettingsChanged();
+        });
+        nodes.addView(age);
+        nodes.addView(Ui.dim(c, "Companions you can message from ATAK;"
+                + " repeaters and room servers are shown but never sent chat"
+                + " (they read text as admin commands)."));
+        content.addView(nodes);
 
         // Log
         LinearLayout log = Ui.card(c, "Log");
@@ -423,30 +460,86 @@ public final class MeshDropDown extends DropDownReceiver
 
     // -------------------------------------------------------------- link
 
+    private static String ageLabel(int days) {
+        return days <= 0 ? "Showing nodes heard any time"
+                : "Hiding nodes not heard for " + days + (days == 1 ? " day" : " days");
+    }
+
+    private Button scanButton;
+    private TextView scanNote;
+    /** One button per radio for the whole scan: rebuilding the list on every
+     * advert (several a second) swallowed taps between press and release. */
+    private final java.util.Map<String, Button> scanButtons = new java.util.HashMap<>();
+
     private void scanBle() {
+        if (scanner.scanning()) {
+            // A second tap stops the scan rather than restarting it.
+            scanner.stop();
+            scanDone(null);
+            return;
+        }
         scanResults.removeAllViews();
-        scanResults.addView(Ui.dim(c, "Scanning…"));
-        scanner.scan(8000, (list, finished, error) -> main.post(() -> {
-            scanResults.removeAllViews();
-            if (error != null)
-                scanResults.addView(Ui.dim(c, error));
-            for (String[] d : list) {
-                Button b = Ui.button(c, d[1] + "\n" + d[0], v -> {
-                    scanner.stop();
-                    settings.setBle(d[0], d[1].replace(" (paired)", "")
-                            .replaceAll("\\s+-?\\d+ dBm$", ""));
-                    settings.setLinkMode(Settings.LinkMode.BLUETOOTH);
-                    scanResults.removeAllViews();
-                    engine.reconnect();
-                    refresh();
-                });
+        scanButtons.clear();
+        scanNote = Ui.dim(c, "Scanning…");
+        scanResults.addView(scanNote);
+        scanButton.setText("Stop scanning");
+        scanner.scan(12_000, new BleScanner.Callback() {
+            @Override
+            public void onRadio(String address, String name, int rssi, boolean paired) {
+                String label = name + (paired ? " (paired)" : "  " + rssi + " dBm")
+                        + "\n" + address;
+                Button b = scanButtons.get(address);
+                if (b != null) {
+                    // Keep "(paired)" once known; only refresh the signal.
+                    if (!paired && !b.getText().toString().contains("(paired)"))
+                        b.setText(label);
+                    return;
+                }
+                b = Ui.button(c, label, v -> pickBle(address, name));
+                scanButtons.put(address, b);
                 scanResults.addView(b);
             }
-            if (finished && list.isEmpty() && error == null)
-                scanResults.addView(Ui.dim(c, "No MeshCore radios found. Is the"
-                        + " radio in companion (BLE) mode and not connected to"
-                        + " another phone?"));
-        }));
+
+            @Override
+            public void onDone(String error) {
+                scanDone(error);
+            }
+        });
+    }
+
+    private void scanDone(String error) {
+        scanButton.setText("Find Bluetooth radios");
+        if (scanNote == null)
+            return;
+        if (error != null)
+            scanNote.setText(error);
+        else if (scanButtons.isEmpty())
+            scanNote.setText("No MeshCore radios found. Is the radio in"
+                    + " companion (BLE) mode and not connected to another phone?");
+        else
+            scanNote.setText("Tap your radio:");
+    }
+
+    private void pickBle(String address, String name) {
+        scanner.stop();
+        scanDone(null);
+        MeshRadio now = engine.radio();
+        if (address.equalsIgnoreCase(settings.bleAddress())
+                && settings.linkMode() == Settings.LinkMode.BLUETOOTH
+                && now != null && (now.state() == MeshRadio.State.CONNECTING
+                        || now.isConnected())) {
+            // Already on its way: don't start the connection over.
+            toast(now.isConnected() ? "Already connected to " + name
+                    : "Already connecting to " + name);
+            return;
+        }
+        settings.setBle(address, name);
+        settings.setLinkMode(Settings.LinkMode.BLUETOOTH);
+        scanResults.removeAllViews();
+        scanButtons.clear();
+        scanNote = null;
+        engine.reconnect();
+        refresh();
     }
 
     private void pickUsb() {

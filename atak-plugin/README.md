@@ -9,7 +9,8 @@ ATAK users and MeshCore Open TAK users see each other.
 |---|---|
 | Your position (PLI), callsign, team colour, role, battery | Team position beacon, smart-beaconed (often when moving, rarely when still) |
 | GeoChat **All Chat Rooms** | Text on the team channel (readable in any MeshCore app) |
-| GeoChat to a mesh contact | MeshCore direct message |
+| GeoChat to a mesh companion | MeshCore direct message, acknowledged; up to 3 tries in direct mode, the last flooded |
+| GeoChat to a channel contact (`#Public`, `#den`, `#🔒 SAR`…) | Plain text on that channel, readable in any MeshCore app |
 | Spot markers, waypoints, 2525 units, SPIs you *send* | Compact point (`0x43`), CoT type, icon and colour kept |
 | Lines, polygons, rectangles, circles, routes you *send* | Compact shape (`0x47`), delta-encoded; simplified to fit one packet |
 | 911 / In Contact / Ring the Bell / Geo-fence alerts | Team alert (repeated), SOS flag on your beacon until cancelled |
@@ -21,6 +22,36 @@ ATAK users and MeshCore Open TAK users see each other.
 Everything from the mesh appears in ATAK as ordinary CoT: teammates as
 friendly units you can chat with, MeshCore Open TAK pins and SALUTE reports,
 shared shapes and routes, alerts, chat in GeoChat.
+
+## The rest of the mesh
+
+Beyond your team, the plugin shows plain MeshCore in ATAK, for people on any
+MeshCore app:
+
+- **Nodes on the map.** Every node the radio knows that shares a position:
+  companions as friendly units you can message, repeaters and room servers as
+  installations, sensors as sensors. Filter by type and by how recently a
+  node was heard (default: hide nodes not heard for 7 days) under *Mesh nodes
+  on the map* in the pane. Nodes the filters drop are removed at once.
+  Remarks give the node kind and last advert time. Nodes a manual-add radio
+  heard but didn't save are shown too, but can't be messaged until saved.
+- **Channels as contacts.** Every channel on the radio except the team
+  channel is an ATAK contact: `#Public`, hashtag channels as written
+  (`#den`), private channels with a lock (`#🔒 SAR Team`). They sort together
+  at the top of the contact list. Open one to chat on that channel; messages
+  arrive from it as `Name: text`. A contact needs a point, so channels sit at
+  0, 0. Turn this off under Options.
+- **Repeaters and room servers are never sent chat.** They read plain text
+  from their admin as commands, so they get no chat endpoint, and the plugin
+  refuses chat addressed to one.
+- A companion you messaged that has no position stays a reachable contact at
+  0, 0, so the conversation can go on.
+- A direct message the sender re-sent because its acknowledgement was lost
+  shows once, not twice.
+
+Channel kinds are worked out from the key: a `#name` channel counts as a
+public hashtag channel only when its key is the one anyone can derive from
+the name. The team channel is never picked automatically from `#` channels.
 
 A mesh icon sits in the map's bottom-right corner: **green** ready, **amber**
 connecting or missing a team channel, **red** link error, **grey** off. Tap it
@@ -43,6 +74,15 @@ and #hashtag channels would broadcast positions to strangers). Codec2 voice is
 built in; Mimi needs its model (≈223 MB, downloaded from this repo's
 `mimi-onnx-v1` release when you long-press the Mimi line in the pane); photos
 need libaom built in (see below).
+
+Bluetooth: *Find Bluetooth radios* lists paired MeshCore radios first (a
+sleeping or busy radio may not be advertising); tap the radio once, and tap
+*Stop scanning* to end a scan early. Android allows only a few scans in 30
+seconds, so the pane says how long to wait. Connecting goes step by step with
+time limits and is tried up to 3 times (phones often fail a first try with
+status 133). If the radio asks for its PIN, Android's pairing prompt appears
+and the link waits for it. A dropped link is retried after 3, 5, 10, 20, 30
+seconds, then every minute.
 
 **Auto** (the default) uses the app when it's installed, else the USB or
 Bluetooth radio you picked.
@@ -165,6 +205,18 @@ ATAK ──PreSendProcessor──▶ MeshTakEngine ──▶ MeshRadio ──┬
 Tests: `./gradlew testCivDebugUnitTest`, or without the SDK, the
 `ATAK plugin` GitHub workflow (compiles and runs the core tests with plain
 `javac`).
+
+## Credits
+
+The plain-MeshCore features above, the Bluetooth connection handling and the
+scan fixes follow lessons the [Colorado Mesh](https://coloradomesh.org/)
+[MeshCore TAK Bridge](https://github.com/Colorado-Mesh/meshcore-tak-bridge)
+documented from testing with ATAK on phones and tablets: channels and
+companions as reachable contacts, never chatting to repeaters, marker
+refresh and deletes, a step-by-step Bluetooth link with time limits, retries
+on status 133, an unanswered packet-size request, PIN pairing, Android's
+scan limit, and a scan list that doesn't lose taps. The bridge is GPL-3.0;
+this plugin's code is written independently and contains none of it.
 
 ## Limitations
 
