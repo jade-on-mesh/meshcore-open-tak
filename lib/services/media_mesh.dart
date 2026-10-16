@@ -137,6 +137,12 @@ class Radio2Reply {
   final LoRaCodingRate? codingRate;
   final String mode;
 
+  /// The preamble in symbols, when the reply gives one.
+  final int? preamble;
+
+  /// True when the firmware works the preamble out itself (`(auto)`).
+  final bool preambleAuto;
+
   const Radio2Reply._({
     required this.off,
     this.frequencyMHz = 0,
@@ -144,6 +150,8 @@ class Radio2Reply {
     this.spreadingFactor,
     this.codingRate,
     this.mode = 'off',
+    this.preamble,
+    this.preambleAuto = true,
   });
 
   static const Radio2Reply offReply = Radio2Reply._(off: true);
@@ -170,6 +178,8 @@ class Radio2Reply {
     final cr = int.tryParse(parts[3]);
     if (freq == null || bwKHz == null || sf == null || cr == null) return null;
     final mode = parts[4].split(' ').first;
+    final preambleText = parts.length > 5 ? parts[5] : '';
+    final preamble = int.tryParse(preambleText.split(' ').first);
     return Radio2Reply._(
       off: mode == 'off',
       frequencyMHz: freq,
@@ -183,6 +193,8 @@ class Radio2Reply {
         (v) => v.value == (cr <= 4 ? cr + 4 : cr),
       ),
       mode: mode,
+      preamble: preamble,
+      preambleAuto: preamble == null || preambleText.contains('auto'),
     );
   }
 }
@@ -247,6 +259,18 @@ class Radio2Status {
   final bool switchMeasured;
   final List<String> warnings;
 
+  /// Profile switches so far, failed ones, and the longest in µs.
+  final int? switches;
+  final int? switchErrors;
+  final int? longestSwitchUs;
+
+  /// Preamble in symbols: main, radio2.
+  final List<int>? preamble;
+
+  /// A remote radio2 change is waiting for its reply to go out (repeaters):
+  /// the previous channel is still in use.
+  final bool pending;
+
   const Radio2Status({
     required this.mode,
     required this.rx,
@@ -254,13 +278,31 @@ class Radio2Status {
     this.switchUs,
     this.switchMeasured = false,
     this.warnings = const [],
+    this.switches,
+    this.switchErrors,
+    this.longestSwitchUs,
+    this.preamble,
+    this.pending = false,
   });
 
   static Radio2Status? tryParse(String reply) {
     final text = _stripTag(reply);
     if (!text.startsWith('>')) return null;
     final body = text.substring(1).trim();
+    if (body.startsWith('radio2 change pending')) {
+      return const Radio2Status(
+        mode: 'pending',
+        rx: [0, 0],
+        tx: [0, 0],
+        pending: true,
+      );
+    }
     final mode = body.split(RegExp(r'[\s;]')).first;
+    int? one(String key) {
+      final m = RegExp('$key=(\\d+)').firstMatch(body);
+      return m == null ? null : int.parse(m.group(1)!);
+    }
+
     List<int> pair(String key) {
       final m = RegExp('$key=(\\d+),(\\d+)').firstMatch(body);
       if (m == null) return const [0, 0];
@@ -275,6 +317,8 @@ class Radio2Status {
         warnings.add(p.startsWith('WARN ') ? p.substring(5) : p);
       }
     }
+    final pre = RegExp(r'preamble=(\d+),(\d+)').firstMatch(body);
+    final longest = RegExp(r'max=(\d+)us').firstMatch(body);
     return Radio2Status(
       mode: mode,
       rx: pair('RX'),
@@ -282,6 +326,12 @@ class Radio2Status {
       switchUs: budget == null ? null : int.parse(budget.group(1)!),
       switchMeasured: body.contains(' ready'),
       warnings: warnings,
+      switches: one('switches'),
+      switchErrors: one('errors'),
+      longestSwitchUs: longest == null ? null : int.parse(longest.group(1)!),
+      preamble: pre == null
+          ? null
+          : [int.parse(pre.group(1)!), int.parse(pre.group(2)!)],
     );
   }
 }

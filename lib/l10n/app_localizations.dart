@@ -11226,6 +11226,708 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open download page'**
   String get appUpdate_openDownloadPage;
+
+  /// No description provided for @rr2_hubTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'MediaMesh (radio2)'**
+  String get rr2_hubTitle;
+
+  /// No description provided for @rr2_hubSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Second frequency, bridging and live figures'**
+  String get rr2_hubSubtitle;
+
+  /// No description provided for @rr2_title.
+  ///
+  /// In en, this message translates to:
+  /// **'MediaMesh'**
+  String get rr2_title;
+
+  /// No description provided for @rr2_reload.
+  ///
+  /// In en, this message translates to:
+  /// **'Reload'**
+  String get rr2_reload;
+
+  /// No description provided for @rr2_asking.
+  ///
+  /// In en, this message translates to:
+  /// **'Asking the repeater…'**
+  String get rr2_asking;
+
+  /// No description provided for @rr2_loadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The repeater didn\'t answer. Check that you\'re still logged in and in range.'**
+  String get rr2_loadFailed;
+
+  /// No description provided for @rr2_noAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'No answer from the repeater'**
+  String get rr2_noAnswer;
+
+  /// No description provided for @rr2_refused.
+  ///
+  /// In en, this message translates to:
+  /// **'The repeater refused: {reason}'**
+  String rr2_refused(String reason);
+
+  /// No description provided for @rr2_applied.
+  ///
+  /// In en, this message translates to:
+  /// **'Applied: {reply}'**
+  String rr2_applied(String reply);
+
+  /// No description provided for @rr2_turnedOff.
+  ///
+  /// In en, this message translates to:
+  /// **'radio2 turned off on the repeater'**
+  String get rr2_turnedOff;
+
+  /// No description provided for @rr2_saved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved on the repeater'**
+  String get rr2_saved;
+
+  /// No description provided for @rr2_tempStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporary radio2 started'**
+  String get rr2_tempStarted;
+
+  /// No description provided for @rr2_tempStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporary radio2 stopped; the saved radio2 is back'**
+  String get rr2_tempStopped;
+
+  /// No description provided for @rr2_usbOnlyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs USB'**
+  String get rr2_usbOnlyTitle;
+
+  /// No description provided for @rr2_usbOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'This repeater\'s firmware only takes radio2 changes over a USB cable. Bridging and replies can still be changed from here.'**
+  String get rr2_usbOnly;
+
+  /// No description provided for @rr2_now.
+  ///
+  /// In en, this message translates to:
+  /// **'NOW'**
+  String get rr2_now;
+
+  /// No description provided for @rr2_new.
+  ///
+  /// In en, this message translates to:
+  /// **'NEW'**
+  String get rr2_new;
+
+  /// No description provided for @rr2_confirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Change radio2 on the repeater?'**
+  String get rr2_confirmTitle;
+
+  /// No description provided for @rr2_confirmOffTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn radio2 off?'**
+  String get rr2_confirmOffTitle;
+
+  /// No description provided for @rr2_confirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The repeater answers first, then switches. If you reach it over radio2, you may lose contact until your radio uses the same settings.'**
+  String get rr2_confirmBody;
+
+  /// No description provided for @rr2_confirmShared.
+  ///
+  /// In en, this message translates to:
+  /// **'Every node on this MediaMesh must use the same radio2 settings.'**
+  String get rr2_confirmShared;
+
+  /// No description provided for @rr2_apply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get rr2_apply;
+
+  /// No description provided for @rr2_turnOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off'**
+  String get rr2_turnOff;
+
+  /// No description provided for @rr2_unsupportedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No radio2 on this repeater'**
+  String get rr2_unsupportedTitle;
+
+  /// No description provided for @rr2_unsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Its firmware doesn\'t know the radio2 commands. MediaMesh on a repeater needs MeshCore firmware with radio profiles (mikecarper/MeshCore).'**
+  String get rr2_unsupported;
+
+  /// No description provided for @rr2_unsupportedStock.
+  ///
+  /// In en, this message translates to:
+  /// **'It still forwards photos and voice heard on the main mesh, just never on radio2.'**
+  String get rr2_unsupportedStock;
+
+  /// No description provided for @rr2_main.
+  ///
+  /// In en, this message translates to:
+  /// **'MAIN'**
+  String get rr2_main;
+
+  /// No description provided for @rr2_linkBridged.
+  ///
+  /// In en, this message translates to:
+  /// **'BRIDGED'**
+  String get rr2_linkBridged;
+
+  /// No description provided for @rr2_linkSeparate.
+  ///
+  /// In en, this message translates to:
+  /// **'SEPARATE'**
+  String get rr2_linkSeparate;
+
+  /// No description provided for @rr2_linkAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'AUTO'**
+  String get rr2_linkAuto;
+
+  /// No description provided for @rr2_chipOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get rr2_chipOff;
+
+  /// No description provided for @rr2_chipListening.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening on radio2'**
+  String get rr2_chipListening;
+
+  /// No description provided for @rr2_chipActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening and sending'**
+  String get rr2_chipActive;
+
+  /// No description provided for @rr2_chipTemp.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporary · {minutes} min left'**
+  String rr2_chipTemp(int minutes);
+
+  /// No description provided for @rr2_chipPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Change pending'**
+  String get rr2_chipPending;
+
+  /// No description provided for @rr2_liveSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Live'**
+  String get rr2_liveSection;
+
+  /// No description provided for @rr2_refreshLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh live figures'**
+  String get rr2_refreshLive;
+
+  /// No description provided for @rr2_updatedSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds} s ago'**
+  String rr2_updatedSeconds(int seconds);
+
+  /// No description provided for @rr2_updatedMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min ago'**
+  String rr2_updatedMinutes(int minutes);
+
+  /// No description provided for @rr2_noLive.
+  ///
+  /// In en, this message translates to:
+  /// **'No live figures from this repeater.'**
+  String get rr2_noLive;
+
+  /// No description provided for @rr2_liveOff.
+  ///
+  /// In en, this message translates to:
+  /// **'radio2 is off, so there\'s nothing to count.'**
+  String get rr2_liveOff;
+
+  /// No description provided for @rr2_pending.
+  ///
+  /// In en, this message translates to:
+  /// **'A radio2 change is waiting for the repeater\'s reply to go out. It still uses the previous channel.'**
+  String get rr2_pending;
+
+  /// No description provided for @rr2_heardMain.
+  ///
+  /// In en, this message translates to:
+  /// **'Heard main'**
+  String get rr2_heardMain;
+
+  /// No description provided for @rr2_heardRadio2.
+  ///
+  /// In en, this message translates to:
+  /// **'Heard radio2'**
+  String get rr2_heardRadio2;
+
+  /// No description provided for @rr2_sentMain.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent main'**
+  String get rr2_sentMain;
+
+  /// No description provided for @rr2_sentRadio2.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent radio2'**
+  String get rr2_sentRadio2;
+
+  /// No description provided for @rr2_heardShare.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% of packets heard came in on radio2'**
+  String rr2_heardShare(int percent);
+
+  /// No description provided for @rr2_switchTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch time'**
+  String get rr2_switchTime;
+
+  /// No description provided for @rr2_measuring.
+  ///
+  /// In en, this message translates to:
+  /// **'measuring'**
+  String get rr2_measuring;
+
+  /// No description provided for @rr2_preambles.
+  ///
+  /// In en, this message translates to:
+  /// **'Preamble main / radio2 (symbols)'**
+  String get rr2_preambles;
+
+  /// No description provided for @rr2_switches.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile switches'**
+  String get rr2_switches;
+
+  /// No description provided for @rr2_switchesErrors.
+  ///
+  /// In en, this message translates to:
+  /// **'{switches} ({errors} failed)'**
+  String rr2_switchesErrors(int switches, int errors);
+
+  /// No description provided for @rr2_profileSection.
+  ///
+  /// In en, this message translates to:
+  /// **'radio2 profile'**
+  String get rr2_profileSection;
+
+  /// No description provided for @rr2_modeOffHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'The repeater uses its main radio only.'**
+  String get rr2_modeOffHelp;
+
+  /// No description provided for @rr2_modeRxHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'The repeater also listens on radio2 but never sends there, unless replies are forced below.'**
+  String get rr2_modeRxHelp;
+
+  /// No description provided for @rr2_modeRxtxHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'The repeater listens and sends on radio2. Bridging below decides what crosses between the two.'**
+  String get rr2_modeRxtxHelp;
+
+  /// No description provided for @rr2_frequency.
+  ///
+  /// In en, this message translates to:
+  /// **'Frequency'**
+  String get rr2_frequency;
+
+  /// No description provided for @rr2_bw.
+  ///
+  /// In en, this message translates to:
+  /// **'Bandwidth'**
+  String get rr2_bw;
+
+  /// No description provided for @rr2_sf.
+  ///
+  /// In en, this message translates to:
+  /// **'SF'**
+  String get rr2_sf;
+
+  /// No description provided for @rr2_cr.
+  ///
+  /// In en, this message translates to:
+  /// **'CR'**
+  String get rr2_cr;
+
+  /// No description provided for @rr2_faster.
+  ///
+  /// In en, this message translates to:
+  /// **'About {times}× faster on air than the main mesh'**
+  String rr2_faster(String times);
+
+  /// No description provided for @rr2_slower.
+  ///
+  /// In en, this message translates to:
+  /// **'About {times}× slower on air than the main mesh'**
+  String rr2_slower(String times);
+
+  /// No description provided for @rr2_sameSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'About as fast on air as the main mesh'**
+  String get rr2_sameSpeed;
+
+  /// No description provided for @rr2_preambleAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic preamble'**
+  String get rr2_preambleAuto;
+
+  /// No description provided for @rr2_preambleAutoHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended. The repeater measures its switch time and picks the preamble.'**
+  String get rr2_preambleAutoHelp;
+
+  /// No description provided for @rr2_preamble.
+  ///
+  /// In en, this message translates to:
+  /// **'Preamble'**
+  String get rr2_preamble;
+
+  /// No description provided for @rr2_symbols.
+  ///
+  /// In en, this message translates to:
+  /// **'symbols'**
+  String get rr2_symbols;
+
+  /// No description provided for @rr2_preambleRange.
+  ///
+  /// In en, this message translates to:
+  /// **'8 to 512 symbols'**
+  String get rr2_preambleRange;
+
+  /// No description provided for @rr2_sharedNote.
+  ///
+  /// In en, this message translates to:
+  /// **'The radio switches between both frequencies, so heavy radio2 traffic costs some main-mesh reception.'**
+  String get rr2_sharedNote;
+
+  /// No description provided for @rr2_reset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get rr2_reset;
+
+  /// No description provided for @rr2_applyToRepeater.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get rr2_applyToRepeater;
+
+  /// No description provided for @rr2_crossSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridging'**
+  String get rr2_crossSection;
+
+  /// No description provided for @rr2_crossOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge both ways'**
+  String get rr2_crossOn;
+
+  /// No description provided for @rr2_crossOnHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Forward what it hears on either radio onto the other.'**
+  String get rr2_crossOnHelp;
+
+  /// No description provided for @rr2_crossAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get rr2_crossAuto;
+
+  /// No description provided for @rr2_crossAutoHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge the saved radio2; keep a temporary radio2 separate. The default.'**
+  String get rr2_crossAutoHelp;
+
+  /// No description provided for @rr2_crossOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep separate'**
+  String get rr2_crossOff;
+
+  /// No description provided for @rr2_crossOffHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Each radio only forwards its own traffic.'**
+  String get rr2_crossOffHelp;
+
+  /// No description provided for @rr2_notReported.
+  ///
+  /// In en, this message translates to:
+  /// **'This repeater doesn\'t report bridging.'**
+  String get rr2_notReported;
+
+  /// No description provided for @rr2_replySection.
+  ///
+  /// In en, this message translates to:
+  /// **'Replies to admins'**
+  String get rr2_replySection;
+
+  /// No description provided for @rr2_replyBoth.
+  ///
+  /// In en, this message translates to:
+  /// **'Both radios'**
+  String get rr2_replyBoth;
+
+  /// No description provided for @rr2_replyBothHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Logins, CLI answers and ACKs go out on the main radio and radio2. The default.'**
+  String get rr2_replyBothHelp;
+
+  /// No description provided for @rr2_replyMain.
+  ///
+  /// In en, this message translates to:
+  /// **'Main radio only'**
+  String get rr2_replyMain;
+
+  /// No description provided for @rr2_replyMainHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Keeps radio2 for media.'**
+  String get rr2_replyMainHelp;
+
+  /// No description provided for @rr2_replyRadio2.
+  ///
+  /// In en, this message translates to:
+  /// **'radio2 only'**
+  String get rr2_replyRadio2;
+
+  /// No description provided for @rr2_replyRadio2Help.
+  ///
+  /// In en, this message translates to:
+  /// **'No copy on the main radio. Only if you always admin it over radio2.'**
+  String get rr2_replyRadio2Help;
+
+  /// No description provided for @rr2_replyAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow bridging'**
+  String get rr2_replyAuto;
+
+  /// No description provided for @rr2_replyAutoHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Replies follow the bridging setting above.'**
+  String get rr2_replyAutoHelp;
+
+  /// No description provided for @rr2_replyMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'This firmware has no reply setting.'**
+  String get rr2_replyMissing;
+
+  /// No description provided for @rr2_force.
+  ///
+  /// In en, this message translates to:
+  /// **'Also on a listen-only radio2'**
+  String get rr2_force;
+
+  /// No description provided for @rr2_forceHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Lets replies go out on radio2 while it is set to Listen.'**
+  String get rr2_forceHelp;
+
+  /// No description provided for @rr2_replyUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'radio2 can\'t send right now, so these replies only go out on the main radio.'**
+  String get rr2_replyUnavailable;
+
+  /// No description provided for @rr2_tempSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporary radio2'**
+  String get rr2_tempSection;
+
+  /// No description provided for @rr2_tempHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Run the profile above for a while without saving it, for example to meet another group. The saved radio2 comes back afterwards, or on a reboot.'**
+  String get rr2_tempHelp;
+
+  /// No description provided for @rr2_tempUses.
+  ///
+  /// In en, this message translates to:
+  /// **'USES'**
+  String get rr2_tempUses;
+
+  /// No description provided for @rr2_tempRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporary radio2 on {frequency} MHz'**
+  String rr2_tempRunning(String frequency);
+
+  /// No description provided for @rr2_tempStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get rr2_tempStop;
+
+  /// No description provided for @rr2_minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String rr2_minutes(int minutes);
+
+  /// No description provided for @rr2_hours.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} h'**
+  String rr2_hours(int hours);
+
+  /// No description provided for @rr2_hoursMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} h {minutes} min'**
+  String rr2_hoursMinutes(int hours, int minutes);
+
+  /// No description provided for @rr2_left.
+  ///
+  /// In en, this message translates to:
+  /// **'{time} left'**
+  String rr2_left(String time);
+
+  /// No description provided for @rr2_cli.
+  ///
+  /// In en, this message translates to:
+  /// **'Command line'**
+  String get rr2_cli;
+
+  /// No description provided for @rr2_cliSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedules, timing and every radio2 command'**
+  String get rr2_cliSubtitle;
+
+  /// No description provided for @rr2_cliSection.
+  ///
+  /// In en, this message translates to:
+  /// **'MediaMesh (radio2)'**
+  String get rr2_cliSection;
+
+  /// No description provided for @rr2_cliNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs repeater firmware with radio profiles. A remote radio2 change takes effect after the reply goes out.'**
+  String get rr2_cliNote;
+
+  /// No description provided for @rr2_cliGetRadio2.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the second radio profile'**
+  String get rr2_cliGetRadio2;
+
+  /// No description provided for @rr2_cliSetRadio2.
+  ///
+  /// In en, this message translates to:
+  /// **'Set radio2: MHz, kHz, SF, CR, listen or listen+send'**
+  String get rr2_cliSetRadio2;
+
+  /// No description provided for @rr2_cliRadio2Off.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn radio2 off'**
+  String get rr2_cliRadio2Off;
+
+  /// No description provided for @rr2_cliStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Packet counts, switch time and warnings'**
+  String get rr2_cliStatus;
+
+  /// No description provided for @rr2_cliGetCross.
+  ///
+  /// In en, this message translates to:
+  /// **'Show bridging between the two radios'**
+  String get rr2_cliGetCross;
+
+  /// No description provided for @rr2_cliSetCross.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridging: auto, on (both ways) or off (separate)'**
+  String get rr2_cliSetCross;
+
+  /// No description provided for @rr2_cliGetReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Show where the repeater\'s replies go'**
+  String get rr2_cliGetReply;
+
+  /// No description provided for @rr2_cliSetReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Where replies go; force allows a listen-only radio2'**
+  String get rr2_cliSetReply;
+
+  /// No description provided for @rr2_cliGetTemp.
+  ///
+  /// In en, this message translates to:
+  /// **'Show a running temporary radio2'**
+  String get rr2_cliGetTemp;
+
+  /// No description provided for @rr2_cliSetTemp.
+  ///
+  /// In en, this message translates to:
+  /// **'Use other radio2 settings for some minutes'**
+  String get rr2_cliSetTemp;
+
+  /// No description provided for @rr2_cliTempOff.
+  ///
+  /// In en, this message translates to:
+  /// **'End the temporary radio2'**
+  String get rr2_cliTempOff;
+
+  /// No description provided for @rr2_cliTiming.
+  ///
+  /// In en, this message translates to:
+  /// **'Preamble and switch timing details'**
+  String get rr2_cliTiming;
 }
 
 class _AppLocalizationsDelegate
