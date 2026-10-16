@@ -12,6 +12,7 @@ import '../widgets/mesh_ui.dart';
 import '../widgets/radio_disconnected_banner.dart';
 import 'repeater_status_screen.dart';
 import 'repeater_cli_screen.dart';
+import 'repeater_radio2_screen.dart';
 import 'repeater_settings_screen.dart';
 import 'telemetry_screen.dart';
 import 'neighbors_screen.dart';
@@ -275,6 +276,25 @@ class RepeaterHubScreen extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (context) => RepeaterSettingsScreen(
+                        repeater: repeater,
+                        password: password,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              _HubActionTile(
+                index: 5,
+                icon: Icons.settings_input_antenna,
+                title: l10n.rr2_hubTitle,
+                subtitle: l10n.rr2_hubSubtitle,
+                accentColor: MeshPalette.magenta,
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => RepeaterRadio2Screen(
                         repeater: repeater,
                         password: password,
                       ),

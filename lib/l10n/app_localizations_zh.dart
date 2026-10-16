@@ -6231,4 +6231,383 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appUpdate_openDownloadPage => 'Open download page';
+
+  @override
+  String get rr2_hubTitle => 'MediaMesh (radio2)';
+
+  @override
+  String get rr2_hubSubtitle => 'Second frequency, bridging and live figures';
+
+  @override
+  String get rr2_title => 'MediaMesh';
+
+  @override
+  String get rr2_reload => 'Reload';
+
+  @override
+  String get rr2_asking => 'Asking the repeater…';
+
+  @override
+  String get rr2_loadFailed => 'The repeater didn\'t answer. Check that you\'re still logged in and in range.';
+
+  @override
+  String get rr2_noAnswer => 'No answer from the repeater';
+
+  @override
+  String rr2_refused(String reason) {
+    return 'The repeater refused: $reason';
+  }
+
+  @override
+  String rr2_applied(String reply) {
+    return 'Applied: $reply';
+  }
+
+  @override
+  String get rr2_turnedOff => 'radio2 turned off on the repeater';
+
+  @override
+  String get rr2_saved => 'Saved on the repeater';
+
+  @override
+  String get rr2_tempStarted => 'Temporary radio2 started';
+
+  @override
+  String get rr2_tempStopped => 'Temporary radio2 stopped; the saved radio2 is back';
+
+  @override
+  String get rr2_usbOnlyTitle => 'Needs USB';
+
+  @override
+  String get rr2_usbOnly => 'This repeater\'s firmware only takes radio2 changes over a USB cable. Bridging and replies can still be changed from here.';
+
+  @override
+  String get rr2_now => 'NOW';
+
+  @override
+  String get rr2_new => 'NEW';
+
+  @override
+  String get rr2_confirmTitle => 'Change radio2 on the repeater?';
+
+  @override
+  String get rr2_confirmOffTitle => 'Turn radio2 off?';
+
+  @override
+  String get rr2_confirmBody => 'The repeater answers first, then switches. If you reach it over radio2, you may lose contact until your radio uses the same settings.';
+
+  @override
+  String get rr2_confirmShared => 'Every node on this MediaMesh must use the same radio2 settings.';
+
+  @override
+  String get rr2_apply => 'Apply';
+
+  @override
+  String get rr2_turnOff => 'Turn off';
+
+  @override
+  String get rr2_unsupportedTitle => 'No radio2 on this repeater';
+
+  @override
+  String get rr2_unsupported => 'Its firmware doesn\'t know the radio2 commands. MediaMesh on a repeater needs MeshCore firmware with radio profiles (mikecarper/MeshCore).';
+
+  @override
+  String get rr2_unsupportedStock => 'It still forwards photos and voice heard on the main mesh, just never on radio2.';
+
+  @override
+  String get rr2_main => 'MAIN';
+
+  @override
+  String get rr2_linkBridged => 'BRIDGED';
+
+  @override
+  String get rr2_linkSeparate => 'SEPARATE';
+
+  @override
+  String get rr2_linkAuto => 'AUTO';
+
+  @override
+  String get rr2_chipOff => 'Off';
+
+  @override
+  String get rr2_chipListening => 'Listening on radio2';
+
+  @override
+  String get rr2_chipActive => 'Listening and sending';
+
+  @override
+  String rr2_chipTemp(int minutes) {
+    return 'Temporary · $minutes min left';
+  }
+
+  @override
+  String get rr2_chipPending => 'Change pending';
+
+  @override
+  String get rr2_liveSection => 'Live';
+
+  @override
+  String get rr2_refreshLive => 'Refresh live figures';
+
+  @override
+  String rr2_updatedSeconds(int seconds) {
+    return '$seconds s ago';
+  }
+
+  @override
+  String rr2_updatedMinutes(int minutes) {
+    return '$minutes min ago';
+  }
+
+  @override
+  String get rr2_noLive => 'No live figures from this repeater.';
+
+  @override
+  String get rr2_liveOff => 'radio2 is off, so there\'s nothing to count.';
+
+  @override
+  String get rr2_pending => 'A radio2 change is waiting for the repeater\'s reply to go out. It still uses the previous channel.';
+
+  @override
+  String get rr2_heardMain => 'Heard main';
+
+  @override
+  String get rr2_heardRadio2 => 'Heard radio2';
+
+  @override
+  String get rr2_sentMain => 'Sent main';
+
+  @override
+  String get rr2_sentRadio2 => 'Sent radio2';
+
+  @override
+  String rr2_heardShare(int percent) {
+    return '$percent% of packets heard came in on radio2';
+  }
+
+  @override
+  String get rr2_switchTime => 'Switch time';
+
+  @override
+  String get rr2_measuring => 'measuring';
+
+  @override
+  String get rr2_preambles => 'Preamble main / radio2 (symbols)';
+
+  @override
+  String get rr2_switches => 'Profile switches';
+
+  @override
+  String rr2_switchesErrors(int switches, int errors) {
+    return '$switches ($errors failed)';
+  }
+
+  @override
+  String get rr2_profileSection => 'radio2 profile';
+
+  @override
+  String get rr2_modeOffHelp => 'The repeater uses its main radio only.';
+
+  @override
+  String get rr2_modeRxHelp => 'The repeater also listens on radio2 but never sends there, unless replies are forced below.';
+
+  @override
+  String get rr2_modeRxtxHelp => 'The repeater listens and sends on radio2. Bridging below decides what crosses between the two.';
+
+  @override
+  String get rr2_frequency => 'Frequency';
+
+  @override
+  String get rr2_bw => 'Bandwidth';
+
+  @override
+  String get rr2_sf => 'SF';
+
+  @override
+  String get rr2_cr => 'CR';
+
+  @override
+  String rr2_faster(String times) {
+    return 'About $times× faster on air than the main mesh';
+  }
+
+  @override
+  String rr2_slower(String times) {
+    return 'About $times× slower on air than the main mesh';
+  }
+
+  @override
+  String get rr2_sameSpeed => 'About as fast on air as the main mesh';
+
+  @override
+  String get rr2_preambleAuto => 'Automatic preamble';
+
+  @override
+  String get rr2_preambleAutoHelp => 'Recommended. The repeater measures its switch time and picks the preamble.';
+
+  @override
+  String get rr2_preamble => 'Preamble';
+
+  @override
+  String get rr2_symbols => 'symbols';
+
+  @override
+  String get rr2_preambleRange => '8 to 512 symbols';
+
+  @override
+  String get rr2_sharedNote => 'The radio switches between both frequencies, so heavy radio2 traffic costs some main-mesh reception.';
+
+  @override
+  String get rr2_reset => 'Reset';
+
+  @override
+  String get rr2_applyToRepeater => 'Apply';
+
+  @override
+  String get rr2_crossSection => 'Bridging';
+
+  @override
+  String get rr2_crossOn => 'Bridge both ways';
+
+  @override
+  String get rr2_crossOnHelp => 'Forward what it hears on either radio onto the other.';
+
+  @override
+  String get rr2_crossAuto => 'Automatic';
+
+  @override
+  String get rr2_crossAutoHelp => 'Bridge the saved radio2; keep a temporary radio2 separate. The default.';
+
+  @override
+  String get rr2_crossOff => 'Keep separate';
+
+  @override
+  String get rr2_crossOffHelp => 'Each radio only forwards its own traffic.';
+
+  @override
+  String get rr2_notReported => 'This repeater doesn\'t report bridging.';
+
+  @override
+  String get rr2_replySection => 'Replies to admins';
+
+  @override
+  String get rr2_replyBoth => 'Both radios';
+
+  @override
+  String get rr2_replyBothHelp => 'Logins, CLI answers and ACKs go out on the main radio and radio2. The default.';
+
+  @override
+  String get rr2_replyMain => 'Main radio only';
+
+  @override
+  String get rr2_replyMainHelp => 'Keeps radio2 for media.';
+
+  @override
+  String get rr2_replyRadio2 => 'radio2 only';
+
+  @override
+  String get rr2_replyRadio2Help => 'No copy on the main radio. Only if you always admin it over radio2.';
+
+  @override
+  String get rr2_replyAuto => 'Follow bridging';
+
+  @override
+  String get rr2_replyAutoHelp => 'Replies follow the bridging setting above.';
+
+  @override
+  String get rr2_replyMissing => 'This firmware has no reply setting.';
+
+  @override
+  String get rr2_force => 'Also on a listen-only radio2';
+
+  @override
+  String get rr2_forceHelp => 'Lets replies go out on radio2 while it is set to Listen.';
+
+  @override
+  String get rr2_replyUnavailable => 'radio2 can\'t send right now, so these replies only go out on the main radio.';
+
+  @override
+  String get rr2_tempSection => 'Temporary radio2';
+
+  @override
+  String get rr2_tempHelp => 'Run the profile above for a while without saving it, for example to meet another group. The saved radio2 comes back afterwards, or on a reboot.';
+
+  @override
+  String get rr2_tempUses => 'USES';
+
+  @override
+  String rr2_tempRunning(String frequency) {
+    return 'Temporary radio2 on $frequency MHz';
+  }
+
+  @override
+  String get rr2_tempStop => 'Stop';
+
+  @override
+  String rr2_minutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String rr2_hours(int hours) {
+    return '$hours h';
+  }
+
+  @override
+  String rr2_hoursMinutes(int hours, int minutes) {
+    return '$hours h $minutes min';
+  }
+
+  @override
+  String rr2_left(String time) {
+    return '$time left';
+  }
+
+  @override
+  String get rr2_cli => 'Command line';
+
+  @override
+  String get rr2_cliSubtitle => 'Schedules, timing and every radio2 command';
+
+  @override
+  String get rr2_cliSection => 'MediaMesh (radio2)';
+
+  @override
+  String get rr2_cliNote => 'Needs repeater firmware with radio profiles. A remote radio2 change takes effect after the reply goes out.';
+
+  @override
+  String get rr2_cliGetRadio2 => 'Show the second radio profile';
+
+  @override
+  String get rr2_cliSetRadio2 => 'Set radio2: MHz, kHz, SF, CR, listen or listen+send';
+
+  @override
+  String get rr2_cliRadio2Off => 'Turn radio2 off';
+
+  @override
+  String get rr2_cliStatus => 'Packet counts, switch time and warnings';
+
+  @override
+  String get rr2_cliGetCross => 'Show bridging between the two radios';
+
+  @override
+  String get rr2_cliSetCross => 'Bridging: auto, on (both ways) or off (separate)';
+
+  @override
+  String get rr2_cliGetReply => 'Show where the repeater\'s replies go';
+
+  @override
+  String get rr2_cliSetReply => 'Where replies go; force allows a listen-only radio2';
+
+  @override
+  String get rr2_cliGetTemp => 'Show a running temporary radio2';
+
+  @override
+  String get rr2_cliSetTemp => 'Use other radio2 settings for some minutes';
+
+  @override
+  String get rr2_cliTempOff => 'End the temporary radio2';
+
+  @override
+  String get rr2_cliTiming => 'Preamble and switch timing details';
 }

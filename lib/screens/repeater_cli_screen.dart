@@ -1229,6 +1229,57 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
       ),
     ];
 
+    final radio2Commands = [
+      _CommandHelpEntry(
+        command: 'get radio2',
+        description: l10n.rr2_cliGetRadio2,
+      ),
+      _CommandHelpEntry(
+        command: 'set radio2 {freq},{bw},{sf},{cr},{rx|rxtx}',
+        description: l10n.rr2_cliSetRadio2,
+      ),
+      _CommandHelpEntry(
+        command: 'set radio2 off',
+        description: l10n.rr2_cliRadio2Off,
+      ),
+      _CommandHelpEntry(
+        command: 'get radio2.status',
+        description: l10n.rr2_cliStatus,
+      ),
+      _CommandHelpEntry(
+        command: 'get radio2.cross',
+        description: l10n.rr2_cliGetCross,
+      ),
+      _CommandHelpEntry(
+        command: 'set radio2.cross {auto|on|off}',
+        description: l10n.rr2_cliSetCross,
+      ),
+      _CommandHelpEntry(
+        command: 'get tx.reply',
+        description: l10n.rr2_cliGetReply,
+      ),
+      _CommandHelpEntry(
+        command: 'set tx.reply {both|radio|radio2|auto} [force]',
+        description: l10n.rr2_cliSetReply,
+      ),
+      _CommandHelpEntry(
+        command: 'get tempradio2',
+        description: l10n.rr2_cliGetTemp,
+      ),
+      _CommandHelpEntry(
+        command: 'set tempradio2 {freq},{bw},{sf},{cr},{rx|rxtx},{minutes}',
+        description: l10n.rr2_cliSetTemp,
+      ),
+      _CommandHelpEntry(
+        command: 'set tempradio2 off',
+        description: l10n.rr2_cliTempOff,
+      ),
+      _CommandHelpEntry(
+        command: 'get radio2.timing',
+        description: l10n.rr2_cliTiming,
+      ),
+    ];
+
     final sections = <_CommandHelpSection>[
       _CommandHelpSection(l10n.repeater_general, generalCommands),
       _CommandHelpSection(l10n.repeater_getCategory, getCommands),
@@ -1239,6 +1290,11 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
         l10n.repeater_bridge,
         bridgeCommands,
         note: l10n.repeater_bridgeNote,
+      ),
+      _CommandHelpSection(
+        l10n.rr2_cliSection,
+        radio2Commands,
+        note: l10n.rr2_cliNote,
       ),
       _CommandHelpSection(l10n.repeater_logging, loggingCommands),
       _CommandHelpSection(
