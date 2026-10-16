@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:meshcore_open/l10n/app_localizations.dart';
 import 'package:meshcore_open/models/image_codec_support.dart';
 import 'package:meshcore_open/services/image_chunk_transport.dart';
 import 'package:meshcore_open/widgets/image_send_codec_binding.dart';
@@ -81,6 +82,8 @@ Future<void> _pumpBubble(
 }) async {
   await tester.pumpWidget(
     MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: ReceivedImageMessage(
           streamId: streamId,
@@ -112,6 +115,8 @@ void main() {
     );
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: ReceivedImageMessage(
             streamId: entry.streamId,
@@ -146,6 +151,8 @@ void main() {
     await store2.load();
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: ReceivedImageMessage(
             streamId: 'incoming',
@@ -160,6 +167,8 @@ void main() {
     await tester.pump();
     expect(find.text('AI-reconstructed'), findsOneWidget);
     expect(find.textContaining('Fine detail is generated'), findsOneWidget);
+    // Untagged by the radio: one radio, so the main mesh.
+    expect(find.textContaining('main mesh'), findsOneWidget);
   });
 
   testWidgets('receiving state shows the packet count', (tester) async {
@@ -178,6 +187,8 @@ void main() {
     expect(entry!.state, ReceivedImageState.receiving);
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: ReceivedImageMessage(
             streamId: entry.streamId,
@@ -215,6 +226,8 @@ void main() {
     final store = await _awaitingStore(bytes: 209, packets: 3);
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: ReceivedImageMessage(
             streamId: 'await1',
