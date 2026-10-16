@@ -57,6 +57,12 @@ enum VoxReceivedVia {
     3 => VoxReceivedVia.both,
     _ => null,
   };
+
+  /// What to show for something this radio received. Only Wadamesh with a
+  /// second radio (MediaMesh) tags frames; any other radio has one radio, so
+  /// whatever it received came over the main mesh.
+  static VoxReceivedVia forReceived(int? mask) =>
+      fromMask(mask) ?? VoxReceivedVia.mainMesh;
 }
 
 class VoxClipState {
@@ -692,7 +698,7 @@ class VoxVoiceService extends ChangeNotifier {
         total: env.totalPackets,
         via: _ownClips.contains(sid)
             ? null
-            : VoxReceivedVia.fromMask(_viaMask[sid]),
+            : VoxReceivedVia.forReceived(_viaMask[sid]),
       );
     }
     final clip = _incoming[sid];

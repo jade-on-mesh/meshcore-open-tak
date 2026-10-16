@@ -513,9 +513,10 @@ class _ReceivedImageMessageState extends State<ReceivedImageMessage> {
               child: _SyntheticCaption(bytes: entry.bitstreamByteCount),
             ),
           if (!entry.isOutgoing &&
-              VoxReceivedVia.fromMask(entry.viaMask) != null)
+              entry.state != ReceivedImageState.receiving &&
+              entry.state != ReceivedImageState.failedIncomplete)
             VoxReceivedViaLabel(
-              via: VoxReceivedVia.fromMask(entry.viaMask)!,
+              via: VoxReceivedVia.forReceived(entry.viaMask),
               color: widget.fallbackTextColor.withValues(alpha: 0.65),
             ),
         ],
