@@ -38,6 +38,11 @@ void main() {
     expect(VoxReceivedVia.fromMask(1), VoxReceivedVia.mainMesh);
     expect(VoxReceivedVia.fromMask(2), VoxReceivedVia.mediaMesh);
     expect(VoxReceivedVia.fromMask(3), VoxReceivedVia.both);
+    // Untagged (stock firmware, or Wadamesh without radio2): one radio, so
+    // the main mesh.
+    expect(VoxReceivedVia.forReceived(null), VoxReceivedVia.mainMesh);
+    expect(VoxReceivedVia.forReceived(0), VoxReceivedVia.mainMesh);
+    expect(VoxReceivedVia.forReceived(2), VoxReceivedVia.mediaMesh);
   });
 
   test('image entries keep the mask across a restart', () {
