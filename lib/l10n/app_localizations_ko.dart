@@ -6351,6 +6351,15 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
+  String get vox_receivedViaMediaMesh => 'Received via MediaMesh';
+
+  @override
+  String get vox_receivedViaMainMesh => 'Received via main mesh';
+
+  @override
+  String get vox_receivedViaBoth => 'Received via MediaMesh and main mesh';
+
+  @override
   String get appUpdate_installerHintWindows => 'The installer runs by itself: MeshCore Open TAK closes, updates and opens again. Your messages and settings stay.';
 
   @override

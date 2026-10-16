@@ -216,6 +216,10 @@ class ReceivedImageEntry {
   final int bitstreamByteCount;
   final int pngByteCount;
 
+  /// Radio profiles the chunks arrived on (Wadamesh MediaMesh): bit 0 the
+  /// main mesh, bit 1 radio2. 0 when the radio didn't say.
+  final int viaMask;
+
   /// Decoded PNG, cached in memory once read. Not persisted in the sidecar and
   /// not part of [==]; callers must not hand these bytes onward without the R6
   /// caption (see `received_image_message.dart`).
@@ -244,6 +248,7 @@ class ReceivedImageEntry {
     this.pngStored = false,
     this.bitstreamByteCount = 0,
     this.pngByteCount = 0,
+    this.viaMask = 0,
     this.pngBytes,
   });
 
@@ -281,6 +286,7 @@ class ReceivedImageEntry {
     bool? pngStored,
     int? bitstreamByteCount,
     int? pngByteCount,
+    int? viaMask,
     Object? pngBytes = _unset,
   }) {
     return ReceivedImageEntry(
@@ -306,6 +312,7 @@ class ReceivedImageEntry {
       pngStored: pngStored ?? this.pngStored,
       bitstreamByteCount: bitstreamByteCount ?? this.bitstreamByteCount,
       pngByteCount: pngByteCount ?? this.pngByteCount,
+      viaMask: viaMask ?? this.viaMask,
       pngBytes: identical(pngBytes, _unset)
           ? this.pngBytes
           : pngBytes as Uint8List?,
@@ -336,6 +343,7 @@ class ReceivedImageEntry {
     'pngByteCount': pngByteCount,
     if (decodeMs != null) 'decodeMs': decodeMs,
     if (error != null) 'error': error,
+    if (viaMask != 0) 'viaMask': viaMask,
   };
 
   factory ReceivedImageEntry.fromJson(Map<String, dynamic> json) {
@@ -364,6 +372,7 @@ class ReceivedImageEntry {
       pngStored: json['pngStored'] as bool? ?? false,
       bitstreamByteCount: json['bitstreamByteCount'] as int? ?? 0,
       pngByteCount: json['pngByteCount'] as int? ?? 0,
+      viaMask: json['viaMask'] as int? ?? 0,
     );
   }
 
@@ -772,8 +781,10 @@ class ReceivedImageStore extends ChangeNotifier {
     required int channelIndex,
     String? channelId,
     DateTime? at,
+    int? via,
   }) async {
     final now = at ?? _clock();
+    final viaBit = via == null ? 0 : 1 << via;
     switch (outcome.status) {
       case ImageChunkStatus.malformed:
       case ImageChunkStatus.fromSelf:
@@ -823,6 +834,7 @@ class ReceivedImageStore extends ChangeNotifier {
             error: null,
             // A first chunk seen before its slot had an ID gets one now.
             channelId: existing.channelId ?? channelId,
+            viaMask: (resets ? 0 : existing.viaMask) | viaBit,
           );
           return _store(updated);
         }
@@ -844,6 +856,7 @@ class ReceivedImageStore extends ChangeNotifier {
           state: ReceivedImageState.receiving,
           receivedChunks: counts,
           totalChunks: header.total,
+          viaMask: viaBit,
         );
         return _store(created);
 
@@ -875,15 +888,16 @@ class ReceivedImageStore extends ChangeNotifier {
       case ImageChunkStatus.completed:
         final result = outcome.result;
         if (result == null) return null;
-        return _handleCompleted(result, now, channelId);
+        return _handleCompleted(result, now, channelId, viaBit);
     }
   }
 
   Future<ReceivedImageEntry> _handleCompleted(
     ImageReassemblyResult result,
     DateTime now,
-    String? channelId,
-  ) async {
+    String? channelId, [
+    int viaBit = 0,
+  ]) async {
     final key = result.key;
     var entry = entryForKey(key);
     // A one-chunk image completes without an `accepted` first, so the key may
@@ -908,6 +922,7 @@ class ReceivedImageStore extends ChangeNotifier {
     } else if (entry.channelId == null && channelId != null) {
       entry = entry.copyWith(channelId: channelId);
     }
+    if (viaBit != 0) entry = entry.copyWith(viaMask: entry.viaMask | viaBit);
 
     final metadata = result.metadata;
     // The reserved high rate (ft16) and any resolution but 512 cannot be
