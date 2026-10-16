@@ -86,7 +86,7 @@ void main() {
     test('set radio2 uses kHz without trailing zeros', () {
       expect(
         buildSetRadio2Command(MediaMeshSettings.defaults),
-        'set radio2 911.500,250,7,5,rxtx',
+        'set radio2 912.000,125,7,5,rxtx',
       );
       expect(
         buildSetRadio2Command(
@@ -178,11 +178,11 @@ void main() {
         buildSetRadio2Command(
           MediaMeshSettings.defaults.copyWith(mode: Radio2Mode.rx),
         ),
-        'set radio2 911.500,250,7,5,rx',
+        'set radio2 912.000,125,7,5,rx',
       );
       expect(
         buildTempRadio2Command(MediaMeshSettings.defaults, 60),
-        'set tempradio2 911.500,250,7,5,rxtx,60',
+        'set tempradio2 912.000,125,7,5,rxtx,60',
       );
     });
 

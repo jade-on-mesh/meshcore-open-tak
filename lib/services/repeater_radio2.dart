@@ -150,8 +150,8 @@ class Radio2Profile {
 
   static const defaults = Radio2Profile(
     mode: Radio2Mode.off,
-    frequencyMHz: 911.5,
-    bandwidth: LoRaBandwidth.bw250,
+    frequencyMHz: 912.0,
+    bandwidth: LoRaBandwidth.bw125,
     spreadingFactor: LoRaSpreadingFactor.sf7,
     codingRate: LoRaCodingRate.cr4_5,
   );

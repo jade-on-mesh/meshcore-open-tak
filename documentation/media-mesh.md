@@ -15,9 +15,12 @@ switching between them, so you keep hearing the main mesh.
    *Everything* also copies messages onto radio2 so radio2-only nodes hear
    them. A mix set from the console shows as *Custom* and is left alone.
 3. Set the **radio2 frequency**, **Bandwidth**, **Spreading factor** and
-   **Coding rate**. The default is 911.500 MHz, 250 kHz, SF7, 4/5: about four
-   times faster than SF7/62.5, for roughly 6 dB less range. It must differ from
-   the main radio.
+   **Coding rate**. The default is 912.000 MHz, 125 kHz, SF7, 4/5: about twice
+   as fast as SF7/62.5, for roughly 3 dB less range (in a city, most of the main
+   mesh's reach). 912.0 sits inside a BayMesh 3 cavity filter tuned for 910.525
+   (flat about 908.6-912.8 MHz) and 1.5 MHz clear of the main channel. It must
+   differ from the main radio, and every node on the MediaMesh needs the same
+   settings.
 4. **Save**. The settings live on the radio, so they also apply when you are not
    connected (for example a Wadamesh radio fetching a photo by itself).
 

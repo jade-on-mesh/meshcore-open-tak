@@ -68,11 +68,13 @@ class MediaMeshSettings {
 
   bool get enabled => mode != Radio2Mode.off;
 
-  /// 911.5 MHz, 250 kHz, SF7, CR 4/5: about four times faster than SF7/62.5.
+  /// 912.0 MHz, 125 kHz, SF7, CR 4/5: about twice as fast as SF7/62.5 for
+  /// ~3 dB less range, and inside a BayMesh 3 cavity filter tuned for 910.525
+  /// (flat 908.6-912.8 MHz), 1.5 MHz clear of the main channel.
   static const defaults = MediaMeshSettings(
     mode: Radio2Mode.off,
-    frequencyMHz: 911.5,
-    bandwidth: LoRaBandwidth.bw250,
+    frequencyMHz: 912.0,
+    bandwidth: LoRaBandwidth.bw125,
     spreadingFactor: LoRaSpreadingFactor.sf7,
     codingRate: LoRaCodingRate.cr4_5,
   );
