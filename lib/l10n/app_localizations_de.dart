@@ -6648,4 +6648,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String appUpdate_bannerSubtitle(String version, int build) {
     return '$version (build $build)';
   }
+
+  @override
+  String get vox_receivedViaMediaMesh => 'Received via MediaMesh';
+
+  @override
+  String get vox_receivedViaMainMesh => 'Received via main mesh';
+
+  @override
+  String get vox_receivedViaBoth => 'Received via MediaMesh and main mesh';
 }

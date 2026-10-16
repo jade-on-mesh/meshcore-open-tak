@@ -11172,6 +11172,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{version} (build {build})'**
   String appUpdate_bannerSubtitle(String version, int build);
+
+  /// No description provided for @vox_receivedViaMediaMesh.
+  ///
+  /// In en, this message translates to:
+  /// **'Received via MediaMesh'**
+  String get vox_receivedViaMediaMesh;
+
+  /// No description provided for @vox_receivedViaMainMesh.
+  ///
+  /// In en, this message translates to:
+  /// **'Received via main mesh'**
+  String get vox_receivedViaMainMesh;
+
+  /// No description provided for @vox_receivedViaBoth.
+  ///
+  /// In en, this message translates to:
+  /// **'Received via MediaMesh and main mesh'**
+  String get vox_receivedViaBoth;
 }
 
 class _AppLocalizationsDelegate

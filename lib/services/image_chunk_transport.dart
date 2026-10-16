@@ -926,10 +926,14 @@ class ImageReassembler {
   ///
   /// [now] overrides the clock for tests. Expired entries are swept first, so
   /// a caller that only ever calls [addChunk] still gets TTL behaviour.
+  /// [via] is the radio profile the chunk arrived on (0 main mesh, 1
+  /// MediaMesh radio2, null unknown); the reassembler ignores it, subclasses
+  /// may record it.
   ImageChunkOutcome addChunk(
     Uint8List blob, {
     int channelIndex = 0,
     DateTime? now,
+    int? via,
   }) {
     final at = now ?? _clock();
     evictExpired(now: at);
@@ -1268,12 +1272,17 @@ class ParsedChannelData {
   final int dataType;
   final Uint8List payload;
 
+  /// The radio profile it arrived on: 0 main mesh, 1 radio2 (MediaMesh),
+  /// null unknown. Wadamesh puts it in the first reserved byte.
+  final int? via;
+
   const ParsedChannelData({
     required this.snrRaw,
     required this.channelIndex,
     required this.pathLenByte,
     required this.dataType,
     required this.payload,
+    this.via,
   });
 
   bool get arrivedByFlood => pathLenByte != 0xFF;
@@ -1299,6 +1308,11 @@ ParsedChannelData? parseChannelDataFrame(Uint8List frame) {
     pathLenByte: frame[5],
     dataType: frame[6] | (frame[7] << 8),
     payload: Uint8List.fromList(frame.sublist(9, 9 + dataLen)),
+    via: switch (frame[2]) {
+      0xA0 => 0,
+      0xA1 => 1,
+      _ => null,
+    },
   );
 }
 
@@ -1397,6 +1411,7 @@ class ImageChunkTransport {
     return reassembler.addChunk(
       parsed.payload,
       channelIndex: parsed.channelIndex,
+      via: parsed.via,
     );
   }
 }
