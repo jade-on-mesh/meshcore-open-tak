@@ -23,7 +23,7 @@ void main() {
     final off = Radio2Profile.fromReply(Radio2Reply.tryParse('> off')!);
     expect(off.mode, Radio2Mode.off);
     expect(off.setCommand, 'set radio2 off');
-    expect(off.tempCommand(60), 'set tempradio2 911.500,250,7,5,rxtx,60');
+    expect(off.tempCommand(60), 'set tempradio2 912.000,125,7,5,rxtx,60');
   });
 
   test('status line', () {
