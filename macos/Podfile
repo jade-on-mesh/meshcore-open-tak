@@ -30,6 +30,8 @@ target 'Runner' do
   use_frameworks!
 
   flutter_install_all_macos_pods File.dirname(File.realpath(__FILE__))
+  # Codec2 for voice messages (lib/services/codec2_ffi.dart finds it in the process).
+  pod 'codec2', :path => '../third_party/codec2'
   target 'RunnerTests' do
     inherit! :search_paths
   end
