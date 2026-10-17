@@ -363,8 +363,11 @@ class AppUpdateService extends ChangeNotifier {
   }
 
   /// Downloads this platform's file (checking its SHA-256 when published)
-  /// and installs it.
-  Future<void> downloadAndInstall() async {
+  /// and installs it. A checksum mismatch is first taken to mean the release
+  /// was republished since the last check (a new build's file under the old
+  /// build's hash): the release is read again and, if it changed, downloaded
+  /// once more.
+  Future<void> downloadAndInstall({bool afterRecheck = false}) async {
     final latest = _latest;
     final url = latest?.downloadUrl;
     if (latest == null || url == null) return;
@@ -426,6 +429,17 @@ class AppUpdateService extends ChangeNotifier {
       try {
         if (file != null && file.existsSync()) file.deleteSync();
       } catch (_) {}
+      if (!afterRecheck && e is FormatException && e.message.contains('checksum')) {
+        _status = AppUpdateStatus.available;
+        await check();
+        final again = _latest;
+        if (again != null &&
+            again.downloadUrl != null &&
+            again.isNewerThan(_installedBuild) &&
+            (again.build != latest.build || again.sha256 != latest.sha256)) {
+          return downloadAndInstall(afterRecheck: true);
+        }
+      }
       _fail(
         AppUpdateStatus.available,
         '${e is PlatformException ? e.message : e}',

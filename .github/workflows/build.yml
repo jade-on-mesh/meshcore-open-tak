@@ -53,8 +53,12 @@ jobs:
         with:
           distribution: "temurin"
           java-version: "17"
+      - id: fv   # the Flutter version: pinned in .flutter-version, bumped by the weekly dependency PR
+        shell: bash
+        run: echo "v=$(tr -d '[:space:]' < .flutter-version)" >> "$GITHUB_OUTPUT"
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: ${{ steps.fv.outputs.v }}
           channel: "stable"
           cache: true
       - name: Cache Gradle
@@ -116,7 +120,7 @@ jobs:
         run: |
           mkdir -p android/app/src/main/jniLibs/arm64-v8a
           cp third_party/aeic-hd-android/arm64-v8a/libaeic_codec_exec.so android/app/src/main/jniLibs/arm64-v8a/
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
       - name: Release signing key
         id: signing
         env:
@@ -186,8 +190,12 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+      - id: fv   # the Flutter version: pinned in .flutter-version, bumped by the weekly dependency PR
+        shell: bash
+        run: echo "v=$(tr -d '[:space:]' < .flutter-version)" >> "$GITHUB_OUTPUT"
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: ${{ steps.fv.outputs.v }}
           channel: "stable"
           cache: true
       # Codec2 uses C99 variable-length arrays, which MSVC lacks, so it is
@@ -210,7 +218,7 @@ jobs:
           gcc -O2 -std=gnu11 -shared -DGIT_HASH='"Unknown"' -I$src -Ithird_party/codec2/include \
             $files -o libcodec2.dll -static-libgcc -Wl,--export-all-symbols -lm
           ls -la libcodec2.dll
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
       - name: Build
         shell: bash
         run: |
@@ -247,11 +255,15 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+      - id: fv   # the Flutter version: pinned in .flutter-version, bumped by the weekly dependency PR
+        shell: bash
+        run: echo "v=$(tr -d '[:space:]' < .flutter-version)" >> "$GITHUB_OUTPUT"
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: ${{ steps.fv.outputs.v }}
           channel: "stable"
           cache: true
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
       - name: Build
         run: |
           set -euo pipefail
@@ -298,11 +310,15 @@ jobs:
             grep -E "^E:|Unable|has no installation candidate|Depends:|Conflicts:|Breaks:" /tmp/apt.log | head -15 | while IFS= read -r l; do echo "::error::apt: $l"; done
             exit 1
           fi
+      - id: fv   # the Flutter version: pinned in .flutter-version, bumped by the weekly dependency PR
+        shell: bash
+        run: echo "v=$(tr -d '[:space:]' < .flutter-version)" >> "$GITHUB_OUTPUT"
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: ${{ steps.fv.outputs.v }}
           channel: "stable"
           cache: true
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
       - name: Build
         run: |
           set -euo pipefail
@@ -367,9 +383,16 @@ jobs:
   # Puts whatever built onto the "Latest build" release, with version.json for
   # the app's update check (AppUpdateService). Android must have built; a
   # failed desktop build is left out rather than holding the release back.
+  # The release APK must start on an emulator before anything is published:
+  # devices update themselves from the release, and a build that can't get past
+  # its splash screen can't update itself out of it either.
+  smoke:
+    needs: [android]
+    uses: ./.github/workflows/smoke.yml
+
   publish:
-    if: always() && github.ref == 'refs/heads/main' && needs.android.result == 'success'
-    needs: [android, windows, macos, linux]
+    if: always() && github.ref == 'refs/heads/main' && needs.android.result == 'success' && needs.smoke.result == 'success'
+    needs: [android, smoke, windows, macos, linux]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -457,4 +480,11 @@ jobs:
                      meshcore-open-tak-linux-x86_64.tar.gz; do
             [ -f "dist/$old" ] || gh release delete-asset latest-build "$old" -y 2>/dev/null || true
           done
-          gh release upload latest-build dist/* --clobber
+          # version.json goes first and comes back last: the app's update check
+          # reads it, so it must never pair one build's hashes with another
+          # build's files ("checksum mismatch" mid-publish).
+          gh release delete-asset latest-build version.json -y 2>/dev/null || true
+          for f in dist/*; do
+            [ "$(basename "$f")" = version.json ] || gh release upload latest-build "$f" --clobber
+          done
+          gh release upload latest-build dist/version.json --clobber

@@ -1,0 +1,151 @@
+name: Dependency update
+
+# Packages and Flutter are pinned (pubspec.lock, .flutter-version) so a build
+# never changes underneath us. Once a week this moves them forward in a PR of
+# its own: newest Flutter stable, `flutter pub upgrade` within pubspec.yaml's
+# constraints and overrides, and the list of what changed. The same run then
+# runs the analyzer and tests and the Android smoke test on that branch, and
+# comments the result on the PR. Merge it when it is green and you want it.
+
+on:
+  schedule:
+    - cron: "17 15 * * 1"   # Mondays, 08:17 Pacific
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: deps-update
+  cancel-in-progress: false
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      branch: ${{ steps.pr.outputs.branch }}
+      pr: ${{ steps.pr.outputs.pr }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Newest Flutter stable
+        id: flutter
+        run: |
+          set -euo pipefail
+          current=$(tr -d '[:space:]' < .flutter-version)
+          latest=$(curl -fsSL https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json \
+            | python3 -c 'import json,sys; d=json.load(sys.stdin); h=d["current_release"]["stable"]; print(next(r["version"] for r in d["releases"] if r["hash"]==h))')
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          echo "$latest" > .flutter-version
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.flutter.outputs.latest }}
+          channel: "stable"
+          cache: true
+      - name: Upgrade packages
+        run: |
+          set -euo pipefail
+          cp pubspec.lock /tmp/old.lock
+          flutter pub upgrade
+      - name: What changed
+        id: diff
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' > /tmp/changes.md
+          import re
+          def versions(path):
+              out, name = {}, None
+              for line in open(path):
+                  m = re.match(r'^  ([a-z0-9_]+):$', line)
+                  if m: name = m.group(1); continue
+                  m = re.match(r'^    version: "?([^"\s]+)"?', line)
+                  if m and name: out[name] = m.group(1)
+              return out
+          old, new = versions('/tmp/old.lock'), versions('pubspec.lock')
+          rows = []
+          for n in sorted(set(old) | set(new)):
+              a, b = old.get(n), new.get(n)
+              if a != b:
+                  rows.append(f"| `{n}` | {a or '—'} | {b or 'removed'} |")
+          if rows:
+              print("| Package | Was | Now |\n|---|---|---|")
+              print("\n".join(rows))
+          PY
+          cat /tmp/changes.md
+          if [ -s /tmp/changes.md ] || [ "${{ steps.flutter.outputs.current }}" != "${{ steps.flutter.outputs.latest }}" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Open the PR
+        id: pr
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CUR: ${{ steps.flutter.outputs.current }}
+          NEW: ${{ steps.flutter.outputs.latest }}
+        run: |
+          set -euo pipefail
+          branch="deps/$(date -u +%Y-%m-%d)"
+          git config user.name "tak-ci"
+          git config user.email "tak-ci@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add pubspec.lock .flutter-version
+          git commit -m "Dependency update $(date -u +%Y-%m-%d)"
+          git push -f origin "$branch"
+          {
+            echo "Weekly dependency update. Nothing changes in a build until this is merged."
+            echo
+            if [ "$CUR" != "$NEW" ]; then echo "**Flutter:** $CUR → $NEW"; else echo "**Flutter:** $CUR (unchanged)"; fi
+            echo
+            if [ -s /tmp/changes.md ]; then cat /tmp/changes.md; else echo "No package changes."; fi
+            echo
+            echo "Checks (analyzer, tests, release APK started on an emulator) run in"
+            echo "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo "and the result is commented here. Merge only when it says they passed."
+          } > /tmp/body.md
+          pr=$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')
+          if [ -z "$pr" ]; then
+            gh pr create --base main --head "$branch" --title "Dependency update $(date -u +%Y-%m-%d)" --body-file /tmp/body.md
+            pr=$(gh pr list --head "$branch" --state open --json number --jq '.[0].number')
+          else
+            gh pr edit "$pr" --body-file /tmp/body.md
+          fi
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          echo "pr=$pr" >> "$GITHUB_OUTPUT"
+
+  # A PR opened with the workflow token doesn't start other workflows, so the
+  # checks run here, on the update branch.
+  check:
+    needs: upgrade
+    if: needs.upgrade.outputs.branch != ''
+    uses: ./.github/workflows/check.yml
+    with:
+      ref: ${{ needs.upgrade.outputs.branch }}
+
+  smoke:
+    needs: upgrade
+    if: needs.upgrade.outputs.branch != ''
+    uses: ./.github/workflows/smoke.yml
+    with:
+      ref: ${{ needs.upgrade.outputs.branch }}
+      build: true
+
+  report:
+    needs: [upgrade, check, smoke]
+    if: always() && needs.upgrade.outputs.pr != ''
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          CHECK: ${{ needs.check.result }}
+          SMOKE: ${{ needs.smoke.result }}
+        run: |
+          if [ "$CHECK" = success ] && [ "$SMOKE" = success ]; then
+            msg="✅ Analyzer, tests and the Android smoke test passed. Safe to merge."
+          else
+            msg="❌ Not safe to merge: analyzer/tests **$CHECK**, Android smoke test **$SMOKE**. Details: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          fi
+          gh pr comment "${{ needs.upgrade.outputs.pr }}" -R "$GITHUB_REPOSITORY" --body "$msg"
