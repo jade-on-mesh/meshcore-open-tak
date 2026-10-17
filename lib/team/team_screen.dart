@@ -22,6 +22,7 @@ import 'team_roles_screen.dart';
 import 'team_service.dart';
 import 'team_wire.dart';
 import 'watch_feed.dart';
+import 'watch_sounds.dart';
 
 class TeamScreen extends StatelessWidget {
   /// 0 Team, 1 Watch, 2 Pins, 3 Reports, 4 Setup.
@@ -321,13 +322,38 @@ class _WatchTabState extends State<WatchTab> {
           children: [
             const ListTile(
               title: Text('Channels to watch'),
-              subtitle: Text('Their messages show here as a compact feed.'),
+              subtitle: Text(
+                'Their messages show here as a compact feed. Give a channel '
+                'a sound to hear when one of its reports lands on the map.',
+              ),
             ),
             for (final c in feed.allChannels)
-              CheckboxListTile(
-                value: feed.watchedNames.contains(c.name),
-                title: Text(c.name),
-                onChanged: (v) => unawaited(feed.setWatched(c, v ?? false)),
+              Builder(
+                builder: (context) {
+                  final on = feed.watchedNames.contains(c.name);
+                  final sound = feed.soundFor(c.name);
+                  return ListTile(
+                    leading: Checkbox(
+                      value: on,
+                      onChanged: (v) =>
+                          unawaited(feed.setWatched(c, v ?? false)),
+                    ),
+                    title: Text(c.name),
+                    subtitle: on ? Text('Map alert: ${sound.label}') : null,
+                    onTap: () => unawaited(feed.setWatched(c, !on)),
+                    trailing: on
+                        ? IconButton(
+                            icon: Icon(
+                              sound == WatchSound.off
+                                  ? Icons.notifications_off_outlined
+                                  : Icons.notifications_active,
+                            ),
+                            tooltip: 'Alert sound for ${c.name}',
+                            onPressed: () => pickWatchSound(context, c.name),
+                          )
+                        : null,
+                  );
+                },
               ),
           ],
         ),
@@ -715,6 +741,52 @@ class _WatchCard extends StatelessWidget {
     );
   }
 }
+
+/// Choose [channel]'s map alert sound. Tapping one plays it, so they can be
+/// tried in turn; the sheet stays open until dismissed.
+Future<void> pickWatchSound(BuildContext context, String channel) =>
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        final feed = context.watch<WatchFeedService>();
+        final current = feed.soundFor(channel);
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * 0.75,
+            ),
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                ListTile(
+                  title: Text('Alert sound for $channel'),
+                  subtitle: const Text(
+                    'Plays when one of its reports with a position lands on '
+                    'the map. Tap a sound to hear it.',
+                  ),
+                ),
+                for (final s in WatchSound.values)
+                  ListTile(
+                    leading: Icon(
+                      s == WatchSound.off
+                          ? Icons.notifications_off_outlined
+                          : Icons.music_note_outlined,
+                    ),
+                    title: Text(s.label),
+                    trailing: s == current ? const Icon(Icons.check) : null,
+                    selected: s == current,
+                    onTap: () {
+                      unawaited(feed.setSound(channel, s));
+                      unawaited(feed.preview(s));
+                    },
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
 
 /// [text] with each of the search's [words] on a [mark] background.
 TextSpan watchMarked(String text, List<String> words, Color mark) {

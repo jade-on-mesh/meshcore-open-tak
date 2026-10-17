@@ -22,6 +22,7 @@ import '../connector/meshcore_connector.dart';
 import '../models/channel.dart';
 import '../models/channel_message.dart';
 import 'team_wire.dart' show teamBearingDeg, teamDistanceMeters;
+import 'watch_sounds.dart';
 
 /// Status levels found in feed reports, most urgent first.
 enum WatchLevel {
@@ -593,6 +594,7 @@ class WatchFeedService extends ChangeNotifier {
   static const _kSeen = 'watch_seen_v1';
   static const _kMapTtl = 'watch_map_ttl_min_v1';
   static const _kFirstSeen = 'watch_first_seen_v1';
+  static const _kSounds = 'watch_sounds_v1';
 
   Duration? _mapTtl = const Duration(hours: 6);
 
@@ -725,6 +727,12 @@ class WatchFeedService extends ChangeNotifier {
       _watched.addAll(p.getStringList(_kChannels) ?? const []);
       final s = p.getInt(_kSeen);
       if (s != null) _seen = DateTime.fromMillisecondsSinceEpoch(s);
+      for (final e in p.getStringList(_kSounds) ?? const <String>[]) {
+        final i = e.lastIndexOf('=');
+        if (i > 0) {
+          _sounds[e.substring(0, i)] = WatchSound.fromName(e.substring(i + 1));
+        }
+      }
       final ttl = p.getInt(_kMapTtl);
       if (ttl != null) _mapTtl = ttl == 0 ? null : Duration(minutes: ttl);
       for (final e in p.getStringList(_kFirstSeen) ?? const <String>[]) {
@@ -742,6 +750,7 @@ class WatchFeedService extends ChangeNotifier {
       _watched.add(c.name);
     } else {
       _watched.remove(c.name);
+      _primed.remove(c.name); // its history stays silent if watched again
     }
     _dirty = true;
     notifyListeners();
@@ -749,6 +758,84 @@ class WatchFeedService extends ChangeNotifier {
       final p = await SharedPreferences.getInstance();
       await p.setStringList(_kChannels, _watched.toList());
     } catch (_) {}
+  }
+
+  // ------------------------------------------------------- alert sounds
+
+  /// Each watched channel's alert sound, by channel name (off if unset).
+  final Map<String, WatchSound> _sounds = {};
+  final WatchSoundPlayer _player = WatchSoundPlayer();
+
+  WatchSound soundFor(String channel) => _sounds[channel] ?? WatchSound.off;
+
+  Future<void> setSound(String channel, WatchSound s) async {
+    if (s == WatchSound.off) {
+      _sounds.remove(channel);
+    } else {
+      _sounds[channel] = s;
+    }
+    notifyListeners();
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setStringList(_kSounds, [
+        for (final e in _sounds.entries) '${e.key}=${e.value.name}',
+      ]);
+    } catch (_) {}
+  }
+
+  /// Plays [s] now, e.g. to try it in the picker.
+  Future<void> preview(WatchSound s) => _player.play(s);
+
+  // Reports already accounted for, so each new one sounds once.
+  final Set<String> _known = {};
+  // Channels whose existing reports have been taken in silently.
+  final Set<String> _primed = {};
+  final Map<String, DateTime> _lastSound = {}; // by channel
+  final Map<String, DateTime> _trackHeard = {}; // by trackId (a drone)
+
+  /// A watched report with a position just reached the map: play its
+  /// channel's sound. Not for history: a channel's reports when it is first
+  /// seen (app start, a newly watched channel, another radio), a burst of
+  /// stored messages, or reports more than 30 minutes old. A drone sounds
+  /// when it first appears, not for every update while it keeps reporting.
+  /// One sound per channel per 8 s at most.
+  void _announceNew() {
+    final now = DateTime.now();
+    final cutoff = _mapTtl == null ? null : now.subtract(_mapTtl!);
+    final fresh = <String, List<WatchItem>>{};
+    for (final i in items) {
+      if (_known.add(i.key)) {
+        (fresh[i.channel.name] ??= []).add(i);
+      }
+    }
+    WatchSound? sound;
+    for (final e in fresh.entries) {
+      final silent = _primed.add(e.key) || e.value.length > 5;
+      for (final i in e.value) {
+        if (!i.hasPosition) continue;
+        final t = i.trackId;
+        if (t != null) {
+          final last = _trackHeard[t];
+          _trackHeard[t] = now;
+          if (last != null && now.difference(last).inMinutes < 10) continue;
+        }
+        if (silent) continue;
+        if (cutoff != null && i.time.isBefore(cutoff)) continue;
+        if (now.difference(i.time).inMinutes > 30) continue;
+        final s = soundFor(e.key);
+        if (s == WatchSound.off) continue;
+        final last = _lastSound[e.key];
+        if (last != null && now.difference(last).inSeconds < 8) continue;
+        _lastSound[e.key] = now;
+        sound ??= s;
+      }
+    }
+    if (_known.length > 5000) {
+      _known
+        ..clear()
+        ..addAll(items.map((i) => i.key));
+    }
+    if (sound != null) unawaited(_player.play(sound));
   }
 
   /// Marks everything up to now as seen (clears the unread badge).
@@ -780,6 +867,7 @@ class WatchFeedService extends ChangeNotifier {
     if (sig != _signature) {
       _signature = sig;
       _dirty = true;
+      _announceNew();
       notifyListeners();
     }
   }
@@ -822,6 +910,7 @@ class WatchFeedService extends ChangeNotifier {
   void dispose() {
     _expiry.cancel();
     _mapFocusTimer?.cancel();
+    _player.dispose();
     _connector.removeListener(_onConnector);
     super.dispose();
   }
