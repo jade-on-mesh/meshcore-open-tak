@@ -2074,13 +2074,26 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
+              _tak.filterToggle(
+                panel: _overlayPanelColor,
+                border: _overlayBorderColor,
+                text: _overlayPrimaryTextColor,
+                filtered:
+                    _freshness != _Freshness.all ||
+                    !settings.mapShowRepeaters ||
+                    !settings.mapShowChatNodes ||
+                    !settings.mapShowRooms ||
+                    !settings.mapShowSensors,
+              ),
             ],
           ),
           const SizedBox(height: 6),
           _buildMapSourceSwitch(context, mapSource),
-          const SizedBox(height: 6),
+          SizedBox(height: _tak.filtersHidden ? 0 : 6),
           LayoutBuilder(
             builder: (context, constraints) {
+              if (_tak.filtersHidden) return const SizedBox.shrink();
               final chips = <Widget>[
                 _mapChip(
                   label: context.l10n.time_allTime,
