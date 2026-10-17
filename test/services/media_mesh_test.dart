@@ -111,6 +111,21 @@ void main() {
       expect(parseTxMediaReply('> both; active=both'), 'both');
       expect(parseTxMediaReply('> radio2; active=radio2'), 'radio2');
       expect(parseTxMediaReply('> sideways'), isNull);
+      // keymindCascade's wording.
+      expect(
+        parseTxMediaReply('> tx.media radio2; active=radio2'),
+        'radio2',
+      );
+      expect(
+        parseTxMediaReply('> tx.media auto; active=channel/global'),
+        'auto',
+      );
+      expect(
+        parseTxMediaReply(
+          '> tx.media both; active=radio (radio2 unavailable for TX)',
+        ),
+        'both',
+      );
     });
 
     test('OK detection', () {

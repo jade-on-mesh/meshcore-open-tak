@@ -430,7 +430,12 @@ String? parseTxMediaReply(String reply) {
   var text = reply.trim();
   if (text.indexOf('|') == 2) text = text.substring(3);
   if (!text.startsWith('>')) return null;
-  final value = text.substring(1).trim().split(RegExp(r'[\s;]')).first;
+  // Wadamesh answers `> radio2`; mikecarper's keymindCascade repeats the
+  // setting's name: `> tx.media radio2; active=radio2`.
+  final words = text.substring(1).trim().split(RegExp(r'[\s;]+'));
+  final value = words.first == 'tx.media' && words.length > 1
+      ? words[1]
+      : words.first;
   const known = {'auto', 'radio', 'radio2', 'both', 'off'};
   return known.contains(value) ? value : null;
 }
