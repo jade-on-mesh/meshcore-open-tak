@@ -1,0 +1,23 @@
+name: Make lockfile (temporary)
+on:
+  push:
+    branches: [build-safety]
+permissions:
+  contents: write
+jobs:
+  lock:
+    if: ${{ !contains(github.event.head_commit.message, '[lock]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.7"
+          channel: "stable"
+      - run: flutter pub get
+      - run: |
+          git config user.name Claude
+          git config user.email noreply@anthropic.com
+          git add pubspec.lock
+          git commit -m "pubspec.lock from Flutter 3.47.7 [lock]" || exit 0
+          git push
