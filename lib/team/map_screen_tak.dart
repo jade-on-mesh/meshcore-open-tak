@@ -15,10 +15,13 @@
 //   overlays    ..._tak.overlays(context, showTeamOverlay: ...)
 //               if (_tak.chatOpen) _tak.chatPane()
 //   conditions  !_tak.drawing (top overlay), !_tak.chatOpen (filter FAB)
+//   filters     _tak.filterToggle(...) beside the node count;
+//               if (!_tak.filtersHidden) on the filter chips
 //
 // Keep it that way: new map features go in here (or another lib/team file),
 // not in map_screen.dart.
 
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -26,6 +29,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
+import '../storage/prefs_manager.dart';
 import 'map_chat_pane.dart';
 import 'map_tools.dart';
 import 'team_draw.dart';
@@ -45,7 +49,61 @@ class MapScreenTak {
 
   MapScreenTak({required this.mapController, required this.onChanged}) {
     draw.addListener(onChanged);
+    try {
+      _filtersHidden = PrefsManager.instance.getBool(_kFiltersHidden) ?? false;
+    } catch (_) {}
   }
+
+  // ---- the filter chips (All time … Group): hide them on small screens
+
+  static const _kFiltersHidden = 'tak_map_filters_hidden_v1';
+  bool _filtersHidden = false;
+
+  /// The row of filter chips under the search box is folded away.
+  bool get filtersHidden => _filtersHidden;
+
+  void toggleFilters() {
+    _filtersHidden = !_filtersHidden;
+    onChanged();
+    try {
+      unawaited(PrefsManager.instance.setBool(_kFiltersHidden, _filtersHidden));
+    } catch (_) {}
+  }
+
+  /// The round button beside the node count that folds the filter chips away
+  /// and back (remembered). While they are folded, a dot on it says some
+  /// filter ([filtered]) is still hiding nodes.
+  Widget filterToggle({
+    required Color panel,
+    required Color border,
+    required Color text,
+    required bool filtered,
+  }) => Tooltip(
+    message: _filtersHidden ? 'Show map filters' : 'Hide map filters',
+    child: Material(
+      color: panel,
+      shape: CircleBorder(side: BorderSide(color: border)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: toggleFilters,
+        child: SizedBox(
+          width: 46,
+          height: 46,
+          child: Center(
+            child: Badge(
+              isLabelVisible: _filtersHidden && filtered,
+              smallSize: 8,
+              child: Icon(
+                _filtersHidden ? Icons.filter_list : Icons.filter_list_off,
+                size: 20,
+                color: text,
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 
   void dispose() {
     draw
