@@ -198,3 +198,5 @@ void main() {
     expect(it.matches(['auburn', 'tacoma']), isFalse);
   });
 }
+
+typedef LatLngPair = (double?, double?);
