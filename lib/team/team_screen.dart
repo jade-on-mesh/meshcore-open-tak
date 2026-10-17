@@ -260,8 +260,10 @@ class _WatchTabState extends State<WatchTab> {
     unawaited(
       Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) =>
-              MapScreen(focusPosition: LatLng(it.lat!, it.lon!), focusZoom: 16),
+          builder: (_) => MapScreen(
+            focusPosition: LatLng(it.lat!, it.lon!),
+            focusZoom: 16,
+          ),
         ),
       ),
     );
@@ -523,9 +525,7 @@ class _WatchTabState extends State<WatchTab> {
                       highlighted: lit,
                       item: it,
                       words: words,
-                      onShowOnMap: it.hasPosition
-                          ? () => _showOnMap(it)
-                          : null,
+                      onShowOnMap: it.hasPosition ? () => _showOnMap(it) : null,
                       unseen: feed.isUnseen(it),
                       expanded: open,
                       range: fix == null || !it.hasPosition
