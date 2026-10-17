@@ -360,20 +360,6 @@ class AppLocalizationsSl extends AppLocalizations {
   String get scanner_enableBluetooth => 'Omogočite Bluetooth';
 
   @override
-  String get scanner_getNodeTitle => 'Potrebujete nov node?';
-
-  @override
-  String get scanner_getNodeBody =>
-      'Velikosti denarnice, poganja MeshCore, dvopasovni GPS, vodoodporen, baterija za 5 dni.';
-
-  @override
-  String get scanner_getNodeAction => 'Oglejte si ga tukaj';
-
-  @override
-  String get scanner_getNodeDisclosure =>
-      'Partnerska povezava: vsak nakup podpira MeshCore Open.';
-
-  @override
   String get scanner_bluetoothWebUnsupported =>
       'Funkcija Bluetooth v brskalniku ni na voljo. Povežite se preko USB-ja namesto tega.';
 

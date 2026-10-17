@@ -742,30 +742,6 @@ abstract class AppLocalizations {
   /// **'Enable Bluetooth'**
   String get scanner_enableBluetooth;
 
-  /// No description provided for @scanner_getNodeTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Need a new node?'**
-  String get scanner_getNodeTitle;
-
-  /// No description provided for @scanner_getNodeBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Wallet-sized, runs MeshCore, dual-band GPS, waterproof, 5-day battery.'**
-  String get scanner_getNodeBody;
-
-  /// No description provided for @scanner_getNodeAction.
-  ///
-  /// In en, this message translates to:
-  /// **'Get one here'**
-  String get scanner_getNodeAction;
-
-  /// No description provided for @scanner_getNodeDisclosure.
-  ///
-  /// In en, this message translates to:
-  /// **'Affiliate link: each purchase supports MeshCore Open.'**
-  String get scanner_getNodeDisclosure;
-
   /// No description provided for @scanner_bluetoothWebUnsupported.
   ///
   /// In en, this message translates to:

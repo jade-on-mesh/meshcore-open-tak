@@ -361,20 +361,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get scanner_enableBluetooth => 'Включите Bluetooth';
 
   @override
-  String get scanner_getNodeTitle => 'Нужна новая нода?';
-
-  @override
-  String get scanner_getNodeBody =>
-      'Размером с кошелёк, работает на MeshCore, двухдиапазонный GPS, водонепроницаемая, батареи хватает на 5 дней.';
-
-  @override
-  String get scanner_getNodeAction => 'Купить здесь';
-
-  @override
-  String get scanner_getNodeDisclosure =>
-      'Партнёрская ссылка: каждая покупка поддерживает MeshCore Open.';
-
-  @override
   String get scanner_bluetoothWebUnsupported =>
       'Bluetooth недоступен в браузере. Подключитесь через USB.';
 

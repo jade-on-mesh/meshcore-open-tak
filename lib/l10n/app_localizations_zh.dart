@@ -342,18 +342,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get scanner_enableBluetooth => '启用蓝牙';
 
   @override
-  String get scanner_getNodeTitle => '需要新节点吗？';
-
-  @override
-  String get scanner_getNodeBody => '钱包大小，运行 MeshCore，双频 GPS，防水，续航 5 天。';
-
-  @override
-  String get scanner_getNodeAction => '点此获取';
-
-  @override
-  String get scanner_getNodeDisclosure => '推广链接：每次购买都会支持 MeshCore Open。';
-
-  @override
   String get scanner_bluetoothWebUnsupported => '浏览器不支持蓝牙，请改用 USB 连接。';
 
   @override
