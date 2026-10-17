@@ -132,9 +132,6 @@ The App includes a GIF picker feature powered by Giphy. When you use the GIF sea
 
 GIF search is optional and activated through the picker. Displaying a GIF reference received in a chat also requests image content from Giphy’s CDN, even if you did not perform a search. See [Giphy's Privacy Policy](https://support.giphy.com/hc/en-us/articles/360032872931-GIPHY-Privacy-Policy) for more information about how they handle data.
 
-### Device Purchase Link (Seeed Studio)
-The connection screen shows a link to buy a MeshCore device from Seeed Studio. The link contains a MeshCore Open affiliate code, so the project may earn a commission on purchases made through it, at no extra cost to you. The App sends nothing to Seeed Studio unless you tap the link; tapping it opens Seeed Studio's website in your browser, where Seeed Studio's own privacy policy applies.
-
 ### URL Image Previews and Custom Model URLs
 
 When URL images are enabled for a contact or channel, supported links in messages can cause requests to the referenced image host, sharing-page provider, or IPFS gateway. These services receive the requested URL and normal connection information, including your IP address. Requests may occur when chat content is displayed rather than only after tapping the link. Disable URL images in the contact/channel settings to disable this preview feature.

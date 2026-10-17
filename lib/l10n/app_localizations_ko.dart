@@ -345,20 +345,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get scanner_enableBluetooth => '블루투스 켜기';
 
   @override
-  String get scanner_getNodeTitle => '새 노드가 필요하신가요?';
-
-  @override
-  String get scanner_getNodeBody =>
-      '지갑 크기에 MeshCore 구동, 듀얼 밴드 GPS, 방수, 5일 배터리.';
-
-  @override
-  String get scanner_getNodeAction => '여기서 구하기';
-
-  @override
-  String get scanner_getNodeDisclosure =>
-      '제휴 링크: 구매할 때마다 MeshCore Open을 후원하게 됩니다.';
-
-  @override
   String get scanner_bluetoothWebUnsupported =>
       '브라우저에서는 블루투스를 사용할 수 없습니다. 대신 USB로 연결하세요.';
 

@@ -345,20 +345,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get scanner_enableBluetooth => 'Bluetooth を有効にする';
 
   @override
-  String get scanner_getNodeTitle => '新しいノードが必要ですか?';
-
-  @override
-  String get scanner_getNodeBody =>
-      '財布サイズで MeshCore が動作。デュアルバンドGPS、防水、バッテリー5日間。';
-
-  @override
-  String get scanner_getNodeAction => 'こちらで入手';
-
-  @override
-  String get scanner_getNodeDisclosure =>
-      'アフィリエイトリンク: 購入のたびに MeshCore Open を応援できます。';
-
-  @override
   String get scanner_bluetoothWebUnsupported =>
       'ブラウザでは Bluetooth は利用できません。代わりに USB で接続してください。';
 

@@ -365,20 +365,6 @@ class AppLocalizationsPl extends AppLocalizations {
   String get scanner_enableBluetooth => 'Włącz Bluetooth';
 
   @override
-  String get scanner_getNodeTitle => 'Potrzebujesz nowego węzła?';
-
-  @override
-  String get scanner_getNodeBody =>
-      'Wielkości portfela, z MeshCore, dwuzakresowy GPS, wodoodporny, bateria na 5 dni.';
-
-  @override
-  String get scanner_getNodeAction => 'Kup tutaj';
-
-  @override
-  String get scanner_getNodeDisclosure =>
-      'Link partnerski: każdy zakup wspiera MeshCore Open.';
-
-  @override
   String get scanner_bluetoothWebUnsupported =>
       'Bluetooth nie jest dostępny w przeglądarce. Połącz się przez USB.';
 

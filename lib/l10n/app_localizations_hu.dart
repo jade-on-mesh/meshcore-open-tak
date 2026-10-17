@@ -358,20 +358,6 @@ class AppLocalizationsHu extends AppLocalizations {
   String get scanner_enableBluetooth => 'Bluetooth engedélyezése';
 
   @override
-  String get scanner_getNodeTitle => 'Új csomópontra van szükséged?';
-
-  @override
-  String get scanner_getNodeBody =>
-      'Pénztárca méretű, MeshCore-t futtat, kétsávos GPS, vízálló, 5 napos akkumulátor.';
-
-  @override
-  String get scanner_getNodeAction => 'Itt szerezhetsz egyet';
-
-  @override
-  String get scanner_getNodeDisclosure =>
-      'Partnerlink: minden vásárlás a MeshCore Opent támogatja.';
-
-  @override
   String get scanner_bluetoothWebUnsupported =>
       'A Bluetooth nem érhető el a böngészőben. Inkább csatlakoztasson USB-n keresztül.';
 

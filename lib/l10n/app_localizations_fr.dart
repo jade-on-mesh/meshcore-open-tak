@@ -362,20 +362,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get scanner_enableBluetooth => 'Activer le Bluetooth';
 
   @override
-  String get scanner_getNodeTitle => 'Besoin d\'un nouveau nœud ?';
-
-  @override
-  String get scanner_getNodeBody =>
-      'Format portefeuille, fonctionne avec MeshCore, GPS bi-bande, étanche, 5 jours d\'autonomie.';
-
-  @override
-  String get scanner_getNodeAction => 'Obtenez-le ici';
-
-  @override
-  String get scanner_getNodeDisclosure =>
-      'Lien d\'affiliation : chaque achat soutient MeshCore Open.';
-
-  @override
   String get scanner_bluetoothWebUnsupported =>
       'La fonctionnalité Bluetooth n\'est pas disponible dans le navigateur. Veuillez vous connecter via USB à la place.';
 

@@ -360,20 +360,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get scanner_enableBluetooth => 'Habilitar Bluetooth';
 
   @override
-  String get scanner_getNodeTitle => '¿Necesitas un nodo nuevo?';
-
-  @override
-  String get scanner_getNodeBody =>
-      'Tamaño cartera, funciona con MeshCore, GPS de doble banda, resistente al agua y 5 días de batería.';
-
-  @override
-  String get scanner_getNodeAction => 'Consíguelo aquí';
-
-  @override
-  String get scanner_getNodeDisclosure =>
-      'Enlace de afiliado: cada compra apoya a MeshCore Open.';
-
-  @override
   String get scanner_bluetoothWebUnsupported =>
       'La funcionalidad Bluetooth no está disponible en el navegador. Conéctese mediante USB en su lugar.';
 
