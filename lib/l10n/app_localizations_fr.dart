@@ -7081,4 +7081,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String settings_aboutRadioProtocol(int code) {
     return 'Companion protocol v$code';
   }
+
+  @override
+  String startup_stalled(String steps) {
+    return 'Startup skipped a step that didn\'t finish: $steps. The app may be missing something until it restarts.';
+  }
 }

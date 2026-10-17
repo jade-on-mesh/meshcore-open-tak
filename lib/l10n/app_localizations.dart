@@ -11940,6 +11940,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Companion protocol v{code}'**
   String settings_aboutRadioProtocol(int code);
+
+  /// No description provided for @startup_stalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Startup skipped a step that didn\'t finish: {steps}. The app may be missing something until it restarts.'**
+  String startup_stalled(String steps);
 }
 
 class _AppLocalizationsDelegate
