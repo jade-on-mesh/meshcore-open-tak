@@ -1,0 +1,84 @@
+name: Android smoke test
+
+# Installs the RELEASE APK on an Android emulator, starts it and waits for the
+# app's first frame. Unit tests run debug code without R8, so they can't see a
+# release build that never gets past the splash screen (October 2026:
+# shared_preferences_android 2.5 + R8 -> NoSuchMethodError at the first
+# settings read). build.yml publishes only when this passes.
+#
+# Called from build.yml with the APK it just built (artifact
+# meshcore-open-tak-apk), or from deps-update.yml with build: true for a branch.
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: false
+        default: ""
+      build:
+        description: Build the release APK here instead of using the run's artifact
+        type: boolean
+        required: false
+        default: false
+  workflow_dispatch:
+    inputs:
+      build:
+        type: boolean
+        default: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      # ---- the APK: this run's artifact, or built here -----------------------
+      - if: ${{ !inputs.build }}
+        uses: actions/download-artifact@v4
+        with:
+          name: meshcore-open-tak-apk
+          path: apk
+      - if: ${{ inputs.build }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+      - if: ${{ inputs.build }}
+        id: fv
+        shell: bash
+        run: echo "v=$(tr -d '[:space:]' < .flutter-version)" >> "$GITHUB_OUTPUT"
+      - if: ${{ inputs.build }}
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.fv.outputs.v }}
+          channel: "stable"
+          cache: true
+      - if: ${{ inputs.build }}
+        name: Build the release APK
+        run: |
+          set -euo pipefail
+          flutter pub get --enforce-lockfile
+          flutter build apk --release --target-platform android-arm64
+          mkdir -p apk && cp build/app/outputs/flutter-apk/app-release.apk apk/
+
+      # ---- the emulator ------------------------------------------------------
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Start the app on an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          # x86_64 images from API 30 run arm64 apps through ARM translation
+          # (the APK is arm64 only).
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: bash scripts/ci/android_smoke.sh apk/*.apk

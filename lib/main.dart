@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -50,6 +51,7 @@ import 'vox/voice_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  _catchUncaughtErrors();
 
   // On desktop, debugPrint is not suppressed in release builds and every
   // call is a synchronous stdout write. The connector logs heavily on hot
@@ -609,10 +611,15 @@ Future<void> _startupStep(
 }
 
 void _reportStartupStalls() {
-  if (_startupStalls.isEmpty) return;
-  final steps = _startupStalls.join('; ');
-  appLogger.warn('Startup steps that did not finish: $steps', tag: 'Startup');
   WidgetsBinding.instance.addPostFrameCallback((_) {
+    // The CI smoke test (scripts/ci/android_smoke.sh) waits for this line: the
+    // release build got past the splash screen. print, not debugPrint, which is
+    // silenced in release builds.
+    // ignore: avoid_print
+    print('MeshCoreOpen: first frame');
+    if (_startupStalls.isEmpty) return;
+    final steps = _startupStalls.join('; ');
+    appLogger.warn('Startup steps that did not finish: $steps', tag: 'Startup');
     final context = appNavigatorKey.currentContext;
     if (context == null) return;
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
@@ -622,4 +629,34 @@ void _reportStartupStalls() {
       ),
     );
   });
+}
+
+/// Errors nothing awaited: a failed platform call in a fire-and-forget future,
+/// an exception in a callback. Before the first frame they are kept with the
+/// startup report (the app opens and says so); after it they go to the app log.
+/// Either way they are printed once for the smoke test and adb logcat.
+var _firstFrameShown = false;
+
+void _catchUncaughtErrors() {
+  void record(Object error) {
+    final line = '$error'.split('\n').first;
+    // ignore: avoid_print
+    print('MeshCoreOpen: uncaught error: $line');
+    if (!_firstFrameShown) {
+      _startupStalls.add(line);
+    } else {
+      appLogger.error(line, tag: 'Uncaught');
+    }
+  }
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    record(error);
+    return true;
+  };
+  final previous = FlutterError.onError;
+  FlutterError.onError = (details) {
+    record(details.exception);
+    previous?.call(details);
+  };
+  WidgetsBinding.instance.addPostFrameCallback((_) => _firstFrameShown = true);
 }
