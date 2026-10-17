@@ -162,6 +162,27 @@ class WatchItem {
   bool get hasPosition => lat != null && lon != null;
   String get key => '${channel.index}:${message.messageId}';
 
+  /// Everything the Watch search looks through, lower-cased.
+  String get searchText => [
+    statusWord,
+    place,
+    trackId,
+    detail,
+    label2,
+    level == WatchLevel.none ? null : level.label,
+    channel.name,
+    message.senderName,
+    message.text,
+    ...otherLines,
+  ].whereType<String>().join('\n').toLowerCase();
+
+  /// The search box's words: every one must appear (any order, any case).
+  bool matches(List<String> words) {
+    if (words.isEmpty) return true;
+    final text = searchText;
+    return words.every(text.contains);
+  }
+
   /// One-line headline for the card.
   String get headline {
     if (trackId != null) return trackId!;
@@ -618,8 +639,28 @@ class WatchFeedService extends ChangeNotifier {
     } catch (_) {}
   }
 
+  // The report the Watch search (or a card's map button) asked the map to
+  // show: drawn with a pulsing ring, and kept on the map even if it is older
+  // than [mapTtl] or a newer report of the same drone exists.
+  String? _mapFocus;
+  Timer? _mapFocusTimer;
+
+  String? get mapFocusKey => _mapFocus;
+
+  /// Light up [item] on the map for a minute.
+  void focusOnMap(WatchItem item) {
+    _mapFocusTimer?.cancel();
+    _mapFocus = item.key;
+    _mapFocusTimer = Timer(const Duration(minutes: 1), () {
+      _mapFocus = null;
+      notifyListeners();
+    });
+    notifyListeners();
+  }
+
   /// Watched reports to put on the map: with a position, within [mapTtl],
-  /// and only the newest report of anything tracked (a drone by serial).
+  /// and only the newest report of anything tracked (a drone by serial),
+  /// plus the one [focusOnMap] lit up.
   List<WatchItem> get mapItems {
     final cutoff = _mapTtl == null ? null : DateTime.now().subtract(_mapTtl!);
     final latest = <String, WatchItem>{};
@@ -627,6 +668,7 @@ class WatchFeedService extends ChangeNotifier {
     _courses.clear();
     for (final i in items) {
       if (!i.hasPosition) continue;
+      final focused = i.key == _mapFocus;
       final t = i.trackId;
       if (t != null) {
         final newer = latest[t];
@@ -643,12 +685,12 @@ class WatchFeedService extends ChangeNotifier {
               newer.lon!,
             );
           }
-          continue;
+          if (!focused) continue;
         }
       }
-      if (cutoff != null && i.time.isBefore(cutoff)) continue;
-      if (t != null) latest[t] = i;
-      if (out.length < 300) out.add(i);
+      if (!focused && cutoff != null && i.time.isBefore(cutoff)) continue;
+      if (t != null) latest.putIfAbsent(t, () => i);
+      if (out.length < 300 || focused) out.add(i);
     }
     return out;
   }
@@ -779,6 +821,7 @@ class WatchFeedService extends ChangeNotifier {
   @override
   void dispose() {
     _expiry.cancel();
+    _mapFocusTimer?.cancel();
     _connector.removeListener(_onConnector);
     super.dispose();
   }

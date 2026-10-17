@@ -10,6 +10,7 @@ import 'package:latlong2/latlong.dart' show LatLng;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../screens/map_screen.dart';
 import 'tak/atak_plugin_bridge.dart';
 import 'tak/tak_service.dart';
 import 'team_casevac_ui.dart';
@@ -179,6 +180,15 @@ class _WatchTabState extends State<WatchTab> {
   String? _highlight; // the report opened from the map, lit for a while
   bool _focusPending = false;
   Timer? _highlightTimer;
+  final _search = TextEditingController();
+  String _query = '';
+
+  /// The search box's words, lower-cased.
+  List<String> get _words => _query
+      .toLowerCase()
+      .split(RegExp(r'\s+'))
+      .where((w) => w.isNotEmpty)
+      .toList();
 
   @override
   void initState() {
@@ -198,6 +208,7 @@ class _WatchTabState extends State<WatchTab> {
   void dispose() {
     _highlightTimer?.cancel();
     _scroll.dispose();
+    _search.dispose();
     super.dispose();
   }
 
@@ -234,6 +245,40 @@ class _WatchTabState extends State<WatchTab> {
         if (mounted) setState(() => _highlight = null);
       });
     });
+  }
+
+  /// Opens the map on [it] with its pin ringed and pulsing, and lights its
+  /// card here for when the user comes back.
+  void _showOnMap(WatchItem it) {
+    FocusScope.of(context).unfocus();
+    context.read<WatchFeedService>().focusOnMap(it);
+    _highlightTimer?.cancel();
+    setState(() => _highlight = it.key);
+    _highlightTimer = Timer(const Duration(seconds: 20), () {
+      if (mounted) setState(() => _highlight = null);
+    });
+    unawaited(
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => MapScreen(
+            focusPosition: LatLng(it.lat!, it.lon!),
+            focusZoom: 16,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The search's Enter key or map button: the newest match with a position.
+  void _showTopMatch(List<WatchItem> items) {
+    final at = items.where((i) => i.hasPosition).firstOrNull;
+    if (at != null) {
+      _showOnMap(at);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No matching report has a position.')),
+      );
+    }
   }
 
   Future<void> _chooseMapTtl(WatchFeedService feed) =>
@@ -325,12 +370,18 @@ class _WatchTabState extends State<WatchTab> {
       final f = all.firstWhere((i) => i.key == widget.focusKey);
       if (_channel != null && _channel != f.channel.name) _channel = null;
       if (_levels.isNotEmpty && !_levels.contains(f.level)) _levels.clear();
+      if (!f.matches(_words)) {
+        _search.clear();
+        _query = '';
+      }
     }
+    final words = _words;
     final items = [
       for (final i in all)
         if ((_channel == null || i.channel.name == _channel) &&
             (_levels.isEmpty || _levels.contains(i.level)) &&
-            (!_quakesOnly || i.isQuake))
+            (!_quakesOnly || i.isQuake) &&
+            i.matches(words))
           i,
     ];
     if (_focusPending) {
@@ -409,10 +460,59 @@ class _WatchTabState extends State<WatchTab> {
             ],
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 2, 8, 8),
+          child: TextField(
+            controller: _search,
+            textInputAction: TextInputAction.search,
+            onChanged: (v) => setState(() => _query = v),
+            onSubmitted: (_) => _showTopMatch(items),
+            decoration: InputDecoration(
+              isDense: true,
+              border: const OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.search, size: 20),
+              hintText: 'Search reports (place, drone, word…)',
+              suffixIcon: words.isEmpty
+                  ? null
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${items.length}',
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(Icons.map_outlined, size: 20),
+                          tooltip: 'Show the newest match on the map',
+                          onPressed: items.any((i) => i.hasPosition)
+                              ? () => _showTopMatch(items)
+                              : null,
+                        ),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(Icons.close, size: 20),
+                          tooltip: 'Clear search',
+                          onPressed: () => setState(() {
+                            _search.clear();
+                            _query = '';
+                          }),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
         const Divider(height: 1),
         Expanded(
           child: items.isEmpty
-              ? const Center(child: Text('Nothing matches these filters.'))
+              ? Center(
+                  child: Text(
+                    words.isEmpty
+                        ? 'Nothing matches these filters.'
+                        : 'No reports match "${_query.trim()}".',
+                  ),
+                )
               : ListView.builder(
                   controller: _scroll,
                   itemCount: items.length,
@@ -424,6 +524,8 @@ class _WatchTabState extends State<WatchTab> {
                       key: lit ? _focusCard : null,
                       highlighted: lit,
                       item: it,
+                      words: words,
+                      onShowOnMap: it.hasPosition ? () => _showOnMap(it) : null,
                       unseen: feed.isUnseen(it),
                       expanded: open,
                       range: fix == null || !it.hasPosition
@@ -462,9 +564,15 @@ class _WatchCard extends StatelessWidget {
   final bool highlighted; // opened from its pin on the map
   final String? range;
   final VoidCallback onTap;
+
+  /// The Watch search's words, marked wherever they appear.
+  final List<String> words;
+  final VoidCallback? onShowOnMap;
   const _WatchCard({
     super.key,
     this.highlighted = false,
+    this.words = const [],
+    this.onShowOnMap,
     required this.item,
     required this.unseen,
     required this.expanded,
@@ -488,6 +596,11 @@ class _WatchCard extends StatelessWidget {
       it.channel.name,
       ?range,
     ].join(' · ');
+    final mark = scheme.tertiaryContainer;
+    final head = it.headline.toLowerCase();
+    final snippet = words.isEmpty || words.every(head.contains)
+        ? null
+        : watchSnippet(it.message.text, words);
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -519,13 +632,20 @@ class _WatchCard extends StatelessWidget {
                   const SizedBox(width: 8),
                 ],
                 Expanded(
-                  child: Text(
-                    it.headline,
+                  child: Text.rich(
+                    watchMarked(it.headline, words, mark),
                     maxLines: expanded ? 3 : 1,
                     overflow: TextOverflow.ellipsis,
                     style: t.titleSmall,
                   ),
                 ),
+                if (onShowOnMap != null)
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.map_outlined, size: 20),
+                    tooltip: 'Show on map',
+                    onPressed: onShowOnMap,
+                  ),
                 if (it.hasPosition)
                   IconButton(
                     visualDensity: VisualDensity.compact,
@@ -567,9 +687,22 @@ class _WatchCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
+            // Searching: the words in context, when the headline lacks them.
+            if (!expanded && snippet != null) ...[
+              const SizedBox(height: 2),
+              Text.rich(
+                watchMarked(snippet, words, mark),
+                style: t.bodySmall,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
             if (expanded) ...[
               const SizedBox(height: 6),
-              Text(it.message.text, style: t.bodyMedium),
+              Text.rich(
+                watchMarked(it.message.text, words, mark),
+                style: t.bodyMedium,
+              ),
               const SizedBox(height: 4),
               Text(
                 'From ${it.message.senderName} · ${teamAgo(it.time)}',
@@ -581,6 +714,56 @@ class _WatchCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// [text] with each of the search's [words] on a [mark] background.
+TextSpan watchMarked(String text, List<String> words, Color mark) {
+  final lower = text.toLowerCase();
+  // Lower-casing a few letters changes the length; don't mark those.
+  if (words.isEmpty || lower.length != text.length) {
+    return TextSpan(text: text);
+  }
+  final hit = List<bool>.filled(text.length, false);
+  for (final w in words) {
+    var i = lower.indexOf(w);
+    while (i >= 0) {
+      hit.fillRange(i, i + w.length, true);
+      i = lower.indexOf(w, i + w.length);
+    }
+  }
+  final spans = <TextSpan>[];
+  var start = 0;
+  for (var i = 1; i <= text.length; i++) {
+    if (i == text.length || hit[i] != hit[start]) {
+      spans.add(
+        TextSpan(
+          text: text.substring(start, i),
+          style: hit[start]
+              ? TextStyle(backgroundColor: mark, fontWeight: FontWeight.w700)
+              : null,
+        ),
+      );
+      start = i;
+    }
+  }
+  return TextSpan(children: spans);
+}
+
+/// About a line of [text] around the first of [words] it contains, or null.
+String? watchSnippet(String text, List<String> words) {
+  final flat = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+  final lower = flat.toLowerCase();
+  if (lower.length != flat.length) return null;
+  var at = -1;
+  for (final w in words) {
+    final i = lower.indexOf(w);
+    if (i >= 0 && (at < 0 || i < at)) at = i;
+  }
+  if (at < 0) return null;
+  final from = at > 30 ? at - 30 : 0;
+  final to = (at + 110).clamp(0, flat.length);
+  return '${from > 0 ? '…' : ''}${flat.substring(from, to)}'
+      '${to < flat.length ? '…' : ''}';
 }
 
 // ------------------------------------------------------------------ roster
