@@ -381,6 +381,7 @@ class MeshCoreConnector extends ChangeNotifier {
   bool _hasReceivedDeviceInfo = false;
   String? _manufacturerName;
   String? _firmwareVersionString;
+  String? _firmwareBuildDate;
   // Initial sync is serialized for predictable progress. Firmware exposes one
   // FIFO queued-message stream, so direct/room frames are buffered until after
   // contacts are known.
@@ -883,6 +884,9 @@ class MeshCoreConnector extends ChangeNotifier {
   String? get selfName => _selfName;
   String? get manufacturerName => _manufacturerName;
   String? get firmwareVersionString => _firmwareVersionString;
+
+  /// The firmware's build date as it reports it ("15 Oct 2026"), or null.
+  String? get firmwareBuildDate => _firmwareBuildDate;
   double? get selfLatitude => _selfLatitude;
   double? get selfLongitude => _selfLongitude;
   List<DirectRepeater> get directRepeaters => _directRepeaters;
@@ -9208,7 +9212,8 @@ class MeshCoreConnector extends ChangeNotifier {
     }
     _firmwareVerCode = frame[1];
 
-    // Manufacturer/model name (bytes 20..59) and firmware version (60..79)
+    // Build date (bytes 8..19), manufacturer/model name (20..59) and firmware
+    // version (60..79)
     String? readCString(int start, int maxLen) {
       if (frame.length < start + maxLen) return null;
       final bytes = frame.sublist(start, start + maxLen);
@@ -9219,6 +9224,7 @@ class MeshCoreConnector extends ChangeNotifier {
       return s.isEmpty ? null : s;
     }
 
+    _firmwareBuildDate = readCString(8, 12);
     _manufacturerName = readCString(20, 40);
     _firmwareVersionString = readCString(60, 20);
 
