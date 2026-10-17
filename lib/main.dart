@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'l10n/app_localizations.dart';
+import 'l10n/l10n.dart';
 import 'package:provider/provider.dart';
 
 import 'review_mode/review_mode_storage.dart';
@@ -63,11 +64,14 @@ void main() async {
   // 10-14 in too so they lay out the same way under the bars. Flutter ignores
   // this mode before Android 10, where the old layout remains.
   if (PlatformInfo.isAndroid) {
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    await _startupStep(
+      'SystemChrome.setEnabledSystemUIMode',
+      () => SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge),
+    );
   }
 
   // Initialize SharedPreferences cache
-  await PrefsManager.initialize();
+  await _startupStep('PrefsManager.initialize', () => PrefsManager.initialize());
 
   // Android: look for a newer build on the GitHub "Latest build" release.
   unawaited(AppUpdateService.instance.start());
@@ -93,9 +97,9 @@ void main() async {
   // model registry and its "process automatically" default straight off
   // `appSettingsService.settings`, so this cannot stay where it used to be
   // (after the constructions) without those two starting out wrong.
-  await appSettingsService.loadSettings();
+  await _startupStep('appSettingsService.loadSettings', () => appSettingsService.loadSettings());
   // Undo a review-mode session the app was killed in before it could exit.
-  await endReviewModeSession(appSettingsService);
+  await _startupStep('endReviewModeSession', () => endReviewModeSession(appSettingsService));
 
   // ---- image messages (AEIC over GRP_DATA) --------------------------------
   // The codec owns the ONNX decoder; the store owns received-image state and
@@ -148,19 +152,19 @@ void main() async {
 
   // Initialize notification service
   final notificationService = NotificationService();
-  await notificationService.initialize();
-  await backgroundService.initialize();
+  await _startupStep('notificationService.initialize', () => notificationService.initialize());
+  await _startupStep('backgroundService.initialize', () => backgroundService.initialize());
   backgroundService.setLanguageOverrideProvider(
     () => appSettingsService.settings.languageOverride,
   );
   _registerThirdPartyLicenses();
 
-  await chatTextScaleService.initialize();
-  await translationService.refreshDownloadedModels();
-  await imageCodecService.refreshDownloadedModels();
-  await receivedImageStore.load();
-  await uiViewStateService.initialize();
-  await timeoutPredictionService.initialize();
+  await _startupStep('chatTextScaleService.initialize', () => chatTextScaleService.initialize());
+  await _startupStep('translationService.refreshDownloadedModels', () => translationService.refreshDownloadedModels());
+  await _startupStep('imageCodecService.refreshDownloadedModels', () => imageCodecService.refreshDownloadedModels());
+  await _startupStep('receivedImageStore.load', () => receivedImageStore.load());
+  await _startupStep('uiViewStateService.initialize', () => uiViewStateService.initialize());
+  await _startupStep('timeoutPredictionService.initialize', () => timeoutPredictionService.initialize());
 
   // Wire up connector with services
   connector.initialize(
@@ -189,9 +193,9 @@ void main() async {
     settings: appSettingsService,
   );
 
-  await connector.loadContactCache();
-  await connector.loadCachedChannels();
-  await connector.loadUnreadState();
+  await _startupStep('connector.loadContactCache', () => connector.loadContactCache());
+  await _startupStep('connector.loadCachedChannels', () => connector.loadCachedChannels());
+  await _startupStep('connector.loadUnreadState', () => connector.loadUnreadState());
 
   runApp(
     MeshCoreApp(
@@ -214,6 +218,7 @@ void main() async {
       networkMapUploadService: networkMapUploadService,
     ),
   );
+  _reportStartupStalls();
 }
 
 /// [ReceivedImageDecoder] over [ImageCodecService].
@@ -580,4 +585,41 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
     if (languageCode == null) return null;
     return Locale(languageCode);
   }
+}
+
+// ---- startup guard -----------------------------------------------------------
+// Every awaited step before the first screen gets a time limit. One that hangs
+// (a plugin whose platform call never answers) or throws used to leave the app
+// on the splash screen for good; now the app opens anyway and says which step
+// it gave up on.
+final List<String> _startupStalls = [];
+
+Future<void> _startupStep(
+  String name,
+  Future<void> Function() body, {
+  Duration limit = const Duration(seconds: 10),
+}) async {
+  try {
+    await body().timeout(limit);
+  } on TimeoutException {
+    _startupStalls.add('$name (no answer in ${limit.inSeconds} s)');
+  } catch (e) {
+    _startupStalls.add('$name ($e)');
+  }
+}
+
+void _reportStartupStalls() {
+  if (_startupStalls.isEmpty) return;
+  final steps = _startupStalls.join('; ');
+  appLogger.warn('Startup steps that did not finish: $steps', tag: 'Startup');
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    final context = appNavigatorKey.currentContext;
+    if (context == null) return;
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 30),
+        content: Text(context.l10n.startup_stalled(steps)),
+      ),
+    );
+  });
 }

@@ -11904,6 +11904,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Preamble and switch timing details'**
   String get rr2_cliTiming;
+
+  /// No description provided for @startup_stalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Startup skipped a step that didn\'t finish: {steps}. The app may be missing something until it restarts.'**
+  String startup_stalled(String steps);
 }
 
 class _AppLocalizationsDelegate
