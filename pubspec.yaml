@@ -104,6 +104,13 @@ hooks:
           android-x64:
             backends: [cpu]
 
+# shared_preferences_android 2.5 (JNI bindings) broke release builds: R8 stripped
+# the methods it calls by name and the app hung on the splash screen. The keep
+# rules in android/app/proguard-rules.pro cover it; this holds the 2.4 line until
+# a 2.5 release build has been seen starting on a device.
+dependency_overrides:
+  shared_preferences_android: ">=2.4.0 <2.5.0"
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

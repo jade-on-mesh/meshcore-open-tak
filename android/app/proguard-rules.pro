@@ -17,3 +17,21 @@
 # The Flutter plugin's platform-channel handler, reached the same way.
 -keep class com.masicai.flutteronnxruntime.** { *; }
 -dontwarn com.masicai.flutteronnxruntime.**
+
+# shared_preferences_android 2.5 calls its Kotlin API through JNI (package:jni,
+# generated bindings), looking SharedPreferencesApiRegistrar's methods up by
+# name and signature. R8 renamed or removed them, so the app's first settings
+# read failed with
+#
+#   NoSuchMethodError: no non-static method
+#     "Lio/flutter/plugins/sharedpreferences/SharedPreferencesApiRegistrar;
+#      .getAll(Ljava/lang/String;Ljava/util/List;Lkotlin/coroutines/Continuation;)..."
+#
+# and the release app never got past the splash screen. Keep the plugin, the
+# JNI runtime and the coroutine types in those signatures as they are.
+-keep class io.flutter.plugins.sharedpreferences.** { *; }
+-keepclassmembers class io.flutter.plugins.sharedpreferences.** { *; }
+-keep class com.github.dart_lang.jni.** { *; }
+-keep class kotlin.coroutines.Continuation { *; }
+-keep class kotlinx.coroutines.** { *; }
+-dontwarn com.github.dart_lang.jni.**
