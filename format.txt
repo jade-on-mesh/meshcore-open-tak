@@ -1,0 +1,20 @@
+Changed lib/main.dart
+Changed lib/screens/radio_console_screen.dart
+Changed lib/screens/repeater_radio2_screen.dart
+Changed lib/screens/settings_screen.dart
+Changed lib/services/app_update_service.dart
+Changed lib/services/codec2_ffi.dart
+Changed lib/services/media_mesh.dart
+Changed lib/team/team_screen.dart
+Changed lib/vox/voice_message_bubble.dart
+Changed lib/vox/voice_record_sheet.dart
+Changed lib/vox/voice_service.dart
+Changed lib/widgets/app_update_ui.dart
+Changed test/services/app_update_test.dart
+Changed test/services/media_mesh_test.dart
+Changed test/services/received_via_test.dart
+Changed test/services/repeater_radio2_test.dart
+Changed test/team/watch_search_test.dart
+Changed test/team/watch_sounds_test.dart
+Formatted 434 files (18 changed) in 3.68 seconds.
+exit=1
