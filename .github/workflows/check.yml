@@ -32,6 +32,12 @@ jobs:
           channel: "stable"
           cache: true
       - run: flutter pub get
+      - name: Toolchain and resolved packages (diagnostic)
+        shell: bash
+        run: |
+          echo "::notice title=flutter::$(flutter --version | head -1) | $(flutter --version | sed -n 4p)"
+          pkgs=$(awk '/^  [a-z0-9_]+:$/{n=$1} /^    version:/{gsub(/"/,"",$2); printf "%s%s ", n, $2}' pubspec.lock)
+          echo "::notice title=packages::${pkgs}"
       - name: Analyze (errors fail, warnings are listed)
         shell: bash
         run: |
