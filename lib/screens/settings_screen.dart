@@ -14,6 +14,7 @@ import '../theme/mesh_theme.dart';
 import '../services/app_update_service.dart';
 import '../widgets/app_update_ui.dart';
 import '../widgets/app_bar.dart';
+import '../helpers/firmware_identity.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../helpers/utf8_length_limiter.dart';
 import '../widgets/mesh_nav_tile.dart';
@@ -228,6 +229,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     showChevron: false,
                     onTap: () => _showAbout(context),
+                  ),
+                  const Divider(height: 1, indent: 16),
+                  _selectConnector(
+                    (c) => (
+                      c.isConnected,
+                      c.firmwareVersionString,
+                      c.manufacturerName,
+                    ),
+                    (context, c) {
+                      final fw = c.isConnected
+                          ? FirmwareIdentity.fromVersionString(
+                              c.firmwareVersionString,
+                            )
+                          : null;
+                      return MeshNavTile(
+                        icon: Icons.memory,
+                        title: l10n.settings_aboutRadioFirmware,
+                        subtitle: !c.isConnected
+                            ? l10n.settings_aboutRadioNotConnected
+                            : fw == null
+                            ? l10n.common_loading
+                            : c.manufacturerName == null
+                            ? fw.label
+                            : l10n.settings_aboutRadioFirmwareOn(
+                                fw.label,
+                                c.manufacturerName!,
+                              ),
+                        showChevron: false,
+                        onTap: () => _showAbout(context),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -1105,8 +1137,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
       children: [
         const SizedBox(height: 16),
         Text(l10n.settings_aboutDescription),
+        ..._aboutRadio(context),
       ],
     );
+  }
+
+  /// The connected radio's firmware for the About dialog: name and version,
+  /// build date, board and companion protocol.
+  List<Widget> _aboutRadio(BuildContext context) {
+    final l10n = context.l10n;
+    final c = context.read<MeshCoreConnector>();
+    final fw = c.isConnected
+        ? FirmwareIdentity.fromVersionString(c.firmwareVersionString)
+        : null;
+    final small = Theme.of(context).textTheme.bodySmall;
+    return [
+      const SizedBox(height: 16),
+      Text(
+        l10n.settings_aboutRadioFirmware,
+        style: Theme.of(context).textTheme.titleSmall,
+      ),
+      const SizedBox(height: 4),
+      if (fw == null)
+        Text(l10n.settings_aboutRadioNotConnected, style: small)
+      else ...[
+        SelectableText(fw.label),
+        if (c.firmwareBuildDate != null)
+          Text(l10n.settings_aboutRadioBuild(c.firmwareBuildDate!), style: small),
+        if (c.manufacturerName != null)
+          Text(l10n.settings_aboutRadioBoard(c.manufacturerName!), style: small),
+        if (c.firmwareVerCode != null)
+          Text(
+            l10n.settings_aboutRadioProtocol(c.firmwareVerCode!),
+            style: small,
+          ),
+      ],
+    ];
   }
 
   Future<void> _gpxExport(

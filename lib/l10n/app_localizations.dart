@@ -11905,6 +11905,42 @@ abstract class AppLocalizations {
   /// **'Preamble and switch timing details'**
   String get rr2_cliTiming;
 
+  /// No description provided for @settings_aboutRadioFirmware.
+  ///
+  /// In en, this message translates to:
+  /// **'Radio firmware'**
+  String get settings_aboutRadioFirmware;
+
+  /// No description provided for @settings_aboutRadioNotConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'No radio connected'**
+  String get settings_aboutRadioNotConnected;
+
+  /// No description provided for @settings_aboutRadioFirmwareOn.
+  ///
+  /// In en, this message translates to:
+  /// **'{firmware} on {board}'**
+  String settings_aboutRadioFirmwareOn(String firmware, String board);
+
+  /// No description provided for @settings_aboutRadioBuild.
+  ///
+  /// In en, this message translates to:
+  /// **'Built {date}'**
+  String settings_aboutRadioBuild(String date);
+
+  /// No description provided for @settings_aboutRadioBoard.
+  ///
+  /// In en, this message translates to:
+  /// **'Board: {board}'**
+  String settings_aboutRadioBoard(String board);
+
+  /// No description provided for @settings_aboutRadioProtocol.
+  ///
+  /// In en, this message translates to:
+  /// **'Companion protocol v{code}'**
+  String settings_aboutRadioProtocol(int code);
+
   /// No description provided for @startup_stalled.
   ///
   /// In en, this message translates to:

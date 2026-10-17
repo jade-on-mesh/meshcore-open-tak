@@ -3737,6 +3737,16 @@
   "rr2_cliSetTemp": "Use other radio2 settings for some minutes",
   "rr2_cliTempOff": "End the temporary radio2",
   "rr2_cliTiming": "Preamble and switch timing details",
+  "settings_aboutRadioFirmware": "Radio firmware",
+  "settings_aboutRadioNotConnected": "No radio connected",
+  "settings_aboutRadioFirmwareOn": "{firmware} on {board}",
+  "@settings_aboutRadioFirmwareOn": {"placeholders": {"firmware": {"type": "String"}, "board": {"type": "String"}}},
+  "settings_aboutRadioBuild": "Built {date}",
+  "@settings_aboutRadioBuild": {"placeholders": {"date": {"type": "String"}}},
+  "settings_aboutRadioBoard": "Board: {board}",
+  "@settings_aboutRadioBoard": {"placeholders": {"board": {"type": "String"}}},
+  "settings_aboutRadioProtocol": "Companion protocol v{code}",
+  "@settings_aboutRadioProtocol": {"placeholders": {"code": {"type": "int"}}},
   "startup_stalled": "Startup skipped a step that didn't finish: {steps}. The app may be missing something until it restarts.",
   "@startup_stalled": {"placeholders": {"steps": {"type": "String"}}}
 }

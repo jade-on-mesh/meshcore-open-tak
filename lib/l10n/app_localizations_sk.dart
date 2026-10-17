@@ -7008,6 +7008,32 @@ class AppLocalizationsSk extends AppLocalizations {
   String get rr2_cliTiming => 'Preamble and switch timing details';
 
   @override
+  String get settings_aboutRadioFirmware => 'Radio firmware';
+
+  @override
+  String get settings_aboutRadioNotConnected => 'No radio connected';
+
+  @override
+  String settings_aboutRadioFirmwareOn(String firmware, String board) {
+    return '$firmware on $board';
+  }
+
+  @override
+  String settings_aboutRadioBuild(String date) {
+    return 'Built $date';
+  }
+
+  @override
+  String settings_aboutRadioBoard(String board) {
+    return 'Board: $board';
+  }
+
+  @override
+  String settings_aboutRadioProtocol(int code) {
+    return 'Companion protocol v$code';
+  }
+
+  @override
   String startup_stalled(String steps) {
     return 'Startup skipped a step that didn\'t finish: $steps. The app may be missing something until it restarts.';
   }
