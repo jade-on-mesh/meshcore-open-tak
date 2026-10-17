@@ -302,9 +302,18 @@ class TeamMapLayer extends StatelessWidget {
     final markers = <Marker>[
       for (final sh in shapes) ..._shapeMarkers(context, sh, nav),
       // Watch-feed reports and TAK units sit under the mesh team.
-      for (final w in watched) ...[
+      // The one the search lit up last, so it draws over its neighbours.
+      for (final w in [
+        ...watched.where((w) => w.key != watch.mapFocusKey),
+        ...watched.where((w) => w.key == watch.mapFocusKey),
+      ]) ...[
         if (w.hasSecondPosition) _watchSecondMarker(context, w),
-        _watchMarker(context, w, course: watch.courseOf(w)),
+        _watchMarker(
+          context,
+          w,
+          course: watch.courseOf(w),
+          lit: w.key == watch.mapFocusKey,
+        ),
       ],
       for (final s in atakShapes)
         if (s.label.isNotEmpty && s.points.isNotEmpty)
@@ -694,8 +703,16 @@ class TeamMapLayer extends StatelessWidget {
     ),
   );
 
-  Marker _watchMarker(BuildContext context, WatchItem w, {double? course}) {
+  /// [lit]: the report the Watch search sent the map to, ringed and pulsing.
+  Marker _watchMarker(
+    BuildContext context,
+    WatchItem w, {
+    double? course,
+    bool lit = false,
+  }) {
     final c = Color(w.level.argb);
+    Widget dot(Widget d, double size) =>
+        lit ? WatchFocusRing(size: size, child: d) : d;
     if (w.isDrone) {
       return Marker(
         point: LatLng(w.lat!, w.lon!),
@@ -706,23 +723,26 @@ class TeamMapLayer extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 26,
-                height: 26,
-                decoration: BoxDecoration(
-                  color: c,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.black87, width: 2),
-                ),
-                // Pointing where it is heading, when that is known.
-                child: Transform.rotate(
-                  angle: (w.bearing ?? course ?? 0) * pi / 180,
-                  child: const Icon(
-                    Icons.flight,
-                    size: 16,
-                    color: Colors.black,
+              dot(
+                Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: c,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.black87, width: 2),
+                  ),
+                  // Pointing where it is heading, when that is known.
+                  child: Transform.rotate(
+                    angle: (w.bearing ?? course ?? 0) * pi / 180,
+                    child: const Icon(
+                      Icons.flight,
+                      size: 16,
+                      color: Colors.black,
+                    ),
                   ),
                 ),
+                26,
               ),
               _label(w.droneLabel(course)),
             ],
@@ -730,6 +750,9 @@ class TeamMapLayer extends StatelessWidget {
         ),
       );
     }
+    final quake = w.isQuake
+        ? (14 + (w.magnitude! - 2).clamp(0, 6) * 4).toDouble()
+        : 0.0;
     return Marker(
       point: LatLng(w.lat!, w.lon!),
       width: 140,
@@ -741,25 +764,31 @@ class TeamMapLayer extends StatelessWidget {
           children: [
             if (w.isQuake)
               // An earthquake: a ringed dot that grows with the magnitude.
-              Container(
-                width: (14 + (w.magnitude! - 2).clamp(0, 6) * 4).toDouble(),
-                height: (14 + (w.magnitude! - 2).clamp(0, 6) * 4).toDouble(),
-                decoration: BoxDecoration(
-                  color: c.withValues(alpha: 0.55),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: c, width: 3),
+              dot(
+                Container(
+                  width: quake,
+                  height: quake,
+                  decoration: BoxDecoration(
+                    color: c.withValues(alpha: 0.55),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: c, width: 3),
+                  ),
+                  child: const Icon(Icons.waves, size: 12, color: Colors.black),
                 ),
-                child: const Icon(Icons.waves, size: 12, color: Colors.black),
+                quake,
               )
             else
-              Container(
-                width: 16,
-                height: 16,
-                decoration: BoxDecoration(
-                  color: c,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.black87, width: 2),
+              dot(
+                Container(
+                  width: 16,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: c,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.black87, width: 2),
+                  ),
                 ),
+                16,
               ),
             _label(w.mapLabel),
           ],
@@ -1610,6 +1639,89 @@ class TeamMapOverlay extends StatelessWidget {
 }
 
 /// Your position in the chosen format (tap to switch Decimal/DMS/MGRS).
+/// A bright ring that pulses out from a map dot: the watched report the
+/// Watch search sent the map to.
+class WatchFocusRing extends StatefulWidget {
+  final double size;
+  final Widget child;
+  const WatchFocusRing({super.key, required this.size, required this.child});
+
+  @override
+  State<WatchFocusRing> createState() => _WatchFocusRingState();
+}
+
+class _WatchFocusRingState extends State<WatchFocusRing>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.size;
+    const glow = Color(0xFFFFEB3B);
+    return SizedBox(
+      width: s,
+      height: s,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          IgnorePointer(
+            child: AnimatedBuilder(
+              animation: _pulse,
+              builder: (_, _) {
+                final v = _pulse.value;
+                final d = s + 10 + 34 * v;
+                return OverflowBox(
+                  maxWidth: s + 60,
+                  maxHeight: s + 60,
+                  child: Container(
+                    width: d,
+                    height: d,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: glow.withValues(alpha: 1 - v),
+                        width: 4,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          IgnorePointer(
+            child: OverflowBox(
+              maxWidth: s + 20,
+              maxHeight: s + 20,
+              child: Container(
+                width: s + 10,
+                height: s + 10,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: glow, width: 3),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black54, blurRadius: 6),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          widget.child,
+        ],
+      ),
+    );
+  }
+}
+
 class _CoordPill extends StatelessWidget {
   final TeamService team;
   final TeamFix fix;

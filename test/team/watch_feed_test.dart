@@ -185,6 +185,16 @@ void main() {
     expect(p('Room 5 Steps north').$1, isNull);
     expect(p('version 1.2.3 build 45').$1, isNull);
   });
-}
 
-typedef LatLngPair = (double?, double?);
+  test('search matches every word across the report', () {
+    final it = _parse(
+      '🔴 CRITICAL\n10-03 11:30\n🧊 @Auburn E Main St\n3-🚗 5-🥾',
+    );
+    expect(it.matches(const []), isTrue);
+    expect(it.matches(['auburn']), isTrue);
+    expect(it.matches(['main', 'critical']), isTrue);
+    expect(it.matches(['icebot']), isTrue); // the sender
+    expect(it.matches(['#icewatch']), isTrue); // the channel
+    expect(it.matches(['auburn', 'tacoma']), isFalse);
+  });
+}
