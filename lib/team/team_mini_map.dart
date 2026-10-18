@@ -22,6 +22,9 @@ class TeamMiniMap extends StatefulWidget {
   final IconData dropIcon;
   final void Function(LatLng at) onDrop;
 
+  /// Markers the team layer doesn't draw, e.g. pins shared in chat.
+  final List<Marker> extraMarkers;
+
   const TeamMiniMap({
     super.key,
     required this.controller,
@@ -29,6 +32,7 @@ class TeamMiniMap extends StatefulWidget {
     required this.dropLabel,
     required this.dropIcon,
     required this.onDrop,
+    this.extraMarkers = const [],
   });
 
   @override
@@ -134,7 +138,12 @@ class _TeamMiniMapState extends State<TeamMiniMap> {
               onLongPress: (_, at) => _drop(context, at),
               onSecondaryTap: (_, at) => _drop(context, at),
             ),
-            children: [tiles.buildTileLayer(context), const TeamMapLayer()],
+            children: [
+              tiles.buildTileLayer(context),
+              if (widget.extraMarkers.isNotEmpty)
+                MarkerLayer(markers: widget.extraMarkers),
+              const TeamMapLayer(),
+            ],
           ),
           // Crosshair at the centre: pan to the spot, then press the button.
           IgnorePointer(

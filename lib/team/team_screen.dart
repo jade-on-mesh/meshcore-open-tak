@@ -5,12 +5,14 @@ import 'dart:async';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart' show MapController;
+import 'package:flutter_map/flutter_map.dart' show MapController, Marker;
 import 'package:latlong2/latlong.dart' show LatLng;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../connector/meshcore_connector.dart';
 import '../screens/map_screen.dart';
+import '../theme/mesh_theme.dart' show MapPalette;
 import '../utils/route_transitions.dart';
 import 'tak/atak_plugin_bridge.dart';
 import 'tak/tak_service.dart';
@@ -19,9 +21,11 @@ import 'team_draw.dart';
 import 'team_forms.dart';
 import 'team_map.dart';
 import 'team_mini_map.dart';
+import 'team_pins.dart';
 import 'team_roles_screen.dart';
 import 'team_service.dart';
 import 'team_wire.dart';
+import 'team_wire_atak.dart' show TeamPoint;
 import 'watch_feed.dart';
 import 'watch_sounds.dart';
 
@@ -1120,6 +1124,10 @@ class _PinsTab extends StatefulWidget {
   State<_PinsTab> createState() => _PinsTabState();
 }
 
+// Pins shared in a channel / in a direct chat, coloured as on the full map.
+const _chatPinChannel = MapPalette.router;
+const _chatPinDirect = MapPalette.shared;
+
 class _PinsTabState extends State<_PinsTab> {
   final _map = MapController();
 
@@ -1132,13 +1140,57 @@ class _PinsTabState extends State<_PinsTab> {
   @override
   Widget build(BuildContext context) {
     final team = context.watch<TeamService>();
+    final tak = context.watch<TakService>();
+    // Every pin on the map, whoever put it down: team pins (anyone's), pins
+    // shared in chats and channels, ATAK points and TAK Server markers.
+    context.select<MeshCoreConnector, int>(chatPinsSignature);
+    final connector = context.read<MeshCoreConnector>();
+    final chatPins = collectChatPins(
+      connector,
+      selfName: connector.selfName ?? 'Me',
+    );
+    final atakPins = [
+      for (final p in team.points)
+        if (!p.cotType.startsWith('a-')) p,
+    ];
+    final takPins = [
+      for (final e in tak.entities)
+        if (e.event.isMarker) e,
+    ];
     final fix = team.fix;
+    String? range(double lat, double lon) => fix == null
+        ? null
+        : teamRangeBearing(
+            teamDistanceMeters(fix.lat, fix.lon, lat, lon),
+            teamBearingDeg(fix.lat, fix.lon, lat, lon),
+          );
+    String byWhom(String key4) => key4 == team.selfKey4
+        ? 'by you'
+        : 'by ${team.memberByKey(key4)?.callsign ?? key4.toUpperCase()}';
     final map = TeamMiniMap(
       controller: _map,
       points: [
         for (final m in team.markers) LatLng(m.lat, m.lon),
         for (final sh in team.shapes)
           for (final pt in sh.points) LatLng(pt.$1, pt.$2),
+        for (final p in chatPins) LatLng(p.lat, p.lon),
+        for (final p in atakPins) LatLng(p.lat, p.lon),
+        for (final e in takPins) LatLng(e.event.lat, e.event.lon),
+      ],
+      // The team layer draws the others; chat pins are the full map's own.
+      extraMarkers: [
+        for (final p in chatPins)
+          Marker(
+            point: LatLng(p.lat, p.lon),
+            width: 30,
+            height: 30,
+            alignment: Alignment.topCenter,
+            child: Icon(
+              Icons.location_on,
+              size: 30,
+              color: p.isChannel ? _chatPinChannel : _chatPinDirect,
+            ),
+          ),
       ],
       dropLabel: 'Pin here',
       dropIcon: Icons.add_location_alt,
@@ -1146,7 +1198,13 @@ class _PinsTabState extends State<_PinsTab> {
           showTeamPinEditor(context, lat: at.latitude, lon: at.longitude),
     );
     final hidden = _hiddenRow(context, team);
-    final list = team.markers.isEmpty && team.shapes.isEmpty
+    final nothing =
+        team.markers.isEmpty &&
+        team.shapes.isEmpty &&
+        chatPins.isEmpty &&
+        atakPins.isEmpty &&
+        takPins.isEmpty;
+    final list = nothing
         ? Column(
             children: [
               const Expanded(
@@ -1201,8 +1259,8 @@ class _PinsTabState extends State<_PinsTab> {
                     }
                   },
                 ),
-              if (team.shapes.isNotEmpty && team.markers.isNotEmpty)
-                const ListTile(dense: true, title: Text('Pins')),
+              if (team.markers.isNotEmpty)
+                const ListTile(dense: true, title: Text('Team pins')),
               for (final m in team.markers)
                 ListTile(
                   leading: Icon(
@@ -1213,13 +1271,10 @@ class _PinsTabState extends State<_PinsTab> {
                   subtitle: Text(
                     [
                       m.kind.label,
+                      byWhom(m.authorKey4),
                       teamAgo(m.time),
                       if (m.attachment != null) 'attachment',
-                      if (fix != null)
-                        teamRangeBearing(
-                          teamDistanceMeters(fix.lat, fix.lon, m.lat, m.lon),
-                          teamBearingDeg(fix.lat, fix.lon, m.lat, m.lon),
-                        ),
+                      ?range(m.lat, m.lon),
                     ].join(' · '),
                   ),
                   trailing: IconButton(
@@ -1228,6 +1283,77 @@ class _PinsTabState extends State<_PinsTab> {
                     onPressed: () => showTeamPinSheet(context, m),
                   ),
                   onTap: () => teamMiniMapShow(_map, m.lat, m.lon),
+                ),
+              if (chatPins.isNotEmpty)
+                const ListTile(dense: true, title: Text('Shared in chat')),
+              for (final p in chatPins)
+                ListTile(
+                  leading: Icon(
+                    Icons.location_on,
+                    color: p.isChannel ? _chatPinChannel : _chatPinDirect,
+                  ),
+                  title: Text(p.label.isEmpty ? 'Shared pin' : p.label),
+                  subtitle: Text(
+                    [
+                      'by ${p.fromName}',
+                      'in ${p.source}',
+                      teamAgo(p.time),
+                      ?range(p.lat, p.lon),
+                    ].join(' · '),
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.map_outlined),
+                    tooltip: 'Show on map',
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => MapScreen(
+                          highlightPosition: LatLng(p.lat, p.lon),
+                          highlightLabel: p.label,
+                          highlightMarkerKey: p.id,
+                        ),
+                      ),
+                    ),
+                  ),
+                  onTap: () => teamMiniMapShow(_map, p.lat, p.lon),
+                ),
+              if (atakPins.isNotEmpty || takPins.isNotEmpty)
+                const ListTile(dense: true, title: Text('From ATAK and TAK')),
+              for (final TeamPoint p in atakPins)
+                ListTile(
+                  leading: const Icon(Icons.place_outlined),
+                  title: Text(p.callsign.isEmpty ? 'ATAK point' : p.callsign),
+                  subtitle: Text(
+                    [
+                      'ATAK',
+                      byWhom(p.authorKey4),
+                      teamAgo(p.time),
+                      ?range(p.lat, p.lon),
+                    ].join(' · '),
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.info_outline),
+                    tooltip: 'Details',
+                    onPressed: () => showSharedPointSheet(context, p),
+                  ),
+                  onTap: () => teamMiniMapShow(_map, p.lat, p.lon),
+                ),
+              for (final e in takPins)
+                ListTile(
+                  leading: const Icon(Icons.public),
+                  title: Text(e.event.callsign ?? e.event.uid),
+                  subtitle: Text(
+                    [
+                      'TAK Server',
+                      teamAgo(e.event.time),
+                      ?range(e.event.lat, e.event.lon),
+                    ].join(' · '),
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.info_outline),
+                    tooltip: 'Details',
+                    onPressed: () => showTakEntitySheet(context, e),
+                  ),
+                  onTap: () => teamMiniMapShow(_map, e.event.lat, e.event.lon),
                 ),
               ?hidden,
             ],
