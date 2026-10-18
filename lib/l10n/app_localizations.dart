@@ -11946,6 +11946,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Startup skipped a step that didn\'t finish: {steps}. The app may be missing something until it restarts.'**
   String startup_stalled(String steps);
+
+  /// No description provided for @mediaMesh_shareMain.
+  ///
+  /// In en, this message translates to:
+  /// **'Share with main-mesh nodes'**
+  String get mediaMesh_shareMain;
+
+  /// No description provided for @mediaMesh_shareMainOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off: photo and voice requests and answers stay on radio2, so nodes without it can\'t swap them with you.'**
+  String get mediaMesh_shareMainOff;
+
+  /// No description provided for @mediaMesh_shareMainOn.
+  ///
+  /// In en, this message translates to:
+  /// **'On: requests go out on both radios, and a photo or clip asked for on the main mesh is answered there.'**
+  String get mediaMesh_shareMainOn;
 }
 
 class _AppLocalizationsDelegate

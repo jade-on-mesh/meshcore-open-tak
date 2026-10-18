@@ -281,6 +281,21 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
           ),
           const SizedBox(height: 6),
           Text(mediaHelp, style: small),
+          if (_settings.shareWithMain != null &&
+              media == MediaChoice.photosAndVoice)
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(l10n.mediaMesh_shareMain),
+              subtitle: Text(
+                _settings.shareWithMain!
+                    ? l10n.mediaMesh_shareMainOn
+                    : l10n.mediaMesh_shareMainOff,
+              ),
+              value: _settings.shareWithMain!,
+              onChanged: (v) => setState(
+                () => _settings = _settings.copyWith(shareWithMain: v),
+              ),
+            ),
         ],
         const SizedBox(height: 20),
         TextField(

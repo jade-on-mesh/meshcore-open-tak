@@ -57,6 +57,12 @@ class MediaMeshSettings {
   final LoRaSpreadingFactor spreadingFactor;
   final LoRaCodingRate codingRate;
 
+  /// Wadamesh's `mediamesh.share`: nodes only on the main mesh can still swap
+  /// photos and voice with this radio (requests on both radios, answers where
+  /// asked). False keeps transfers on radio2 only; null when the firmware has
+  /// no such setting (keymindCascade, which always keeps them on radio2).
+  final bool? shareWithMain;
+
   const MediaMeshSettings({
     required this.mode,
     this.media = MediaChoice.photosAndVoice,
@@ -64,6 +70,7 @@ class MediaMeshSettings {
     required this.bandwidth,
     required this.spreadingFactor,
     required this.codingRate,
+    this.shareWithMain,
   });
 
   bool get enabled => mode != Radio2Mode.off;
@@ -86,6 +93,7 @@ class MediaMeshSettings {
     LoRaBandwidth? bandwidth,
     LoRaSpreadingFactor? spreadingFactor,
     LoRaCodingRate? codingRate,
+    bool? shareWithMain,
   }) => MediaMeshSettings(
     mode: mode ?? this.mode,
     media: media ?? this.media,
@@ -93,6 +101,7 @@ class MediaMeshSettings {
     bandwidth: bandwidth ?? this.bandwidth,
     spreadingFactor: spreadingFactor ?? this.spreadingFactor,
     codingRate: codingRate ?? this.codingRate,
+    shareWithMain: shareWithMain ?? this.shareWithMain,
   );
 }
 
@@ -440,6 +449,15 @@ String? parseTxMediaReply(String reply) {
   return known.contains(value) ? value : null;
 }
 
+/// `get mediamesh.share`: `> on` / `> off`; null for firmware without it.
+bool? parseShareReply(String reply) {
+  var text = reply.trim();
+  if (text.indexOf('|') == 2) text = text.substring(3);
+  if (!text.startsWith('>')) return null;
+  final value = text.substring(1).trim().split(RegExp(r'[\s;]')).first;
+  return value == 'on' ? true : (value == 'off' ? false : null);
+}
+
 bool isCliOk(String reply) {
   var text = reply.trim();
   if (text.indexOf('|') == 2) text = text.substring(3);
@@ -500,6 +518,8 @@ class MediaMeshController {
     final route = mediaText == null ? null : parseTxMediaReply(mediaText);
     final crossText = await _cli('get radio2.cross');
     final cross = crossText == null ? null : parseCrossReply(crossText);
+    final shareText = await _cli('get mediamesh.share');
+    final share = shareText == null ? null : parseShareReply(shareText);
     var settings = MediaMeshSettings.defaults;
     if (!radio2.off) {
       settings = settings.copyWith(
@@ -516,6 +536,7 @@ class MediaMeshController {
       media: radio2.off && route == 'auto' && cross == 'auto'
           ? MediaChoice.photosAndVoice
           : MediaChoice.from(media: route, cross: cross),
+      shareWithMain: share,
     );
     final statusText = await _cli('get radio2.status');
     final tempText = await _cli('get tempradio2');
@@ -557,6 +578,13 @@ class MediaMeshController {
           await _ok('set tx.media auto', 'The radio kept tx.media');
         case MediaChoice.custom:
           break;
+      }
+      final share = s.shareWithMain;
+      if (share != null) {
+        await _ok(
+          'set mediamesh.share ${share ? 'on' : 'off'}',
+          'The radio kept its main-mesh sharing',
+        );
       }
     } else {
       await _cli('set tx.media radio');

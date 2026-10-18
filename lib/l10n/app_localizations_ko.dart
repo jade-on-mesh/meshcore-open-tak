@@ -6772,4 +6772,13 @@ class AppLocalizationsKo extends AppLocalizations {
   String startup_stalled(String steps) {
     return 'Startup skipped a step that didn\'t finish: $steps. The app may be missing something until it restarts.';
   }
+
+  @override
+  String get mediaMesh_shareMain => 'Share with main-mesh nodes';
+
+  @override
+  String get mediaMesh_shareMainOff => 'Off: photo and voice requests and answers stay on radio2, so nodes without it can\'t swap them with you.';
+
+  @override
+  String get mediaMesh_shareMainOn => 'On: requests go out on both radios, and a photo or clip asked for on the main mesh is answered there.';
 }
