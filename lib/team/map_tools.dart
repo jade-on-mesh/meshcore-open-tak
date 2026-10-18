@@ -45,7 +45,9 @@ class _Tool {
 
 void _openTactical(BuildContext context, int tab) => Navigator.push(
   context,
-  MaterialPageRoute(builder: (_) => TeamScreen(initialTab: tab)),
+  MaterialPageRoute(
+    builder: (_) => TeamScreen(initialTab: tab, fromMap: true),
+  ),
 );
 
 /// Opens the Tools grid. [onChat] toggles the chat pane; [onDraw] starts a

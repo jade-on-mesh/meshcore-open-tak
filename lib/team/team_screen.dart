@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../screens/map_screen.dart';
+import '../utils/route_transitions.dart';
 import 'tak/atak_plugin_bridge.dart';
 import 'tak/tak_service.dart';
 import 'team_casevac_ui.dart';
@@ -25,13 +26,40 @@ import 'watch_feed.dart';
 import 'watch_sounds.dart';
 
 class TeamScreen extends StatelessWidget {
-  /// 0 Team, 1 Watch, 2 Pins, 3 Reports, 4 Setup.
+  /// 0 Team, 1 Watch, 2 Pins, 3 Reports, 4 Setup. (The Map tab between Team
+  /// and Watch is a shortcut to the map, not a page of its own.)
   final int? initialTab;
 
   /// A watched report to scroll to and highlight on the Watch tab
   /// ([WatchItem.key]), e.g. the pin tapped on the map.
   final String? watchFocusKey;
-  const TeamScreen({super.key, this.initialTab, this.watchFocusKey});
+
+  /// Opened from the map: its Map tab goes back there.
+  final bool fromMap;
+  const TeamScreen({
+    super.key,
+    this.initialTab,
+    this.watchFocusKey,
+    this.fromMap = false,
+  });
+
+  /// Where each tab sits in the tab bar: the Map shortcut is tab 1.
+  static int _barIndex(int tab) => tab == 0 ? 0 : tab + 1;
+
+  /// The Map tab: back to the map this was opened from, or (opened from
+  /// Contacts or Channels) that home screen switched to the map, as the
+  /// bottom bar's Map does.
+  void _openMap(BuildContext context) {
+    final nav = Navigator.of(context);
+    nav.pop();
+    if (!fromMap) {
+      unawaited(
+        nav.pushReplacement(
+          buildQuickSwitchRoute(const MapScreen(hideBackButton: true)),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,9 +71,11 @@ class TeamScreen extends StatelessWidget {
         .where((m) => m.freshness == TeamFreshness.live)
         .length;
     return DefaultTabController(
-      length: 5,
-      initialIndex: initialTab ?? (team.enabled ? 0 : 4),
-      child: Scaffold(
+      length: 6,
+      initialIndex: _barIndex(initialTab ?? (team.enabled ? 0 : 4)),
+      // A context under the tab controller, for the Map tab's onTap.
+      child: Builder(
+        builder: (context) => Scaffold(
         appBar: AppBar(
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -69,8 +99,16 @@ class TeamScreen extends StatelessWidget {
           bottom: TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
+            // Map is a shortcut: it opens the map instead of a page here.
+            onTap: (i) {
+              if (i != 1) return;
+              final tabs = DefaultTabController.of(context);
+              tabs.index = tabs.previousIndex;
+              _openMap(context);
+            },
             tabs: [
               const Tab(icon: Icon(Icons.groups_outlined), text: 'Team'),
+              const Tab(icon: Icon(Icons.map_outlined), text: 'Map'),
               Tab(
                 icon: Badge(
                   isLabelVisible: watch.unseenCount > 0,
@@ -90,12 +128,14 @@ class TeamScreen extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           children: [
             const _RosterTab(),
+            const SizedBox.shrink(), // Map: opens the map (TabBar.onTap)
             WatchTab(focusKey: watchFocusKey),
             const _PinsTab(),
             const _ReportsTab(),
             const _SetupTab(),
           ],
         ),
+      ),
       ),
     );
   }
@@ -153,7 +193,9 @@ class _Onboarding extends StatelessWidget {
         FilledButton.icon(
           icon: const Icon(Icons.arrow_forward),
           label: const Text('Set up team'),
-          onPressed: () => DefaultTabController.of(context).animateTo(4),
+          onPressed: () => DefaultTabController.of(
+            context,
+          ).animateTo(TeamScreen._barIndex(4)),
         ),
       ],
     );
