@@ -111,6 +111,10 @@ void main() {
       expect(parseTxMediaReply('> both; active=both'), 'both');
       expect(parseTxMediaReply('> radio2; active=radio2'), 'radio2');
       expect(parseTxMediaReply('> sideways'), isNull);
+      expect(parseShareReply('> on'), isTrue);
+      expect(parseShareReply('> off'), isFalse);
+      expect(parseShareReply('Unknown command'), isNull);
+      expect(parseShareReply('Error: unknown setting'), isNull);
       // keymindCascade's wording.
       expect(
         parseTxMediaReply('> tx.media radio2; active=radio2'),
