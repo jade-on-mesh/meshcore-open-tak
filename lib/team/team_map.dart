@@ -673,7 +673,8 @@ class TeamMapLayer extends StatelessWidget {
   void _openWatch(BuildContext context, WatchItem w) =>
       Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => TeamScreen(initialTab: 1, watchFocusKey: w.key),
+          builder: (_) =>
+              TeamScreen(initialTab: 1, watchFocusKey: w.key, fromMap: true),
         ),
       );
 
@@ -1909,7 +1910,11 @@ class _StatusPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         onTap: () => Navigator.of(
           context,
-        ).push(MaterialPageRoute<void>(builder: (_) => const TeamScreen())),
+        ).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const TeamScreen(fromMap: true),
+          ),
+        ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           child: Row(

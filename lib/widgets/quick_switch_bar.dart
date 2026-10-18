@@ -89,7 +89,8 @@ class QuickSwitchBar extends StatelessWidget {
                   if (i == 3) {
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => const TeamScreen(),
+                        // From the map, Tactical's Map tab goes back to it.
+                        builder: (_) => TeamScreen(fromMap: selectedIndex == 2),
                       ),
                     );
                     return;
