@@ -86,7 +86,7 @@ void main() {
     test('set radio2 uses kHz without trailing zeros', () {
       expect(
         buildSetRadio2Command(MediaMeshSettings.defaults),
-        'set radio2 911.150,125,7,5,rxtx',
+        'set radio2 911.150,250,7,5,rxtx',
       );
       expect(
         buildSetRadio2Command(
@@ -197,11 +197,11 @@ void main() {
         buildSetRadio2Command(
           MediaMeshSettings.defaults.copyWith(mode: Radio2Mode.rx),
         ),
-        'set radio2 911.150,125,7,5,rx',
+        'set radio2 911.150,250,7,5,rx',
       );
       expect(
         buildTempRadio2Command(MediaMeshSettings.defaults, 60),
-        'set tempradio2 911.150,125,7,5,rxtx,60',
+        'set tempradio2 911.150,250,7,5,rxtx,60',
       );
     });
 
@@ -325,4 +325,40 @@ void main() {
       expect(await loadMediaAirProfile(fake({})), isNull);
     });
   });
+
+  group('conflictingCommunityMesh', () {
+    test('the presets keep clear of every listed community mesh', () {
+      expect(conflictingCommunityMesh(MediaMeshSettings.defaults), isNull);
+      expect(
+        conflictingCommunityMesh(
+          MediaMeshSettings.defaults.copyWith(bandwidth: LoRaBandwidth.bw125),
+        ),
+        isNull,
+      );
+    });
+
+    test('names the mesh it would sit on', () {
+      expect(
+        conflictingCommunityMesh(
+          MediaMeshSettings.defaults.copyWith(frequencyMHz: 910.525),
+        ),
+        'USA/Canada',
+      );
+      // Overlapping, not only the same centre: 250 kHz at 910.6 covers
+      // 910.475-910.725, over USA/Canada's 910.494-910.556.
+      expect(
+        conflictingCommunityMesh(
+          MediaMeshSettings.defaults.copyWith(frequencyMHz: 910.6),
+        ),
+        'USA/Canada',
+      );
+      expect(
+        conflictingCommunityMesh(
+          MediaMeshSettings.defaults.copyWith(frequencyMHz: 918.05),
+        ),
+        'Off-Grid 918',
+      );
+    });
+  });
 }
+

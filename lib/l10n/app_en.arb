@@ -3751,5 +3751,11 @@
   "@startup_stalled": {"placeholders": {"steps": {"type": "String"}}},
   "mediaMesh_shareMain": "Share with main-mesh nodes",
   "mediaMesh_shareMainOff": "Off: photo and voice requests and answers stay on radio2, so nodes without it can't swap them with you.",
-  "mediaMesh_shareMainOn": "On: requests go out on both radios, and a photo or clip asked for on the main mesh is answered there."
+  "mediaMesh_shareMainOn": "On: requests go out on both radios, and a photo or clip asked for on the main mesh is answered there.",
+  "mediaMesh_preset": "Preset",
+  "mediaMesh_presetFast": "250 kHz · fast",
+  "mediaMesh_presetRange": "125 kHz · range",
+  "mediaMesh_presetHelp": "250 kHz sends photos and voice about twice as fast; 125 kHz reaches about 40% farther. Every radio on MediaMesh must use the same settings.",
+  "mediaMesh_conflictsWith": "Conflicts with {name}",
+  "@mediaMesh_conflictsWith": {"placeholders": {"name": {"type": "String"}}}
 }

@@ -75,14 +75,14 @@ class MediaMeshSettings {
 
   bool get enabled => mode != Radio2Mode.off;
 
-  /// 911.150 MHz, 125 kHz, SF7, CR 4/5: about twice as fast as SF7/62.5 for
-  /// ~3 dB less range. 911.150 is a quiet spot found on site, inside a BayMesh 3
-  /// cavity filter tuned for 910.525 (flat 908.6-912.8 MHz), 625 kHz above the
-  /// main channel.
+  /// 911.150 MHz, 250 kHz, SF7, CR 4/5 (the fast preset): about four times
+  /// as fast as SF7/62.5 for ~6 dB less range. 911.150 is a quiet spot found
+  /// on site, inside a BayMesh 3 cavity filter tuned for 910.525 (flat
+  /// 908.6-912.8 MHz), 625 kHz above the main channel.
   static const defaults = MediaMeshSettings(
     mode: Radio2Mode.off,
     frequencyMHz: 911.15,
-    bandwidth: LoRaBandwidth.bw125,
+    bandwidth: LoRaBandwidth.bw250,
     spreadingFactor: LoRaSpreadingFactor.sf7,
     codingRate: LoRaCodingRate.cr4_5,
   );
@@ -466,6 +466,17 @@ bool isCliOk(String reply) {
 }
 
 /// The MediaMesh frequency must not be the main radio's channel.
+/// The listed community mesh (a radio preset, RadioSettings.presets) whose
+/// channel radio2's would overlap, if any: radio2 must never sit on a
+/// community mesh.
+String? conflictingCommunityMesh(MediaMeshSettings s) {
+  for (final (name, preset) in RadioSettings.presets) {
+    final apartKHz = (s.frequencyMHz - preset.frequencyMHz).abs() * 1000;
+    if (apartKHz < (s.bandwidth.hz + preset.bandwidth.hz) / 2000) return name;
+  }
+  return null;
+}
+
 bool sameChannelAsMain(
   MediaMeshSettings s, {
   required int? mainFreqHz,

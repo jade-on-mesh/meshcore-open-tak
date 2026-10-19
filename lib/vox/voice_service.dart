@@ -27,6 +27,7 @@ import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
 import '../models/channel.dart';
 import '../models/contact.dart';
+import '../services/media_lockdown.dart';
 import '../services/media_mesh.dart' show MediaAirProfile, loadMediaAirProfile;
 import '../services/image_chunk_transport.dart'
     show parseChannelDataFrame, respCodeChannelDataRecv;
@@ -631,6 +632,7 @@ class VoxVoiceService extends ChangeNotifier {
     Contact contact,
     VoxEncodedClip clip,
   ) async {
+    await _ensureMediaAllowed();
     final env = _register(clip);
     unawaited(_refreshMediaAir()); // ready before the first request
     _logEvent(
@@ -648,6 +650,7 @@ class VoxVoiceService extends ChangeNotifier {
     Channel channel,
     VoxEncodedClip clip,
   ) async {
+    await _ensureMediaAllowed();
     final env = _register(clip);
     unawaited(_refreshMediaAir()); // ready before the first request
     _logEvent(
@@ -1663,7 +1666,7 @@ class VoxVoiceService extends ChangeNotifier {
     burst.maxHops = max(burst.maxHops, hops ?? 3);
     _logEvent(
       '${req.requesterKey6} asks for ${req.missingIndices == null ? 'all' : wanted.length} '
-      'packets (${hops == null ? '?' : hops} hops): '
+      'packets (${hops ?? '?'} hops): '
       '${burst.pending.length - before} added, ${burst.pending.length} pending',
       req.sessionId,
     );
@@ -1677,6 +1680,10 @@ class VoxVoiceService extends ChangeNotifier {
   Future<void> _runChannelBurst(String key, _ChannelBurst burst) async {
     try {
       await _refreshMediaAir();
+      if (!_mediaAllowed) {
+        _logEvent('not sending: it would go out on the main mesh', burst.sid);
+        return;
+      }
       if (!await _loadFromStore(burst.sid)) return;
       final packets = voxPacketize(burst.sid, _bits[burst.sid]!, _modes[burst.sid]!);
       // Listen before the burst, briefly: the request that started it may
@@ -1749,7 +1756,7 @@ class VoxVoiceService extends ChangeNotifier {
     if (_coveredByPush(
       req.sessionId,
       all: req.missingIndices == null,
-      hops: path == null ? null : path.length,
+      hops: path?.length,
     )) {
       _logEvent(
         '${req.requesterKey6} (in range) asks for all of it: being pushed',
@@ -1791,6 +1798,10 @@ class VoxVoiceService extends ChangeNotifier {
   ) async {
     if (_serveGen[key] != gen) return; // superseded while queued
     await _refreshMediaAir();
+    if (!_mediaAllowed) {
+      _logEvent('not answering: it would go out on the main mesh', req.sessionId);
+      return;
+    }
     if (!await _loadFromStore(req.sessionId)) {
       _logEvent('asked for a clip we do not have', req.sessionId);
       return;
@@ -1970,6 +1981,23 @@ class VoxVoiceService extends ChangeNotifier {
   /// The radio2 profile changed (the MediaMesh settings were saved): ask again
   /// before the next transfer.
   void mediaRoutingChanged() => _mediaAirAt = null;
+
+  /// Photos and voice go out only on MediaMesh (radio2) alone, unless the
+  /// developer switch allows the main mesh (MediaLockdown).
+  bool get _mediaAllowed =>
+      MediaLockdown.devAllowMain.value || _mediaAir != null;
+
+  /// Whether this radio can send photos and voice now (asks it if needed).
+  Future<bool> canSendMedia() async {
+    if (MediaLockdown.devAllowMain.value) return true;
+    _mediaAirAt = null; // ask afresh: the user may just have set it up
+    await _refreshMediaAir();
+    return _mediaAir != null;
+  }
+
+  Future<void> _ensureMediaAllowed() async {
+    if (!await canSendMedia()) throw const MediaBlockedException();
+  }
 
   /// Airtime of one full voice packet with the radio's current settings, or
   /// radio2's when photos and voice go out on radio2 alone.

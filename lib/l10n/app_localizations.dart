@@ -11964,6 +11964,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'On: requests go out on both radios, and a photo or clip asked for on the main mesh is answered there.'**
   String get mediaMesh_shareMainOn;
+
+  /// No description provided for @mediaMesh_preset.
+  ///
+  /// In en, this message translates to:
+  /// **'Preset'**
+  String get mediaMesh_preset;
+
+  /// No description provided for @mediaMesh_presetFast.
+  ///
+  /// In en, this message translates to:
+  /// **'250 kHz · fast'**
+  String get mediaMesh_presetFast;
+
+  /// No description provided for @mediaMesh_presetRange.
+  ///
+  /// In en, this message translates to:
+  /// **'125 kHz · range'**
+  String get mediaMesh_presetRange;
+
+  /// No description provided for @mediaMesh_presetHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'250 kHz sends photos and voice about twice as fast; 125 kHz reaches about 40% farther. Every radio on MediaMesh must use the same settings.'**
+  String get mediaMesh_presetHelp;
+
+  /// No description provided for @mediaMesh_conflictsWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Conflicts with {name}'**
+  String mediaMesh_conflictsWith(String name);
 }
 
 class _AppLocalizationsDelegate

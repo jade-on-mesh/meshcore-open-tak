@@ -6771,4 +6771,21 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get mediaMesh_shareMainOn => 'On: requests go out on both radios, and a photo or clip asked for on the main mesh is answered there.';
+
+  @override
+  String get mediaMesh_preset => 'Preset';
+
+  @override
+  String get mediaMesh_presetFast => '250 kHz · fast';
+
+  @override
+  String get mediaMesh_presetRange => '125 kHz · range';
+
+  @override
+  String get mediaMesh_presetHelp => '250 kHz sends photos and voice about twice as fast; 125 kHz reaches about 40% farther. Every radio on MediaMesh must use the same settings.';
+
+  @override
+  String mediaMesh_conflictsWith(String name) {
+    return 'Conflicts with $name';
+  }
 }
