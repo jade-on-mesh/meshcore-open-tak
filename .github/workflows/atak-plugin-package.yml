@@ -24,6 +24,8 @@ on:
 jobs:
   package:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     timeout-minutes: 45
     defaults:
       run:
@@ -154,3 +156,17 @@ jobs:
           name: atak-plugin-meshcore-unsigned
           path: /tmp/pkg/out/
           retention-days: 7
+
+      - name: Hand the APK back on this branch
+        # Artifact storage isn't reachable from every build environment; git
+        # is. Pushes made with GITHUB_TOKEN don't start another run.
+        if: github.ref == 'refs/heads/atak-plugin-apk'
+        run: |
+          set -eEuo pipefail
+          : > /tmp/step.log; eval "$REPORT"
+          cp /tmp/pkg/out/*.apk /tmp/pkg/out/SHA256SUMS atak-plugin/prebuilt/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add atak-plugin/prebuilt/*.apk atak-plugin/prebuilt/SHA256SUMS
+          git commit -m "Unsigned plugin APK from run ${GITHUB_RUN_ID}"
+          git push
