@@ -8960,7 +8960,7 @@ class MeshCoreConnector extends ChangeNotifier {
         }
         // MeshCore Open TAK: a received AI sketch (AEIC) is always kept and
         // shown, whatever this phone's own setting: the photo button offers
-        // AI sketches next to VOX photos, so a receiver has to recognise one
+        // AI sketches next to Mesh photos, so a receiver has to recognise one
         // without having set anything up. Its bubble says what it is, and
         // tapping it explains how to get the image model; nothing is decoded
         // (or downloaded) until then.

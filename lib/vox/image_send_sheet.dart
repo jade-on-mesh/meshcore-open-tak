@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
-import '../connector/meshcore_connector.dart';
 import 'aeic_hd_screens.dart';
 import 'aeic_hd_service.dart';
 import 'av1_ffi.dart';
@@ -20,7 +19,7 @@ import 'voice_service.dart';
 import 'voice_wire.dart';
 
 /// The other way to send a picture: AEIC, MeshCore Open's neural image
-/// codec. About 150 bytes (1-2 packets) instead of a VOX photo's 2,750, but
+/// codec. About 150 bytes (1-2 packets) instead of a Mesh photo's 2,750, but
 /// the receiver's phone redraws the picture from a description, so details
 /// can be invented, and only phones with the image model can show it.
 class VoxAiSketchOption {
@@ -50,7 +49,7 @@ class VoxImageButton extends StatelessWidget {
   final String recipientLabel;
   final Future<void> Function(VoxEncodedImage image) onSend;
 
-  /// Offer AEIC as well (chats that can carry it); null: VOX photos only.
+  /// Offer AEIC as well (chats that can carry it); null: Mesh photos only.
   final VoxAiSketchOption? aiSketch;
 
   const VoxImageButton({
@@ -325,18 +324,10 @@ class _VoxImageSendSheetState extends State<VoxImageSendSheet> {
   }
 
   String _airFor(VoxImageDetail d) {
-    final connector = context.read<MeshCoreConnector>();
-    final sf = connector.currentSf, bw = connector.currentBwHz;
     final packets = (d.budget / voxMaxCodecBytesPerPacket).ceil();
-    if (sf == null || bw == null || bw <= 0) return '$packets packets';
-    final air = voxEstimateAirtime(
-      totalPackets: packets,
-      codecBytesPerPacket: voxMaxCodecBytesPerPacket,
-      spreadingFactor: sf,
-      bandwidthKhz: bw / 1000,
-      codingRate: connector.currentCr ?? 5,
-      pathLength: 0,
-    );
+    // On MediaMesh's radio2 when photos go there, else the main radio.
+    final air = context.read<VoxVoiceService>().mediaAirtime(packets);
+    if (air == null) return '$packets packets';
     return '$packets packets · ~${(air.inMilliseconds / 1000).round()}s air';
   }
 
@@ -443,7 +434,11 @@ class _VoxImageSendSheetState extends State<VoxImageSendSheet> {
               ),
               const SizedBox(height: 4),
               Text(
-                '${_detail.multiple == 1 ? 'Same airtime as one voice message' : '${_detail.multiple}× a voice message'}'
+                '${switch (_detail) {
+                  VoxImageDetail.standard => 'Same airtime as one voice message',
+                  VoxImageDetail.more => '2× a voice message',
+                  VoxImageDetail.sharp => 'About 2× the resolution, 4× a voice message',
+                }}'
                 ' · ${_airFor(_detail)}',
                 style: theme.textTheme.bodySmall,
               ),
@@ -476,10 +471,16 @@ class _VoxImageSendSheetState extends State<VoxImageSendSheet> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          _detail == VoxImageDetail.more
-                              ? 'Small text may still be hard to read.'
-                              : 'Small text may not be readable. '
-                                    'More detail would help.',
+                          switch (_detail) {
+                            VoxImageDetail.sharp =>
+                              'Small text may still be hard to read.',
+                            VoxImageDetail.more =>
+                              'Small text may still be hard to read. '
+                                  'Sharp would help.',
+                            VoxImageDetail.standard =>
+                              'Small text may not be readable. '
+                                  'More detail or Sharp would help.',
+                          },
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.tertiary,
                           ),
@@ -537,7 +538,7 @@ class _VoxImageSendSheetState extends State<VoxImageSendSheet> {
   }
 }
 
-/// VOX photo (default), AI sketch, or AI sketch HD, remembered like the
+/// Mesh photo (default), AI sketch, or AI sketch HD, remembered like the
 /// Mimi choice.
 enum _PhotoKind { vox, sketch, hd }
 
@@ -558,8 +559,8 @@ class _PhotoKindChooser extends StatelessWidget {
     switch (kind) {
       case _PhotoKind.vox:
         about =
-            'Real pixels, about 2.7 KB. Everyone can view it, '
-            'Wadamesh radios included. The default.';
+            'Real pixels, about 2.7 KB (up to 11 KB at Sharp). Everyone '
+            'can view it, Wadamesh radios included. The default.';
       case _PhotoKind.sketch:
         about =
             'AEIC, about 150 bytes (1-2 packets). The receiver\'s phone '
@@ -569,7 +570,7 @@ class _PhotoKindChooser extends StatelessWidget {
       case _PhotoKind.hd:
         about =
             'AEIC HD, about 1-2 KB (8-15 packets): much closer to the real '
-            'photo than an AI sketch, half the airtime of a VOX photo. The '
+            'photo than an AI sketch, half the airtime of a Mesh photo. The '
             'receiver\'s phone takes a few minutes to draw it and needs the '
             'AI sketch HD model; radios can\'t show it.';
     }
@@ -583,7 +584,7 @@ class _PhotoKindChooser extends StatelessWidget {
               const ButtonSegment(
                 value: _PhotoKind.vox,
                 icon: Icon(Icons.photo_outlined),
-                label: Text('VOX photo'),
+                label: Text('Mesh photo'),
               ),
               const ButtonSegment(
                 value: _PhotoKind.sketch,

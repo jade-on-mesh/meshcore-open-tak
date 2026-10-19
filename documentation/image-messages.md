@@ -39,9 +39,21 @@ Tap a reconstructed image to inspect it. Long-press or right-click its chat bubb
 
 [image_chunk_transport.dart](../lib/services/image_chunk_transport.dart) defines the wire layout, capacities, metadata, and recovery algorithm. The current transport uses command 62, response 27, and data type `0xAE1C`. See the [protocol reference](ble-protocol.md#regions-and-image-data) and [fixture regeneration guide](../tools/aeic/README.md).
 
+## Mesh photo detail (MeshCore Open TAK)
+
+Mesh photos (AV1, formerly "VOX photos") come in three sizes. The encoder picks the resolution and quality that look best within each byte budget:
+
+| Choice | Bytes | Packets | Air at 250 kHz SF7 | |
+|---|---|---|---|---|
+| Standard | 2.7 KB | 18 | ~3 s | Default |
+| More detail | 5.5 KB | 36 | ~5 s | |
+| Sharp | 11 KB | 71 | ~11 s | About twice the resolution |
+
+Sharp is meant for a fast MediaMesh preset. Wadamesh radios need the build that accepts up to 96 packets per photo to show it (older builds take 64).
+
 ## AI sketch HD (MeshCore Open TAK)
 
-MeshCore Open TAK adds a third photo option beside VOX photos and the ~150-byte AI sketch: **AI sketch HD**, AEIC-SE at the `ft2` rate point. A 512×512 photo becomes about 1–2 KB (8–15 packets with parity), far closer to the original than an AI sketch, at roughly half a VOX photo's airtime.
+MeshCore Open TAK adds a third photo option beside Mesh photos and the ~150-byte AI sketch: **AI sketch HD**, AEIC-SE at the `ft2` rate point. A 512×512 photo becomes about 1–2 KB (8–15 packets with parity), far closer to the original than an AI sketch, at roughly half a Mesh photo's airtime.
 
 - **Codec.** [mikecarper/AEIC](https://github.com/mikecarper/AEIC/tree/main/mobile)'s ncnn program, built for arm64 by `tool/build_aeic_hd_android.sh` and shipped in the APK. It loads one model stage at a time, so decoding peaks around 550 MB rather than the ONNX decoder's ~2.2 GB, but takes minutes rather than a second. ncnn is built with CPU-specific fast paths off so every phone computes the entropy model identically.
 - **Model.** About 1.9 GB (1,052 files), downloaded from App Settings → Image messages → AI sketch HD. It is a GitHub release (`aeic-ncnn-ft2-512-v1`) built by `.github/workflows/aeic-ncnn-models.yml` from the authors' `AEIC_SE_ft2.pkl`, SD-Turbo's UNet and AdcSR's half decoder. **Check this phone** encodes the export's sample photo and requires byte-identical output to the reference codec, then decodes it and compares against the reference picture.

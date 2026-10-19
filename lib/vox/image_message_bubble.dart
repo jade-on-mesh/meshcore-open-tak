@@ -7,7 +7,6 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../connector/meshcore_connector.dart';
 import '../models/contact.dart';
 import 'av1_ffi.dart';
 import 'voice_message_bubble.dart' show showVoxVoiceLog, VoxReceivedViaLabel;
@@ -186,20 +185,11 @@ class _VoxImageMessageContentState extends State<VoxImageMessageContent> {
     final aspect = env.imageAspect.clamp(0.4, 2.5);
     final kb = (env.estimatedCodecBytes / 1000).toStringAsFixed(1);
 
-    String? airHint;
-    final connector = context.read<MeshCoreConnector>();
-    final sf = connector.currentSf, bw = connector.currentBwHz;
-    if (sf != null && bw != null && bw > 0) {
-      final air = voxEstimateAirtime(
-        totalPackets: env.totalPackets,
-        codecBytesPerPacket: env.mode.bytesPerPacket,
-        spreadingFactor: sf,
-        bandwidthKhz: bw / 1000,
-        codingRate: connector.currentCr ?? 5,
-        pathLength: widget.sender?.pathLength.clamp(0, 64) ?? 0,
-      );
-      airHint = '~${(air.inMilliseconds / 1000).toStringAsFixed(0)}s air';
-    }
+    // Where photos go: radio2 (MediaMesh) when they go there alone.
+    final air = s.mediaAirtime(env.totalPackets);
+    final String? airHint = air == null
+        ? null
+        : '~${(air.inMilliseconds / 1000).toStringAsFixed(0)}s air';
 
     final String caption = switch (st.status) {
       VoxClipStatus.complete when _failed => 'Photo could not be decoded',

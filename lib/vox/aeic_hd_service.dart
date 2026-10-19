@@ -1,7 +1,7 @@
 // MeshCore Open TAK - "AI sketch HD": AEIC-SE at the ft2 rate point, run by
 // mikecarper/AEIC's ncnn codec (https://github.com/mikecarper/AEIC/tree/main/mobile).
 //
-// The third photo option, next to VOX photos (the default) and AI sketch
+// The third photo option, next to Mesh photos (the default) and AI sketch
 // (AEIC ft32 on ONNX Runtime). Around 1-2 KB on air instead of ~150 B, so a
 // much more faithful picture, and it runs in bounded memory (~550 MiB peak to
 // decode rather than ~2.2 GiB) because the codec loads one model stage at a
