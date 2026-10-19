@@ -8,7 +8,7 @@ It runs on stock MeshCore companion firmware. No firmware changes are needed. (F
 
 | Feature | Status |
 | --- | --- |
-| Voice messages in DMs and channels, pulled on demand: **Mimi** neural codec (~1.1 kb/s, natural-sounding; 223 MB one-time model download) or Codec2 1200 | ✅ |
+| Voice messages in DMs and channels, pulled on demand: **Mimi** neural codec (~1.1 kb/s, natural-sounding; 223 MB one-time model download) or Codec2 (1200, 1600 or 3200 bps) | ✅ |
 | Codec2 clips in the standard VE3 wire format | ✅ |
 | Photo messages (AV1, 1× or 2× a voice message's airtime) | ✅ |
 | Team awareness: live positions with ATAK roles and team colours, trails, smart position updates (phone GPS, radio fallback) | ✅ |
@@ -17,18 +17,21 @@ It runs on stock MeshCore companion firmware. No firmware changes are needed. (F
 | SALUTE reports in a condensed card format | ✅ |
 | Range and bearing, Bloodhound tracking | ✅ |
 | TAK Server gateway (CoT over TLS or TCP, ATAK data package import) and local ATAK multicast | ✅ |
-| CASEVAC 9-line, routes, geofences, drawing, GeoChat bridge | 🔜 planned |
-| Offline maps | ✅ inherited from MeshCore Open |
+| CASEVAC 9-line, routes, geofences, drawing, GeoChat bridge | ✅ |
+| ATAK plugin (`atak-plugin/`): ATAK users on the same team, through this app or straight to the radio | ✅ |
+| One-time-pad DMs and channels, wire-compatible with the Lua OTP app and Wadamesh-tak | ✅ |
+| MediaMesh: photos and voice on the radio's second frequency (`radio2`), kept off the main mesh | ✅ |
+| Offline maps: MeshCore Open's tile cache, plus MBTiles map packs and download-the-area | ✅ |
 
 ### How voice works
 
-1. You record up to 20 s. It is encoded with Codec2 at 1200 bps (150 bytes/s) and split into ≤156-byte packets, which are kept on your phone.
+1. You record up to 20 s. It is encoded with Mimi (~1.1 kb/s) or Codec2 at 1200, 1600 or 3200 bps (1200 is 150 bytes/s) and split into ≤156-byte packets, which are kept on your phone.
 2. Only a short text envelope such as `VE3:1ps9wxb:1:k:j` goes out over the mesh.
 3. A listener taps the bubble. Their app sends a small binary fetch request to you over its known direct route, and your app streams the packets back as raw data. Missing packets are re-requested.
 
 Audio is therefore only transmitted to people who actually want to hear it, which keeps channel airtime sane. Details: [docs/vox-voice.md](docs/vox-voice.md).
 
-If there's no direct route, VOX sets one up with a silent DM. In channels, where the sender may not be a contact, the request and audio are flooded on the channel instead, and everyone on the channel who taps the clip gets it from that one transfer. Channel fallback needs companion firmware v1.15+; direct transfer over multi-byte path hashes isn't supported yet. Please be mindful of duty-cycle limits on shared regional meshes.
+If there's no direct route, VOX sets one up with a silent DM. In channels, where the sender may not be a contact, the request and audio are flooded on the channel instead, and everyone on the channel who taps the clip gets it from that one transfer. Channel fallback needs companion firmware v1.15+; direct transfer over multi-byte path hashes isn't supported yet. Please be mindful of duty-cycle limits on shared regional meshes. Photos and voice only go out on [MediaMesh](documentation/media-mesh.md) (the radio's `radio2`), never on the main mesh.
 
 ### Licensing
 
