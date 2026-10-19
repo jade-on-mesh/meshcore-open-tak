@@ -27,7 +27,6 @@ import '../models/contact.dart';
 import '../l10n/contact_localization.dart';
 import '../models/message.dart';
 import '../models/otp_theme.dart';
-import '../services/media_lockdown.dart';
 import '../services/app_settings_service.dart';
 import '../services/chat_text_scale_service.dart';
 import '../services/image_chunk_transport.dart';
@@ -921,14 +920,6 @@ class _ChatScreenState extends State<ChatScreen> {
     ImageSendPreviewResult result, {
     required Uint8List sourceBytes,
   }) async {
-    // This photo type always goes out on the main mesh (MediaLockdown).
-    if (!MediaLockdown.devAllowMain.value) {
-      showDismissibleSnackBar(
-        context,
-        content: const Text(MediaLockdown.legacyBlockedMessage),
-      );
-      return;
-    }
     final messenger = ScaffoldMessenger.of(context);
     final l10n = context.l10n;
 

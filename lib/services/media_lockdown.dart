@@ -21,11 +21,6 @@ class MediaLockdown {
       'settings, turn radio2 on (listen and send) with photos and voice on '
       'radio2.';
 
-  /// Open TAK's OTP photo DMs, which always go out on the main mesh.
-  static const String legacyBlockedMessage =
-      'OTP photos go out on the main mesh. Use the photo button (sent on '
-      'MediaMesh) instead.';
-
   static Future<void> load() async {
     try {
       final prefs = await SharedPreferences.getInstance();

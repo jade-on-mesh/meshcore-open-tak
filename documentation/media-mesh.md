@@ -35,8 +35,8 @@ sent on each profile, the measured switch time, and the radio's timing warnings.
 connected radio sends them on radio2 alone (*Listen + send*, *Photos & voice*).
 Otherwise the app says so instead of sending, and doesn't answer other
 people's requests for them either. This covers Open TAK's photos and voice
-(and its OTP photo DMs); upstream MeshCore Open's channel image messages are
-unchanged.
+only: upstream MeshCore Open's channel image messages and OTP photo DMs (sent
+direct, never flooded) are unchanged.
 
 **Temporary radio2** tries the profile in the form for 15 minutes, 1 hour or
 2 hours without saving it (`tempradio2`); **Stop** brings the saved radio2 back.
