@@ -121,6 +121,12 @@ void main() {
       expect(soft.rgb.sublist(0, 3), img.rgb.sublist(0, 3));
     });
 
+    test('background blur eases off as the budget grows', () {
+      expect(VoxImageDetail.standard.backgroundSoften, (2, 3));
+      expect(VoxImageDetail.more.backgroundSoften, (1, 1));
+      expect(VoxImageDetail.sharp.backgroundSoften, isNull);
+    });
+
     test('text boxes come from connected regions of the probability map', () {
       const w = 20, h = 10;
       final p = List<double>.filled(w * h, 0);
