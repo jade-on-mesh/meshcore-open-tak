@@ -447,6 +447,7 @@ Duration voxEstimateAirtime({
   required double bandwidthKhz,
   required int codingRate, // 5..8 for 4/5..4/8
   int pathLength = 0,
+  int preambleSymbols = 8,
 }) {
   if (totalPackets <= 0 || spreadingFactor <= 0 || bandwidthKhz <= 0) {
     return Duration.zero;
@@ -459,7 +460,7 @@ Duration voxEstimateAirtime({
   final num1 = 8 * payload - 4 * spreadingFactor + 28 + 16;
   final den = 4 * (spreadingFactor - 2 * de);
   final nPayload = 8 + max(((num1 / den).ceil()) * (cr + 4), 0);
-  final perPacket = (8 + 4.25 + nPayload) * tSym;
+  final perPacket = (preambleSymbols + 4.25 + nPayload) * tSym;
   return Duration(microseconds: (perPacket * totalPackets * 1e6).round());
 }
 

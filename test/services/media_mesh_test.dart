@@ -257,4 +257,72 @@ void main() {
       expect(txUserTarget('ab' * 32), 'key:${'ab' * 16}');
     });
   });
+
+  group('loadMediaAirProfile', () {
+    Future<String?> Function(String) fake(Map<String, String?> replies) =>
+        (c) async => replies[c];
+
+    test('radio2 alone: its profile and preamble', () async {
+      final air = await loadMediaAirProfile(
+        fake({
+          'get radio2': '> 911.150,250.00,7,5,rxtx,40 (auto)',
+          'get tx.media': '> radio2; active=radio2',
+          'get mediamesh.share': '> off',
+        }),
+      );
+      expect(air, isNotNull);
+      expect(air!.spreadingFactor, 7);
+      expect(air.bandwidthKhz, 250);
+      expect(air.codingRate, 5);
+      expect(air.preamble, 40);
+    });
+
+    test('keymindCascade (no share setting) counts as radio2 alone', () async {
+      final air = await loadMediaAirProfile(
+        fake({
+          'get radio2': '> 911.150,250.00,7,5,rxtx',
+          'get tx.media': '> radio2',
+        }),
+      );
+      expect(air?.preamble, 32);
+    });
+
+    test('main radio involved: null', () async {
+      for (final media in ['> both', '> auto', '> radio']) {
+        expect(
+          await loadMediaAirProfile(
+            fake({
+              'get radio2': '> 911.150,250.00,7,5,rxtx',
+              'get tx.media': media,
+            }),
+          ),
+          isNull,
+          reason: media,
+        );
+      }
+    });
+
+    test('share on, receive-only radio2, or no answer: null', () async {
+      expect(
+        await loadMediaAirProfile(
+          fake({
+            'get radio2': '> 911.150,250.00,7,5,rxtx',
+            'get tx.media': '> radio2',
+            'get mediamesh.share': '> on',
+          }),
+        ),
+        isNull,
+      );
+      expect(
+        await loadMediaAirProfile(
+          fake({
+            'get radio2': '> 911.150,250.00,7,5,rx',
+            'get tx.media': '> radio2',
+          }),
+        ),
+        isNull,
+      );
+      expect(await loadMediaAirProfile(fake({})), isNull);
+    });
+  });
 }

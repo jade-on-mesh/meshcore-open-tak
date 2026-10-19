@@ -641,3 +641,51 @@ class MediaMeshController {
     return text;
   }
 }
+
+/// The radio photo and voice packets go out on, for pacing them: radio2's
+/// profile when they go on radio2 alone, null when they (also) use the main
+/// radio, or when the radio can't say.
+///
+/// Packets are spaced by their airtime (four airtimes on a channel, so as not
+/// to talk over our own relays). Timed for the main channel while they go out
+/// on a faster radio2, a transfer is no quicker than on the main channel.
+class MediaAirProfile {
+  final int spreadingFactor;
+  final double bandwidthKhz;
+  final int codingRate;
+  final int preamble;
+
+  const MediaAirProfile({
+    required this.spreadingFactor,
+    required this.bandwidthKhz,
+    required this.codingRate,
+    required this.preamble,
+  });
+}
+
+/// Asks the connected radio (through [cli]) where photos and voice go:
+/// `tx.media radio2` with radio2 on rx+tx and, on Wadamesh, `mediamesh.share`
+/// off (with it on, answers to nodes only on the main mesh go on both radios).
+Future<MediaAirProfile?> loadMediaAirProfile(
+  Future<String?> Function(String command) cli,
+) async {
+  final radio2Text = await cli('get radio2');
+  final radio2 = radio2Text == null ? null : Radio2Reply.tryParse(radio2Text);
+  if (radio2 == null || !radio2.canTransmit) return null;
+  final sf = radio2.spreadingFactor;
+  final bw = radio2.bandwidth;
+  final cr = radio2.codingRate;
+  if (sf == null || bw == null || cr == null) return null;
+  final mediaText = await cli('get tx.media');
+  if (mediaText == null || parseTxMediaReply(mediaText) != 'radio2') {
+    return null;
+  }
+  final shareText = await cli('get mediamesh.share');
+  if (shareText != null && parseShareReply(shareText) == true) return null;
+  return MediaAirProfile(
+    spreadingFactor: sf.value,
+    bandwidthKhz: bw.hz / 1000,
+    codingRate: cr.value,
+    preamble: radio2.preamble ?? 32,
+  );
+}
