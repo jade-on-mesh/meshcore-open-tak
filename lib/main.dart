@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 
 import 'review_mode/review_mode_storage.dart';
 import 'screens/chrome_required_screen.dart';
+import 'services/media_lockdown.dart';
 import 'utils/platform_info.dart';
 
 import 'connector/meshcore_connector.dart';
@@ -165,6 +166,7 @@ void main() async {
   await _startupStep('translationService.refreshDownloadedModels', () => translationService.refreshDownloadedModels());
   await _startupStep('imageCodecService.refreshDownloadedModels', () => imageCodecService.refreshDownloadedModels());
   await _startupStep('receivedImageStore.load', () => receivedImageStore.load());
+  await _startupStep('mediaLockdown.load', MediaLockdown.load);
   await _startupStep('uiViewStateService.initialize', () => uiViewStateService.initialize());
   await _startupStep('timeoutPredictionService.initialize', () => timeoutPredictionService.initialize());
 

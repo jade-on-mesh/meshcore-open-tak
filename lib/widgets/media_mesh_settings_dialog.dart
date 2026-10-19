@@ -7,6 +7,7 @@ import '../helpers/snack_bar_builder.dart';
 import '../l10n/l10n.dart';
 import '../models/radio_settings.dart';
 import '../screens/radio_console_screen.dart';
+import '../services/media_lockdown.dart';
 import '../services/media_mesh.dart';
 
 /// MediaMesh Settings: the connected radio's second LoRa profile (`radio2`),
@@ -106,6 +107,36 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
 
   bool get _profileValid => !_frequencyInvalid && !_frequencyOnMain;
 
+  bool get _devMain => MediaLockdown.devAllowMain.value;
+
+  /// The preset these settings match (SF7, CR 4/5 at 250 or 125 kHz), if any.
+  static Set<LoRaBandwidth> _presetOf(MediaMeshSettings s) {
+    final standard =
+        s.spreadingFactor == LoRaSpreadingFactor.sf7 &&
+        s.codingRate == LoRaCodingRate.cr4_5;
+    if (standard &&
+        (s.bandwidth == LoRaBandwidth.bw250 ||
+            s.bandwidth == LoRaBandwidth.bw125)) {
+      return {s.bandwidth};
+    }
+    return {};
+  }
+
+  Future<void> _toggleDeveloperMain() async {
+    final on = !_devMain;
+    await MediaLockdown.set(on);
+    if (!mounted) return;
+    setState(() {});
+    showDismissibleSnackBar(
+      context,
+      content: Text(
+        on
+            ? 'Developer: photos and voice may use the main mesh'
+            : 'Photos and voice on MediaMesh (radio2) only',
+      ),
+    );
+  }
+
   Future<void> _save() async {
     _validateFrequency(_frequencyController.text);
     if (!_profileValid) return;
@@ -165,7 +196,12 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
     final state = _state;
     final usable = state != null && state.support != MediaMeshSupport.none;
     return AlertDialog(
-      title: Text(l10n.mediaMesh_title),
+      // Long-press: the developer switch that lets photos and voice use the
+      // main mesh (MediaLockdown). Hidden until this is locked down fully.
+      title: GestureDetector(
+        onLongPress: _toggleDeveloperMain,
+        child: Text(l10n.mediaMesh_title),
+      ),
       content: SingleChildScrollView(
         child: state == null
             ? const Padding(
@@ -263,10 +299,13 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
                   value: MediaChoice.photosAndVoice,
                   label: Text(l10n.mediaMesh_photosVoice),
                 ),
-                ButtonSegment(
-                  value: MediaChoice.everything,
-                  label: Text(l10n.mediaMesh_everything),
-                ),
+                // Everything (tx.media auto) sends photos and voice on the
+                // main mesh too: developers only (MediaLockdown).
+                if (_devMain || media == MediaChoice.everything)
+                  ButtonSegment(
+                    value: MediaChoice.everything,
+                    label: Text(l10n.mediaMesh_everything),
+                  ),
                 if (state.settings.media == MediaChoice.custom)
                   ButtonSegment(
                     value: MediaChoice.custom,
@@ -282,7 +321,8 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
           const SizedBox(height: 6),
           Text(mediaHelp, style: small),
           if (_settings.shareWithMain != null &&
-              media == MediaChoice.photosAndVoice)
+              media == MediaChoice.photosAndVoice &&
+              _devMain)
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(l10n.mediaMesh_shareMain),
@@ -313,7 +353,42 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
         ),
         const SizedBox(height: 16),
+        Text(l10n.mediaMesh_preset, style: theme.textTheme.titleSmall),
+        const SizedBox(height: 6),
+        SizedBox(
+          width: double.infinity,
+          child: SegmentedButton<LoRaBandwidth>(
+            showSelectedIcon: false,
+            emptySelectionAllowed: true,
+            segments: [
+              ButtonSegment(
+                value: LoRaBandwidth.bw250,
+                label: Text(l10n.mediaMesh_presetFast),
+              ),
+              ButtonSegment(
+                value: LoRaBandwidth.bw125,
+                label: Text(l10n.mediaMesh_presetRange),
+              ),
+            ],
+            selected: _presetOf(_settings),
+            onSelectionChanged: (picked) {
+              if (picked.isEmpty) return;
+              setState(
+                () => _settings = _settings.copyWith(
+                  bandwidth: picked.first,
+                  spreadingFactor: LoRaSpreadingFactor.sf7,
+                  codingRate: LoRaCodingRate.cr4_5,
+                ),
+              );
+              _validateFrequency(_frequencyController.text);
+            },
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(l10n.mediaMesh_presetHelp, style: small),
+        const SizedBox(height: 16),
         DropdownButtonFormField<LoRaBandwidth>(
+          key: ValueKey('bw-${_settings.bandwidth.name}'),
           initialValue: _settings.bandwidth,
           decoration: InputDecoration(
             labelText: l10n.settings_bandwidth,
@@ -330,6 +405,7 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
         ),
         const SizedBox(height: 16),
         DropdownButtonFormField<LoRaSpreadingFactor>(
+          key: ValueKey('sf-${_settings.spreadingFactor.name}'),
           initialValue: _settings.spreadingFactor,
           decoration: InputDecoration(
             labelText: l10n.settings_spreadingFactor,
@@ -348,6 +424,7 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
         ),
         const SizedBox(height: 16),
         DropdownButtonFormField<LoRaCodingRate>(
+          key: ValueKey('cr-${_settings.codingRate.name}'),
           initialValue: _settings.codingRate,
           decoration: InputDecoration(
             labelText: l10n.settings_codingRate,

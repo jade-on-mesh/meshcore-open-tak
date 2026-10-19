@@ -11,22 +11,31 @@ switching between them, so you keep hearing the main mesh.
 
 1. **radio2**: *Off*, *Listen* (hear radio2, never send there) or
    *Listen + send*.
-2. **Sent on radio2**: *Photos & voice* puts only photos and voice clips there;
-   *Everything* also copies messages onto radio2 so radio2-only nodes hear
-   them. A mix set from the console shows as *Custom* and is left alone.
-3. Set the **radio2 frequency**, **Bandwidth**, **Spreading factor** and
-   **Coding rate**. The default is 911.150 MHz, 125 kHz, SF7, 4/5: about twice
-   as fast as SF7/62.5, for roughly 3 dB less range (in a city, most of the main
-   mesh's reach). 911.150 is a quiet spot found on site, inside a BayMesh 3
-   cavity filter tuned for 910.525 (flat about 908.6-912.8 MHz) and 625 kHz above
-   the main channel. It must
-   differ from the main radio, and every node on the MediaMesh needs the same
-   settings.
+2. **Sent on radio2**: *Photos & voice* puts photos and voice clips there and
+   keeps text on the main mesh. A mix set from the console shows as *Custom*
+   and is left alone.
+3. Pick a **Preset**, or set the **radio2 frequency**, **Bandwidth**,
+   **Spreading factor** and **Coding rate** yourself:
+   - **250 kHz · fast** (the default): 911.150 MHz, 250 kHz, SF7, 4/5. About
+     four times as fast as SF7/62.5, for roughly 6 dB less range.
+   - **125 kHz · range**: the same at 125 kHz. About half the speed of the fast
+     preset and roughly 40% farther.
+
+   911.150 is a quiet spot found on site, inside a BayMesh 3 cavity filter
+   tuned for 910.525 (flat about 908.6-912.8 MHz) and 625 kHz above the main
+   channel. It must differ from the main radio, and every node on the MediaMesh
+   needs the same settings.
 4. **Save**. The settings live on the radio, so they also apply when you are not
    connected (for example a Wadamesh radio fetching a photo by itself).
 
 The dialog also shows, every few seconds while it is open: packets received and
 sent on each profile, the measured switch time, and the radio's timing warnings.
+
+**Photos and voice stay off the main mesh.** They only go out when the
+connected radio sends them on radio2 alone (*Listen + send*, *Photos & voice*).
+Otherwise the app says so instead of sending, and doesn't answer other
+people's requests for them either. The older image types that always use the
+main mesh can't be sent.
 
 **Temporary radio2** tries the profile in the form for 15 minutes, 1 hour or
 2 hours without saving it (`tempradio2`); **Stop** brings the saved radio2 back.
