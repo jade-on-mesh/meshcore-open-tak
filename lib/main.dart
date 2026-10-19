@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 
 import 'review_mode/review_mode_storage.dart';
 import 'screens/chrome_required_screen.dart';
+import 'team/map_highlights.dart';
 import 'services/media_mesh_nearby.dart';
 import 'services/media_lockdown.dart';
 import 'utils/platform_info.dart';
@@ -105,6 +106,7 @@ void main() async {
   // Undo a review-mode session the app was killed in before it could exit.
   await _startupStep('endReviewModeSession', () => endReviewModeSession(appSettingsService));
   await _startupStep('mediaMeshNearby.load', () => MediaMeshNearby.instance.load());
+  await _startupStep('mapHighlights.load', () => MapHighlights.instance.load());
   MediaMeshNearby.instance.attach(connector);
 
   // ---- image messages (AEIC over GRP_DATA) --------------------------------
