@@ -203,6 +203,25 @@ class VoxVoiceService extends ChangeNotifier {
     } catch (_) {}
   }
 
+  /// Last (radio, hops) logged per clip: logs when it first arrives and
+  /// whenever that changes, so the info log shows which radio carried it.
+  final Map<String, String> _arrivalLogged = {};
+
+  void _logArrival(String sid, int? via, int? hops) {
+    final radio = switch (via) {
+      0 => 'main mesh (radio tagged it)',
+      1 => 'MediaMesh / radio2',
+      _ => 'untagged (radio does not say which)',
+    };
+    final key = '$radio, ${hops == null ? 'direct/raw' : '$hops hops'}';
+    if (_arrivalLogged[sid] == key) return;
+    _arrivalLogged[sid] = key;
+    if (_arrivalLogged.length > 64) {
+      _arrivalLogged.remove(_arrivalLogged.keys.first);
+    }
+    _logEvent('packets arriving via $key', sid);
+  }
+
   void _noteVia(String sid, int? via) {
     if (via == null) return;
     // Heard on radio2: a MediaMesh is on the air here.
@@ -1561,6 +1580,7 @@ class VoxVoiceService extends ChangeNotifier {
         if (channelIndex != null) {
           _lastChannelPacket[pkt.sessionId] = DateTime.now();
         }
+        _logArrival(pkt.sessionId, via, channelIndex == null ? null : hops);
         _onPacket(pkt, via: via, hops: channelIndex == null ? null : hops);
       case _pingMagic:
         _onPing(payload);
