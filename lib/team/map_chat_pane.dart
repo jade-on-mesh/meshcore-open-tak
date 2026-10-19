@@ -120,7 +120,9 @@ class _MapChatPaneState extends State<MapChatPane> {
       return;
     }
     _text.clear();
-    _focus.requestFocus();
+    // Sent: put the keyboard away so the pane goes back to the bottom
+    // (with the keyboard up, a portrait screen docks it at the side).
+    _focus.unfocus();
     final sent = connector.sendChannelMessage(channel, text);
     _scrollToLatest();
     await sent;
@@ -517,7 +519,9 @@ extension on _MapChatPaneState {
     final t = _text.text.trim();
     if (t.isEmpty) return;
     _text.clear();
-    _focus.requestFocus();
+    // Sent: put the keyboard away so the pane goes back to the bottom
+    // (with the keyboard up, a portrait screen docks it at the side).
+    _focus.unfocus();
     tak.sendChat(t);
     _scrollToLatest();
   }
