@@ -72,8 +72,32 @@ class _MapChatPaneState extends State<MapChatPane> {
   /// Showing TAK's All Chat Rooms instead of a mesh channel.
   bool _takMode = false;
 
+  /// Closes the keyboard a little after a send, unless typing resumes.
+  Timer? _idle;
+
+  @override
+  void initState() {
+    super.initState();
+    _text.addListener(_typing);
+  }
+
+  void _typing() {
+    if (_text.text.isNotEmpty) _idle?.cancel();
+  }
+
+  /// With the keyboard up, a portrait screen docks the pane at the side. The
+  /// keyboard stays up for a quick follow-up; after a short pause with
+  /// nothing typed it goes away and the pane returns to the bottom.
+  void _dockAfterPause() {
+    _idle?.cancel();
+    _idle = Timer(const Duration(seconds: 4), () {
+      if (mounted && _text.text.isEmpty) _focus.unfocus();
+    });
+  }
+
   @override
   void dispose() {
+    _idle?.cancel();
     _text.dispose();
     _focus.dispose();
     _scroll.dispose();
@@ -120,9 +144,8 @@ class _MapChatPaneState extends State<MapChatPane> {
       return;
     }
     _text.clear();
-    // Sent: put the keyboard away so the pane goes back to the bottom
-    // (with the keyboard up, a portrait screen docks it at the side).
-    _focus.unfocus();
+    _focus.requestFocus();
+    _dockAfterPause();
     final sent = connector.sendChannelMessage(channel, text);
     _scrollToLatest();
     await sent;
@@ -519,9 +542,8 @@ extension on _MapChatPaneState {
     final t = _text.text.trim();
     if (t.isEmpty) return;
     _text.clear();
-    // Sent: put the keyboard away so the pane goes back to the bottom
-    // (with the keyboard up, a portrait screen docks it at the side).
-    _focus.unfocus();
+    _focus.requestFocus();
+    _dockAfterPause();
     tak.sendChat(t);
     _scrollToLatest();
   }
