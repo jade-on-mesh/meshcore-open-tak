@@ -40,6 +40,8 @@ import 'resample.dart';
 import 'voice_codec.dart';
 import 'voice_codec_choice.dart';
 import 'voice_wire.dart';
+import 'vox_timing.dart';
+import '../utils/lora_airtime.dart';
 import 'wav.dart';
 
 enum VoxClipStatus { remote, requesting, receiving, complete, unavailable }
@@ -141,6 +143,10 @@ class _IncomingClip {
   /// Highest packet index asked for in the latest request (sent last).
   int expectedLast = -1;
   Timer? watchdog;
+
+  /// Some packet came through a repeater (or by a way that doesn't say):
+  /// packets can arrive out of order, so a gap may still fill.
+  bool relayed = false;
 
   _IncomingClip(this.envelope);
 
@@ -504,6 +510,7 @@ class VoxVoiceService extends ChangeNotifier {
 
   /// Packets for sessions we have not seen an envelope for yet.
   final Map<String, Map<int, Uint8List>> _orphans = {};
+  final Set<String> _orphansRelayed = {};
 
   /// Last time any channel packet for a session was heard (serve dedupe).
   final Map<String, DateTime> _lastChannelPacket = {};
@@ -666,17 +673,36 @@ class VoxVoiceService extends ChangeNotifier {
       // packets for a clip it has heard announced.
       final sid = env.sessionId;
       final index = channel.index;
+      final lead = voxPushLead(_mainAirtime(env.encode().length));
+      _logEvent('pushing in ${lead.inMilliseconds}ms', sid);
       unawaited(
-        Future<void>.delayed(
-          _pushAfterAnnounce,
-        ).then((_) => _pushToChannel(sid, index)),
+        Future<void>.delayed(lead).then((_) => _pushToChannel(sid, index)),
       );
     }
     notifyListeners();
     return env;
   }
 
-  static const _pushAfterAnnounce = Duration(milliseconds: 1500);
+  /// Airtime on the main mesh of a channel message with [textBytes] of
+  /// text: MeshCore's header, channel hash and MAC, the encrypted timestamp,
+  /// type and "name: " prefix (padded to the cipher block), and a flood path
+  /// still empty. Null when the radio's settings aren't known.
+  Duration? _mainAirtime(int textBytes) {
+    final sf = _connector.currentSf;
+    final bwHz = _connector.currentBwHz;
+    if (sf == null || bwHz == null || bwHz <= 0) return null;
+    final plain = 5 + 34 + textBytes; // timestamp, type, sender name prefix
+    final cipher = ((plain + 15) ~/ 16) * 16;
+    if (sf < 5 || sf > 12) return null;
+    return loraTimeOnAir(
+      payloadBytes: 2 + 1 + 2 + cipher,
+      spreadingFactor: sf,
+      bandwidthHz: bwHz,
+      codingRate: (_connector.currentCr ?? 5).clamp(5, 8),
+      // Time-sharing radios run a longer preamble on the main mesh too.
+      preambleSymbols: 40,
+    );
+  }
 
   /// Clips pushed to the radios in range, and when, so their own "send me
   /// everything" requests (which cross the push on the air) are not served
@@ -797,6 +823,7 @@ class VoxVoiceService extends ChangeNotifier {
     clip.sender ??= sender;
     clip.channelIndex ??= channelIndex;
     final orphan = _orphans.remove(sid);
+    if (_orphansRelayed.remove(sid)) clip.relayed = true;
     if (orphan != null) {
       for (final e in orphan.entries) {
         _acceptPacket(clip, e.key, e.value, notify: false);
@@ -1037,13 +1064,43 @@ class VoxVoiceService extends ChangeNotifier {
       _ => 2,
     };
     final wait = Duration(milliseconds: trips * hops * hopMs + 8000);
-    return clip.status == VoxClipStatus.receiving ? perPacket * 3 + wait : wait;
+    // Once packets flow, the stream is live: silence for a few packet gaps
+    // means its tail was lost, not that the request is still on its way.
+    return clip.status == VoxClipStatus.receiving
+        ? voxStallWait(perPacket)
+        : wait;
   }
 
   void _armWatchdog(_IncomingClip clip) {
     clip.watchdog?.cancel();
     final wait = _waitFor(clip);
     clip.watchdog = Timer(wait, () => _onWatchdog(clip));
+  }
+
+  /// Packets are arriving for a clip nobody here asked for: a push, or a
+  /// transfer for another listener. When they stop with some missing and
+  /// at least half here, ask for the rest rather than leave it unfinished.
+  void _armPassiveFinish(_IncomingClip clip) {
+    clip.watchdog?.cancel();
+    final gap = clip.relayed ? _packetGap(flood: true) : _zeroHopGap();
+    // Everyone in range hears the same push stop: spread their requests.
+    final jitter = Duration(milliseconds: _rng.nextInt(1500));
+    clip.watchdog = Timer(voxStallWait(gap) + jitter, () {
+      if (clip.isComplete || clip.status != VoxClipStatus.remote) return;
+      if (!_connector.isConnected) return;
+      if (!voxShouldFinishPassive(
+        received: clip.packets.length,
+        total: clip.envelope.totalPackets,
+      )) {
+        return;
+      }
+      _logEvent(
+        'packets stopped at ${clip.packets.length}/'
+        '${clip.envelope.totalPackets}: asking for the rest',
+        clip.envelope.sessionId,
+      );
+      unawaited(requestClip(clip.envelope));
+    });
   }
 
   Future<void> _onWatchdog(_IncomingClip clip) async {
@@ -1155,11 +1212,13 @@ class VoxVoiceService extends ChangeNotifier {
         await _loadFromStore(sid);
         final bits = _bits[sid];
         if (bits == null || !imagesAvailable) return null;
+        final sw = Stopwatch()..start();
         final img = await compute(_decodeImageJob, bits);
         if (img == null) {
           _logEvent('image did not decode', sid);
           return null;
         }
+        _logEvent('image decoded in ${sw.elapsedMilliseconds}ms', sid);
         _imageCache[sid] = img;
         while (_imageCache.length > 12) {
           _imageCache.remove(_imageCache.keys.first);
@@ -1496,7 +1555,7 @@ class VoxVoiceService extends ChangeNotifier {
         if (channelIndex != null) {
           _lastChannelPacket[pkt.sessionId] = DateTime.now();
         }
-        _onPacket(pkt, via: via);
+        _onPacket(pkt, via: via, hops: channelIndex == null ? null : hops);
       case _pingMagic:
         _onPing(payload);
         return;
@@ -1531,17 +1590,24 @@ class VoxVoiceService extends ChangeNotifier {
     return true; // never show VR3 control messages in the chat
   }
 
-  void _onPacket(VoxVoicePacket pkt, {int? via}) {
+  void _onPacket(VoxVoicePacket pkt, {int? via, int? hops}) {
     final sid = pkt.sessionId;
     if (_bits.containsKey(sid)) return;
     _noteVia(sid, via);
+    // Raw data doesn't say how far it came: treat it as relayed.
+    final relayed = hops == null || hops > 0;
     final clip = _incoming[sid];
     if (clip == null) {
       final o = _orphans.putIfAbsent(sid, () => {});
       o[pkt.index] = pkt.codecData;
-      if (_orphans.length > 32) _orphans.remove(_orphans.keys.first);
+      if (relayed) _orphansRelayed.add(sid);
+      if (_orphans.length > 32) {
+        _orphansRelayed.remove(_orphans.keys.first);
+        _orphans.remove(_orphans.keys.first);
+      }
       return;
     }
+    if (relayed) clip.relayed = true;
     _acceptPacket(clip, pkt.index, pkt.codecData);
   }
 
@@ -1568,12 +1634,14 @@ class VoxVoiceService extends ChangeNotifier {
         // The sender has sent its last packet, so the gaps are final: ask
         // for them again right away instead of waiting out the timeout.
         clip.watchdog?.cancel();
-        final wait =
-            _packetGap(
-              flood: clip.lastMethod == _Method.channel,
-              hops: _clipHops(clip),
-            ) +
-            const Duration(milliseconds: 1500);
+        final wait = voxGapRequestDelay(
+          relayed: clip.relayed,
+          packetGap: _packetGap(
+            flood: clip.lastMethod == _Method.channel,
+            hops: _clipHops(clip),
+          ),
+          zeroHopGap: _zeroHopGap(),
+        );
         _logEvent(
           'last packet in, ${clip.missing.length} missing; re-requesting in '
           '${wait.inMilliseconds}ms',
@@ -1583,6 +1651,9 @@ class VoxVoiceService extends ChangeNotifier {
       } else {
         _armWatchdog(clip);
       }
+    } else if (clip.status == VoxClipStatus.remote &&
+        clip.channelIndex != null) {
+      _armPassiveFinish(clip);
     }
     if (notify) notifyListeners();
   }
@@ -1690,8 +1761,9 @@ class VoxVoiceService extends ChangeNotifier {
       if (!await _loadFromStore(burst.sid)) return;
       final packets = voxPacketize(burst.sid, _bits[burst.sid]!, _modes[burst.sid]!);
       // Listen before the burst, briefly: the request that started it may
-      // still be relayed. Within the burst the gaps do this.
-      await _waitBriefQuiet();
+      // still be relayed. Within the burst the gaps do this. A push answers
+      // no request, and its lead after the announcement already went by.
+      if (!burst.pushing) await _waitBriefQuiet();
       var sent = 0;
       var zeroHopSent = 0;
       while (burst.pending.isNotEmpty && _connector.isConnected) {

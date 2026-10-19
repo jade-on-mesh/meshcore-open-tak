@@ -176,6 +176,9 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
       VoxClipStatus.complete =>
         '${env.durationSeconds}s · '
             '${env.mode.isMimi ? 'Mimi' : 'Codec2 ${env.mode.label}'}',
+      // Pushed (or sent for someone else) and arriving unasked.
+      VoxClipStatus.remote when !widget.isOutgoing && st.received > 0 =>
+        'Receiving ${st.received}/${st.total}',
       VoxClipStatus.remote =>
         widget.isOutgoing
             ? '${env.durationSeconds}s · waiting for listeners'
