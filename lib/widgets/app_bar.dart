@@ -39,6 +39,7 @@ class AppBarTitle extends StatelessWidget {
             !compact && connector.isConnected && selfName != null && subtitle;
         final showBattery = showBatteryIndicator && availableWidth >= 60;
         final showSnr = availableWidth >= 110;
+        final showRepeater = availableWidth >= 260;
         final showIndicators = (showBattery || showSnr) && indicators;
 
         return Row(
@@ -72,6 +73,7 @@ class AppBarTitle extends StatelessWidget {
                   const MediaMeshNearbyIcon(compact: true),
                   if (connector.supportsCompanionRadioStats)
                     const RadioStatsIconButton(compact: true),
+                  if (showRepeater) RepeaterLabel(connector: connector),
                 ],
               ),
             trailing ?? const SizedBox.shrink(),
