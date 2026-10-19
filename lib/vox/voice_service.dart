@@ -26,6 +26,7 @@ import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
 import '../models/channel.dart';
 import '../models/contact.dart';
+import '../services/media_mesh.dart' show MediaAirProfile, loadMediaAirProfile;
 import '../services/image_chunk_transport.dart'
     show parseChannelDataFrame, respCodeChannelDataRecv;
 import 'voice_clip_store.dart';
@@ -629,6 +630,7 @@ class VoxVoiceService extends ChangeNotifier {
     VoxEncodedClip clip,
   ) async {
     final env = _register(clip);
+    unawaited(_refreshMediaAir()); // ready before the first request
     _logEvent(
       'sent ${env.totalPackets}-packet ${clip.mode.label} '
       '${clip.mode.isImage ? '(${clip.bits.length}B)' : 'clip'} to ${contact.name} '
@@ -645,6 +647,7 @@ class VoxVoiceService extends ChangeNotifier {
     VoxEncodedClip clip,
   ) async {
     final env = _register(clip);
+    unawaited(_refreshMediaAir()); // ready before the first request
     _logEvent(
       'sent ${env.totalPackets}-packet ${clip.mode.label} clip to channel ${channel.name}',
       env.sessionId,
@@ -1560,6 +1563,7 @@ class VoxVoiceService extends ChangeNotifier {
     int gen,
   ) async {
     if (_serveGen[key] != gen) return; // superseded while queued
+    await _refreshMediaAir();
     if (!await _loadFromStore(req.sessionId)) {
       _logEvent('asked for a clip we do not have', req.sessionId);
       return;
@@ -1685,8 +1689,75 @@ class VoxVoiceService extends ChangeNotifier {
     return Uint8List.fromList(c.path.sublist(0, c.pathLength));
   }
 
-  /// Airtime of one full voice packet with the radio's current settings.
+  // Where this radio sends photos and voice (MediaAirProfile): radio2's
+  // profile when they go on radio2 alone. Asked once per connected radio and
+  // again every few minutes; a radio that can't say is asked again only after
+  // a reconnect or ten minutes.
+  MediaAirProfile? _mediaAir;
+  String? _mediaAirRadio;
+  DateTime? _mediaAirAt;
+  Future<void>? _mediaAirLoading;
+
+  Future<void> _refreshMediaAir() {
+    final radio = _connector.isConnected ? _connector.selfPublicKeyHex : null;
+    final at = _mediaAirAt;
+    final fresh =
+        radio == _mediaAirRadio &&
+        at != null &&
+        DateTime.now().difference(at) <
+            (_mediaAir != null
+                ? const Duration(minutes: 3)
+                : const Duration(minutes: 10));
+    if (radio == null || fresh) {
+      if (radio == null) _mediaAir = null;
+      return Future.value();
+    }
+    return _mediaAirLoading ??= () async {
+      MediaAirProfile? air;
+      try {
+        air = await loadMediaAirProfile((c) async {
+          try {
+            return await _connector
+                .runLocalCliCommand(c)
+                .timeout(const Duration(seconds: 4));
+          } catch (_) {
+            return null;
+          }
+        });
+      } catch (_) {
+        air = null;
+      }
+      _mediaAir = air;
+      _mediaAirRadio = radio;
+      _mediaAirAt = DateTime.now();
+      _mediaAirLoading = null;
+      if (air != null) {
+        _logEvent(
+          'photos and voice go on radio2: pacing for SF${air.spreadingFactor}'
+          '/${air.bandwidthKhz} kHz, ${_packetAir().inMilliseconds} ms a packet',
+        );
+      }
+    }();
+  }
+
+  /// The radio2 profile changed (the MediaMesh settings were saved): ask again
+  /// before the next transfer.
+  void mediaRoutingChanged() => _mediaAirAt = null;
+
+  /// Airtime of one full voice packet with the radio's current settings, or
+  /// radio2's when photos and voice go out on radio2 alone.
   Duration _packetAir() {
+    final m = _mediaAir;
+    if (m != null && _connector.isConnected) {
+      return voxEstimateAirtime(
+        totalPackets: 1,
+        codecBytesPerPacket: voxMaxCodecBytesPerPacket,
+        spreadingFactor: m.spreadingFactor,
+        bandwidthKhz: m.bandwidthKhz,
+        codingRate: m.codingRate,
+        preambleSymbols: m.preamble,
+      );
+    }
     final sf = _connector.currentSf;
     final bwHz = _connector.currentBwHz;
     if (sf == null || bwHz == null || bwHz <= 0) {
