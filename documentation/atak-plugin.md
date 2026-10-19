@@ -28,4 +28,4 @@ Tap a point or a shape's label for details, Bloodhound, or **Hide on this phone*
 
 ## Wire format
 
-The plugin adds three team message types (point `0x43`, shape `0x47`, chunk `0x58`), documented in `lib/team/team_wire_atak.dart`. Both implementations are checked against shared byte vectors in `test/team/atak_wire_test.dart` and the plugin's `TeamWireTest`.
+The plugin adds three team message types (point `0x4F`, shape `0x47`, chunk `0x58`; `0x43` is the app's CASEVAC), documented in `lib/team/team_wire_atak.dart`. Both implementations are checked against shared byte vectors in `test/team/atak_wire_test.dart` and the plugin's `TeamWireTest`.
