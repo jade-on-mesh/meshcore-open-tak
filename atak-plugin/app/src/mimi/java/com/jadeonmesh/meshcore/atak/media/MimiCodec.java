@@ -161,9 +161,32 @@ public final class MimiCodec {
         return Bytes.hex(md.digest());
     }
 
+    private static boolean ortPreloaded;
+
+    /**
+     * ONNX Runtime loads its JNI library with System.loadLibrary, and that
+     * library needs libonnxruntime.so. Inside ATAK the plugin's library
+     * folder may not be on the linker's search path, so load both by
+     * absolute path first (as the plugin does for its own codecs).
+     */
+    private static synchronized void preloadOrt() {
+        if (ortPreloaded)
+            return;
+        ortPreloaded = true;
+        for (String lib : new String[] { "onnxruntime", "onnxruntime4j_jni" }) {
+            try {
+                com.jadeonmesh.meshcore.atak.plugin.PluginNativeLoader.loadLibrary(lib);
+            } catch (Throwable ignored) {
+                // ORT's own loadLibrary below reports the real problem.
+            }
+        }
+    }
+
     private OrtSession session(int which) throws Exception {
-        if (env == null)
+        if (env == null) {
+            preloadOrt();
             env = OrtEnvironment.getEnvironment();
+        }
         lastUse = System.currentTimeMillis();
         if (which == 0) {
             if (encoder == null)

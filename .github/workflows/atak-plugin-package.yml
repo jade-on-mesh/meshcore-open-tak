@@ -1,0 +1,138 @@
+name: ATAK plugin package
+
+# Turns a prebuilt bundle into an installable (unsigned) plugin APK.
+#
+# The ATAK-CIV SDK (tak.gov) can't be committed to this public repo, so the
+# steps that need it run elsewhere: aapt2 (manifest and resources) and javac
+# against ATAK's main.jar produce atak-plugin/prebuilt/bundle.zip, which holds
+# only this plugin's own classes and resources. This job adds what needs
+# Google's tools but not the SDK: d8, the native codecs (Codec2 + AV1) built
+# with the NDK, ONNX Runtime for Mimi, and zipalign. The APK is then signed
+# with the SDK's development key outside CI.
+#
+# Runs on pushes to the short-lived atak-plugin-apk branch.
+
+on:
+  push:
+    branches:
+      - atak-plugin-apk
+    paths:
+      - "atak-plugin/prebuilt/bundle.zip"
+      - ".github/workflows/atak-plugin-package.yml"
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      NDK_VERSION: "29.0.14206865"
+      BUILD_TOOLS: "36.0.0"
+      ORT_VERSION: "1.16.3"
+      ABIS: "arm64-v8a armeabi-v7a"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Android SDK parts
+        run: |
+          set -euo pipefail
+          SM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SM" --licenses > /dev/null || true
+          "$SM" "platforms;android-36" "build-tools;$BUILD_TOOLS" \
+            "ndk;$NDK_VERSION" "cmake;3.22.1" > /dev/null
+          echo "NDK=$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+          echo "BT=$ANDROID_HOME/build-tools/$BUILD_TOOLS" >> "$GITHUB_ENV"
+          echo "CMAKE_BIN=$ANDROID_HOME/cmake/3.22.1/bin" >> "$GITHUB_ENV"
+
+      - name: Unpack the bundle
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pkg && cd /tmp/pkg
+          unzip -q "$GITHUB_WORKSPACE/atak-plugin/prebuilt/bundle.zip"
+          echo "Built from $(cat source-commit.txt)"
+          # Only this plugin's classes may be in the bundle.
+          if unzip -Z1 classes.jar | grep '\.class$' | grep -v '^com/jadeonmesh/'; then
+            echo "::error::bundle has classes from outside the plugin"; exit 1
+          fi
+
+      - name: ONNX Runtime (Mimi voice in direct mode)
+        run: |
+          set -euo pipefail
+          cd /tmp/pkg
+          base="https://repo1.maven.org/maven2/com/microsoft/onnxruntime/onnxruntime-android/$ORT_VERSION"
+          aar="onnxruntime-android-$ORT_VERSION.aar"
+          curl -fsSLO "$base/$aar"
+          curl -fsSL "$base/$aar.sha1" -o ort.sha1
+          echo "$(cut -c1-40 ort.sha1)  $aar" | sha1sum -c
+          mkdir ort && unzip -q "$aar" -d ort
+          ls ort ort/jni
+
+      - name: Build libaom (photos in direct mode)
+        run: |
+          set -euo pipefail
+          export PATH="$CMAKE_BIN:$PATH"
+          ANDROID_NDK_HOME="$NDK" atak-plugin/scripts/build-libaom.sh $ABIS
+
+      - name: Build the native codecs
+        run: |
+          set -euo pipefail
+          export PATH="$CMAKE_BIN:$PATH"
+          for abi in $ABIS; do
+            cmake -S atak-plugin/app/src/main/cpp -B "/tmp/native/$abi" -G Ninja \
+              -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
+              -DANDROID_ABI="$abi" -DANDROID_PLATFORM=android-24 \
+              -DANDROID_STL=none -DCMAKE_BUILD_TYPE=Release
+            cmake --build "/tmp/native/$abi"
+            mkdir -p "/tmp/pkg/lib/$abi"
+            cp "/tmp/native/$abi/libmtak_codecs.so" "/tmp/pkg/lib/$abi/"
+            cp /tmp/pkg/ort/jni/$abi/*.so "/tmp/pkg/lib/$abi/"
+          done
+          find /tmp/pkg/lib -type f -exec ls -la {} \;
+          # Codec2 and AV1 must both be in: direct-mode voice and photos.
+          NM="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm"
+          for abi in $ABIS; do
+            so="/tmp/pkg/lib/$abi/libmtak_codecs.so"
+            "$NM" -D --defined-only "$so" | grep -q c2Encode
+            "$NM" -D --defined-only "$so" | grep -q av1Encode
+            test -f "third_party/aom-android/$abi/lib/libaom.a"
+            strings "$so" | grep -q "AOMedia" || { echo "::error::no libaom in $abi"; exit 1; }
+          done
+
+      - name: Dex
+        run: |
+          set -euo pipefail
+          cd /tmp/pkg
+          mkdir dex
+          # Min API 24: interface default methods need no desugaring, so
+          # ATAK's classes aren't needed on the classpath.
+          java -cp "$BT/lib/d8.jar" com.android.tools.r8.D8 --release \
+            --min-api 24 --lib "$ANDROID_HOME/platforms/android-36/android.jar" \
+            --output dex classes.jar ort/classes.jar
+          ls -la dex
+
+      - name: Assemble and align
+        run: |
+          set -euo pipefail
+          cd /tmp/pkg
+          cp res.apk unsigned.apk
+          (cd dex && zip -q -X ../unsigned.apk classes*.dex)
+          zip -q -X -r unsigned.apk lib
+          "$BT/zipalign" -f -P 16 4 unsigned.apk aligned.apk
+          "$BT/zipalign" -c -P 16 4 aligned.apk
+          "$BT/aapt2" dump badging aligned.apk | head -20
+          unzip -l aligned.apk
+          ver=$(cut -c1-7 source-commit.txt)
+          mkdir -p out
+          mv aligned.apk "out/ATAK-Plugin-MeshCore-1.1.0-$ver-5.8.0-civ-unsigned.apk"
+          (cd out && sha256sum *.apk | tee SHA256SUMS)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: atak-plugin-meshcore-unsigned
+          path: /tmp/pkg/out/
+          retention-days: 7
