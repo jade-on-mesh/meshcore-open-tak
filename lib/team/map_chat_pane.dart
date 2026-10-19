@@ -66,6 +66,7 @@ class MapChatPane extends StatefulWidget {
 class _MapChatPaneState extends State<MapChatPane> {
   final _text = TextEditingController();
   final _focus = FocusNode();
+  final _scroll = ScrollController();
   int? _channelIndex;
 
   /// Showing TAK's All Chat Rooms instead of a mesh channel.
@@ -75,7 +76,20 @@ class _MapChatPaneState extends State<MapChatPane> {
   void dispose() {
     _text.dispose();
     _focus.dispose();
+    _scroll.dispose();
     super.dispose();
+  }
+
+  /// The lists are reversed, so offset 0 is the newest message.
+  void _scrollToLatest() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scroll.hasClients) return;
+      _scroll.animateTo(
+        0,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   Channel? _channel(MeshCoreConnector connector, TeamService? team) {
@@ -107,7 +121,10 @@ class _MapChatPaneState extends State<MapChatPane> {
     }
     _text.clear();
     _focus.requestFocus();
-    await connector.sendChannelMessage(channel, text);
+    final sent = connector.sendChannelMessage(channel, text);
+    _scrollToLatest();
+    await sent;
+    _scrollToLatest();
   }
 
   @override
@@ -235,6 +252,7 @@ class _MapChatPaneState extends State<MapChatPane> {
                     ),
                   )
                 : ListView.builder(
+                    controller: _scroll,
                     reverse: true,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
@@ -264,15 +282,23 @@ class _MapChatPaneState extends State<MapChatPane> {
                 children: [
                   VoxImageButton(
                     recipientLabel: channel.name,
-                    onSend: (image) => context
-                        .read<VoxVoiceService>()
-                        .sendImageToChannel(channel, image),
+                    onSend: (image) {
+                      _scrollToLatest();
+                      return context
+                          .read<VoxVoiceService>()
+                          .sendImageToChannel(channel, image)
+                          .whenComplete(_scrollToLatest);
+                    },
                   ),
                   VoxMicButton(
                     recipientLabel: channel.name,
-                    onSend: (clip) => context
-                        .read<VoxVoiceService>()
-                        .sendClipToChannel(channel, clip),
+                    onSend: (clip) {
+                      _scrollToLatest();
+                      return context
+                          .read<VoxVoiceService>()
+                          .sendClipToChannel(channel, clip)
+                          .whenComplete(_scrollToLatest);
+                    },
                   ),
                   Expanded(
                     child: TextField(
@@ -399,6 +425,7 @@ extension on _MapChatPaneState {
                     ),
                   )
                 : ListView.builder(
+                    controller: _scroll,
                     reverse: true,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
@@ -492,6 +519,7 @@ extension on _MapChatPaneState {
     _text.clear();
     _focus.requestFocus();
     tak.sendChat(t);
+    _scrollToLatest();
   }
 }
 

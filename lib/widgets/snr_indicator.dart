@@ -159,6 +159,13 @@ class _SNRIndicatorState extends State<SNRIndicator> {
       widget.connector.currentSf,
     );
 
+    final stale =
+        directRepeater != null &&
+        DateTime.now().difference(directRepeater.lastUpdated) >
+            const Duration(minutes: 10);
+    final color = stale ? snrUi.color.withValues(alpha: 0.45) : snrUi.color;
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
       child: InkWell(
@@ -171,22 +178,35 @@ class _SNRIndicatorState extends State<SNRIndicator> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(snrUi.icon, size: 18, color: snrUi.color),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(snrUi.icon, size: 18, color: color),
+                  if (directRepeaters.length > 1)
+                    Positioned(
+                      right: -9,
+                      top: -4,
+                      child: Text(
+                        '${directRepeaters.length}',
+                        style: MeshTheme.mono(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          color: muted,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 2),
               Text(
                 snrUi.text,
-                style: TextStyle(fontSize: 12, color: snrUi.color),
-              ),
-              if (directRepeater != null)
-                Text(
-                  '${directRepeaters.length}: ${directRepeater.pubkeyPrefixHex}: ${_formatLastUpdated(directRepeater.lastUpdated)}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                style: MeshTheme.mono(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: color,
                 ),
+                maxLines: 1,
+              ),
             ],
           ),
         ),
