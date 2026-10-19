@@ -365,7 +365,7 @@ class VoxVoiceService extends ChangeNotifier {
     } catch (_) {}
   }
 
-  /// Send photos as an AI sketch (AEIC, ~150 B) instead of a VOX photo
+  /// Send photos as an AI sketch (AEIC, ~150 B) instead of a Mesh photo
   /// (AV1, real pixels). Off by default: VOX is the default.
   bool get photoAiSketch => _photoAiSketch;
 
@@ -2072,6 +2072,17 @@ class VoxVoiceService extends ChangeNotifier {
 
   Future<void> _ensureMediaAllowed() async {
     if (!await canSendMedia()) throw const MediaBlockedException();
+  }
+
+  /// Airtime of [packets] full packets where photos and voice go out
+  /// (radio2 when they go there alone, else the main radio); null when the
+  /// radio's settings aren't known.
+  Duration? mediaAirtime(int packets) {
+    if (_mediaAir == null &&
+        (_connector.currentSf == null || _connector.currentBwHz == null)) {
+      return null;
+    }
+    return _packetAir() * packets;
   }
 
   /// Airtime of one full voice packet with the radio's current settings, or

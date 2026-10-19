@@ -34,7 +34,11 @@ const int voxImagePayloadVersion = 1;
 /// How much airtime to spend, in voice messages.
 enum VoxImageDetail {
   standard(1, 'Standard'),
-  more(2, 'More detail');
+  more(2, 'More detail'),
+
+  /// Four times the bytes: about twice the resolution. Meant for a fast
+  /// MediaMesh preset, where 71 packets take ~11 s of air at 250 kHz.
+  sharp(4, 'Sharp');
 
   const VoxImageDetail(this.multiple, this.label);
   final int multiple;
