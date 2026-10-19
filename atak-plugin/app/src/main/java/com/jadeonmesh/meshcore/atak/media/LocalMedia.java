@@ -458,6 +458,7 @@ public final class LocalMedia implements MediaBackend {
             c.attempts = 0;
             c.stalls = 0;
             c.directFailures = 0;
+            c.sentDmRequest = false;
             attempt(c);
         });
     }
@@ -528,7 +529,7 @@ public final class LocalMedia implements MediaBackend {
         switch (m) {
             case DIRECT:
                 event(sid, "attempt " + c.attempts + ": raw request to " + s.name);
-                radio.sendRawData(s.directRoute(), req.encode(), done);
+                radio.sendRawData(s.directRoute(), req.encode(rng.nextInt(256)), done);
                 break;
             case DM_REQUEST:
                 c.sentDmRequest = true;
@@ -542,7 +543,7 @@ public final class LocalMedia implements MediaBackend {
                 event(sid, "attempt " + c.attempts + ": request on channel "
                         + c.channel);
                 radio.sendChannelData(c.channel, VoiceWire.CHANNEL_DATA_TYPE,
-                        Collections.singletonList(req.encode()), 0, done);
+                        Collections.singletonList(req.encode(rng.nextInt(256))), 0, done);
         }
     }
 

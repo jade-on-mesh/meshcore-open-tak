@@ -138,6 +138,13 @@ const int voxFetchFlagSaltOk = 0x02;
 /// instead of its own stored route (which can be stale or asymmetric).
 const int voxFetchFlagHasPath = 0x04;
 
+/// VOX extension: the request ends with one random byte. Radios drop any
+/// packet whose payload they have already seen, so without it a retry asking
+/// for the same missing packets is byte-identical to the last request and
+/// never reaches the sender (its own radio heard the first one). Parsers
+/// that don't know this flag ignore the trailing byte.
+const int voxFetchFlagSalted = 0x08;
+
 /// VOX extension: a voice packet with one random byte appended.
 ///
 /// MeshCore radios drop any packet whose contents they have already seen
@@ -323,7 +330,9 @@ class VoxVoicePacket {
   }
 }
 
-/// Binary fetch request: `[0x72][sid:4][flags][key6:6][count][indices...]`.
+/// Binary fetch request: `[0x72][sid:4][flags][key6:6][count][indices...]`,
+/// then `[len][path]` with [voxFetchFlagHasPath] and `[salt]` with
+/// [voxFetchFlagSalted].
 class VoxVoiceFetchRequest {
   static const int minLength = 13;
 
@@ -382,7 +391,8 @@ class VoxVoiceFetchRequest {
     );
   }
 
-  Uint8List encode() {
+  /// With [salt], appends it so this request differs from any earlier one.
+  Uint8List encode({int? salt}) {
     final missing = missingIndices == null
         ? const <int>[]
         : (missingIndices!
@@ -394,13 +404,15 @@ class VoxVoiceFetchRequest {
     final capped = missing.length > 140 ? missing.sublist(0, 140) : missing;
     final path = requesterPath;
     final pathBytes = path == null ? 0 : 1 + path.length;
-    final out = Uint8List(minLength + capped.length + pathBytes);
+    final saltBytes = salt == null ? 0 : 1;
+    final out = Uint8List(minLength + capped.length + pathBytes + saltBytes);
     out[0] = voxVoiceFetchMagic;
     out.setRange(1, 5, voxSessionIdToBytes(sessionId));
     out[5] =
         (missingIndices == null ? 0x00 : voxFetchFlagMissingOnly) |
         (saltOk ? voxFetchFlagSaltOk : 0x00) |
-        (path != null ? voxFetchFlagHasPath : 0x00);
+        (path != null ? voxFetchFlagHasPath : 0x00) |
+        (salt != null ? voxFetchFlagSalted : 0x00);
     for (var i = 0; i < 6; i++) {
       out[6 + i] = int.parse(
         requesterKey6.substring(i * 2, i * 2 + 2),
@@ -411,8 +423,13 @@ class VoxVoiceFetchRequest {
     out.setRange(minLength, minLength + capped.length, capped);
     if (path != null) {
       out[minLength + capped.length] = path.length;
-      out.setRange(minLength + capped.length + 1, out.length, path);
+      out.setRange(
+        minLength + capped.length + 1,
+        minLength + capped.length + 1 + path.length,
+        path,
+      );
     }
+    if (salt != null) out[out.length - 1] = salt & 0xFF;
     return out;
   }
 }
