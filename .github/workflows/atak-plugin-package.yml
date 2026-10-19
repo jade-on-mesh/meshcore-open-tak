@@ -106,6 +106,9 @@ jobs:
             cmake --build "/tmp/native/$abi"
             mkdir -p "/tmp/pkg/lib/$abi"
             cp "/tmp/native/$abi/libmtak_codecs.so" "/tmp/pkg/lib/$abi/"
+            # Drop debug info, as the Android Gradle plugin does.
+            "$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip" \
+              --strip-unneeded "/tmp/pkg/lib/$abi/libmtak_codecs.so"
             cp /tmp/pkg/ort/jni/$abi/*.so "/tmp/pkg/lib/$abi/"
           done
           find /tmp/pkg/lib -type f -exec ls -la {} \;
