@@ -204,6 +204,9 @@ class _VoxImageMessageContentState extends State<VoxImageMessageContent> {
     final String caption = switch (st.status) {
       VoxClipStatus.complete when _failed => 'Photo could not be decoded',
       VoxClipStatus.complete => 'Photo · $kb KB · tap to enlarge',
+      // Pushed (or sent for someone else) and arriving unasked.
+      VoxClipStatus.remote when !widget.isOutgoing && st.received > 0 =>
+        'Receiving ${st.received}/${st.total}',
       VoxClipStatus.remote =>
         widget.isOutgoing
             ? 'Photo · $kb KB · waiting for viewers'
