@@ -14,6 +14,7 @@
 //      transfer serves everyone who taps the clip.
 
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
@@ -1394,6 +1395,7 @@ class VoxVoiceService extends ChangeNotifier {
           parsed.payload,
           channelIndex: parsed.channelIndex,
           via: parsed.via,
+          hops: parsed.hopCount,
         );
       }
     }
@@ -1403,6 +1405,7 @@ class VoxVoiceService extends ChangeNotifier {
     Uint8List payload, {
     required int? channelIndex,
     int? via,
+    int? hops,
   }) {
     if (payload.isEmpty) return;
     switch (payload[0]) {
@@ -1428,7 +1431,7 @@ class VoxVoiceService extends ChangeNotifier {
           return; // our own request, heard back from a repeater
         }
         if (channelIndex != null) {
-          _onChannelRequest(req, channelIndex);
+          _onChannelRequest(req, channelIndex, hops);
         } else {
           _queueServe(req, viaChannel: null);
         }
@@ -1506,7 +1509,11 @@ class VoxVoiceService extends ChangeNotifier {
 
   // ---------------------------------------------------------------- serving
 
-  void _onChannelRequest(VoxVoiceFetchRequest req, int channelIndex) {
+  void _onChannelRequest(
+    VoxVoiceFetchRequest req,
+    int channelIndex,
+    int? hops,
+  ) {
     final self = _connector.selfPublicKey;
     if (self != null && req.requesterKey6 == voxKey6Hex(self)) return;
     unawaited(() async {
@@ -1521,9 +1528,131 @@ class VoxVoiceService extends ChangeNotifier {
       await Future<void>.delayed(delay);
       final heard = _lastChannelPacket[req.sessionId];
       if (!own && heard != null && heard.isAfter(asked)) return;
-      _queueServe(req, viaChannel: channelIndex);
+      _queueChannelBurst(req, channelIndex, hops);
     }());
   }
+
+  // ------------------------------------------------- channel bursts
+  //
+  // One burst per clip per channel, whoever asks. Every listener's request
+  // adds the packets it lacks to the burst's pending set; nothing restarts.
+  // (It used to: each new listener's request replaced the burst in progress
+  // and began again from packet 1, so with a few listeners a photo went out
+  // over and over.) Packets go out in index order, each listener's missing
+  // ones folded in as they arrive.
+  //
+  // When everyone who asked was heard directly (0 hops), the burst goes out
+  // zero-hop: direct with an empty path, heard by every radio in range and
+  // relayed by no repeater. With nothing to wait for but the packet itself,
+  // the next one follows right after. A listener further away turns the rest
+  // of the burst into floods, spaced for the repeaters' relays.
+
+  final Map<String, _ChannelBurst> _channelBursts = {};
+
+  void _queueChannelBurst(VoxVoiceFetchRequest req, int channel, int? hops) {
+    final key = '${req.sessionId}/ch$channel';
+    final sig = '$key/${req.requesterKey6}|${req.missingIndices?.join(',') ?? 'all'}';
+    final now = DateTime.now();
+    final last = _recentServes[sig];
+    if (last != null && now.difference(last) < const Duration(seconds: 6)) {
+      _logEvent('ignoring a repeated request', req.sessionId);
+      return; // the same request heard twice (direct and via a repeater)
+    }
+    _recentServes[sig] = now;
+    _recentServes.removeWhere(
+      (_, t) => now.difference(t) > const Duration(minutes: 10),
+    );
+    final total = voxPacketize(
+      req.sessionId,
+      _bits[req.sessionId]!,
+      _modes[req.sessionId]!,
+    ).length;
+    final burst = _channelBursts.putIfAbsent(
+      key,
+      () => _ChannelBurst(req.sessionId, channel),
+    );
+    final wanted = req.missingIndices ?? List<int>.generate(total, (i) => i);
+    final before = burst.pending.length;
+    burst.pending.addAll(wanted.where((i) => i >= 0 && i < total));
+    burst.saltOk = burst.saltOk && req.saltOk;
+    burst.maxHops = max(burst.maxHops, hops ?? 3);
+    _logEvent(
+      '${req.requesterKey6} asks for ${req.missingIndices == null ? 'all' : wanted.length} '
+      'packets (${hops == null ? '?' : hops} hops): '
+      '${burst.pending.length - before} added, ${burst.pending.length} pending',
+      req.sessionId,
+    );
+    if (burst.running) return;
+    burst.running = true;
+    _serveChain = _serveChain
+        .then((_) => _runChannelBurst(key, burst))
+        .catchError((_) {});
+  }
+
+  Future<void> _runChannelBurst(String key, _ChannelBurst burst) async {
+    try {
+      await _refreshMediaAir();
+      if (!await _loadFromStore(burst.sid)) return;
+      final packets = voxPacketize(burst.sid, _bits[burst.sid]!, _modes[burst.sid]!);
+      // Listen before the burst, briefly: the request that started it may
+      // still be relayed. Within the burst the gaps do this.
+      await _waitBriefQuiet();
+      var sent = 0;
+      var zeroHopSent = 0;
+      while (burst.pending.isNotEmpty && _connector.isConnected) {
+        final index = burst.pending.first;
+        burst.pending.remove(index);
+        if (index >= packets.length) continue;
+        final zeroHop = burst.maxHops == 0;
+        try {
+          await _connector.sendChannelDataPacket(
+            channelIndex: burst.channel,
+            dataType: voxChannelDataType,
+            payload: packets[index].encode(
+              salt: burst.saltOk ? _rng.nextInt(256) : null,
+            ),
+            zeroHop: zeroHop,
+          );
+        } catch (e) {
+          _logEvent('burst stopped at packet $index: $e', burst.sid);
+          return;
+        }
+        sent++;
+        if (zeroHop) zeroHopSent++;
+        _lastChannelPacket[burst.sid] = DateTime.now();
+        if (burst.pending.isNotEmpty) {
+          await Future<void>.delayed(
+            zeroHop ? _zeroHopGap() : _packetGap(flood: true),
+          );
+        }
+      }
+      _logEvent(
+        'sent $sent packets on channel ${burst.channel}'
+        '${zeroHopSent > 0 ? ' ($zeroHopSent zero-hop)' : ''}',
+        burst.sid,
+      );
+    } finally {
+      burst.running = false;
+      if (_channelBursts[key] == burst) _channelBursts.remove(key);
+    }
+  }
+
+  /// Up to 1.5 s for 300 ms without a packet heard (either radio).
+  Future<void> _waitBriefQuiet() async {
+    final until = DateTime.now().add(const Duration(milliseconds: 1500));
+    while (DateTime.now().isBefore(until)) {
+      if (DateTime.now().difference(_connector.lastRadioRxTime) >=
+          const Duration(milliseconds: 300)) {
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+  }
+
+  /// Between zero-hop packets nobody relays: the packet's own airtime, plus
+  /// a little for the radio to turn round and the listeners to read it out.
+  Duration _zeroHopGap() =>
+      Duration(milliseconds: max(150, _packetAir().inMilliseconds + 60));
 
   void _queueServe(
     VoxVoiceFetchRequest req, {
@@ -1974,4 +2103,15 @@ VoxRgbImage? _decodeImageJob(Uint8List payload) {
   final av1 = VoxAv1.instanceOrNull;
   if (av1 == null) return null;
   return voxDecodeImagePayload(payload, (obus) => av1.decode(obus));
+}
+
+/// A channel burst in progress (VoiceService._queueChannelBurst).
+class _ChannelBurst {
+  _ChannelBurst(this.sid, this.channel);
+  final String sid;
+  final int channel;
+  final SplayTreeSet<int> pending = SplayTreeSet<int>();
+  bool saltOk = true;
+  int maxHops = 0;
+  bool running = false;
 }

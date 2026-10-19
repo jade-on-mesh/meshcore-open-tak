@@ -7879,6 +7879,43 @@ class MeshCoreConnector extends ChangeNotifier {
     return sentAll;
   }
 
+  /// When the radio last reported hearing a packet (any packet, either
+  /// radio), for a short listen-before-talk ahead of a burst.
+  DateTime get lastRadioRxTime => _lastRadioRxTime;
+
+  /// One GRP_DATA packet of a photo/voice burst, without the per-message
+  /// collision backoff [sendChannelDataBlobs] waits out before every packet
+  /// (a chat-sized pause of up to 15 s plus 3 s of silence, which made a
+  /// burst take minutes): the burst is paced by its caller, and the radio
+  /// still listens before it talks.
+  ///
+  /// [zeroHop] sends it direct with an empty path: heard by every radio in
+  /// range and relayed by none, for when everyone who asked is in range.
+  /// Otherwise it floods like any channel packet, in the channel's region.
+  Future<void> sendChannelDataPacket({
+    required int channelIndex,
+    required int dataType,
+    required Uint8List payload,
+    bool zeroHop = false,
+  }) async {
+    if (!isConnected) throw StateError('Not connected');
+    final frame = buildSendChannelDataFrame(
+      channelIndex: channelIndex,
+      dataType: dataType,
+      payload: payload,
+      pathLen: zeroHop ? 0 : outPathUnknown,
+      path: zeroHop ? Uint8List(0) : null,
+    );
+    if (zeroHop) {
+      await _sendFrameAndWaitForCommandAck(frame);
+      return;
+    }
+    await _runScopedChannelSend(
+      () => _sendFrameAndWaitForCommandAck(frame),
+      region: _channelSendScope(channelIndex),
+    );
+  }
+
   Future<void> _runScopedChannelSend(
     Future<void> Function() action, {
     required String region,
