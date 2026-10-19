@@ -1666,7 +1666,7 @@ class VoxVoiceService extends ChangeNotifier {
     burst.maxHops = max(burst.maxHops, hops ?? 3);
     _logEvent(
       '${req.requesterKey6} asks for ${req.missingIndices == null ? 'all' : wanted.length} '
-      'packets (${hops == null ? '?' : hops} hops): '
+      'packets (${hops ?? '?'} hops): '
       '${burst.pending.length - before} added, ${burst.pending.length} pending',
       req.sessionId,
     );
@@ -1756,7 +1756,7 @@ class VoxVoiceService extends ChangeNotifier {
     if (_coveredByPush(
       req.sessionId,
       all: req.missingIndices == null,
-      hops: path == null ? null : path.length,
+      hops: path?.length,
     )) {
       _logEvent(
         '${req.requesterKey6} (in range) asks for all of it: being pushed',

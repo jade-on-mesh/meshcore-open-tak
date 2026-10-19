@@ -6793,4 +6793,9 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get mediaMesh_presetHelp => '250 kHz sends photos and voice about twice as fast; 125 kHz reaches about 40% farther. Every radio on MediaMesh must use the same settings.';
+
+  @override
+  String mediaMesh_conflictsWith(String name) {
+    return 'Conflicts with $name';
+  }
 }

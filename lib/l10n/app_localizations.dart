@@ -11988,6 +11988,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'250 kHz sends photos and voice about twice as fast; 125 kHz reaches about 40% farther. Every radio on MediaMesh must use the same settings.'**
   String get mediaMesh_presetHelp;
+
+  /// No description provided for @mediaMesh_conflictsWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Conflicts with {name}'**
+  String mediaMesh_conflictsWith(String name);
 }
 
 class _AppLocalizationsDelegate

@@ -36,6 +36,7 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
   TempRadio2? _temp;
   bool _frequencyInvalid = false;
   bool _frequencyOnMain = false;
+  String? _conflict; // a community mesh radio2 would sit on
   bool _saving = false;
   bool _busyTemp = false;
   bool _refreshing = false;
@@ -64,6 +65,7 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
       _temp = state.temp;
       _frequencyController.text = _settings.frequencyMHz.toStringAsFixed(3);
     });
+    _validateFrequency(_frequencyController.text); // a saved one may conflict
     if (state.support != MediaMeshSupport.none) {
       _timer = Timer.periodic(_refreshEvery, (_) => _refresh());
     }
@@ -88,6 +90,7 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
     final freq = double.tryParse(text.trim());
     var invalid = false;
     var onMain = false;
+    String? conflict;
     if (freq == null || freq < 150 || freq > 960) {
       invalid = true;
     } else {
@@ -98,14 +101,17 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
         mainBwHz: widget.connector.currentBwHz,
         mainSf: widget.connector.currentSf,
       );
+      conflict = conflictingCommunityMesh(_settings);
     }
     setState(() {
       _frequencyInvalid = invalid;
       _frequencyOnMain = onMain;
+      _conflict = conflict;
     });
   }
 
-  bool get _profileValid => !_frequencyInvalid && !_frequencyOnMain;
+  bool get _profileValid =>
+      !_frequencyInvalid && !_frequencyOnMain && _conflict == null;
 
   bool get _devMain => MediaLockdown.devAllowMain.value;
 
@@ -348,6 +354,8 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
                 ? l10n.mediaMesh_frequencyRange
                 : _frequencyOnMain
                 ? l10n.mediaMesh_frequencyMain
+                : _conflict != null
+                ? l10n.mediaMesh_conflictsWith(_conflict!)
                 : null,
           ),
           keyboardType: const TextInputType.numberWithOptions(decimal: true),

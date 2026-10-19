@@ -466,6 +466,17 @@ bool isCliOk(String reply) {
 }
 
 /// The MediaMesh frequency must not be the main radio's channel.
+/// The listed community mesh (a radio preset, RadioSettings.presets) whose
+/// channel radio2's would overlap, if any: radio2 must never sit on a
+/// community mesh.
+String? conflictingCommunityMesh(MediaMeshSettings s) {
+  for (final (name, preset) in RadioSettings.presets) {
+    final apartKHz = (s.frequencyMHz - preset.frequencyMHz).abs() * 1000;
+    if (apartKHz < (s.bandwidth.hz + preset.bandwidth.hz) / 2000) return name;
+  }
+  return null;
+}
+
 bool sameChannelAsMain(
   MediaMeshSettings s, {
   required int? mainFreqHz,
