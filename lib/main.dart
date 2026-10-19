@@ -437,6 +437,7 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
       _teamService,
       _voxVoiceService,
     );
+    MapHighlights.instance.attach(_teamService, _watchFeed);
     WidgetsBinding.instance.addObserver(this);
     _imageSweepTimer = Timer.periodic(
       _kImageSweepInterval,

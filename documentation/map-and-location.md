@@ -41,7 +41,7 @@ Pins from the same sender in the same chat or channel with the same label (case-
 
 On the Tactical map, a point that just appeared gets a pulsing ring for 10 minutes. This covers a teammate showing up, a teammate's pin, shared point, SALUTE report or CASEVAC, and a watched channel's report. Teammates and watched reports ring in their own color, the rest in cyan. Your own points don't flash.
 
-A point that was already older than the highlight time (plus 5 minutes for clock differences) when it first showed up, such as one loaded from storage after a restart, doesn't flash. A drone that keeps reporting flashes once, when it first appears.
+A point counts as new when it arrives, whether or not the map is open. A point that was already older than the highlight time (plus 5 minutes for clock differences) when it first showed up doesn't flash, and neither do teammates already known when the app starts. A drone that keeps reporting flashes once, when it first appears.
 
 Change the time, or turn it off, in **App settings > Map display > Highlight new map points**: off, 1, 5, 10 (default), 15, 30, 60 or 120 minutes. Wadamesh has the same setting under its map settings.
 

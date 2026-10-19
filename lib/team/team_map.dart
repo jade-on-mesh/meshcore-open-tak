@@ -142,45 +142,22 @@ class TeamMapLayer extends StatelessWidget {
   );
 
   /// Pulsing rings under points that appeared in the last few minutes.
-  List<Marker> _auras(
-    TeamService team,
-    List<WatchItem> watched,
-    List<TeamPoint> shared,
-  ) {
+  List<Marker> _auras(TeamService team, List<WatchItem> watched) {
     final hl = MapHighlights.instance;
     if (hl.minutes == 0) return const [];
-    final self = team.selfKey4;
-    Marker aura(double lat, double lon, Color color) => Marker(
-      point: LatLng(lat, lon),
-      width: 76,
-      height: 76,
-      child: IgnorePointer(child: NewPointAura(color: color)),
-    );
     return [
-      for (final w in watched)
-        if (hl.isNew(
-          w.trackId != null
-              ? 'w:${w.channel.index}:${w.trackId}'
-              : 'w:${w.key}',
-          itemTime: w.time,
-        ))
-          aura(w.lat!, w.lon!, Color(w.level.argb)),
-      for (final p in shared)
-        if (p.authorKey4 != self && hl.isNew('pt:${p.key}', itemTime: p.time))
-          aura(p.lat, p.lon, newPointAuraColor),
-      for (final r in team.reports)
-        if (r.authorKey4 != self &&
-            hl.isNew('r:${r.key}', itemTime: r.observed))
-          aura(r.lat, r.lon, newPointAuraColor),
-      for (final c in team.casevacs)
-        if (c.authorKey4 != self && hl.isNew('c:${c.key}', itemTime: c.time))
-          aura(c.lat, c.lon, newPointAuraColor),
-      for (final m in team.markers)
-        if (m.authorKey4 != self && hl.isNew('p:${m.key}', itemTime: m.time))
-          aura(m.lat, m.lon, newPointAuraColor),
-      for (final m in team.members)
-        if (m.key4 != self && hl.isNew('m:${m.key4}', itemTime: m.heard))
-          aura(m.position.lat, m.position.lon, Color(m.position.color.argb)),
+      for (final p in highlightPointsOf(team, watched))
+        if (hl.isNew(p.key, itemTime: p.time))
+          Marker(
+            point: LatLng(p.lat, p.lon),
+            width: 76,
+            height: 76,
+            child: IgnorePointer(
+              child: NewPointAura(
+                color: p.argb == null ? newPointAuraColor : Color(p.argb!),
+              ),
+            ),
+          ),
     ];
   }
 
@@ -351,7 +328,7 @@ class TeamMapLayer extends StatelessWidget {
 
     final markers = <Marker>[
       // Under everything: rings round what appeared in the last minutes.
-      ..._auras(team, watched, shared),
+      ..._auras(team, watched),
       for (final sh in shapes) ..._shapeMarkers(context, sh, nav),
       // Watch-feed reports and TAK units sit under the mesh team.
       // The one the search lit up last, so it draws over its neighbours.
