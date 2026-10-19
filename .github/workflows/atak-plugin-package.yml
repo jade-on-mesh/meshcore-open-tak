@@ -25,7 +25,15 @@ jobs:
   package:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    defaults:
+      run:
+        # On failure, the step's last 40 lines become an annotation (readable
+        # through the API even where the raw log isn't).
+        shell: bash
     env:
+      REPORT: |
+        exec > >(tee -a /tmp/step.log) 2>&1
+        trap 'msg=$(tail -n 40 /tmp/step.log | sed -e ":a;N;\$!ba" -e "s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g"); echo "::error::$msg"' ERR
       NDK_VERSION: "29.0.14206865"
       BUILD_TOOLS: "36.0.0"
       ORT_VERSION: "1.16.3"
@@ -40,7 +48,8 @@ jobs:
 
       - name: Android SDK parts
         run: |
-          set -euo pipefail
+          set -eEuo pipefail
+          : > /tmp/step.log; eval "$REPORT"
           SM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SM" --licenses > /dev/null || true
           "$SM" "platforms;android-36" "build-tools;$BUILD_TOOLS" \
@@ -51,18 +60,21 @@ jobs:
 
       - name: Unpack the bundle
         run: |
-          set -euo pipefail
+          set -eEuo pipefail
+          : > /tmp/step.log; eval "$REPORT"
           mkdir -p /tmp/pkg && cd /tmp/pkg
           unzip -q "$GITHUB_WORKSPACE/atak-plugin/prebuilt/bundle.zip"
           echo "Built from $(cat source-commit.txt)"
           # Only this plugin's classes may be in the bundle.
-          if unzip -Z1 classes.jar | grep '\.class$' | grep -v '^com/jadeonmesh/'; then
+          if unzip -Z1 classes.jar | grep '\.class$' | grep -v '^com/jadeonmesh/' > /tmp/extra.txt; then
+            cat /tmp/extra.txt
             echo "::error::bundle has classes from outside the plugin"; exit 1
           fi
 
       - name: ONNX Runtime (Mimi voice in direct mode)
         run: |
-          set -euo pipefail
+          set -eEuo pipefail
+          : > /tmp/step.log; eval "$REPORT"
           cd /tmp/pkg
           base="https://repo1.maven.org/maven2/com/microsoft/onnxruntime/onnxruntime-android/$ORT_VERSION"
           aar="onnxruntime-android-$ORT_VERSION.aar"
@@ -74,13 +86,15 @@ jobs:
 
       - name: Build libaom (photos in direct mode)
         run: |
-          set -euo pipefail
+          set -eEuo pipefail
+          : > /tmp/step.log; eval "$REPORT"
           export PATH="$CMAKE_BIN:$PATH"
           ANDROID_NDK_HOME="$NDK" atak-plugin/scripts/build-libaom.sh $ABIS
 
       - name: Build the native codecs
         run: |
-          set -euo pipefail
+          set -eEuo pipefail
+          : > /tmp/step.log; eval "$REPORT"
           export PATH="$CMAKE_BIN:$PATH"
           for abi in $ABIS; do
             cmake -S atak-plugin/app/src/main/cpp -B "/tmp/native/$abi" -G Ninja \
@@ -95,17 +109,19 @@ jobs:
           find /tmp/pkg/lib -type f -exec ls -la {} \;
           # Codec2 and AV1 must both be in: direct-mode voice and photos.
           NM="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm"
+          # (grep without -q: with pipefail, -q's early exit kills the writer)
           for abi in $ABIS; do
             so="/tmp/pkg/lib/$abi/libmtak_codecs.so"
-            "$NM" -D --defined-only "$so" | grep -q c2Encode
-            "$NM" -D --defined-only "$so" | grep -q av1Encode
+            "$NM" -D --defined-only "$so" | grep c2Encode > /dev/null
+            "$NM" -D --defined-only "$so" | grep av1Encode > /dev/null
             test -f "third_party/aom-android/$abi/lib/libaom.a"
-            strings "$so" | grep -q "AOMedia" || { echo "::error::no libaom in $abi"; exit 1; }
+            strings "$so" | grep AOMedia > /dev/null
           done
 
       - name: Dex
         run: |
-          set -euo pipefail
+          set -eEuo pipefail
+          : > /tmp/step.log; eval "$REPORT"
           cd /tmp/pkg
           mkdir dex
           # Min API 24: interface default methods need no desugaring, so
@@ -117,14 +133,16 @@ jobs:
 
       - name: Assemble and align
         run: |
-          set -euo pipefail
+          set -eEuo pipefail
+          : > /tmp/step.log; eval "$REPORT"
           cd /tmp/pkg
           cp res.apk unsigned.apk
           (cd dex && zip -q -X ../unsigned.apk classes*.dex)
           zip -q -X -r unsigned.apk lib
           "$BT/zipalign" -f -P 16 4 unsigned.apk aligned.apk
           "$BT/zipalign" -c -P 16 4 aligned.apk
-          "$BT/aapt2" dump badging aligned.apk | head -20
+          "$BT/aapt2" dump badging aligned.apk > badging.txt
+          head -20 badging.txt
           unzip -l aligned.apk
           ver=$(cut -c1-7 source-commit.txt)
           mkdir -p out
