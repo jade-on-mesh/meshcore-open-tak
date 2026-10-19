@@ -24,6 +24,7 @@ class MediaMeshNearby extends ChangeNotifier {
 
   DateTime? _heardAt;
   bool _listening = false;
+  bool _supported = false;
   bool _lit = false;
 
   MeshCoreConnector? _connector;
@@ -31,6 +32,7 @@ class MediaMeshNearby extends ChangeNotifier {
   String? _radio;
   int? _lastRx;
   int _misses = 0;
+  int _ticks = 0;
   bool _polling = false;
   bool _wasConnected = false;
 
@@ -39,6 +41,10 @@ class MediaMeshNearby extends ChangeNotifier {
 
   /// The connected radio's radio2 is on (listening for a MediaMesh).
   bool get listening => _listening;
+
+  /// The connected radio has MediaMesh (answers `get radio2.status`), on
+  /// or off.
+  bool get supported => _supported;
 
   DateTime? get heardAt => _heardAt;
 
@@ -54,7 +60,12 @@ class MediaMeshNearby extends ChangeNotifier {
   void attach(MeshCoreConnector connector) {
     _connector = connector;
     connector.addListener(_onConnector);
-    _timer ??= Timer.periodic(_pollEvery, (_) => unawaited(_poll()));
+    _timer ??= Timer.periodic(_pollEvery, (_) {
+      // A radio that hasn't answered lately is asked every 10 minutes.
+      _ticks++;
+      if (_misses >= 3 && _ticks % 10 != 0) return;
+      unawaited(_poll());
+    });
   }
 
   void _onConnector() {
@@ -66,8 +77,12 @@ class MediaMeshNearby extends ChangeNotifier {
       if (c.isConnected) {
         _misses = 0;
         _lastRx = null;
+        // Once it has settled, and again in case the first ask was lost in
+        // the connection's start-up traffic.
         Timer(const Duration(seconds: 5), () => unawaited(_poll()));
+        Timer(const Duration(seconds: 20), () => unawaited(_poll()));
       } else {
+        _supported = false;
         _update();
       }
     }
@@ -104,12 +119,6 @@ class MediaMeshNearby extends ChangeNotifier {
       _lastRx = null;
       _misses = 0;
     }
-    // A radio without MediaMesh never answers; stop asking it until the
-    // next connection.
-    if (_misses >= 3) {
-      _update();
-      return;
-    }
     _polling = true;
     try {
       String? text;
@@ -123,10 +132,14 @@ class MediaMeshNearby extends ChangeNotifier {
       final st = text == null ? null : Radio2Status.tryParse(text);
       if (st == null) {
         _misses++;
-        _setListening(false);
+        if (_misses >= 3) {
+          _supported = false;
+          _setListening(false);
+        }
         return;
       }
       _misses = 0;
+      _supported = true;
       if (st.pending) return;
       _setListening(Radio2Mode.fromCli(st.mode) != Radio2Mode.off);
       final ago = st.heardSecondsAgo;
@@ -147,15 +160,19 @@ class MediaMeshNearby extends ChangeNotifier {
   }
 
   void _update() {
-    if (!(_connector?.isConnected ?? false)) _listening = false;
+    if (!(_connector?.isConnected ?? false)) {
+      _listening = false;
+      _supported = false;
+    }
     final at = _heardAt;
     final lit = at != null && DateTime.now().difference(at) < window;
-    if (lit != _lit || _notifiedListening != _listening) {
+    final shown = (_listening, _supported);
+    if (lit != _lit || shown != _notified) {
       _lit = lit;
-      _notifiedListening = _listening;
+      _notified = shown;
       notifyListeners();
     }
   }
 
-  bool _notifiedListening = false;
+  (bool, bool) _notified = (false, false);
 }
