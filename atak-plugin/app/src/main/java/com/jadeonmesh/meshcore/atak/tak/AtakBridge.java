@@ -64,7 +64,9 @@ public final class AtakBridge implements TakSink,
             CommsMapComponent c = CommsMapComponent.getInstance();
             if (c != null)
                 c.unregisterPreSendProcessor(this);
-        } catch (RuntimeException e) {
+        } catch (RuntimeException | LinkageError e) {
+            // Older ATAK has no unregister (4.6 didn't); the disposed flag
+            // already makes this processor a no-op.
             Log.w(TAG, "could not unregister the pre-send processor", e);
         }
     }
