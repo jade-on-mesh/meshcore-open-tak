@@ -12012,6 +12012,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Listening for a MediaMesh: none heard in the last 2 hours'**
   String get mediaMeshNearby_listening;
+
+  /// No description provided for @mediaMeshNearby_off.
+  ///
+  /// In en, this message translates to:
+  /// **'MediaMesh is off on this radio. Tap to set it up.'**
+  String get mediaMeshNearby_off;
 }
 
 class _AppLocalizationsDelegate

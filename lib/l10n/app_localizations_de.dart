@@ -7108,4 +7108,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get mediaMeshNearby_listening => 'Listening for a MediaMesh: none heard in the last 2 hours';
+
+  @override
+  String get mediaMeshNearby_off => 'MediaMesh is off on this radio. Tap to set it up.';
 }

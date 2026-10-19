@@ -3761,5 +3761,6 @@
   "mediaMeshNearby_heardNow": "MediaMesh nearby: heard just now",
   "mediaMeshNearby_heardAgo": "MediaMesh nearby: heard {minutes} min ago",
   "@mediaMeshNearby_heardAgo": {"placeholders": {"minutes": {"type": "int"}}},
-  "mediaMeshNearby_listening": "Listening for a MediaMesh: none heard in the last 2 hours"
+  "mediaMeshNearby_listening": "Listening for a MediaMesh: none heard in the last 2 hours",
+  "mediaMeshNearby_off": "MediaMesh is off on this radio. Tap to set it up."
 }
