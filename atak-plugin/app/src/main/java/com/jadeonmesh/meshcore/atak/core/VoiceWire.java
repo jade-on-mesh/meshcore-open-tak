@@ -102,8 +102,6 @@ public final class VoiceWire {
     public static final int FETCH_MAGIC = 0x72;
     public static final int FETCH_MISSING_ONLY = 0x01;
     public static final int FETCH_SALT_OK = 0x02;
-    /** Request ends with one random byte, so a retry is never deduplicated. */
-    public static final int FETCH_SALTED = 0x08;
 
     /** GRP_DATA type for clip transfers on a channel ('VC'). */
     public static final int CHANNEL_DATA_TYPE = 0x5643;
@@ -315,7 +313,12 @@ public final class VoiceWire {
             return encode(null);
         }
 
-        /** With {@code salt}, appends it so this request differs from earlier ones. */
+        /**
+         * With {@code salt}, a missing-only request repeats one of its indices
+         * 1-8 times, so a retry is never byte-identical to an earlier one
+         * (radios drop payloads they have seen). The layout stays plain VE3,
+         * which firmware that routes photo traffic by shape still recognises.
+         */
         public byte[] encode(Integer salt) {
             List<Integer> m = new ArrayList<>();
             if (missing != null) {
@@ -325,20 +328,23 @@ public final class VoiceWire {
                         s.add(v);
                 m.addAll(s);
             }
-            if (m.size() > 150)
-                m = m.subList(0, 150);
-            byte[] out = new byte[MIN_LENGTH + m.size() + (salt == null ? 0 : 1)];
+            int room = salt == null ? 150 : 132;
+            if (m.size() > room)
+                m = new ArrayList<>(m.subList(0, room));
+            if (salt != null && !m.isEmpty()) {
+                int v = m.get(((salt & 0xFF) >> 3) % m.size());
+                for (int i = 0; i <= (salt & 7); i++)
+                    m.add(v);
+            }
+            byte[] out = new byte[MIN_LENGTH + m.size()];
             out[0] = (byte) FETCH_MAGIC;
             System.arraycopy(Bytes.unhex(sessionId), 0, out, 1, 4);
             out[5] = (byte) ((missing == null ? 0 : FETCH_MISSING_ONLY)
-                    | (saltOk ? FETCH_SALT_OK : 0)
-                    | (salt == null ? 0 : FETCH_SALTED));
+                    | (saltOk ? FETCH_SALT_OK : 0));
             System.arraycopy(Bytes.unhex(requesterKey6), 0, out, 6, 6);
             out[12] = (byte) m.size();
             for (int i = 0; i < m.size(); i++)
                 out[MIN_LENGTH + i] = (byte) (int) m.get(i);
-            if (salt != null)
-                out[out.length - 1] = (byte) (salt & 0xFF);
             return out;
         }
     }
