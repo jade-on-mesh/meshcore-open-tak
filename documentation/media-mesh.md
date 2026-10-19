@@ -34,8 +34,9 @@ sent on each profile, the measured switch time, and the radio's timing warnings.
 **Photos and voice stay off the main mesh.** They only go out when the
 connected radio sends them on radio2 alone (*Listen + send*, *Photos & voice*).
 Otherwise the app says so instead of sending, and doesn't answer other
-people's requests for them either. The older image types that always use the
-main mesh can't be sent.
+people's requests for them either. This covers Open TAK's photos and voice
+(and its OTP photo DMs); upstream MeshCore Open's channel image messages are
+unchanged.
 
 **Temporary radio2** tries the profile in the form for 15 minutes, 1 hour or
 2 hours without saving it (`tempradio2`); **Stop** brings the saved radio2 back.

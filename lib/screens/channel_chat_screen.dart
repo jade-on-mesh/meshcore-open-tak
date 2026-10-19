@@ -27,7 +27,6 @@ import '../models/channel.dart';
 import '../models/channel_message.dart';
 import '../models/image_codec_support.dart' show aeicRatePointForUi;
 import '../models/otp_theme.dart';
-import '../services/media_lockdown.dart';
 import '../services/app_settings_service.dart';
 import '../services/chat_text_scale_service.dart';
 import '../services/image_chunk_transport.dart';
@@ -1736,14 +1735,6 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     ImageSendPreviewResult result, {
     required Uint8List sourceBytes,
   }) async {
-    // This photo type always goes out on the main mesh (MediaLockdown).
-    if (!MediaLockdown.devAllowMain.value) {
-      showDismissibleSnackBar(
-        context,
-        content: const Text(MediaLockdown.legacyBlockedMessage),
-      );
-      return;
-    }
     final l10n = context.l10n;
 
     if (!connector.supportsChannelData) {
