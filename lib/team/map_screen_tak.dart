@@ -240,7 +240,14 @@ class MapScreenTak {
 
   Widget _chatPaneBody() => LayoutBuilder(
     builder: (context, box) {
-      final side = box.maxWidth > box.maxHeight || box.maxWidth >= 720;
+      // Judge the orientation without the keyboard: it shrinks the height,
+      // which made a portrait screen look landscape and moved the pane to
+      // the side while typing (and it stayed there after sending).
+      // The window's size ignores the keyboard; the Scaffold body's
+      // MediaQuery has its inset removed, so ask the View whether it's up.
+      final screen = MediaQuery.sizeOf(context);
+      final keyboard = View.of(context).viewInsets.bottom > 0;
+      final side = screen.width > screen.height || box.maxWidth >= 720;
       final pane = Material(
         elevation: 8,
         color: Theme.of(context).colorScheme.surface,
@@ -255,7 +262,10 @@ class MapScreenTak {
         alignment: side ? Alignment.centerRight : Alignment.bottomCenter,
         child: SizedBox(
           width: side ? min(400.0, box.maxWidth * 0.42) : box.maxWidth,
-          height: side ? box.maxHeight : box.maxHeight * 0.45,
+          // Above the keyboard, a little taller so messages stay in view.
+          height: side
+              ? box.maxHeight
+              : box.maxHeight * (keyboard ? 0.6 : 0.45),
           child: pane,
         ),
       );
