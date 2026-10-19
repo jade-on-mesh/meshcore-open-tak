@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
@@ -136,14 +138,8 @@ class SNRIndicator extends StatefulWidget {
 }
 
 class _SNRIndicatorState extends State<SNRIndicator> {
-  bool _isValidSelfLocation(double lat, double lon) {
-    const double epsilon = 1e-6;
-    return (lat.abs() > epsilon || lon.abs() > epsilon) &&
-        lat >= -90.0 &&
-        lat <= 90.0 &&
-        lon >= -180.0 &&
-        lon <= 180.0;
-  }
+  void _openList(List<DirectRepeater> list) =>
+      NearbyRepeaters.show(context, widget.connector, list);
 
   @override
   Widget build(BuildContext context) {
@@ -170,7 +166,7 @@ class _SNRIndicatorState extends State<SNRIndicator> {
       constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
       child: InkWell(
         onTap: directRepeater != null
-            ? () => _showFullPathDialog(context, directBestRepeaters)
+            ? () => _openList(directBestRepeaters)
             : null,
         borderRadius: BorderRadius.circular(8),
         child: Padding(
@@ -213,8 +209,27 @@ class _SNRIndicatorState extends State<SNRIndicator> {
       ),
     );
   }
+}
 
-  String _formatLastUpdated(DateTime lastSeen) {
+/// The radio's direct (zero-hop) repeaters: the list dialog and helpers
+/// shared by the SNR indicator and the header's repeater label.
+abstract final class NearbyRepeaters {
+  static bool _isValidSelfLocation(double lat, double lon) {
+    const double epsilon = 1e-6;
+    return (lat.abs() > epsilon || lon.abs() > epsilon) &&
+        lat >= -90.0 &&
+        lat <= 90.0 &&
+        lon >= -180.0 &&
+        lon <= 180.0;
+  }
+
+  static LatLng? _selfPoint(MeshCoreConnector c) {
+    final lat = c.selfLatitude, lon = c.selfLongitude;
+    if (lat == null || lon == null) return null;
+    return _isValidSelfLocation(lat, lon) ? LatLng(lat, lon) : null;
+  }
+
+  static String age(DateTime lastSeen) {
     final now = DateTime.now();
     final diff = now.difference(lastSeen);
     if (diff.isNegative) {
@@ -234,8 +249,9 @@ class _SNRIndicatorState extends State<SNRIndicator> {
     return "${days}d";
   }
 
-  void _showFullPathDialog(
+  static void show(
     BuildContext context,
+    MeshCoreConnector connector,
     List<DirectRepeater> directBestRepeaters,
   ) {
     final l10n = context.l10n;
@@ -266,10 +282,10 @@ class _SNRIndicatorState extends State<SNRIndicator> {
                     separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (context, index) {
                       final repeater = directBestRepeaters[index];
-                      final allContacts = widget.connector.allContacts;
+                      final allContacts = connector.allContacts;
 
-                      final selfLat = widget.connector.selfLatitude;
-                      final selfLon = widget.connector.selfLongitude;
+                      final selfLat = connector.selfLatitude;
+                      final selfLon = connector.selfLongitude;
 
                       LatLng? selfPoint;
                       if (selfLat != null &&
@@ -331,7 +347,7 @@ class _SNRIndicatorState extends State<SNRIndicator> {
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
-                                        '${repeater.snr.toStringAsFixed(1)} dB • ${_formatLastUpdated(repeater.lastUpdated)}',
+                                        '${repeater.snr.toStringAsFixed(1)} dB • ${age(repeater.lastUpdated)}',
                                         style: MeshTheme.mono(
                                           fontSize: 12,
                                           color: colorScheme.onSurfaceVariant,
@@ -358,6 +374,96 @@ class _SNRIndicatorState extends State<SNRIndicator> {
             child: Text(l10n.common_close),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The best direct repeater in tiny type for the header: its name, then
+/// how many repeaters are direct, its prefix and how long since it was heard.
+/// Tap for the full list.
+class RepeaterLabel extends StatefulWidget {
+  final MeshCoreConnector connector;
+
+  const RepeaterLabel({super.key, required this.connector});
+
+  @override
+  State<RepeaterLabel> createState() => _RepeaterLabelState();
+}
+
+class _RepeaterLabelState extends State<RepeaterLabel> {
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    // Keeps the "heard ago" age current between radio updates.
+    _tick = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final connector = widget.connector;
+    final repeaters = List.of(connector.directRepeaters)
+      ..sort((a, b) => b.ranking.compareTo(a.ranking));
+    if (repeaters.isEmpty) return const SizedBox.shrink();
+    final best = repeaters.first;
+    final name = _getRepeaterPrefixMatchNearLocation(
+      connector.allContacts,
+      best.pubkeyPrefix,
+      contactKeyHex: best.contactKeyHex,
+      searchPoint: NearbyRepeaters._selfPoint(connector),
+      preferFavorites: true,
+    )?.name;
+    final scheme = Theme.of(context).colorScheme;
+    final details = [
+      '${repeaters.length}',
+      if (name != null) best.pubkeyPrefixHex,
+      NearbyRepeaters.age(best.lastUpdated),
+    ].join(' · ');
+
+    return InkWell(
+      onTap: () => NearbyRepeaters.show(context, connector, repeaters),
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 96),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name ?? best.pubkeyPrefixHex,
+                style: TextStyle(
+                  fontSize: 10,
+                  height: 1.2,
+                  fontWeight: FontWeight.w600,
+                  color: scheme.onSurface,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                details,
+                style: MeshTheme.mono(
+                  fontSize: 9,
+                  color: scheme.onSurfaceVariant,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
