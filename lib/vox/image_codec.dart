@@ -44,6 +44,16 @@ enum VoxImageDetail {
   final int multiple;
   final String label;
   int get budget => voxImageBaseBudget * multiple;
+
+  /// Box-blur radius and passes for the background when text or faces are
+  /// sharpened. The blur caps the background's detail whatever the budget,
+  /// so it eases off as the budget grows: at Sharp the background keeps all
+  /// its detail and the text is already crisp.
+  (int radius, int passes)? get backgroundSoften => switch (this) {
+    standard => (2, 3),
+    more => (1, 1),
+    sharp => null,
+  };
 }
 
 /// A rectangle in reference-picture pixels.
@@ -219,6 +229,7 @@ VoxRgbImage voxSoftenOutside(
   VoxRgbImage img,
   Float32List mask, {
   int radius = 2,
+  int passes = 3,
 }) {
   final w = img.width, h = img.height, n = w * h;
   final out = Uint8List(n * 3);
@@ -227,7 +238,13 @@ VoxRgbImage voxSoftenOutside(
     for (var i = 0; i < n; i++) {
       p[i] = img.rgb[i * 3 + c].toDouble();
     }
-    final blurred = _boxBlurPlane(Float32List.fromList(p), w, h, radius, 3);
+    final blurred = _boxBlurPlane(
+      Float32List.fromList(p),
+      w,
+      h,
+      radius,
+      passes,
+    );
     for (var i = 0; i < n; i++) {
       final k = mask[i];
       out[i * 3 + c] = (p[i] * k + blurred[i] * (1 - k)).round().clamp(0, 255);
@@ -299,7 +316,10 @@ VoxEncodedImage voxEncodeImage({
   final textMask = focus.text.isEmpty
       ? null
       : voxFocusMask(w, h, focus.text, feather: 0);
-  final source = focused ? voxSoftenOutside(ref, mask!) : ref;
+  final soften = detail.backgroundSoften;
+  final source = focused && soften != null
+      ? voxSoftenOutside(ref, mask!, radius: soften.$1, passes: soften.$2)
+      : ref;
 
   double scoreOf(VoxRgbImage decoded) {
     final up = voxResize(decoded, w, h);

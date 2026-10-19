@@ -447,8 +447,11 @@ class _VoxImageSendSheetState extends State<VoxImageSendSheet> {
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Sharpen text and faces'),
                   subtitle: Text(
-                    'Found $focusLabel. Spends more of the bytes there and '
-                    'softens the background slightly.',
+                    _detail.backgroundSoften == null
+                        ? 'Found $focusLabel. Picks the size that keeps them '
+                              'clearest; the background keeps its detail.'
+                        : 'Found $focusLabel. Spends more of the bytes there '
+                              'and softens the background slightly.',
                   ),
                   value: _useFocus,
                   onChanged: _encoding
