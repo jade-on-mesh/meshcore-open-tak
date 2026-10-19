@@ -138,13 +138,6 @@ const int voxFetchFlagSaltOk = 0x02;
 /// instead of its own stored route (which can be stale or asymmetric).
 const int voxFetchFlagHasPath = 0x04;
 
-/// VOX extension: the request ends with one random byte. Radios drop any
-/// packet whose payload they have already seen, so without it a retry asking
-/// for the same missing packets is byte-identical to the last request and
-/// never reaches the sender (its own radio heard the first one). Parsers
-/// that don't know this flag ignore the trailing byte.
-const int voxFetchFlagSalted = 0x08;
-
 /// VOX extension: a voice packet with one random byte appended.
 ///
 /// MeshCore radios drop any packet whose contents they have already seen
@@ -331,8 +324,7 @@ class VoxVoicePacket {
 }
 
 /// Binary fetch request: `[0x72][sid:4][flags][key6:6][count][indices...]`,
-/// then `[len][path]` with [voxFetchFlagHasPath] and `[salt]` with
-/// [voxFetchFlagSalted].
+/// then `[len][path]` with [voxFetchFlagHasPath].
 class VoxVoiceFetchRequest {
   static const int minLength = 13;
 
@@ -392,6 +384,13 @@ class VoxVoiceFetchRequest {
   }
 
   /// With [salt], appends it so this request differs from any earlier one.
+  /// With [salt], a missing-only request repeats one of its indices 1-8
+  /// times. Radios drop any packet whose payload they have already seen, so
+  /// without this a retry for the same packets is byte-identical to the last
+  /// one and never reaches the sender (its own radio heard the first). Every
+  /// parser reads the indices as a set, and the layout stays exactly VE3's:
+  /// firmware that routes photo traffic by shape (mikecarper/MeshCore checks
+  /// the flags and the exact length) still sees a photo request.
   Uint8List encode({int? salt}) {
     final missing = missingIndices == null
         ? const <int>[]
@@ -401,18 +400,22 @@ class VoxVoiceFetchRequest {
               .toList()
             ..sort());
     // Keep the request inside one raw packet.
-    final capped = missing.length > 140 ? missing.sublist(0, 140) : missing;
+    final room = salt == null ? 140 : 132;
+    final capped = [
+      ...(missing.length > room ? missing.sublist(0, room) : missing),
+      if (salt != null && missing.isNotEmpty)
+        for (var i = 0; i <= (salt & 7); i++)
+          missing[(salt >> 3) % min(missing.length, room)],
+    ];
     final path = requesterPath;
     final pathBytes = path == null ? 0 : 1 + path.length;
-    final saltBytes = salt == null ? 0 : 1;
-    final out = Uint8List(minLength + capped.length + pathBytes + saltBytes);
+    final out = Uint8List(minLength + capped.length + pathBytes);
     out[0] = voxVoiceFetchMagic;
     out.setRange(1, 5, voxSessionIdToBytes(sessionId));
     out[5] =
         (missingIndices == null ? 0x00 : voxFetchFlagMissingOnly) |
         (saltOk ? voxFetchFlagSaltOk : 0x00) |
-        (path != null ? voxFetchFlagHasPath : 0x00) |
-        (salt != null ? voxFetchFlagSalted : 0x00);
+        (path != null ? voxFetchFlagHasPath : 0x00);
     for (var i = 0; i < 6; i++) {
       out[6 + i] = int.parse(
         requesterKey6.substring(i * 2, i * 2 + 2),
@@ -429,7 +432,6 @@ class VoxVoiceFetchRequest {
         path,
       );
     }
-    if (salt != null) out[out.length - 1] = salt & 0xFF;
     return out;
   }
 }

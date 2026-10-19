@@ -332,42 +332,78 @@ void main() {
   });
 
   group('salted fetch request', () {
-    test('a retry for the same packets is not byte-identical', () {
-      const req = VoxVoiceFetchRequest(
-        sessionId: 'deadbeef',
-        requesterKey6: 'a1b2c3d4e5f6',
-        missingIndices: [61],
-        saltOk: true,
-      );
-      final a = req.encode(salt: 1);
-      final b = req.encode(salt: 2);
-      expect(_toHex(a), isNot(_toHex(b)));
-      expect(a[5] & voxFetchFlagSalted, voxFetchFlagSalted);
-      expect(a.length, req.encode().length + 1);
+    // mikecarper/MeshCore's CompanionTrafficRouting.h rawTrafficKind: how
+    // that firmware decides a raw packet is a photo/voice request (and so
+    // sends it on radio2 rather than the main mesh).
+    bool firmwareSeesMedia(List<int> d) {
+      if (d.length < 13 || d[0] != 0x72) return false;
+      final flags = d[5], count = d[12];
+      if ((flags & ~7) != 0 || ((flags & 1) == 0 && count != 0)) return false;
+      if (count > d.length - 13) return false;
+      final end = 13 + count;
+      if ((flags & 4) == 0) return d.length == end;
+      return d.length > end && d[end] <= 63 && d.length - end - 1 == d[end];
+    }
+
+    const req = VoxVoiceFetchRequest(
+      sessionId: 'deadbeef',
+      requesterKey6: 'a1b2c3d4e5f6',
+      missingIndices: [61],
+      saltOk: true,
+    );
+
+    test('retries for the same packet are not byte-identical', () {
+      final seen = {for (var s = 0; s < 256; s++) _toHex(req.encode(salt: s))};
+      expect(seen.length, greaterThanOrEqualTo(8));
+      expect(seen, isNot(contains(_toHex(req.encode()))));
     });
 
-    test('salt after a path leaves both readable', () {
-      const req = VoxVoiceFetchRequest(
+    test('salted requests still ask for the same packets', () {
+      for (final s in [0, 7, 8, 255]) {
+        final back = VoxVoiceFetchRequest.tryParse(req.encode(salt: s))!;
+        expect(back.missingIndices!.toSet(), {61});
+      }
+      const two = VoxVoiceFetchRequest(
         sessionId: 'deadbeef',
         requesterKey6: 'a1b2c3d4e5f6',
         missingIndices: [3, 61],
         saltOk: true,
         requesterPath: [0x19, 0x1e],
       );
-      final back = VoxVoiceFetchRequest.tryParse(req.encode(salt: 0xab))!;
-      expect(back.missingIndices, [3, 61]);
+      final back = VoxVoiceFetchRequest.tryParse(two.encode(salt: 0xab))!;
+      expect(back.missingIndices!.toSet(), {3, 61});
       expect(back.requesterPath, [0x19, 0x1e]);
-      expect(back.saltOk, isTrue);
     });
 
-    test('unsalted requests are unchanged', () {
-      const req = VoxVoiceFetchRequest(
+    test('salted requests keep the shape firmware routes as media', () {
+      const withPath = VoxVoiceFetchRequest(
         sessionId: 'deadbeef',
         requesterKey6: 'a1b2c3d4e5f6',
-        missingIndices: [1],
+        missingIndices: [3, 61],
+        saltOk: true,
+        requesterPath: [0x19, 0x1e],
+      );
+      for (var s = 0; s < 256; s++) {
+        expect(firmwareSeesMedia(req.encode(salt: s)), isTrue);
+        expect(firmwareSeesMedia(withPath.encode(salt: s)), isTrue);
+      }
+      const all = VoxVoiceFetchRequest(
+        sessionId: 'deadbeef',
+        requesterKey6: 'a1b2c3d4e5f6',
         saltOk: true,
       );
-      expect(req.encode()[5] & voxFetchFlagSalted, 0);
+      expect(firmwareSeesMedia(all.encode(salt: 9)), isTrue);
+    });
+
+    test('a long salted request still fits one raw packet', () {
+      final big = VoxVoiceFetchRequest(
+        sessionId: 'deadbeef',
+        requesterKey6: 'a1b2c3d4e5f6',
+        missingIndices: List.generate(200, (i) => i),
+        saltOk: true,
+        requesterPath: List.filled(8, 1),
+      );
+      expect(big.encode(salt: 255).length, lessThanOrEqualTo(162));
     });
   });
 }
