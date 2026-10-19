@@ -3757,5 +3757,9 @@
   "mediaMesh_presetRange": "125 kHz · range",
   "mediaMesh_presetHelp": "250 kHz sends photos and voice about twice as fast; 125 kHz reaches about 40% farther. Every radio on MediaMesh must use the same settings.",
   "mediaMesh_conflictsWith": "Conflicts with {name}",
-  "@mediaMesh_conflictsWith": {"placeholders": {"name": {"type": "String"}}}
+  "@mediaMesh_conflictsWith": {"placeholders": {"name": {"type": "String"}}},
+  "mediaMeshNearby_heardNow": "MediaMesh nearby: heard just now",
+  "mediaMeshNearby_heardAgo": "MediaMesh nearby: heard {minutes} min ago",
+  "@mediaMeshNearby_heardAgo": {"placeholders": {"minutes": {"type": "int"}}},
+  "mediaMeshNearby_listening": "Listening for a MediaMesh: none heard in the last 2 hours"
 }

@@ -53,6 +53,7 @@ import '../widgets/jump_to_bottom_button.dart';
 import '../widgets/image_send_codec_binding.dart';
 import '../widgets/image_send_preview_sheet.dart';
 import '../widgets/message_status_icon.dart';
+import '../widgets/media_mesh_nearby_icon.dart';
 import '../widgets/radio_stats_entry.dart';
 import '../widgets/signal_grade_indicator.dart';
 import '../widgets/sync_progress_overlay.dart';
@@ -528,6 +529,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             onPressed: () => openRegionSelectDialog(widget.channel),
           ),
           const SignalGradeIndicator(),
+          const MediaMeshNearbyIcon(),
           const RadioStatsIconButton(),
           Consumer<MeshCoreConnector>(
             builder: (context, connector, _) {

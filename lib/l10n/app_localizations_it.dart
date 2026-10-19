@@ -7093,4 +7093,15 @@ class AppLocalizationsIt extends AppLocalizations {
   String mediaMesh_conflictsWith(String name) {
     return 'Conflicts with $name';
   }
+
+  @override
+  String get mediaMeshNearby_heardNow => 'MediaMesh nearby: heard just now';
+
+  @override
+  String mediaMeshNearby_heardAgo(int minutes) {
+    return 'MediaMesh nearby: heard $minutes min ago';
+  }
+
+  @override
+  String get mediaMeshNearby_listening => 'Listening for a MediaMesh: none heard in the last 2 hours';
 }

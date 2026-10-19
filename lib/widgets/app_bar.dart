@@ -3,6 +3,7 @@ import 'package:meshcore_open/connector/meshcore_connector.dart';
 import 'package:meshcore_open/widgets/battery_indicator.dart';
 import 'package:provider/provider.dart';
 
+import 'media_mesh_nearby_icon.dart';
 import 'radio_stats_entry.dart';
 import 'snr_indicator.dart';
 
@@ -68,6 +69,7 @@ class AppBarTitle extends StatelessWidget {
                 children: [
                   if (showBattery) BatteryIndicator(connector: connector),
                   if (showSnr) SNRIndicator(connector: connector),
+                  const MediaMeshNearbyIcon(compact: true),
                   if (connector.supportsCompanionRadioStats)
                     const RadioStatsIconButton(compact: true),
                 ],

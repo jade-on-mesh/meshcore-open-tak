@@ -222,7 +222,18 @@ void main() {
         'test=1/4 pending budget=1500us',
       )!;
       expect(pending.switchMeasured, isFalse);
+      expect(pending.heardSecondsAgo, isNull);
       expect(Radio2Status.tryParse('Error: x'), isNull);
+    });
+
+    test('radio2.status heard=', () {
+      final s = Radio2Status.tryParse(
+        '> rx; RX=0,7 TX=0,0 switches=40 errors=0 max=900us typ=780us '
+        'heard=95s preamble=40,40; test=4/4 ready budget=1000us',
+      )!;
+      expect(s.heardSecondsAgo, 95);
+      expect(s.rx, [0, 7]);
+      expect(s.longestSwitchUs, 900);
     });
 
     test('tempradio2', () {
