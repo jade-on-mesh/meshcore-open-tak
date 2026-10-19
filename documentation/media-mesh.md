@@ -70,6 +70,16 @@ The radio's firmware makes this choice for each packet; the app only turns
 MediaMesh on and sets its frequency. Nothing changes in how photos and voice
 are sent from the app.
 
+## MediaMesh nearby
+
+A small tower icon next to the radio-stats dot in the app bar and chat screens shows whether a MediaMesh is on the air where you are:
+
+- **Lit** (accent color): radio2 heard a valid packet in the last 2 hours. The tooltip says how long ago.
+- **Dim**: radio2 is listening, and nothing has been heard in the last 2 hours.
+- **Hidden**: radio2 is off, or no radio is connected and nothing was heard recently.
+
+The app asks the connected radio for `get radio2.status` once a minute. Wadamesh reports `heard=Ns` (seconds since the last valid radio2 packet), so packets the radio relays or that aren't for you count too. On other firmware, the app counts a rise in the radio2 receive count as heard. A photo or voice packet that reaches the app over radio2 lights the icon straight away. The time is saved, so the icon stays lit across an app restart until the 2 hours run out. A radio that doesn't answer three times in a row isn't asked again until it reconnects.
+
 ## Firmware
 
 MediaMesh needs radio firmware with a second LoRa profile and media routing:

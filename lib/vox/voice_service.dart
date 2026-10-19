@@ -29,6 +29,7 @@ import '../models/channel.dart';
 import '../models/contact.dart';
 import '../services/media_lockdown.dart';
 import '../services/media_mesh.dart' show MediaAirProfile, loadMediaAirProfile;
+import '../services/media_mesh_nearby.dart';
 import '../services/image_chunk_transport.dart'
     show parseChannelDataFrame, respCodeChannelDataRecv;
 import 'voice_clip_store.dart';
@@ -198,6 +199,8 @@ class VoxVoiceService extends ChangeNotifier {
 
   void _noteVia(String sid, int? via) {
     if (via == null) return;
+    // Heard on radio2: a MediaMesh is on the air here.
+    if (via == 1) MediaMeshNearby.instance.markHeard();
     // Re-inserted, so the most recent clips are the ones kept.
     final old = _viaMask.remove(sid) ?? 0;
     _viaMask[sid] = old | (1 << via);

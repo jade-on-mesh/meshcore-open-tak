@@ -283,6 +283,10 @@ class Radio2Status {
   /// the previous channel is still in use.
   final bool pending;
 
+  /// Seconds since radio2 last heard a valid packet (Wadamesh `heard=Ns`);
+  /// null when the radio doesn't say or hasn't heard one.
+  final int? heardSecondsAgo;
+
   const Radio2Status({
     required this.mode,
     required this.rx,
@@ -295,6 +299,7 @@ class Radio2Status {
     this.longestSwitchUs,
     this.preamble,
     this.pending = false,
+    this.heardSecondsAgo,
   });
 
   static Radio2Status? tryParse(String reply) {
@@ -331,6 +336,7 @@ class Radio2Status {
     }
     final pre = RegExp(r'preamble=(\d+),(\d+)').firstMatch(body);
     final longest = RegExp(r'max=(\d+)us').firstMatch(body);
+    final heard = RegExp(r'heard=(\d+)s').firstMatch(body);
     return Radio2Status(
       mode: mode,
       rx: pair('RX'),
@@ -344,6 +350,7 @@ class Radio2Status {
       preamble: pre == null
           ? null
           : [int.parse(pre.group(1)!), int.parse(pre.group(2)!)],
+      heardSecondsAgo: heard == null ? null : int.parse(heard.group(1)!),
     );
   }
 }

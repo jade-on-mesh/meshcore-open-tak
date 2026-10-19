@@ -11994,6 +11994,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Conflicts with {name}'**
   String mediaMesh_conflictsWith(String name);
+
+  /// No description provided for @mediaMeshNearby_heardNow.
+  ///
+  /// In en, this message translates to:
+  /// **'MediaMesh nearby: heard just now'**
+  String get mediaMeshNearby_heardNow;
+
+  /// No description provided for @mediaMeshNearby_heardAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'MediaMesh nearby: heard {minutes} min ago'**
+  String mediaMeshNearby_heardAgo(int minutes);
+
+  /// No description provided for @mediaMeshNearby_listening.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening for a MediaMesh: none heard in the last 2 hours'**
+  String get mediaMeshNearby_listening;
 }
 
 class _AppLocalizationsDelegate

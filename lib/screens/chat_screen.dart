@@ -54,6 +54,7 @@ import '../widgets/image_send_preview_sheet.dart';
 import '../widgets/jump_to_bottom_button.dart';
 import '../widgets/received_image_message.dart';
 import '../widgets/routing_sheet.dart';
+import '../widgets/media_mesh_nearby_icon.dart';
 import '../widgets/radio_stats_entry.dart';
 import '../widgets/signal_grade_indicator.dart';
 import '../widgets/sync_progress_overlay.dart';
@@ -289,6 +290,7 @@ class _ChatScreenState extends State<ChatScreen> {
         bottom: const SyncProgressAppBarBottom(),
         actions: [
           const SignalGradeIndicator(),
+          const MediaMeshNearbyIcon(),
           const RadioStatsIconButton(),
           Consumer<MeshCoreConnector>(
             builder: (context, connector, _) {
