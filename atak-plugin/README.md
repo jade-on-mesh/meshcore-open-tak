@@ -139,9 +139,16 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 The libaom step is bash-only; skip it (photos still work in app mode) or run
 it under WSL.
 
-Install the SDK's own `atak.apk` on the test phone: release ATAK from the
-Play Store or tak.gov only loads plugins signed through TAK's third-party
-pipeline, not development builds like this one.
+**Signing.** Release ATAK (Play Store, tak.gov) accepts a plugin only when
+its certificate is on ATAK's built-in list (TAK Product Center keys and a few
+partners), or ATAK's own key signed it. Any other key shows "The signature for
+the plugin is INVALID", however the APK is built. So either:
+
+- test on the SDK's own `atak.apk`, a developer build that skips the check
+  (it's the SDK's ATAK version, so build for that version); or
+- submit the plugin to TAK's Third-Party Pipeline on tak.gov, which builds it
+  and signs it with the "TAK Product Center ATAK Untrusted Plugin Release" key
+  that release ATAK accepts. Set `ATAK_VERSION` to the release ATAK's version.
 
 Toolchain (the 5.8 template's): JDK 17, Android Gradle plugin 8.13, Gradle
 8.14.3 (the wrapper downloads it), compileSdk 36, plus NDK 29.0.14206865 and
