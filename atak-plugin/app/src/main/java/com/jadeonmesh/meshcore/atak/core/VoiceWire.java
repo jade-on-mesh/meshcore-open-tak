@@ -102,6 +102,8 @@ public final class VoiceWire {
     public static final int FETCH_MAGIC = 0x72;
     public static final int FETCH_MISSING_ONLY = 0x01;
     public static final int FETCH_SALT_OK = 0x02;
+    /** Request ends with one random byte, so a retry is never deduplicated. */
+    public static final int FETCH_SALTED = 0x08;
 
     /** GRP_DATA type for clip transfers on a channel ('VC'). */
     public static final int CHANNEL_DATA_TYPE = 0x5643;
@@ -310,6 +312,11 @@ public final class VoiceWire {
         }
 
         public byte[] encode() {
+            return encode(null);
+        }
+
+        /** With {@code salt}, appends it so this request differs from earlier ones. */
+        public byte[] encode(Integer salt) {
             List<Integer> m = new ArrayList<>();
             if (missing != null) {
                 TreeSet<Integer> s = new TreeSet<>();
@@ -320,15 +327,18 @@ public final class VoiceWire {
             }
             if (m.size() > 150)
                 m = m.subList(0, 150);
-            byte[] out = new byte[MIN_LENGTH + m.size()];
+            byte[] out = new byte[MIN_LENGTH + m.size() + (salt == null ? 0 : 1)];
             out[0] = (byte) FETCH_MAGIC;
             System.arraycopy(Bytes.unhex(sessionId), 0, out, 1, 4);
             out[5] = (byte) ((missing == null ? 0 : FETCH_MISSING_ONLY)
-                    | (saltOk ? FETCH_SALT_OK : 0));
+                    | (saltOk ? FETCH_SALT_OK : 0)
+                    | (salt == null ? 0 : FETCH_SALTED));
             System.arraycopy(Bytes.unhex(requesterKey6), 0, out, 6, 6);
             out[12] = (byte) m.size();
             for (int i = 0; i < m.size(); i++)
                 out[MIN_LENGTH + i] = (byte) (int) m.get(i);
+            if (salt != null)
+                out[out.length - 1] = (byte) (salt & 0xFF);
             return out;
         }
     }

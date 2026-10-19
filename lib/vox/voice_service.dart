@@ -878,6 +878,9 @@ class VoxVoiceService extends ChangeNotifier {
     clip.directFailures = 0;
     clip.triedChannel = false;
     clip.askReplyAlongPath = true;
+    // A manual retry may follow a route change: the flooded DM step (which
+    // refreshes both radios' routes) gets another turn.
+    clip.sentDmRequest = false;
     await _attempt(clip);
   }
 
@@ -989,7 +992,10 @@ class VoxVoiceService extends ChangeNotifier {
             );
           }
           await _connector.sendFrame(
-            buildSendRawDataFrame(path: route, payload: withPath.encode()),
+            buildSendRawDataFrame(
+              path: route,
+              payload: withPath.encode(salt: _rng.nextInt(256)),
+            ),
             waitForGenericAck: true,
           );
         case _Method.dmRequest:
@@ -1020,7 +1026,7 @@ class VoxVoiceService extends ChangeNotifier {
             clip.envelope.sessionId,
           );
           final ok = await _connector.sendChannelDataBlobs(
-            [req.encode()],
+            [req.encode(salt: _rng.nextInt(256))],
             channelIndex: clip.channelIndex!,
             dataType: voxChannelDataType,
             interChunkDelay: Duration.zero,

@@ -330,4 +330,44 @@ void main() {
       expect(req.encode().length, VoxVoiceFetchRequest.minLength);
     });
   });
+
+  group('salted fetch request', () {
+    test('a retry for the same packets is not byte-identical', () {
+      const req = VoxVoiceFetchRequest(
+        sessionId: 'deadbeef',
+        requesterKey6: 'a1b2c3d4e5f6',
+        missingIndices: [61],
+        saltOk: true,
+      );
+      final a = req.encode(salt: 1);
+      final b = req.encode(salt: 2);
+      expect(_toHex(a), isNot(_toHex(b)));
+      expect(a[5] & voxFetchFlagSalted, voxFetchFlagSalted);
+      expect(a.length, req.encode().length + 1);
+    });
+
+    test('salt after a path leaves both readable', () {
+      const req = VoxVoiceFetchRequest(
+        sessionId: 'deadbeef',
+        requesterKey6: 'a1b2c3d4e5f6',
+        missingIndices: [3, 61],
+        saltOk: true,
+        requesterPath: [0x19, 0x1e],
+      );
+      final back = VoxVoiceFetchRequest.tryParse(req.encode(salt: 0xab))!;
+      expect(back.missingIndices, [3, 61]);
+      expect(back.requesterPath, [0x19, 0x1e]);
+      expect(back.saltOk, isTrue);
+    });
+
+    test('unsalted requests are unchanged', () {
+      const req = VoxVoiceFetchRequest(
+        sessionId: 'deadbeef',
+        requesterKey6: 'a1b2c3d4e5f6',
+        missingIndices: [1],
+        saltOk: true,
+      );
+      expect(req.encode()[5] & voxFetchFlagSalted, 0);
+    });
+  });
 }
