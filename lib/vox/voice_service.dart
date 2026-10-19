@@ -433,6 +433,7 @@ class VoxVoiceService extends ChangeNotifier {
       );
       _autoPlay = prefs.getBool(_kAutoPlay) ?? true;
       _autoDownloadChannels = prefs.getBool(_kAutoChannels) ?? false;
+      _pushChannelClips = prefs.getBool(_kPushChannel) ?? true;
       notifyListeners();
     } catch (_) {}
   }
@@ -654,8 +655,64 @@ class VoxVoiceService extends ChangeNotifier {
       env.sessionId,
     );
     await _connector.sendChannelMessage(channel, env.encode());
+    if (_pushChannelClips && _connector.supportsChannelData) {
+      // After the announcement has had time to arrive: a T-Deck keeps only
+      // packets for a clip it has heard announced.
+      final sid = env.sessionId;
+      final index = channel.index;
+      unawaited(
+        Future<void>.delayed(
+          _pushAfterAnnounce,
+        ).then((_) => _pushToChannel(sid, index)),
+      );
+    }
     notifyListeners();
     return env;
+  }
+
+  static const _pushAfterAnnounce = Duration(milliseconds: 1500);
+
+  /// Clips pushed to the radios in range, and when, so their own "send me
+  /// everything" requests (which cross the push on the air) are not served
+  /// a second time.
+  final Map<String, DateTime> _pushedAt = {};
+
+  void _pushToChannel(String sid, int channel) {
+    if (!_connector.isConnected || !_bits.containsKey(sid)) return;
+    final total = voxPacketize(sid, _bits[sid]!, _modes[sid]!).length;
+    final key = '$sid/ch$channel';
+    final burst = _channelBursts.putIfAbsent(
+      key,
+      () => _ChannelBurst(sid, channel),
+    );
+    burst.pending.addAll(List<int>.generate(total, (i) => i));
+    burst.pushing = true;
+    _pushedAt[sid] = DateTime.now();
+    _pushedAt.removeWhere(
+      (_, t) => DateTime.now().difference(t) > const Duration(minutes: 10),
+    );
+    _logEvent('pushing $total packets zero-hop to the channel', sid);
+    if (burst.running) return;
+    burst.running = true;
+    _serveChain = _serveChain
+        .then((_) => _runChannelBurst(key, burst))
+        .catchError((_) {});
+  }
+
+  /// A listener in range asking for the whole clip while it is being
+  /// pushed, or just after: the push is bringing it. Its later request for
+  /// whatever it missed names those packets, and is served.
+  bool _coveredByPush(String sid, {required bool all, required int? hops}) {
+    if (!all || hops != 0) return false;
+    final at = _pushedAt[sid];
+    if (at == null) return false;
+    final pushing = _channelBursts.values.any(
+      (b) => b.sid == sid && b.pushing && b.running,
+    );
+    // Just after it, a request may still be crossing it on the air. Later
+    // than that, "everything" means the push never reached them: served.
+    return pushing ||
+        DateTime.now().difference(at) < const Duration(seconds: 3);
   }
 
   void _remember(
@@ -1136,6 +1193,23 @@ class VoxVoiceService extends ChangeNotifier {
 
   static const _kAutoPlay = 'vox_autoplay';
   static const _kAutoChannels = 'vox_autoplay_channels';
+  static const _kPushChannel = 'vox_push_channel';
+  bool _pushChannelClips = true;
+
+  /// Send a channel photo or voice clip to the radios in range straight
+  /// away, zero-hop, instead of waiting for each listener to ask: it is
+  /// there when they open it, and the requests and their round trips are
+  /// saved. Listeners further away still ask, and get it relayed.
+  bool get pushChannelClips => _pushChannelClips;
+
+  Future<void> setPushChannelClips(bool v) async {
+    _pushChannelClips = v;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kPushChannel, v);
+    } catch (_) {}
+  }
   bool _autoPlay = true;
   bool _autoDownloadChannels = false;
 
@@ -1550,6 +1624,17 @@ class VoxVoiceService extends ChangeNotifier {
   final Map<String, _ChannelBurst> _channelBursts = {};
 
   void _queueChannelBurst(VoxVoiceFetchRequest req, int channel, int? hops) {
+    if (_coveredByPush(
+      req.sessionId,
+      all: req.missingIndices == null,
+      hops: hops,
+    )) {
+      _logEvent(
+        '${req.requesterKey6} (in range) asks for all of it: being pushed',
+        req.sessionId,
+      );
+      return;
+    }
     final key = '${req.sessionId}/ch$channel';
     final sig = '$key/${req.requesterKey6}|${req.missingIndices?.join(',') ?? 'all'}';
     final now = DateTime.now();
@@ -1633,6 +1718,7 @@ class VoxVoiceService extends ChangeNotifier {
       );
     } finally {
       burst.running = false;
+      if (burst.pushing) _pushedAt[burst.sid] = DateTime.now(); // its end
       if (_channelBursts[key] == burst) _channelBursts.remove(key);
     }
   }
@@ -1659,6 +1745,18 @@ class VoxVoiceService extends ChangeNotifier {
     required int? viaChannel,
     bool waitForRoute = false,
   }) {
+    final path = req.requesterPath;
+    if (_coveredByPush(
+      req.sessionId,
+      all: req.missingIndices == null,
+      hops: path == null ? null : path.length,
+    )) {
+      _logEvent(
+        '${req.requesterKey6} (in range) asks for all of it: being pushed',
+        req.sessionId,
+      );
+      return;
+    }
     final key =
         '${req.sessionId}/${viaChannel == null ? req.requesterKey6 : 'ch$viaChannel'}';
     final sig = '$key|${req.missingIndices?.join(',') ?? 'all'}';
@@ -2114,4 +2212,7 @@ class _ChannelBurst {
   bool saltOk = true;
   int maxHops = 0;
   bool running = false;
+
+  /// Started by the sender itself (VoiceService._pushToChannel).
+  bool pushing = false;
 }

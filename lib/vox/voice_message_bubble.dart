@@ -425,6 +425,17 @@ class VoxAutoPlayTile extends StatelessWidget {
               value: service.autoDownloadChannels,
               onChanged: service.setAutoDownloadChannels,
             ),
+          SwitchListTile(
+            secondary: const Icon(Icons.bolt_outlined),
+            title: const Text('Send channel photos and voice right away'),
+            subtitle: const Text(
+              'Your photos and voice clips go straight to the radios in '
+              'range (not relayed), so they are there when opened. '
+              'Listeners further away still ask for them.',
+            ),
+            value: service.pushChannelClips,
+            onChanged: service.setPushChannelClips,
+          ),
         ],
       ),
     );
