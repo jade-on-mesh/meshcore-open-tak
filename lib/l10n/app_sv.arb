@@ -8,7 +8,7 @@
     }
   },
   "@@locale": "sv",
-  "appTitle": "MeshCore Open",
+  "appTitle": "MeshCore Open TAK",
   "nav_contacts": "Kontakter",
   "nav_channels": "Kanaler",
   "nav_map": "Karta",
@@ -54,7 +54,7 @@
       }
     }
   },
-  "scanner_title": "MeshCore – Öppen version",
+  "scanner_title": "MeshCore Open TAK",
   "scanner_scanning": "Söker efter enheter...",
   "scanner_connecting": "Ansluter...",
   "scanner_disconnecting": "Anslutning bryts...",

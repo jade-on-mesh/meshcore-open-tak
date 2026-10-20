@@ -8,7 +8,7 @@
     }
   },
   "@@locale": "ru",
-  "appTitle": "MeshCore Open",
+  "appTitle": "MeshCore Open TAK",
   "nav_contacts": "Контакты",
   "nav_channels": "Каналы",
   "nav_map": "Карта",
@@ -41,7 +41,7 @@
   "common_percentValue": "{percent}%",
   "common_autoRefresh": "Автообновление",
   "common_interval": "Интервал",
-  "scanner_title": "MeshCore Open",
+  "scanner_title": "MeshCore Open TAK",
   "scanner_scanning": "Поиск устройств...",
   "scanner_connecting": "Подключение...",
   "scanner_disconnecting": "Отключение...",

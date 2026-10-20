@@ -26,7 +26,7 @@ require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelpe
 flutter_ios_podfile_setup
 
 target 'Runner' do
-  # Codec2 (LGPL-2.1) for MeshCore Open VOX voice messages
+  # Codec2 (LGPL-2.1) for MeshCore Open TAK voice messages
   pod 'codec2', :path => '../third_party/codec2'
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
