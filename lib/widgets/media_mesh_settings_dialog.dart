@@ -266,30 +266,39 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
         const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
+          // Off or On (listen and send). Listen only is a console setting;
+          // it selects neither, and On makes it send too.
           child: SegmentedButton<Radio2Mode>(
             showSelectedIcon: false,
+            emptySelectionAllowed: true,
             segments: [
               ButtonSegment(
                 value: Radio2Mode.off,
                 label: Text(l10n.mediaMesh_modeOff),
               ),
               ButtonSegment(
-                value: Radio2Mode.rx,
-                label: Text(l10n.mediaMesh_modeListen),
-              ),
-              ButtonSegment(
                 value: Radio2Mode.rxtx,
-                label: Text(l10n.mediaMesh_modeListenSend),
+                label: Text(l10n.mediaMesh_modeOn),
               ),
             ],
-            selected: {_settings.mode},
-            onSelectionChanged: (picked) => setState(
-              () => _settings = _settings.copyWith(mode: picked.first),
-            ),
+            selected: {
+              if (_settings.mode != Radio2Mode.rx) _settings.mode,
+            },
+            onSelectionChanged: (picked) {
+              if (picked.isEmpty) return;
+              setState(
+                () => _settings = _settings.copyWith(mode: picked.first),
+              );
+            },
           ),
         ),
         const SizedBox(height: 6),
-        Text(l10n.mediaMesh_modeHelp, style: small),
+        Text(
+          _settings.mode == Radio2Mode.rx
+              ? l10n.mediaMesh_listenOnlyNote
+              : l10n.mediaMesh_modeOnHelp,
+          style: small,
+        ),
         if (state.support == MediaMeshSupport.noMediaRouting) ...[
           const SizedBox(height: 8),
           Text(l10n.mediaMesh_noMediaRouting, style: errorStyle),

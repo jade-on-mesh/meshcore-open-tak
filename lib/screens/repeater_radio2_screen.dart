@@ -761,7 +761,7 @@ class _RepeaterRadio2ScreenState extends State<RepeaterRadio2Screen> {
     final on = _edit.mode != Radio2Mode.off;
     final help = switch (_edit.mode) {
       Radio2Mode.off => l10n.rr2_modeOffHelp,
-      Radio2Mode.rx => l10n.rr2_modeRxHelp,
+      Radio2Mode.rx => l10n.mediaMesh_listenOnlyNote,
       Radio2Mode.rxtx => l10n.rr2_modeRxtxHelp,
     };
     return MeshCard(
@@ -770,8 +770,11 @@ class _RepeaterRadio2ScreenState extends State<RepeaterRadio2Screen> {
         children: [
           SizedBox(
             width: double.infinity,
+            // Off or On (listen and send). A listen-only repeater (set from
+            // its console) selects neither; On makes it send too.
             child: SegmentedButton<Radio2Mode>(
               showSelectedIcon: false,
+              emptySelectionAllowed: true,
               segments: [
                 ButtonSegment(
                   value: Radio2Mode.off,
@@ -779,20 +782,18 @@ class _RepeaterRadio2ScreenState extends State<RepeaterRadio2Screen> {
                   label: Text(l10n.mediaMesh_modeOff),
                 ),
                 ButtonSegment(
-                  value: Radio2Mode.rx,
-                  icon: const Icon(Icons.hearing, size: 18),
-                  label: Text(l10n.mediaMesh_modeListen),
-                ),
-                ButtonSegment(
                   value: Radio2Mode.rxtx,
                   icon: const Icon(Icons.swap_vert, size: 18),
-                  label: Text(l10n.mediaMesh_modeListenSend),
+                  label: Text(l10n.mediaMesh_modeOn),
                 ),
               ],
-              selected: {_edit.mode},
+              selected: {if (_edit.mode != Radio2Mode.rx) _edit.mode},
               onSelectionChanged: busy
                   ? null
-                  : (s) => setState(() => _edit = _edit.copyWith(mode: s.first)),
+                  : (s) {
+                      if (s.isEmpty) return;
+                      setState(() => _edit = _edit.copyWith(mode: s.first));
+                    },
             ),
           ),
           const SizedBox(height: 8),
