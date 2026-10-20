@@ -9,7 +9,7 @@ class AppLocalizationsSl extends AppLocalizations {
   AppLocalizationsSl([String locale = 'sl']) : super(locale);
 
   @override
-  String get appTitle => 'MeshCore Open';
+  String get appTitle => 'MeshCore Open TAK';
 
   @override
   String get nav_contacts => 'Stiki';
@@ -178,7 +178,7 @@ class AppLocalizationsSl extends AppLocalizations {
   String get common_interval => 'Časovni interval';
 
   @override
-  String get scanner_title => 'MeshCore – Odprto';
+  String get scanner_title => 'MeshCore Open TAK';
 
   @override
   String get connectionChoiceUsbLabel => 'USB';

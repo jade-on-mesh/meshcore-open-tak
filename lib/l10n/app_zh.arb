@@ -8,7 +8,7 @@
     }
   },
   "@@locale": "zh",
-  "appTitle": "MeshCore Open",
+  "appTitle": "MeshCore Open TAK",
   "nav_contacts": "联系人",
   "nav_channels": "频道",
   "nav_map": "地图",
@@ -55,7 +55,7 @@
       }
     }
   },
-  "scanner_title": "连接设备",
+  "scanner_title": "MeshCore Open TAK",
   "scanner_scanning": "正在搜索设备...",
   "scanner_connecting": "正在连接...",
   "scanner_disconnecting": "断开连接...",

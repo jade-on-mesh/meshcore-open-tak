@@ -9,7 +9,7 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
-  String get appTitle => 'MeshCore Open';
+  String get appTitle => 'MeshCore Open TAK';
 
   @override
   String get nav_contacts => '联系人';
@@ -172,7 +172,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get common_interval => '间隔';
 
   @override
-  String get scanner_title => '连接设备';
+  String get scanner_title => 'MeshCore Open TAK';
 
   @override
   String get connectionChoiceUsbLabel => 'USB';

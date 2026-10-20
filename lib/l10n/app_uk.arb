@@ -8,7 +8,7 @@
     }
   },
   "@@locale": "uk",
-  "appTitle": "MeshCore Open",
+  "appTitle": "MeshCore Open TAK",
   "nav_contacts": "Контакти",
   "nav_channels": "Канали",
   "nav_map": "Карта",
@@ -55,7 +55,7 @@
       }
     }
   },
-  "scanner_title": "MeshCore: Відкритий доступ",
+  "scanner_title": "MeshCore Open TAK",
   "scanner_scanning": "Пошук пристроїв...",
   "scanner_connecting": "Підключення...",
   "scanner_disconnecting": "Відключення...",

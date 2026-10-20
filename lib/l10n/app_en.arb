@@ -1,6 +1,6 @@
 {
   "@@locale": "en",
-  "appTitle": "MeshCore Open",
+  "appTitle": "MeshCore Open TAK",
   "nav_contacts": "Contacts",
   "nav_channels": "Channels",
   "nav_map": "Map",
@@ -90,7 +90,7 @@
   },
   "common_autoRefresh": "Autorefresh",
   "common_interval": "Interval",
-  "scanner_title": "MeshCore Open",
+  "scanner_title": "MeshCore Open TAK",
   "connectionChoiceUsbLabel": "USB",
   "connectionChoiceBluetoothLabel": "Bluetooth",
   "connectionChoiceTcpLabel": "TCP",
