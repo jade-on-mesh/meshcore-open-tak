@@ -12018,6 +12018,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'MediaMesh is off on this radio. Tap to set it up.'**
   String get mediaMeshNearby_off;
+
+  /// No description provided for @mapHighlight_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlight new map points'**
+  String get mapHighlight_title;
+
+  /// No description provided for @mapHighlight_help.
+  ///
+  /// In en, this message translates to:
+  /// **'A teammate, pin, report or watched-channel point that appears on the map flashes with a ring for this long.'**
+  String get mapHighlight_help;
+
+  /// No description provided for @mapHighlight_off.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get mapHighlight_off;
+
+  /// No description provided for @mapHighlight_minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String mapHighlight_minutes(int minutes);
 }
 
 class _AppLocalizationsDelegate

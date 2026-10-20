@@ -7087,4 +7087,18 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get mediaMeshNearby_off => 'MediaMesh is off on this radio. Tap to set it up.';
+
+  @override
+  String get mapHighlight_title => 'Highlight new map points';
+
+  @override
+  String get mapHighlight_help => 'A teammate, pin, report or watched-channel point that appears on the map flashes with a ring for this long.';
+
+  @override
+  String get mapHighlight_off => 'Off';
+
+  @override
+  String mapHighlight_minutes(int minutes) {
+    return '$minutes min';
+  }
 }

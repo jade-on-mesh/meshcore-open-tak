@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -9,6 +11,7 @@ import '../models/image_codec_support.dart';
 import '../services/app_settings_service.dart';
 import '../services/background_service.dart';
 import '../services/image_codec_service.dart';
+import '../team/map_highlights.dart';
 import '../services/map_tile_cache_service.dart';
 import '../services/notification_service.dart';
 import '../theme/mesh_theme.dart';
@@ -1055,6 +1058,16 @@ class AppSettingsScreen extends StatelessWidget {
           onTap: () => _showTimeFilterSheet(context, settingsService),
         ),
         const Divider(height: 1, indent: 16),
+        ListenableBuilder(
+          listenable: MapHighlights.instance,
+          builder: (context, _) => MeshNavTile(
+            icon: Icons.flare,
+            title: context.l10n.mapHighlight_title,
+            subtitle: _highlightLabel(context, MapHighlights.instance.minutes),
+            onTap: () => _showHighlightSheet(context),
+          ),
+        ),
+        const Divider(height: 1, indent: 16),
         MeshNavTile(
           icon: Icons.straighten,
           title: context.l10n.appSettings_unitsTitle,
@@ -1385,6 +1398,36 @@ class AppSettingsScreen extends StatelessWidget {
           duration: const Duration(seconds: 2),
         );
       },
+    );
+  }
+
+  String _highlightLabel(BuildContext context, int minutes) => minutes == 0
+      ? context.l10n.mapHighlight_off
+      : context.l10n.mapHighlight_minutes(minutes);
+
+  void _showHighlightSheet(BuildContext context) {
+    final hl = MapHighlights.instance;
+    showMeshSheet(
+      context,
+      builder: (ctx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          BottomSheetHeader(title: context.l10n.mapHighlight_title),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: Text(context.l10n.mapHighlight_help),
+          ),
+          for (final m in MapHighlights.choicesMinutes)
+            MeshSheetOption(
+              label: _highlightLabel(context, m),
+              selected: hl.minutes == m,
+              onTap: () {
+                unawaited(hl.setMinutes(m));
+                Navigator.pop(ctx);
+              },
+            ),
+        ],
+      ),
     );
   }
 

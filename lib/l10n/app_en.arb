@@ -3762,5 +3762,10 @@
   "mediaMeshNearby_heardAgo": "MediaMesh nearby: heard {minutes} min ago",
   "@mediaMeshNearby_heardAgo": {"placeholders": {"minutes": {"type": "int"}}},
   "mediaMeshNearby_listening": "Listening for a MediaMesh: none heard in the last 2 hours",
-  "mediaMeshNearby_off": "MediaMesh is off on this radio. Tap to set it up."
+  "mediaMeshNearby_off": "MediaMesh is off on this radio. Tap to set it up.",
+  "mapHighlight_title": "Highlight new map points",
+  "mapHighlight_help": "A teammate, pin, report or watched-channel point that appears on the map flashes with a ring for this long.",
+  "mapHighlight_off": "Off",
+  "mapHighlight_minutes": "{minutes} min",
+  "@mapHighlight_minutes": {"placeholders": {"minutes": {"type": "int"}}}
 }

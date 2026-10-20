@@ -14,6 +14,7 @@ import '../vox/image_message_bubble.dart' show voxRgbToUiImage;
 import '../vox/voice_message_bubble.dart';
 import '../vox/voice_service.dart';
 import '../vox/voice_wire.dart';
+import 'map_highlights.dart';
 import 'role_icon_library.dart';
 import 'tak/cot.dart';
 import 'tak/tak_service.dart';
@@ -134,7 +135,33 @@ class TeamMapLayer extends StatelessWidget {
   const TeamMapLayer({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ListenableBuilder(
+    // Rebuilt when a new point's highlight runs out (or its time changes).
+    listenable: MapHighlights.instance,
+    builder: (context, _) => _layer(context),
+  );
+
+  /// Pulsing rings under points that appeared in the last few minutes.
+  List<Marker> _auras(TeamService team, List<WatchItem> watched) {
+    final hl = MapHighlights.instance;
+    if (hl.minutes == 0) return const [];
+    return [
+      for (final p in highlightPointsOf(team, watched))
+        if (hl.isNew(p.key, itemTime: p.time))
+          Marker(
+            point: LatLng(p.lat, p.lon),
+            width: 76,
+            height: 76,
+            child: IgnorePointer(
+              child: NewPointAura(
+                color: p.argb == null ? newPointAuraColor : Color(p.argb!),
+              ),
+            ),
+          ),
+    ];
+  }
+
+  Widget _layer(BuildContext context) {
     final team = context.watch<TeamService>();
     final tak = context.watch<TakService>();
     final watch = context.watch<WatchFeedService>();
@@ -300,6 +327,8 @@ class TeamMapLayer extends StatelessWidget {
     ];
 
     final markers = <Marker>[
+      // Under everything: rings round what appeared in the last minutes.
+      ..._auras(team, watched),
       for (final sh in shapes) ..._shapeMarkers(context, sh, nav),
       // Watch-feed reports and TAK units sit under the mesh team.
       // The one the search lit up last, so it draws over its neighbours.
@@ -877,6 +906,57 @@ class _SelfDot extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The ring for a new team point (pins, points, reports); watched reports
+/// and teammates ring in their own color.
+const Color newPointAuraColor = Color(0xFF00E5FF);
+
+/// A new point's highlight: a ring that swells and fades, over and over.
+class NewPointAura extends StatefulWidget {
+  final Color color;
+  const NewPointAura({super.key, required this.color});
+  @override
+  State<NewPointAura> createState() => _NewPointAuraState();
+}
+
+class _NewPointAuraState extends State<NewPointAura>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1200),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.color;
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (_, _) {
+        final v = Curves.easeOut.transform(_c.value);
+        return Center(
+          child: Container(
+            width: 24 + 50 * v,
+            height: 24 + 50 * v,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: c.withValues(alpha: 0.28 * (1 - v)),
+              border: Border.all(
+                color: c.withValues(alpha: 1 - 0.8 * v),
+                width: 3,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
