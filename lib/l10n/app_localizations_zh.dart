@@ -6683,4 +6683,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String mapHighlight_minutes(int minutes) {
     return '$minutes min';
   }
+
+  @override
+  String get mediaMesh_modeOn => 'On';
+
+  @override
+  String get mediaMesh_modeOnHelp => 'On listens and sends on radio2 (MediaMesh). The main mesh is always heard.';
+
+  @override
+  String get mediaMesh_listenOnlyNote => 'Set to listen only (from the console): it hears radio2 but never sends there. Tap On to send too.';
 }

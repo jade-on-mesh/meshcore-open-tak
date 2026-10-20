@@ -9,8 +9,9 @@ switching between them, so you keep hearing the main mesh.
 
 **Settings → MediaMesh Settings** (under Radio Settings):
 
-1. **radio2**: *Off*, *Listen* (hear radio2, never send there) or
-   *Listen + send*.
+1. **radio2**: *Off* or *On* (listen and send there). Listen only is a console
+   setting (`set radio2 ...,rx`); it selects neither, and *On* makes it send too.
+   A repeater's radio2 page works the same way.
 2. **Sent on radio2**: *Photos & voice* puts photos and voice clips there and
    keeps text on the main mesh. A mix set from the console shows as *Custom*
    and is left alone.
@@ -32,7 +33,7 @@ The dialog also shows, every few seconds while it is open: packets received and
 sent on each profile, the measured switch time, and the radio's timing warnings.
 
 **Photos and voice stay off the main mesh.** They only go out when the
-connected radio sends them on radio2 alone (*Listen + send*, *Photos & voice*).
+connected radio sends them on radio2 alone (*On*, *Photos & voice*).
 Otherwise the app says so instead of sending, and doesn't answer other
 people's requests for them either. This covers Open TAK's photos and voice
 only: upstream MeshCore Open's channel image messages and OTP photo DMs (sent

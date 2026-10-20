@@ -3767,5 +3767,8 @@
   "mapHighlight_help": "A teammate, pin, report or watched-channel point that appears on the map flashes with a ring for this long.",
   "mapHighlight_off": "Off",
   "mapHighlight_minutes": "{minutes} min",
-  "@mapHighlight_minutes": {"placeholders": {"minutes": {"type": "int"}}}
+  "@mapHighlight_minutes": {"placeholders": {"minutes": {"type": "int"}}},
+  "mediaMesh_modeOn": "On",
+  "mediaMesh_modeOnHelp": "On listens and sends on radio2 (MediaMesh). The main mesh is always heard.",
+  "mediaMesh_listenOnlyNote": "Set to listen only (from the console): it hears radio2 but never sends there. Tap On to send too."
 }

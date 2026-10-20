@@ -12042,6 +12042,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{minutes} min'**
   String mapHighlight_minutes(int minutes);
+
+  /// No description provided for @mediaMesh_modeOn.
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get mediaMesh_modeOn;
+
+  /// No description provided for @mediaMesh_modeOnHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'On listens and sends on radio2 (MediaMesh). The main mesh is always heard.'**
+  String get mediaMesh_modeOnHelp;
+
+  /// No description provided for @mediaMesh_listenOnlyNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Set to listen only (from the console): it hears radio2 but never sends there. Tap On to send too.'**
+  String get mediaMesh_listenOnlyNote;
 }
 
 class _AppLocalizationsDelegate
