@@ -32,6 +32,8 @@ target 'Runner' do
   flutter_install_all_macos_pods File.dirname(File.realpath(__FILE__))
   # Codec2 for voice messages (lib/services/codec2_ffi.dart finds it in the process).
   pod 'codec2', :path => '../third_party/codec2'
+  # ggwave (MIT): share by sound (lib/sound/ggwave_ffi.dart finds it in the process).
+  pod 'ggwave', :path => '../third_party/ggwave'
   target 'RunnerTests' do
     inherit! :search_paths
   end

@@ -24,6 +24,7 @@ import '../widgets/list_filter_widget.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/mesh_ui.dart';
 import '../widgets/network_map_opt_in_dialog.dart';
+import '../sound/sound_share_widgets.dart';
 import '../widgets/qr_code_display.dart';
 import '../widgets/quick_switch_bar.dart';
 import '../widgets/sync_progress_overlay.dart';
@@ -2306,6 +2307,9 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                 title: dialogContext.l10n.channels_shareQrTitle(title),
                 instructions: dialogContext.l10n.channels_shareQrInstructions,
               ),
+              const SizedBox(height: 12),
+              // For a device without a camera (a T-Deck): the same link as sound.
+              SoundShareButton(data: link),
               const SizedBox(height: 12),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,

@@ -12060,6 +12060,234 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Set to listen only (from the console): it hears radio2 but never sends there. Tap On to send too.'**
   String get mediaMesh_listenOnlyNote;
+
+  /// No description provided for @sound_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound link'**
+  String get sound_title;
+
+  /// No description provided for @sound_settingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Messages and share links over sound, Wavest-compatible'**
+  String get sound_settingsSubtitle;
+
+  /// No description provided for @sound_unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This build has no sound link.'**
+  String get sound_unavailable;
+
+  /// No description provided for @sound_intro.
+  ///
+  /// In en, this message translates to:
+  /// **'Sends short messages as tones from the speaker and hears them on the microphone (ggwave), in the same format as Wavest (bennjordan.github.io/Wavest), so a T-Deck, another phone or a Wavest page in a browser can join in. A message is a few seconds of sound, up to about 120 characters.'**
+  String get sound_intro;
+
+  /// No description provided for @sound_settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Callsign, passkey and sound'**
+  String get sound_settings;
+
+  /// No description provided for @sound_callsign.
+  ///
+  /// In en, this message translates to:
+  /// **'Callsign'**
+  String get sound_callsign;
+
+  /// No description provided for @sound_passkey.
+  ///
+  /// In en, this message translates to:
+  /// **'Passkey (optional)'**
+  String get sound_passkey;
+
+  /// No description provided for @sound_passkeyHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypts what you send and opens what others send with the same passkey, as Wavest does (AES-GCM). It keeps a chat from bystanders; it is not the mesh\'s own encryption.'**
+  String get sound_passkeyHelp;
+
+  /// No description provided for @sound_mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound'**
+  String get sound_mode;
+
+  /// No description provided for @sound_volume.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume'**
+  String get sound_volume;
+
+  /// No description provided for @sound_modeAudibleNormal.
+  ///
+  /// In en, this message translates to:
+  /// **'Audible: normal (most robust)'**
+  String get sound_modeAudibleNormal;
+
+  /// No description provided for @sound_modeAudibleFast.
+  ///
+  /// In en, this message translates to:
+  /// **'Audible: fast (Wavest\'s default)'**
+  String get sound_modeAudibleFast;
+
+  /// No description provided for @sound_modeAudibleFastest.
+  ///
+  /// In en, this message translates to:
+  /// **'Audible: fastest'**
+  String get sound_modeAudibleFastest;
+
+  /// No description provided for @sound_modeUltraNormal.
+  ///
+  /// In en, this message translates to:
+  /// **'Ultrasound: normal (phones only)'**
+  String get sound_modeUltraNormal;
+
+  /// No description provided for @sound_modeUltraFast.
+  ///
+  /// In en, this message translates to:
+  /// **'Ultrasound: fast (phones only)'**
+  String get sound_modeUltraFast;
+
+  /// No description provided for @sound_modeUltraFastest.
+  ///
+  /// In en, this message translates to:
+  /// **'Ultrasound: fastest (phones only)'**
+  String get sound_modeUltraFastest;
+
+  /// No description provided for @sound_bridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge to a channel'**
+  String get sound_bridge;
+
+  /// No description provided for @sound_bridgeOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get sound_bridgeOff;
+
+  /// No description provided for @sound_bridgeChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Channel'**
+  String get sound_bridgeChannel;
+
+  /// No description provided for @sound_bridgePlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Play this channel\'s new messages as sound'**
+  String get sound_bridgePlay;
+
+  /// No description provided for @sound_bridgeHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'What is heard is posted to the channel as "[Wavest] callsign: text". With this on, the channel\'s new messages are played too, so people nearby without a radio can follow and reply.'**
+  String get sound_bridgeHelp;
+
+  /// No description provided for @sound_shareContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Play my contact'**
+  String get sound_shareContact;
+
+  /// No description provided for @sound_shareChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Play a channel'**
+  String get sound_shareChannel;
+
+  /// No description provided for @sound_messageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Message to play'**
+  String get sound_messageHint;
+
+  /// No description provided for @sound_send.
+  ///
+  /// In en, this message translates to:
+  /// **'Play'**
+  String get sound_send;
+
+  /// No description provided for @sound_tooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Too long for one sound message. Shorten it (a passkey makes it longer).'**
+  String get sound_tooLong;
+
+  /// No description provided for @sound_listen.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen for it by sound'**
+  String get sound_listen;
+
+  /// No description provided for @sound_listening.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening…'**
+  String get sound_listening;
+
+  /// No description provided for @sound_listeningHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold this phone near the other device and play the contact or channel there (Play by sound).'**
+  String get sound_listeningHelp;
+
+  /// No description provided for @sound_notListening.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on listening (top right) to hear messages.'**
+  String get sound_notListening;
+
+  /// No description provided for @sound_heardOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Heard something else: {text}'**
+  String sound_heardOther(String text);
+
+  /// No description provided for @sound_heardRaw.
+  ///
+  /// In en, this message translates to:
+  /// **'Heard'**
+  String get sound_heardRaw;
+
+  /// No description provided for @sound_locked.
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypted: set the same passkey to read it'**
+  String get sound_locked;
+
+  /// No description provided for @sound_linkHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A share link. Add it from Contacts or Channels: Scan, then Listen.'**
+  String get sound_linkHint;
+
+  /// No description provided for @sound_playByShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Play by sound'**
+  String get sound_playByShare;
+
+  /// No description provided for @sound_playing.
+  ///
+  /// In en, this message translates to:
+  /// **'Playing…'**
+  String get sound_playing;
+
+  /// No description provided for @sound_playByShareHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'For a T-Deck or another phone: they listen (Scan, then Listen) while this plays.'**
+  String get sound_playByShareHelp;
+
+  /// No description provided for @sound_playFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t play it: {error}'**
+  String sound_playFailed(String error);
 }
 
 class _AppLocalizationsDelegate

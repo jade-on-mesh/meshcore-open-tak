@@ -12,6 +12,7 @@ import '../l10n/l10n.dart';
 import '../services/app_settings_service.dart';
 import '../theme/mesh_theme.dart';
 import '../services/app_update_service.dart';
+import '../sound/sound_link_screen.dart';
 import '../widgets/app_update_ui.dart';
 import '../widgets/app_bar.dart';
 import '../helpers/firmware_identity.dart';
@@ -628,6 +629,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       MediaMeshSettingsDialog(connector: connector),
                 )
               : null,
+        ),
+        const Divider(height: 1, indent: 16),
+        MeshNavTile(
+          icon: Icons.graphic_eq,
+          title: l10n.sound_title,
+          subtitle: l10n.sound_settingsSubtitle,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const SoundLinkScreen()),
+          ),
         ),
         const Divider(height: 1, indent: 16),
         MeshNavTile(

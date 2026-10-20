@@ -7,6 +7,8 @@ import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../l10n/l10n.dart';
+import '../sound/sound_link.dart';
+import '../sound/sound_share_widgets.dart';
 import '../theme/mesh_theme.dart';
 import '../utils/contact_qr.dart';
 import '../utils/contact_qr_frame.dart';
@@ -36,6 +38,21 @@ class _ContactQrScannerScreenState extends State<ContactQrScannerScreen> {
         title: AdaptiveAppBarTitle(context.l10n.contacts_scanQrCode),
         centerTitle: true,
         actions: [
+          // A T-Deck or another phone can play a contact as sound instead.
+          if (SoundLink.instance.available)
+            IconButton(
+              tooltip: context.l10n.sound_listen,
+              icon: const Icon(Icons.hearing),
+              onPressed: _isProcessing
+                  ? null
+                  : () async {
+                      final heard = await showSoundListenSheet(
+                        context,
+                        accept: (d) => parseContactQr(d) != null,
+                      );
+                      if (heard != null && mounted) await _handleScannedData(heard);
+                    },
+            ),
           IconButton(
             tooltip: context.l10n.contacts_qrFromGallery,
             icon: const Icon(Icons.photo_library),
