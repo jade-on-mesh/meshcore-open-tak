@@ -88,7 +88,7 @@ The app asks the connected radio for `get radio2.status` once a minute. Wadamesh
 
 MediaMesh needs radio firmware with a second LoRa profile and media routing:
 
-- **Wadamesh** (jade-on-mesh/wadamesh) on SX1262 boards: T-Deck, Heltec V4,
+- **Wadamesh** (jade-on-mesh/wadamesh-tak) on SX1262 boards: T-Deck, Heltec V4,
   T-LoRa Pager (SX1262) and others. LR1110/LR1121 boards can't run it. See
   Wadamesh's `MEDIAMESH.md`.
 - **MeshCore with `radio2`** (mikecarper/MeshCore) has the second profile.

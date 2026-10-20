@@ -3,7 +3,7 @@
 /// has no separate name field, so builds that carry one put it in front of the
 /// version:
 ///
-/// - `wadamesh-tak 42`   jade-on-mesh/wadamesh releases
+/// - `wadamesh-tak 42`   jade-on-mesh/wadamesh-tak releases
 /// - `wadamesh v1.2.3`   Wadamesh releases
 /// - `v1.17.4-touch`     Wadamesh development builds
 /// - `v1.18.0`           MeshCore (stock, or a fork that doesn't name itself)
