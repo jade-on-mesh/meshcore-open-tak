@@ -1,5 +1,5 @@
 // Golden bytes shared with Wadamesh's native team support
-// (jade-on-mesh/wadamesh, test/test_team_wire.cpp): the radio's C++ encoder
+// (jade-on-mesh/wadamesh-tak, test/test_team_wire.cpp): the radio's C++ encoder
 // produces exactly these payloads for the same objects, so a T-Deck and this
 // app read each other's positions, alerts and pins.
 import 'dart:typed_data';
