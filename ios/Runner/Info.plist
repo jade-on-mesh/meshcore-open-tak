@@ -84,6 +84,6 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>MeshCore Open VOX needs the microphone to record voice messages.</string>
+	<string>MeshCore Open TAK needs the microphone to record voice messages.</string>
 </dict>
 </plist>

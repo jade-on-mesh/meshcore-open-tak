@@ -35,6 +35,6 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app lets you pick a photo to compress and send over the mesh.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>MeshCore Open VOX needs the microphone to record voice messages.</string>
+	<string>MeshCore Open TAK needs the microphone to record voice messages.</string>
 </dict>
 </plist>
