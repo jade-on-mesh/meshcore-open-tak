@@ -42,6 +42,26 @@ public class ProtocolTest {
     }
 
     @Test
+    public void envelopeCarriesACaption() {
+        VoiceWire.Envelope plain = new VoiceWire.Envelope("00000001",
+                VoiceWire.Mode.AV1_IMAGE, 3, 133);
+        // No caption: exactly the plain envelope, no trailing space.
+        assertFalse(plain.encode().contains(" "));
+        assertEquals("", VoiceWire.Envelope.parse(plain.encode()).caption);
+        VoiceWire.Envelope cap = new VoiceWire.Envelope("00000001",
+                VoiceWire.Mode.AV1_IMAGE, 3, 133, "Look at this: T-Deck!");
+        String s = cap.encode();
+        assertEquals(plain.encode() + " Look at this: T-Deck!", s);
+        VoiceWire.Envelope b = VoiceWire.Envelope.parse(s);
+        assertEquals("Look at this: T-Deck!", b.caption);
+        assertEquals(3, b.totalPackets);
+        assertEquals("on my way",
+                VoiceWire.Envelope.parse("VE3:1z141z:1:a:9 on my way").caption);
+        // A bad field is not rescued by a caption.
+        assertNull(VoiceWire.Envelope.parse("VE3:1z141z:1:a:9X hi"));
+    }
+
+    @Test
     public void packetsAndFetchRequests() {
         byte[] bits = new byte[400];
         for (int i = 0; i < bits.length; i++)

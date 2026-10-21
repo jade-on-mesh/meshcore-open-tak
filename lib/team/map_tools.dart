@@ -388,7 +388,7 @@ Future<void> _quickPic(
     context,
     recipientLabel: mine ? 'a pin at your position' : 'a pin at map centre',
     sendLabel: 'Drop pin',
-    onSend: (image) async {
+    onSend: (image, _) async {
       final env = voice.registerClip(voice.imageClip(image));
       final now = DateTime.now();
       await team.putMarker(

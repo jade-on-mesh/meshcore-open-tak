@@ -9,7 +9,8 @@ import 'package:provider/provider.dart';
 
 import '../models/contact.dart';
 import 'av1_ffi.dart';
-import 'voice_message_bubble.dart' show showVoxVoiceLog, VoxReceivedViaLabel;
+import 'voice_message_bubble.dart'
+    show showVoxVoiceLog, VoxCaption, VoxReceivedViaLabel;
 import 'voice_service.dart';
 import 'voice_wire.dart';
 
@@ -176,9 +177,19 @@ class _VoxImageMessageContentState extends State<VoxImageMessageContent> {
     final color = widget.textColor;
     final meta = color.withValues(alpha: 0.65);
     if (s == null || !s.imagesAvailable) {
-      return Text(
+      final note = Text(
         '🖼 Photo — this build can\'t show photo messages',
         style: TextStyle(color: meta, fontStyle: FontStyle.italic),
+      );
+      if (env.caption.isEmpty) return note;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          note,
+          const SizedBox(height: 4),
+          VoxCaption(env.caption, color: color),
+        ],
       );
     }
     final st = s.stateFor(env);
@@ -263,6 +274,10 @@ class _VoxImageMessageContentState extends State<VoxImageMessageContent> {
             ),
           ),
         ),
+        if (env.caption.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          VoxCaption(env.caption, color: color),
+        ],
         const SizedBox(height: 4),
         Row(
           mainAxisSize: MainAxisSize.min,

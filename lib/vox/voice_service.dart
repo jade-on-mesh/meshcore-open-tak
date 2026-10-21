@@ -28,6 +28,7 @@ import '../connector/meshcore_protocol.dart';
 import '../models/channel.dart';
 import '../models/contact.dart';
 import '../services/media_lockdown.dart';
+import '../services/otp_service.dart';
 import '../services/media_mesh.dart' show MediaAirProfile, loadMediaAirProfile;
 import '../services/media_mesh_nearby.dart';
 import '../services/image_chunk_transport.dart'
@@ -657,12 +658,17 @@ class VoxVoiceService extends ChangeNotifier {
     return null;
   }
 
+  /// Sends [clip] to [contact], with [caption] in the same message (cut to
+  /// what fits).
   Future<VoxVoiceEnvelope> sendClipToContact(
     Contact contact,
-    VoxEncodedClip clip,
-  ) async {
+    VoxEncodedClip clip, {
+    String caption = '',
+  }) async {
     await _ensureMediaAllowed();
-    final env = _register(clip);
+    final env = _register(clip).withCaption(
+      voxFitCaption(caption, voxCaptionMaxBytes(maxContactMessageBytes())),
+    );
     unawaited(_refreshMediaAir()); // ready before the first request
     _logEvent(
       'sent ${env.totalPackets}-packet ${clip.mode.label} '
@@ -675,12 +681,24 @@ class VoxVoiceService extends ChangeNotifier {
     return env;
   }
 
+  /// The longest text message [channel] carries in one packet: less on an
+  /// OTP channel, which never splits a message.
+  int maxChannelTextBytes(Channel channel) =>
+      _connector.isChannelOtpEnabled(channel.index)
+      ? OtpService.maxPlaintextBytesForChannel(_connector.selfName)
+      : maxChannelMessageBytes(_connector.selfName);
+
+  /// Sends [clip] on [channel], with [caption] in the same message (cut to
+  /// what fits).
   Future<VoxVoiceEnvelope> sendClipToChannel(
     Channel channel,
-    VoxEncodedClip clip,
-  ) async {
+    VoxEncodedClip clip, {
+    String caption = '',
+  }) async {
     await _ensureMediaAllowed();
-    final env = _register(clip);
+    final env = _register(clip).withCaption(
+      voxFitCaption(caption, voxCaptionMaxBytes(maxChannelTextBytes(channel))),
+    );
     unawaited(_refreshMediaAir()); // ready before the first request
     _logEvent(
       'sent ${env.totalPackets}-packet ${clip.mode.label} clip to channel ${channel.name}',
@@ -1265,13 +1283,15 @@ class VoxVoiceService extends ChangeNotifier {
 
   Future<VoxVoiceEnvelope> sendImageToContact(
     Contact contact,
-    VoxEncodedImage image,
-  ) => sendClipToContact(contact, _imageClip(image));
+    VoxEncodedImage image, {
+    String caption = '',
+  }) => sendClipToContact(contact, _imageClip(image), caption: caption);
 
   Future<VoxVoiceEnvelope> sendImageToChannel(
     Channel channel,
-    VoxEncodedImage image,
-  ) => sendClipToChannel(channel, _imageClip(image));
+    VoxEncodedImage image, {
+    String caption = '',
+  }) => sendClipToChannel(channel, _imageClip(image), caption: caption);
 
   VoxEncodedClip _imageClip(VoxEncodedImage image) => VoxEncodedClip(
     VoxVoiceMode.av1Image,

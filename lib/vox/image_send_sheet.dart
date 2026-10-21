@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 import 'aeic_hd_screens.dart';
 import 'aeic_hd_service.dart';
 import 'av1_ffi.dart';
+import 'caption_field.dart';
 import 'image_codec.dart';
 import 'image_focus.dart';
 import 'image_message_bubble.dart' show voxRgbToUiImage;
@@ -44,10 +45,17 @@ class VoxAiSketchOption {
   });
 }
 
+/// Sends a Mesh photo, with the caption typed in the sheet ('' for none).
+typedef VoxImageSend =
+    Future<void> Function(VoxEncodedImage image, String caption);
+
 /// Camera/gallery button for the chat input row.
 class VoxImageButton extends StatelessWidget {
   final String recipientLabel;
-  final Future<void> Function(VoxEncodedImage image) onSend;
+  final VoxImageSend onSend;
+
+  /// The chat's text box, offered as the photo's caption; null for none.
+  final VoxCaptionInput? caption;
 
   /// Offer AEIC as well (chats that can carry it); null: Mesh photos only.
   final VoxAiSketchOption? aiSketch;
@@ -57,6 +65,7 @@ class VoxImageButton extends StatelessWidget {
     required this.recipientLabel,
     required this.onSend,
     this.aiSketch,
+    this.caption,
   });
 
   @override
@@ -69,6 +78,7 @@ class VoxImageButton extends StatelessWidget {
         recipientLabel: recipientLabel,
         onSend: onSend,
         aiSketch: aiSketch,
+        caption: caption,
       ),
     );
   }
@@ -79,9 +89,10 @@ class VoxImageButton extends StatelessWidget {
 Future<void> showVoxImagePicker(
   BuildContext context, {
   required String recipientLabel,
-  required Future<void> Function(VoxEncodedImage image) onSend,
+  required VoxImageSend onSend,
   String sendLabel = 'Send',
   VoxAiSketchOption? aiSketch,
+  VoxCaptionInput? caption,
 }) async {
   final voice = context.read<VoxVoiceService>();
   if (!voice.imagesAvailable && aiSketch == null) {
@@ -181,6 +192,7 @@ Future<void> showVoxImagePicker(
       recipientLabel: recipientLabel,
       onSend: onSend,
       sendLabel: sendLabel,
+      caption: caption,
     ),
   );
 }
@@ -213,8 +225,9 @@ Future<VoxRgbImage> voxLoadReference(Uint8List fileBytes) async {
 class VoxImageSendSheet extends StatefulWidget {
   final VoxRgbImage reference;
   final String recipientLabel;
-  final Future<void> Function(VoxEncodedImage image) onSend;
+  final VoxImageSend onSend;
   final String sendLabel;
+  final VoxCaptionInput? caption;
 
   const VoxImageSendSheet({
     super.key,
@@ -222,6 +235,7 @@ class VoxImageSendSheet extends StatefulWidget {
     required this.recipientLabel,
     required this.onSend,
     this.sendLabel = 'Send',
+    this.caption,
   });
 
   @override
@@ -246,7 +260,12 @@ class _VoxImageSendSheetState extends State<VoxImageSendSheet> {
   @override
   void initState() {
     super.initState();
+    widget.caption?.controller.addListener(_captionChanged);
     unawaited(_init());
+  }
+
+  void _captionChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _init() async {
@@ -302,9 +321,11 @@ class _VoxImageSendSheetState extends State<VoxImageSendSheet> {
   Future<void> _send() async {
     final enc = _encoded;
     if (enc == null) return;
+    final caption = widget.caption;
     setState(() => _sending = true);
     try {
-      await widget.onSend(enc);
+      await widget.onSend(enc, caption?.text ?? '');
+      caption?.controller.clear();
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
@@ -318,6 +339,7 @@ class _VoxImageSendSheetState extends State<VoxImageSendSheet> {
 
   @override
   void dispose() {
+    widget.caption?.controller.removeListener(_captionChanged);
     _preview?.dispose();
     _original?.dispose();
     super.dispose();
@@ -500,6 +522,10 @@ class _VoxImageSendSheetState extends State<VoxImageSendSheet> {
                     style: TextStyle(color: theme.colorScheme.error),
                   ),
                 ),
+              if (widget.caption != null) ...[
+                const SizedBox(height: 12),
+                VoxCaptionField(input: widget.caption!, enabled: !_sending),
+              ],
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -527,7 +553,11 @@ class _VoxImageSendSheetState extends State<VoxImageSendSheet> {
                           )
                         : const Icon(Icons.send),
                     label: Text(widget.sendLabel),
-                    onPressed: enc == null || _encoding || _sending
+                    onPressed:
+                        enc == null ||
+                            _encoding ||
+                            _sending ||
+                            (widget.caption?.tooLong ?? false)
                         ? null
                         : _send,
                   ),

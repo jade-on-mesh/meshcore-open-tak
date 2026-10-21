@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:record/record.dart';
 
+import 'caption_field.dart';
 import 'mimi.dart';
 import 'resample.dart';
 import 'voice_message_bubble.dart'
@@ -16,8 +17,11 @@ import 'voice_service.dart';
 
 /// Mic button for a chat composer. Hidden when no voice codec is available.
 class VoxMicButton extends StatelessWidget {
-  final Future<void> Function(VoxEncodedClip clip) onSend;
+  final VoxClipSend onSend;
   final String? recipientLabel;
+
+  /// The chat's text box, offered as the clip's caption; null for none.
+  final VoxCaptionInput? caption;
 
   /// [VoxVoiceService.contactTarget] / [VoxVoiceService.channelTarget]: lets
   /// this chat always use Codec2 (for radios that can't play Mimi).
@@ -28,6 +32,7 @@ class VoxMicButton extends StatelessWidget {
     required this.onSend,
     this.recipientLabel,
     this.codecTarget,
+    this.caption,
   });
 
   @override
@@ -44,22 +49,29 @@ class VoxMicButton extends StatelessWidget {
           onSend: onSend,
           recipientLabel: recipientLabel,
           codecTarget: codecTarget,
+          caption: caption,
         ),
       ),
     );
   }
 }
 
+/// Sends a voice clip, with the caption typed in the sheet ('' for none).
+typedef VoxClipSend =
+    Future<void> Function(VoxEncodedClip clip, String caption);
+
 class VoxRecordSheet extends StatefulWidget {
-  final Future<void> Function(VoxEncodedClip clip) onSend;
+  final VoxClipSend onSend;
   final String? recipientLabel;
   final String? codecTarget;
+  final VoxCaptionInput? caption;
 
   const VoxRecordSheet({
     super.key,
     required this.onSend,
     this.recipientLabel,
     this.codecTarget,
+    this.caption,
   });
 
   @override
@@ -90,6 +102,11 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
     super.initState();
     // Nothing auto-plays while the recorder is open.
     _voice = context.read<VoxVoiceService>()..micBusy = true;
+    widget.caption?.controller.addListener(_captionChanged);
+  }
+
+  void _captionChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _start() async {
@@ -188,9 +205,11 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
   Future<void> _send() async {
     final clip = _clip;
     if (clip == null) return;
+    final caption = widget.caption;
     setState(() => _phase = _Phase.sending);
     try {
-      await widget.onSend(clip);
+      await widget.onSend(clip, caption?.text ?? '');
+      caption?.controller.clear();
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
@@ -204,6 +223,7 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
 
   @override
   void dispose() {
+    widget.caption?.controller.removeListener(_captionChanged);
     _ticker?.cancel();
     _sub?.cancel();
     _recorder.dispose();
@@ -229,8 +249,13 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
         ? 'Mimi · ~1.1 kb/s'
         : 'Codec2 ${mode.label} bps';
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          16,
+          20,
+          20 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -356,7 +381,14 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
                 icon: Icon(recording ? Icons.stop : Icons.mic),
                 onPressed: recording ? _stop : _start,
               )
-            else if (_phase != _Phase.encoding)
+            else if (_phase != _Phase.encoding) ...[
+              if (widget.caption != null) ...[
+                VoxCaptionField(
+                  input: widget.caption!,
+                  enabled: _phase != _Phase.sending,
+                ),
+                const SizedBox(height: 12),
+              ],
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -391,10 +423,15 @@ class _VoxRecordSheetState extends State<VoxRecordSheet> {
                           )
                         : const Icon(Icons.send),
                     label: const Text('Send'),
-                    onPressed: _phase == _Phase.sending ? null : _send,
+                    onPressed:
+                        _phase == _Phase.sending ||
+                            (widget.caption?.tooLong ?? false)
+                        ? null
+                        : _send,
                   ),
                 ],
               ),
+            ],
             if (_error != null) ...[
               const SizedBox(height: 12),
               Text(_error!, style: TextStyle(color: scheme.error)),

@@ -72,7 +72,7 @@ class TeamAttachmentField extends StatelessWidget {
               context,
               recipientLabel: label,
               sendLabel: 'Attach',
-              onSend: (image) async {
+              onSend: (image, _) async {
                 final env = voice.registerClip(voice.imageClip(image));
                 onChanged(_fromEnvelope(env));
               },
@@ -87,7 +87,7 @@ class TeamAttachmentField extends StatelessWidget {
               isScrollControlled: true,
               builder: (_) => VoxRecordSheet(
                 recipientLabel: label,
-                onSend: (clip) async {
+                onSend: (clip, _) async {
                   final env = voice.registerClip(clip);
                   onChanged(_fromEnvelope(env));
                 },

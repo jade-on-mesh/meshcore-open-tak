@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -61,9 +62,90 @@ void main() {
         'VE3:A:1:4:4', // uppercase is not base36 on the wire
         'hello VE3:a:1:4:4',
         'VE2:a:1:4:4',
+        'VE3:a:1:4:4X hi', // a bad field is not rescued by a caption
       ]) {
         expect(VoxVoiceEnvelope.tryParse(bad), isNull, reason: bad);
       }
+    });
+  });
+
+  group('caption', () {
+    const photo = VoxVoiceEnvelope(
+      sessionId: 'deadbeef',
+      mode: VoxVoiceMode.av1Image,
+      totalPackets: 18,
+      durationSeconds: 75,
+    );
+
+    test('without a caption the text is plain VE3, unchanged', () {
+      expect(photo.encode(), isNot(contains(' ')));
+      expect(photo.withCaption('  ').encode(), photo.encode());
+      expect(VoxVoiceEnvelope.tryParse(photo.encode())!.caption, isEmpty);
+    });
+
+    test('rides after the envelope and round-trips', () {
+      final text = photo.withCaption('Look at this: the T-Deck!').encode();
+      expect(text, startsWith('${photo.encode()} '));
+      final back = VoxVoiceEnvelope.tryParse(text)!;
+      expect(back.caption, 'Look at this: the T-Deck!');
+      expect(back.sessionId, 'deadbeef');
+      expect(back.totalPackets, 18);
+      expect(back.imageAspect, 0.75);
+    });
+
+    test('keeps line breaks and emoji', () {
+      final text = photo.withCaption('Two lines\nsecond 🌲').encode();
+      expect(VoxVoiceEnvelope.tryParse(text)!.caption, 'Two lines\nsecond 🌲');
+    });
+
+    test('a voice clip carries one too', () {
+      final back = VoxVoiceEnvelope.tryParse('VE3:a:1:4:4 on my way')!;
+      expect(back.mode, VoxVoiceMode.mode1200);
+      expect(back.caption, 'on my way');
+    });
+
+    test('the longest envelope is voxEnvelopeMaxLength', () {
+      final env = VoxVoiceEnvelope(
+        sessionId: 'ffffffff',
+        mode: VoxVoiceMode.av1Image,
+        totalPackets: voxMaxPackets,
+        durationSeconds: voxMaxDurationSeconds,
+      );
+      expect(env.encode().length, voxEnvelopeMaxLength);
+      for (final m in VoxVoiceMode.values) {
+        final e = VoxVoiceEnvelope(
+          sessionId: 'ffffffff',
+          mode: m,
+          totalPackets: voxMaxPackets,
+          durationSeconds: voxMaxDurationSeconds,
+        );
+        expect(
+          e.encode().length,
+          lessThanOrEqualTo(voxEnvelopeMaxLength),
+          reason: m.label,
+        );
+      }
+    });
+
+    test('a fitted caption and envelope stay within the text limit', () {
+      const limit = 133;
+      final long = 'é' * 200;
+      final fitted = voxFitCaption(long, voxCaptionMaxBytes(limit));
+      final text = photo.withCaption(fitted).encode();
+      expect(utf8.encode(text).length, lessThanOrEqualTo(limit));
+      expect(fitted, isNotEmpty);
+      // Cut on a character boundary, never mid-way through one.
+      expect(fitted.runes.every((r) => r == 0xE9), isTrue);
+    });
+
+    test('previews read like a chat app', () {
+      expect(VoxVoiceEnvelope.previewText(photo.encode()), '📷 Photo');
+      expect(
+        VoxVoiceEnvelope.previewText(photo.withCaption('Hi').encode()),
+        '📷 Photo: Hi',
+      );
+      expect(VoxVoiceEnvelope.previewText('VE3:a:1:4:4'), '🎙 Voice message');
+      expect(VoxVoiceEnvelope.previewText('just text'), isNull);
     });
   });
 

@@ -522,9 +522,7 @@ public final class MeshTakEngine implements MeshRadio.Listener,
             VoiceWire.Envelope env = VoiceWire.Envelope.parse(text);
             if (env != null) {
                 onIncomingEnvelope(env, key4, callsign, ch);
-                text = env.isImage() ? "📷 Photo — open the MeshCore pane"
-                        : "🎙 Voice " + env.durationSeconds
-                                + " s — open the MeshCore pane";
+                text = chatLine(env);
             }
         }
         double[] at = positionFor(key4);
@@ -541,9 +539,7 @@ public final class MeshTakEngine implements MeshRadio.Listener,
             VoiceWire.Envelope env = VoiceWire.Envelope.parse(text);
             if (env != null) {
                 onIncomingEnvelope(env, prefixHex, callsign, -1);
-                text = env.isImage() ? "📷 Photo — open the MeshCore pane"
-                        : "🎙 Voice " + env.durationSeconds
-                                + " s — open the MeshCore pane";
+                text = chatLine(env);
             }
         }
         double[] at = positionFor(key4);
@@ -552,7 +548,15 @@ public final class MeshTakEngine implements MeshRadio.Listener,
                 tsMs(tsSec), at[0], at[1]));
     }
 
-    private void onIncomingEnvelope(VoiceWire.Envelope env, String keyHex,
+    /** What GeoChat shows for a photo or voice message, with its caption. */
+    private static String chatLine(VoiceWire.Envelope env) {
+        String kind = env.isImage() ? "📷 Photo"
+                : "🎙 Voice " + env.durationSeconds + " s";
+        return env.caption.isEmpty() ? kind + " — open the MeshCore pane"
+                : kind + ": " + env.caption + " (open the MeshCore pane)";
+    }
+
+        private void onIncomingEnvelope(VoiceWire.Envelope env, String keyHex,
             String callsign, int channel) {
         if (findItem(env.sessionId) != null)
             return;

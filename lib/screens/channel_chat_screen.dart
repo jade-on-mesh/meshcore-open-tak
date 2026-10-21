@@ -69,6 +69,7 @@ import 'map_screen.dart';
 import 'region_management_screen.dart';
 import '../storage/region_store.dart';
 import '../vox/aeic_hd_screens.dart';
+import '../vox/caption_field.dart';
 import '../vox/image_send_sheet.dart';
 import '../vox/voice_message_bubble.dart';
 import '../vox/voice_record_sheet.dart';
@@ -2430,6 +2431,13 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           replyPrefixBytes,
     );
     final scheme = Theme.of(context).colorScheme;
+    // Text typed here goes out as the caption of a photo or voice message.
+    final caption = VoxCaptionInput(
+      _textController,
+      maxTextBytes: context.read<VoxVoiceService>().maxChannelTextBytes(
+        widget.channel,
+      ),
+    );
     return ChatComposer(
       controller: _textController,
       focusNode: _textFieldFocusNode,
@@ -2456,18 +2464,18 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         VoxImageButton(
           aiSketch: _aiSketchOption,
           recipientLabel: widget.channel.name,
-          onSend: (image) => context.read<VoxVoiceService>().sendImageToChannel(
-            widget.channel,
-            image,
-          ),
+          caption: caption,
+          onSend: (image, text) => context
+              .read<VoxVoiceService>()
+              .sendImageToChannel(widget.channel, image, caption: text),
         ),
         VoxMicButton(
           recipientLabel: widget.channel.name,
           codecTarget: VoxVoiceService.channelTarget(widget.channel),
-          onSend: (clip) => context.read<VoxVoiceService>().sendClipToChannel(
-            widget.channel,
-            clip,
-          ),
+          caption: caption,
+          onSend: (clip, text) => context
+              .read<VoxVoiceService>()
+              .sendClipToChannel(widget.channel, clip, caption: text),
         ),
       ],
       header: [
