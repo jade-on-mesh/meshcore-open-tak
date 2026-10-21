@@ -35,6 +35,7 @@ import 'map_tools.dart';
 import 'team_draw.dart';
 import 'team_map.dart';
 import 'team_service.dart';
+import 'watch_auto_zoom.dart';
 
 class MapScreenTak {
   final MapController mapController;
@@ -157,6 +158,7 @@ class MapScreenTak {
   }
 
   List<Widget> appBarActions(BuildContext context) => [
+    WatchAutoZoomButton(mapController: mapController),
     MapChatButton(open: _chatOpen, onPressed: toggleChat),
     IconButton(
       tooltip: 'Tools',
@@ -211,6 +213,7 @@ class MapScreenTak {
   /// capture surface.
   List<Widget> overlays(BuildContext context, {required bool showTeamOverlay}) {
     return [
+      WatchAutoZoom(mapController: mapController, paused: () => draw.active),
       if (showTeamOverlay && !draw.active) const TeamMapOverlay(),
       if (draw.freehand)
         Positioned.fill(
