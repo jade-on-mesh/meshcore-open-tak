@@ -49,3 +49,14 @@ if(ANDROID AND EXISTS ${AOM_PREBUILT}/lib/libaom.a)
 else()
     message(WARNING "libaom not found at ${AOM_PREBUILT}: VOX image messages disabled")
 endif()
+
+# ---------------------------------------------------------------------------
+# Data over sound (libggwave.so, MIT): share by sound and Wavest-compatible
+# messages (lib/sound/).
+enable_language(CXX)
+set(GGWAVE_ROOT ${CMAKE_CURRENT_LIST_DIR}/../../../../../third_party/ggwave)
+add_library(ggwave SHARED ${GGWAVE_ROOT}/src/ggwave.cpp)
+target_include_directories(ggwave PRIVATE ${GGWAVE_ROOT}/include ${GGWAVE_ROOT}/src)
+target_compile_definitions(ggwave PRIVATE GGWAVE_SHARED GGWAVE_BUILD)
+target_compile_options(ggwave PRIVATE -O2 -std=c++17)
+

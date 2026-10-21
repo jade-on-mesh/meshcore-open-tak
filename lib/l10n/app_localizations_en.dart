@@ -7029,4 +7029,122 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mediaMesh_listenOnlyNote => 'Set to listen only (from the console): it hears radio2 but never sends there. Tap On to send too.';
+
+  @override
+  String get sound_title => 'Sound link';
+
+  @override
+  String get sound_settingsSubtitle => 'Messages and share links over sound, Wavest-compatible';
+
+  @override
+  String get sound_unavailable => 'This build has no sound link.';
+
+  @override
+  String get sound_intro => 'Sends short messages as tones from the speaker and hears them on the microphone (ggwave), in the same format as Wavest (bennjordan.github.io/Wavest), so a T-Deck, another phone or a Wavest page in a browser can join in. A message is a few seconds of sound, up to about 120 characters.';
+
+  @override
+  String get sound_settings => 'Callsign, passkey and sound';
+
+  @override
+  String get sound_callsign => 'Callsign';
+
+  @override
+  String get sound_passkey => 'Passkey (optional)';
+
+  @override
+  String get sound_passkeyHelp => 'Encrypts what you send and opens what others send with the same passkey, as Wavest does (AES-GCM). It keeps a chat from bystanders; it is not the mesh\'s own encryption.';
+
+  @override
+  String get sound_mode => 'Sound';
+
+  @override
+  String get sound_volume => 'Volume';
+
+  @override
+  String get sound_modeAudibleNormal => 'Audible: normal (most robust)';
+
+  @override
+  String get sound_modeAudibleFast => 'Audible: fast (Wavest\'s default)';
+
+  @override
+  String get sound_modeAudibleFastest => 'Audible: fastest';
+
+  @override
+  String get sound_modeUltraNormal => 'Ultrasound: normal (phones only)';
+
+  @override
+  String get sound_modeUltraFast => 'Ultrasound: fast (phones only)';
+
+  @override
+  String get sound_modeUltraFastest => 'Ultrasound: fastest (phones only)';
+
+  @override
+  String get sound_bridge => 'Bridge to a channel';
+
+  @override
+  String get sound_bridgeOff => 'Off';
+
+  @override
+  String get sound_bridgeChannel => 'Channel';
+
+  @override
+  String get sound_bridgePlay => 'Play this channel\'s new messages as sound';
+
+  @override
+  String get sound_bridgeHelp => 'What is heard is posted to the channel as "[Wavest] callsign: text". With this on, the channel\'s new messages are played too, so people nearby without a radio can follow and reply.';
+
+  @override
+  String get sound_shareContact => 'Play my contact';
+
+  @override
+  String get sound_shareChannel => 'Play a channel';
+
+  @override
+  String get sound_messageHint => 'Message to play';
+
+  @override
+  String get sound_send => 'Play';
+
+  @override
+  String get sound_tooLong => 'Too long for one sound message. Shorten it (a passkey makes it longer).';
+
+  @override
+  String get sound_listen => 'Listen for it by sound';
+
+  @override
+  String get sound_listening => 'Listening…';
+
+  @override
+  String get sound_listeningHelp => 'Hold this phone near the other device and play the contact or channel there (Play by sound).';
+
+  @override
+  String get sound_notListening => 'Turn on listening (top right) to hear messages.';
+
+  @override
+  String sound_heardOther(String text) {
+    return 'Heard something else: $text';
+  }
+
+  @override
+  String get sound_heardRaw => 'Heard';
+
+  @override
+  String get sound_locked => 'Encrypted: set the same passkey to read it';
+
+  @override
+  String get sound_linkHint => 'A share link. Add it from Contacts or Channels: Scan, then Listen.';
+
+  @override
+  String get sound_playByShare => 'Play by sound';
+
+  @override
+  String get sound_playing => 'Playing…';
+
+  @override
+  String get sound_playByShareHelp => 'For a T-Deck or another phone: they listen (Scan, then Listen) while this plays.';
+
+  @override
+  String sound_playFailed(String error) {
+    return 'Couldn\'t play it: $error';
+  }
 }

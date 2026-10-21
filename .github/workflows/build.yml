@@ -153,7 +153,7 @@ jobs:
         run: |
           unzip -l build/app/outputs/flutter-apk/app-release.apk > /tmp/apk.txt
           for f in lib/arm64-v8a/libvox_av1.so lib/arm64-v8a/libcodec2.so \
-                   lib/arm64-v8a/libaeic_codec_exec.so \
+                   lib/arm64-v8a/libaeic_codec_exec.so lib/arm64-v8a/libggwave.so \
                    assets/flutter_assets/assets/vox/face_yunet_2023mar.onnx \
                    assets/flutter_assets/assets/vox/text_ppocrv3_det.onnx; do
             grep -q "$f" /tmp/apk.txt || { echo "missing from APK: $f"; exit 1; }
@@ -204,6 +204,14 @@ jobs:
         with:
           msystem: MINGW64
           install: mingw-w64-x86_64-gcc
+      - name: Build libggwave.dll (share by sound)
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          g=third_party/ggwave
+          g++ -O2 -std=c++17 -shared -DGGWAVE_SHARED -DGGWAVE_BUILD -I$g/include -I$g/src \
+            $g/src/ggwave.cpp -o libggwave.dll -static-libgcc -static-libstdc++ -static
+          ls -la libggwave.dll
       - name: Build libcodec2.dll
         shell: msys2 {0}
         run: |
@@ -227,7 +235,7 @@ jobs:
           build=$((1000 + GITHUB_RUN_NUMBER))
           flutter build windows --release --no-pub --build-name="$upstream" --build-number=$build \
             --dart-define=APP_VERSION="${upstream}-tak" --dart-define=APP_BUILD=$build
-          cp libcodec2.dll build/windows/x64/runner/Release/
+          cp libcodec2.dll libggwave.dll build/windows/x64/runner/Release/
           echo "VERSION=${upstream}-tak" >> "$GITHUB_ENV"
           echo "NUMERIC_VERSION=$upstream" >> "$GITHUB_ENV"
           echo "BUILD=$build" >> "$GITHUB_ENV"
@@ -335,6 +343,9 @@ jobs:
           done
           gcc -O2 -std=gnu11 -shared -fPIC -DGIT_HASH='"Unknown"' -I$src -Ithird_party/codec2/include \
             $files -o build/linux/x64/release/bundle/lib/libcodec2.so -lm
+          g=third_party/ggwave
+          g++ -O2 -std=c++17 -shared -fPIC -DGGWAVE_SHARED -DGGWAVE_BUILD -I$g/include -I$g/src \
+            $g/src/ggwave.cpp -o build/linux/x64/release/bundle/lib/libggwave.so
       - name: Package (tar.gz and AppImage)
         run: |
           set -euo pipefail
