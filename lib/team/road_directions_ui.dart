@@ -358,3 +358,43 @@ class RoadVoiceButton extends StatelessWidget {
     );
   }
 }
+
+/// Bloodhound's Directions button: a yellow road sign (the diamond with the
+/// turn arrow), outlined in black so it reads on light and dark maps alike.
+class RoadSignButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  final String tooltip;
+  const RoadSignButton({
+    super.key,
+    required this.onPressed,
+    required this.tooltip,
+  });
+
+  static const Color signYellow = Color(0xFFFFC400);
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkResponse(
+        onTap: onPressed,
+        radius: 28,
+        child: const Padding(
+          padding: EdgeInsets.all(4),
+          child: SizedBox(
+            width: 40,
+            height: 40,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // The black edge, then the yellow sign on it.
+                Icon(Icons.directions, size: 40, color: Colors.black),
+                Icon(Icons.directions, size: 34, color: signYellow),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
