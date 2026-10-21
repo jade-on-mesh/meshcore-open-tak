@@ -7418,4 +7418,52 @@ class AppLocalizationsFr extends AppLocalizations {
   String hound_away(String distance) {
     return '$distance away';
   }
+
+  @override
+  String road_sayIn(String distance, String what) {
+    return 'In $distance, $what';
+  }
+
+  @override
+  String road_sayMeters(String n) {
+    return '$n meters';
+  }
+
+  @override
+  String road_sayKilometers(String n) {
+    return '$n kilometers';
+  }
+
+  @override
+  String get road_sayTurnLeft => 'Turn left';
+
+  @override
+  String get road_sayTurnRight => 'Turn right';
+
+  @override
+  String get road_sayBearLeft => 'Bear left';
+
+  @override
+  String get road_sayBearRight => 'Bear right';
+
+  @override
+  String get road_saySharpLeft => 'Turn sharp left';
+
+  @override
+  String get road_saySharpRight => 'Turn sharp right';
+
+  @override
+  String get road_sayUTurn => 'Make a U-turn';
+
+  @override
+  String get road_sayArrived => 'You have arrived.';
+
+  @override
+  String get road_sayRerouting => 'Rerouting.';
+
+  @override
+  String get road_voiceOn => 'Spoken directions on';
+
+  @override
+  String get road_voiceOff => 'Spoken directions off';
 }

@@ -5,7 +5,9 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/l10n.dart';
+import '../services/speech_service.dart';
 import 'road_directions.dart';
+import 'road_voice.dart';
 import 'team_service.dart';
 
 /// Valhalla maneuver types as Material icons.
@@ -268,6 +270,7 @@ class RoadDirectionsCard extends StatelessWidget {
                     icon: const Icon(Icons.share, size: 18),
                     label: Text(l10n.road_share),
                   ),
+                RoadVoiceButton(team: team),
                 IconButton(
                   icon: const Icon(Icons.close),
                   tooltip: l10n.road_stop,
@@ -305,4 +308,53 @@ String routeTurnText(BuildContext context, RouteTurn t) {
     roadDistance(t.toTurnM),
     roadDistance(t.remainingM),
   );
+}
+
+/// The spoken prompts' own words, in the app's language.
+RoadVoiceWords roadVoiceWordsOf(BuildContext context) {
+  final l10n = context.l10n;
+  return RoadVoiceWords(
+    inDistance: (d, w) => l10n.road_sayIn(d, w),
+    distance: (m) {
+      final (meters, km) = spokenRound(m);
+      return km.isEmpty
+          ? l10n.road_sayMeters('$meters')
+          : l10n.road_sayKilometers(km);
+    },
+    turn: (deg) {
+      final a = deg.abs();
+      if (a >= 160) return l10n.road_sayUTurn;
+      if (deg < 0) {
+        return a < 60
+            ? l10n.road_sayBearLeft
+            : a < 120
+            ? l10n.road_sayTurnLeft
+            : l10n.road_saySharpLeft;
+      }
+      return a < 60
+          ? l10n.road_sayBearRight
+          : a < 120
+          ? l10n.road_sayTurnRight
+          : l10n.road_saySharpRight;
+    },
+    arrived: l10n.road_sayArrived,
+    rerouting: l10n.road_sayRerouting,
+  );
+}
+
+/// Spoken directions on or off (only where the phone can speak).
+class RoadVoiceButton extends StatelessWidget {
+  final TeamService team;
+  const RoadVoiceButton({super.key, required this.team});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!SpeechService.instance.available) return const SizedBox.shrink();
+    final l10n = context.l10n;
+    return IconButton(
+      icon: Icon(team.voice ? Icons.volume_up : Icons.volume_off),
+      tooltip: team.voice ? l10n.road_voiceOn : l10n.road_voiceOff,
+      onPressed: () => team.setVoice(!team.voice),
+    );
+  }
 }

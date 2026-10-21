@@ -15,7 +15,9 @@ import '../models/channel_message.dart';
 import '../services/image_chunk_transport.dart'
     show parseChannelDataFrame, respCodeChannelDataRecv;
 import '../services/notification_service.dart';
+import '../services/speech_service.dart';
 import 'road_directions.dart';
+import 'road_voice.dart';
 import 'team_coords.dart';
 import 'team_wire.dart';
 import 'team_wire_atak.dart';
@@ -188,6 +190,7 @@ class TeamService extends ChangeNotifier {
       _recordTrack = p.getBool(_kRecordTrack) ?? true;
       _showTracks = p.getBool(_kShowTracks) ?? true;
       _routingServer = p.getString(_kRoutingServer) ?? '';
+      _voice = p.getBool(_kRoadVoice) ?? true;
       _myTrack.addAll(decodeTeamTrack(p.getString(_kMyTrack) ?? ''));
       _hidden.addAll(p.getStringList(_kHidden) ?? const <String>[]);
       for (final b64 in p.getStringList(_kMarkers) ?? const <String>[]) {
@@ -614,6 +617,28 @@ class TeamService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Spoken turn prompts (road_voice.dart), on unless turned off.
+  static const _kRoadVoice = 'team_road_voice';
+  bool _voice = true;
+  bool get voice => _voice;
+  Future<void> setVoice(bool on) async {
+    _voice = on;
+    if (!on) unawaited(SpeechService.instance.stop());
+    await _save((p) => p.setBool(_kRoadVoice, on));
+    notifyListeners();
+  }
+
+  /// Words in the app's language, and that language, for the prompts (set by
+  /// the map, which has the context).
+  RoadVoiceWords voiceWords = RoadVoiceWords.english;
+  String voiceLanguage = 'en-US';
+  final RoadAnnouncer _announcer = RoadAnnouncer();
+
+  void _speak(String? text, {String? language}) {
+    if (!_voice || text == null || text.isEmpty) return;
+    unawaited(SpeechService.instance.say(text, language: language ?? voiceLanguage));
+  }
+
   RoadMode? _roadMode;
   RoadRoute? _road;
   RoadGuide? _roadGuide;
@@ -652,6 +677,7 @@ class TeamService extends ChangeNotifier {
   }
 
   void _stopRoad() {
+    _announcer.reset();
     _roadMode = null;
     _road = null;
     _roadGuide = null;
@@ -713,6 +739,7 @@ class TeamService extends ChangeNotifier {
     }
     final pr = g.update(f.lat, f.lon);
     _roadProgress = pr;
+    _speak(_announcer.road(g.route, pr, voiceWords), language: _roadLanguage);
     if (!ask) return;
     if (pr.offRouteM > roadOffRouteM(mode)) {
       _offRouteFixes++;
@@ -799,6 +826,25 @@ class TeamService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Prompts while following a shared route: its turns, from its shape.
+  void _speakSharedRoute() {
+    final nav = navRoute;
+    final f = fix;
+    if (nav == null || f == null || !_voice) return;
+    final turn = routeNextTurn(nav.points, _routeIdx, f.lat, f.lon);
+    final mode = nav.routeMethod == RouteMethod.driving
+        ? RoadMode.drive
+        : RoadMode.walk;
+    _speak(
+      _announcer.sharedRoute(
+        '${nav.key}${_routeReverse ? '<' : '>'}',
+        turn,
+        mode,
+        voiceWords,
+      ),
+    );
+  }
+
   void skipCheckpoint(int delta) {
     final nav = navRoute;
     if (nav == null) return;
@@ -832,6 +878,7 @@ class TeamService extends ChangeNotifier {
     _recordSelf();
     _advanceRoute();
     _updateRoad();
+    _speakSharedRoute();
     final f = fix;
     if (f != null) _checkGeofences(selfKey4, 'You', f.lat, f.lon);
   }

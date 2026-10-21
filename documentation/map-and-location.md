@@ -127,6 +127,14 @@ directions along roads and paths:
 4. Leave the route, or have the teammate you're tracking move well away from
    where it ends, and a new route is found.
 
+**Spoken prompts** (Android, iOS and macOS, with the phone's own voice; the
+speaker button turns them off): each turn is announced well before it (*In 400
+meters, turn left onto Pine Street*, from 500 m when driving, 200 m on a bike,
+100 m on foot) and again as it comes up. After a turn with a long stretch ahead
+you hear *Continue for 2 kilometers*, and *Rerouting* or *You have arrived* when
+they happen. Other audio is ducked meanwhile. A shared route being followed
+gets the same prompts, with its turns read from its shape.
+
 Directions come from a [Valhalla](https://github.com/valhalla/valhalla)
 routing server using OpenStreetMap data, so they need the internet. Without
 it, Bloodhound carries on with range and bearing. The default server is the
