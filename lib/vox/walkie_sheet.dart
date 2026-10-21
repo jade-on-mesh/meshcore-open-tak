@@ -155,7 +155,7 @@ class _WalkieSheetState extends State<WalkieSheet> {
     final buttonText = onAir
         ? l.walkie_releaseToSend
         : busy
-        ? (talk!.name.isEmpty
+        ? (talk.name.isEmpty
               ? l.walkie_someoneTalking
               : l.walkie_nameTalking(talk.name))
         : l.walkie_holdToTalk;
