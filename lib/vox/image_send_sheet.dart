@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -97,25 +98,37 @@ Future<void> showVoxImagePicker(
   final voice = context.read<VoxVoiceService>();
   if (!voice.imagesAvailable && aiSketch == null) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Photo messages need the Android app.')),
+      const SnackBar(
+        content: Text('Photo messages are not in this build of the app.'),
+      ),
     );
     return;
   }
-  final source = await showModalBottomSheet<ImageSource>(
+  // Windows, Linux and macOS: no camera here, so straight to choosing a file
+  // (image_picker opens the system file chooser), unless there is a kind of
+  // photo to choose first.
+  final desktop = !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.linux ||
+          defaultTargetPlatform == TargetPlatform.macOS);
+  final source = desktop && aiSketch == null
+      ? ImageSource.gallery
+      : await showModalBottomSheet<ImageSource>(
     context: context,
     builder: (context) => SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (aiSketch != null) _PhotoKindChooser(hd: aiSketch.sendHd != null),
-          ListTile(
-            leading: const Icon(Icons.photo_camera_outlined),
-            title: const Text('Take photo'),
-            onTap: () => Navigator.pop(context, ImageSource.camera),
-          ),
+          if (!desktop)
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take photo'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
           ListTile(
             leading: const Icon(Icons.photo_library_outlined),
-            title: const Text('Choose from gallery'),
+            title: Text(desktop ? 'Choose a picture' : 'Choose from gallery'),
             onTap: () => Navigator.pop(context, ImageSource.gallery),
           ),
         ],

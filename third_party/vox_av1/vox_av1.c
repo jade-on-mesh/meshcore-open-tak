@@ -6,6 +6,8 @@
 // data. Decoding takes those OBUs back to RGB888.
 //
 // Built on libaom (BSD-2-Clause). Exported with C linkage for dart:ffi.
+// One source for every platform: Android (android/app/src/main/cpp), the
+// macOS app (vox_av1.podspec) and the Windows/Linux builds (build.yml).
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -16,7 +18,11 @@
 #include "aom/aomcx.h"
 #include "aom/aomdx.h"
 
+#if defined(_WIN32)
+#define VOX_EXPORT __declspec(dllexport)
+#else
 #define VOX_EXPORT __attribute__((visibility("default"))) __attribute__((used))
+#endif
 
 static inline uint8_t clamp8(int v) {
   return (uint8_t)(v < 0 ? 0 : (v > 255 ? 255 : v));
