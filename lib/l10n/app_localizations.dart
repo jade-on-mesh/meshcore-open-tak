@@ -12504,6 +12504,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Arrive in {distance}'**
   String road_arriveIn(String distance);
+
+  /// No description provided for @hound_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Bloodhound'**
+  String get hound_title;
+
+  /// No description provided for @hound_help.
+  ///
+  /// In en, this message translates to:
+  /// **'Live range and bearing to a target, and directions to it.'**
+  String get hound_help;
+
+  /// No description provided for @hound_teammates.
+  ///
+  /// In en, this message translates to:
+  /// **'Teammates'**
+  String get hound_teammates;
+
+  /// No description provided for @hound_nodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Nodes with a position (nearest first)'**
+  String get hound_nodes;
+
+  /// No description provided for @hound_watched.
+  ///
+  /// In en, this message translates to:
+  /// **'Watched reports on the map'**
+  String get hound_watched;
+
+  /// No description provided for @hound_mapCentre.
+  ///
+  /// In en, this message translates to:
+  /// **'Centre of the map'**
+  String get hound_mapCentre;
+
+  /// No description provided for @hound_noTeammates.
+  ///
+  /// In en, this message translates to:
+  /// **'No teammates heard yet'**
+  String get hound_noTeammates;
+
+  /// No description provided for @hound_noNodes.
+  ///
+  /// In en, this message translates to:
+  /// **'No nodes with a position yet'**
+  String get hound_noNodes;
+
+  /// No description provided for @hound_away.
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} away'**
+  String hound_away(String distance);
 }
 
 class _AppLocalizationsDelegate

@@ -110,7 +110,11 @@ Shows node count and pin count. Tappable to expand a legend of all marker types.
 
 ## Bloodhound Directions (MeshCore Open TAK)
 
-Bloodhound shows range and bearing to a teammate, a pin or a point. Its
+Bloodhound shows range and bearing to a teammate, a pin, a point, a node
+(repeater, room server, sensor or chat node: its map sheet's **Bloodhound**
+button, following its latest advertised position) or a watched report. Map
+tools › Bloodhound lists them all, nearest first. It works without Team mode;
+then only its cards show on the map. Its
 **Directions** button (the turn sign on the Bloodhound card) adds turn-by-turn
 directions along roads and paths:
 

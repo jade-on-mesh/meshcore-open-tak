@@ -12,6 +12,7 @@ import 'package:meshcore_open/widgets/app_bar.dart';
 import 'package:provider/provider.dart';
 
 import '../team/map_screen_tak.dart';
+import '../team/team_service.dart';
 import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
 import '../l10n/l10n.dart';
@@ -3293,6 +3294,20 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                 _showRoomLogin(context, contact, manage: true);
               },
               child: Text(context.l10n.map_manageServer),
+            ),
+          );
+        }
+        // Bloodhound to it: range, bearing and directions (follows its
+        // latest advertised position).
+        if (contact.hasLocation) {
+          actions.add(
+            OutlinedButton.icon(
+              onPressed: () {
+                context.read<TeamService>().houndContact(contact.publicKeyHex);
+                Navigator.pop(sheetContext);
+              },
+              icon: const Icon(Icons.track_changes),
+              label: Text(context.l10n.hound_title),
             ),
           );
         }

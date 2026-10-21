@@ -529,6 +529,10 @@ class TeamService extends ChangeNotifier {
   String? _houndMember;
   (double, double, String)? _houndPoint;
 
+  /// A contact (repeater, room, sensor, chat node) by public key: follows
+  /// its latest advertised position.
+  String? _houndContact;
+
   /// What Bloodhound is tracking: a teammate (follows them) or a fixed point.
   ({double lat, double lon, String label})? get bloodhound {
     final nav = navRoute;
@@ -546,13 +550,33 @@ class TeamService extends ChangeNotifier {
       if (m == null) return null;
       return (lat: m.position.lat, lon: m.position.lon, label: m.callsign);
     }
+    final ck = _houndContact;
+    if (ck != null) {
+      for (final c in _connector.contacts) {
+        if (c.publicKeyHex == ck && c.hasLocation) {
+          return (lat: c.latitude!, lon: c.longitude!, label: c.name);
+        }
+      }
+      return null;
+    }
     final p = _houndPoint;
     return p == null ? null : (lat: p.$1, lon: p.$2, label: p.$3);
+  }
+
+  /// Bloodhound to a contact with a position: no team needed.
+  void houndContact(String publicKeyHex) {
+    _routeKey = null;
+    _stopRoad();
+    _houndMember = null;
+    _houndPoint = null;
+    _houndContact = publicKeyHex;
+    notifyListeners();
   }
 
   void houndMember(String key4) {
     _routeKey = null;
     _stopRoad();
+    _houndContact = null;
     _houndMember = key4;
     _houndPoint = null;
     notifyListeners();
@@ -561,6 +585,7 @@ class TeamService extends ChangeNotifier {
   void houndPoint(double lat, double lon, String label) {
     _routeKey = null;
     _stopRoad();
+    _houndContact = null;
     _houndMember = null;
     _houndPoint = (lat, lon, label);
     notifyListeners();
@@ -570,6 +595,7 @@ class TeamService extends ChangeNotifier {
     _routeKey = null;
     _houndMember = null;
     _houndPoint = null;
+    _houndContact = null;
     _stopRoad();
     notifyListeners();
   }
@@ -749,6 +775,7 @@ class TeamService extends ChangeNotifier {
         : route;
     _houndMember = null;
     _houndPoint = null;
+    _houndContact = null;
     _stopRoad();
     _routeKey = route.key;
     _routeReverse = reverse;
