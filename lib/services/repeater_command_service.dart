@@ -44,7 +44,10 @@ class RepeaterCommandService {
     String command, {
     Function(String)? onResponse,
     Function(int)? onAttempt,
+    void Function()? onPacketSent,
+    PathSelection? pathSelection,
     int retries = maxRetries,
+    int minimumTimeoutMs = 0,
     bool raw = false,
   }) async {
     if (!raw) command = normalizeRepeaterClockSyncCommand(command);
@@ -52,18 +55,29 @@ class RepeaterCommandService {
     final pending = _PendingCommand(repeater.publicKeyHex);
     _pendingCommands.add(pending);
     try {
-      final selection = await _connector.preparePathForContactSend(repeater);
+      // A management page may hold a Contact from before the user changed its
+      // route: resolve the live contact so a stale page cannot silently reset
+      // a manually selected direct path on the Companion. [pathSelection]
+      // (LoRa OTA's route plan) is used as given.
+      final currentRepeater =
+          _connector.getContactByPubKeyHex(repeater.publicKeyHex) ?? repeater;
+      final selection = await _connector.preparePathForContactSend(
+        currentRepeater,
+        explicitSelection: pathSelection,
+      );
 
       for (int attempt = 0; attempt < attemptCount; attempt++) {
         onAttempt?.call(attempt + 1);
         try {
           final response = await _sendCommandAttempt(
-            repeater,
+            currentRepeater,
             command,
             selection,
             attempt,
             raw,
             pending,
+            onPacketSent: onPacketSent,
+            minimumTimeoutMs: minimumTimeoutMs,
           );
           onResponse?.call(response);
           return response;
@@ -84,8 +98,10 @@ class RepeaterCommandService {
     PathSelection selection,
     int attempt,
     bool raw,
-    _PendingCommand pending,
-  ) async {
+    _PendingCommand pending, {
+    void Function()? onPacketSent,
+    int minimumTimeoutMs = 0,
+  }) async {
     // A reply to an earlier attempt may have arrived during the backoff.
     if (pending.completer.isCompleted) return pending.completer.future;
 
@@ -104,6 +120,7 @@ class RepeaterCommandService {
         text: framedCommand,
         timestampSeconds: timestampSeconds,
         attempt: attempt,
+        onPacketSent: onPacketSent,
       );
       final frame = buildSendCliCommandFrame(
         repeater.publicKey,
@@ -114,10 +131,11 @@ class RepeaterCommandService {
       final responseBytes = frame.length > maxFrameSize
           ? frame.length
           : maxFrameSize;
-      timeoutMs = _connector.calculateTimeout(
+      final estimated = _connector.calculateTimeout(
         pathLength: pathLengthValue,
         messageBytes: responseBytes,
       );
+      timeoutMs = estimated > minimumTimeoutMs ? estimated : minimumTimeoutMs;
       await _connector.sendFrame(frame);
     } catch (e) {
       throw Exception('Failed to send command: $e');

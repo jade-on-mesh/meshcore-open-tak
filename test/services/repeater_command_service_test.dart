@@ -9,7 +9,11 @@ import 'package:meshcore_open/services/repeater_command_service.dart';
 
 class _FakeConnector extends MeshCoreConnector {
   @override
-  Future<PathSelection> preparePathForContactSend(Contact contact) async =>
+  Future<PathSelection> preparePathForContactSend(
+    Contact contact, {
+    PathSelection? explicitSelection,
+  }) async =>
+      explicitSelection ??
       const PathSelection(pathBytes: [], hopCount: -1, useFlood: true);
 
   @override
