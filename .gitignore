@@ -100,3 +100,6 @@ android/app/release.jks
 # AEIC HD native codec (built in CI by tool/build_aeic_hd_android.sh)
 third_party/aeic-hd-android/
 android/app/src/main/jniLibs/arm64-v8a/libaeic_codec_exec.so
+third_party/vox_av1/aom-apple/
+third_party/aom-windows/
+third_party/aom-linux/

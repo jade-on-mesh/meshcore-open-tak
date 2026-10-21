@@ -41,7 +41,7 @@ if(ANDROID AND EXISTS ${AOM_PREBUILT}/lib/libaom.a)
     add_library(aom_static STATIC IMPORTED)
     set_target_properties(aom_static PROPERTIES
         IMPORTED_LOCATION ${AOM_PREBUILT}/lib/libaom.a)
-    add_library(vox_av1 SHARED ${CMAKE_CURRENT_LIST_DIR}/vox_av1.c)
+    add_library(vox_av1 SHARED ${CMAKE_CURRENT_LIST_DIR}/../../../../../third_party/vox_av1/vox_av1.c)
     target_include_directories(vox_av1 PRIVATE ${AOM_PREBUILT}/include)
     target_compile_options(vox_av1 PRIVATE -O2 -std=gnu11)
     target_link_libraries(vox_av1 aom_static m)

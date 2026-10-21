@@ -203,7 +203,45 @@ jobs:
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
-          install: mingw-w64-x86_64-gcc
+          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-nasm
+      # Photo messages: libaom (BSD-2) built with MinGW like Codec2, the same
+      # pinned source as the Android build, into vox_av1.dll next to the exe
+      # (lib/vox/av1_ffi.dart).
+      - name: Cache libaom (Windows)
+        id: aomwin
+        uses: actions/cache@v4
+        with:
+          path: third_party/aom-windows
+          key: aom-windows-v3.12.1-1
+      - name: Fetch libaom source (Windows)
+        if: steps.aomwin.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sSL -o aom.tgz "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/deps-cache/aom-v3.12.1.tar.gz"
+          echo "76558ad5918820d66fa78460d9957e5bbf7cf9eef1a5421b5ba5e616f200d76e  aom.tgz" | sha256sum -c
+          mkdir -p aom-src && tar xzf aom.tgz -C aom-src
+      - name: Build libaom (Windows)
+        if: steps.aomwin.outputs.cache-hit != 'true'
+        timeout-minutes: 30
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          cmake -S aom-src/aom -B aom-build -G Ninja -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
+            -DCMAKE_BUILD_TYPE=Release -DENABLE_DOCS=0 -DENABLE_EXAMPLES=0 -DENABLE_TESTS=0 -DENABLE_TESTDATA=0 -DENABLE_TOOLS=0 -DCONFIG_AV1_HIGHBITDEPTH=0 -DCONFIG_WEBM_IO=0
+          cmake --build aom-build --target aom
+          out=third_party/aom-windows
+          mkdir -p $out/lib $out/include/aom
+          cp aom-build/libaom.a $out/lib/
+          cp aom-src/aom/aom/*.h $out/include/aom/
+      - name: Build vox_av1.dll (photo messages)
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          a=third_party/aom-windows
+          gcc -O2 -std=gnu11 -shared third_party/vox_av1/vox_av1.c -I$a/include $a/lib/libaom.a \
+            -o vox_av1.dll -static-libgcc -static -lm
+          ls -la vox_av1.dll
       - name: Build libggwave.dll (share by sound)
         shell: msys2 {0}
         run: |
@@ -235,7 +273,7 @@ jobs:
           build=$((1000 + GITHUB_RUN_NUMBER))
           flutter build windows --release --no-pub --build-name="$upstream" --build-number=$build \
             --dart-define=APP_VERSION="${upstream}-tak" --dart-define=APP_BUILD=$build
-          cp libcodec2.dll libggwave.dll build/windows/x64/runner/Release/
+          cp libcodec2.dll libggwave.dll vox_av1.dll build/windows/x64/runner/Release/
           echo "VERSION=${upstream}-tak" >> "$GITHUB_ENV"
           echo "NUMERIC_VERSION=$upstream" >> "$GITHUB_ENV"
           echo "BUILD=$build" >> "$GITHUB_ENV"
@@ -263,6 +301,32 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+      # Photo messages: libaom as a universal static library (arm64 with its
+      # NEON code, x86_64 in plain C) for the vox_av1 pod (third_party/vox_av1).
+      - name: Cache libaom (macOS)
+        id: aommac
+        uses: actions/cache@v4
+        with:
+          path: third_party/vox_av1/aom-apple
+          key: aom-apple-v3.12.1-universal-1
+      - name: Build libaom (macOS, universal)
+        if: steps.aommac.outputs.cache-hit != 'true'
+        timeout-minutes: 30
+        run: |
+          set -euo pipefail
+          curl -sSL -o /tmp/aom.tgz "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/deps-cache/aom-v3.12.1.tar.gz"
+          echo "76558ad5918820d66fa78460d9957e5bbf7cf9eef1a5421b5ba5e616f200d76e  /tmp/aom.tgz" | shasum -a 256 -c
+          tar xzf /tmp/aom.tgz -C /tmp
+          common="-DCMAKE_BUILD_TYPE=Release -DENABLE_DOCS=0 -DENABLE_EXAMPLES=0 -DENABLE_TESTS=0 -DENABLE_TESTDATA=0 -DENABLE_TOOLS=0 -DCONFIG_AV1_HIGHBITDEPTH=0 -DCONFIG_WEBM_IO=0 -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15"
+          cmake -S /tmp/aom -B /tmp/aom-arm64 $common -DCMAKE_OSX_ARCHITECTURES=arm64
+          cmake --build /tmp/aom-arm64 -j"$(sysctl -n hw.ncpu)" --target aom
+          cmake -S /tmp/aom -B /tmp/aom-x86 $common -DCMAKE_OSX_ARCHITECTURES=x86_64 -DAOM_TARGET_CPU=generic
+          cmake --build /tmp/aom-x86 -j"$(sysctl -n hw.ncpu)" --target aom
+          out=third_party/vox_av1/aom-apple
+          mkdir -p $out/lib $out/include/aom
+          lipo -create /tmp/aom-arm64/libaom.a /tmp/aom-x86/libaom.a -output $out/lib/libaom.a
+          lipo -info $out/lib/libaom.a
+          cp /tmp/aom/aom/*.h $out/include/aom/
       - id: fv   # the Flutter version: pinned in .flutter-version, bumped by the weekly dependency PR
         shell: bash
         run: echo "v=$(tr -d '[:space:]' < .flutter-version)" >> "$GITHUB_OUTPUT"
@@ -279,6 +343,12 @@ jobs:
           build=$((1000 + GITHUB_RUN_NUMBER))
           flutter build macos --release --no-pub --build-name="$upstream" --build-number=$build \
             --dart-define=APP_VERSION="${upstream}-tak" --dart-define=APP_BUILD=$build
+      - name: Check photo messages are in the app
+        run: |
+          set -euo pipefail
+          fw=$(ls -d build/macos/Build/Products/Release/*.app/Contents/Frameworks/vox_av1.framework | head -1)
+          nm -gU "$fw/vox_av1" | grep -q vox_av1_encode || { echo "::error::vox_av1 is the stub: libaom missing"; exit 1; }
+          lipo -info "$fw/vox_av1"
       # Unsigned (ad-hoc): the first open needs right-click -> Open. A .dmg
       # with an Applications link, so it installs by dragging.
       - name: Package (dmg)
@@ -309,7 +379,7 @@ jobs:
         run: |
           # A broken third-party source on the runner must not stop the build.
           sudo apt-get update -q 2>&1 | tail -5 || true
-          pkgs="clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev \
+          pkgs="clang cmake ninja-build nasm pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev \
             libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libsecret-1-dev libudev-dev libfuse2 file desktop-file-utils"
           # The runner's LLVM libunwind-14-dev conflicts with libgstreamer1.0-dev's
           # libunwind-dev ("held broken packages"); GStreamer is needed for audio.
@@ -326,6 +396,28 @@ jobs:
           flutter-version: ${{ steps.fv.outputs.v }}
           channel: "stable"
           cache: true
+      # Photo messages: libaom (BSD-2), the same pinned source as the Android
+      # build, into the bundle's lib/libvox_av1.so (lib/vox/av1_ffi.dart).
+      - name: Cache libaom (Linux)
+        id: aomlinux
+        uses: actions/cache@v4
+        with:
+          path: third_party/aom-linux
+          key: aom-linux-v3.12.1-x86_64-1
+      - name: Build libaom (Linux)
+        if: steps.aomlinux.outputs.cache-hit != 'true'
+        timeout-minutes: 30
+        run: |
+          set -euo pipefail
+          curl -sSL -o /tmp/aom.tgz "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/deps-cache/aom-v3.12.1.tar.gz"
+          echo "76558ad5918820d66fa78460d9957e5bbf7cf9eef1a5421b5ba5e616f200d76e  /tmp/aom.tgz" | sha256sum -c
+          tar xzf /tmp/aom.tgz -C /tmp
+          cmake -S /tmp/aom -B /tmp/aom-build -G Ninja -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release -DENABLE_DOCS=0 -DENABLE_EXAMPLES=0 -DENABLE_TESTS=0 -DENABLE_TESTDATA=0 -DENABLE_TOOLS=0 -DCONFIG_AV1_HIGHBITDEPTH=0 -DCONFIG_WEBM_IO=0
+          cmake --build /tmp/aom-build --target aom
+          out=third_party/aom-linux
+          mkdir -p $out/lib $out/include/aom
+          cp /tmp/aom-build/libaom.a $out/lib/
+          cp /tmp/aom/aom/*.h $out/include/aom/
       - run: flutter pub get --enforce-lockfile
       - name: Build
         run: |
@@ -346,6 +438,9 @@ jobs:
           g=third_party/ggwave
           g++ -O2 -std=c++17 -shared -fPIC -DGGWAVE_SHARED -DGGWAVE_BUILD -I$g/include -I$g/src \
             $g/src/ggwave.cpp -o build/linux/x64/release/bundle/lib/libggwave.so
+          a=third_party/aom-linux
+          gcc -O2 -std=gnu11 -shared -fPIC third_party/vox_av1/vox_av1.c -I$a/include $a/lib/libaom.a \
+            -o build/linux/x64/release/bundle/lib/libvox_av1.so -lm -lpthread -Wl,--exclude-libs,ALL
       - name: Package (tar.gz and AppImage)
         run: |
           set -euo pipefail

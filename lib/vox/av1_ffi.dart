@@ -74,14 +74,31 @@ class VoxAv1 {
   static VoxAv1? get instanceOrNull {
     if (_instance != null || _loadError != null) return _instance;
     try {
-      if (!Platform.isAndroid) {
-        throw UnsupportedError('Photo messages are Android-only');
-      }
-      _instance = VoxAv1._(DynamicLibrary.open('libvox_av1.so'));
+      _instance = VoxAv1._(_open());
     } catch (e) {
       _loadError = e;
     }
     return _instance;
+  }
+
+  // Android: in the APK. macOS: the vox_av1 pod, in the process (a build
+  // without libaom has a stub, and the lookup fails). Windows: vox_av1.dll
+  // next to the exe; Linux: the bundle's lib/ (.github/workflows/build.yml).
+  static DynamicLibrary _open() {
+    if (Platform.isAndroid) return DynamicLibrary.open('libvox_av1.so');
+    if (Platform.isMacOS || Platform.isIOS) return DynamicLibrary.process();
+    final exeDir = File(Platform.resolvedExecutable).parent.path;
+    final names = Platform.isWindows
+        ? ['$exeDir\\vox_av1.dll', 'vox_av1.dll']
+        : Platform.isLinux
+        ? ['$exeDir/lib/libvox_av1.so', 'libvox_av1.so']
+        : const <String>[];
+    for (final n in names) {
+      try {
+        return DynamicLibrary.open(n);
+      } catch (_) {}
+    }
+    throw UnsupportedError('Photo messages are not in this build');
   }
 
   static bool get isAvailable => instanceOrNull != null;

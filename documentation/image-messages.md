@@ -51,6 +51,26 @@ Mesh photos (AV1, formerly "VOX photos") come in three sizes. The encoder picks 
 
 Sharp is meant for a fast MediaMesh preset. Wadamesh radios need the build that accepts up to 96 packets per photo to show it (older builds take 64).
 
+**On every app.** Mesh photos are sent and shown on Android, Windows, macOS and
+Linux. On a computer, the photo button opens a file chooser (there is no
+camera there). The encoder is libaom, built for each platform from the same
+pinned source:
+- Android: `libvox_av1.so` in the APK.
+- Windows: `vox_av1.dll` beside the app.
+- Linux: `lib/libvox_av1.so` in the bundle.
+- macOS: the `vox_av1` pod, universal (arm64 + x86_64). Intel Macs encode
+  more slowly, without SIMD.
+
+The source is `third_party/vox_av1/vox_av1.c`.
+
+**Voice messages on a computer.** Recording uses the computer's microphone:
+- Windows: works as it is.
+- macOS: asks for microphone permission the first time.
+- Linux: needs PulseAudio's tools (`sudo apt install pulseaudio-utils`, which
+  works with PipeWire too).
+
+Voice uses Codec2, which the Windows, macOS and Linux builds include.
+
 ## AI sketch HD (MeshCore Open TAK)
 
 MeshCore Open TAK adds a third photo option beside Mesh photos and the ~150-byte AI sketch: **AI sketch HD**, AEIC-SE at the `ft2` rate point. A 512×512 photo becomes about 1–2 KB (8–15 packets with parity), far closer to the original than an AI sketch, at roughly half a Mesh photo's airtime.
