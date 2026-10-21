@@ -4,6 +4,8 @@ import 'package:meshcore_open/utils/gpx_export.dart';
 import 'package:meshcore_open/widgets/elements_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../services/companion_firmware_inspector.dart';
+import 'companion_update_screen.dart';
 
 import '../build_info.dart';
 import '../connector/meshcore_connector.dart';
@@ -108,6 +110,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 _buildIdentityCardContent,
               ),
+            ),
+            // Firmware update for the connected radio (ported from
+            // mikecarper/meshcore-open): Bluetooth DFU or Wi-Fi OTA.
+            const MeshCard(
+              padding: EdgeInsets.zero,
+              child: _CompanionUpdateTile(),
             ),
 
             // NODE section
@@ -1880,6 +1888,74 @@ class _LocationDialogState extends State<_LocationDialog> {
         ),
         TextButton(onPressed: _save, child: Text(l10n.common_save)),
       ],
+    );
+  }
+}
+
+/// "Update Companion": says which update method the connected radio's board
+/// takes (asked once per connection with the local `board` command).
+class _CompanionUpdateTile extends StatefulWidget {
+  const _CompanionUpdateTile();
+
+  @override
+  State<_CompanionUpdateTile> createState() => _CompanionUpdateTileState();
+}
+
+class _CompanionUpdateTileState extends State<_CompanionUpdateTile> {
+  MeshCoreConnector? _connector;
+  Future<String?>? _board;
+
+  Future<String?> _readBoard(MeshCoreConnector connector) async {
+    try {
+      return await connector.executeLocalCliCommand('board');
+    } catch (_) {
+      return connector.manufacturerName;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final connector = context.read<MeshCoreConnector>();
+    final connected = context.select<MeshCoreConnector, bool>(
+      (c) => c.isConnected,
+    );
+    if (!connected) {
+      _connector = null;
+      _board = null;
+    } else if (_connector != connector || _board == null) {
+      _connector = connector;
+      _board = _readBoard(connector);
+    }
+    return FutureBuilder<String?>(
+      future: _board,
+      builder: (context, snapshot) {
+        final format = CompanionFirmwareInspector.updateExtensionForBoard(
+          snapshot.data ?? connector.manufacturerName,
+        );
+        final method = switch (format) {
+          'zip' => 'Bluetooth DFU (.zip)',
+          'bin' => 'Wi-Fi OTA (.bin)',
+          _ =>
+            connected
+                ? snapshot.connectionState == ConnectionState.done
+                      ? 'Board not identified - check update screen'
+                      : 'Detecting update method...'
+                : 'Connect to identify the update method',
+        };
+        return MeshNavTile(
+          icon: Icons.system_update_alt,
+          title: 'Update Companion',
+          subtitle: method,
+          onTap: connected
+              ? () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const CompanionUpdateScreen(),
+                  ),
+                )
+              : null,
+        );
+      },
     );
   }
 }

@@ -218,6 +218,16 @@ const int cmdSetPathHashMode = 61;
 const int cmdSetDefaultFloodScope = 63; // FIRMWARE_VER_CODE 11+
 const int cmdGetDefaultFloodScope = 64; // FIRMWARE_VER_CODE 11+
 const int cmdRunCliCommand = 0x42; // local CLI text (protocol v14+)
+const int cmdExecLocalOtaControl = 0x4A;
+const int cmdBleMotaSource = 0x4B;
+
+const int bleMotaActionStatus = 0;
+const int bleMotaActionStart = 1;
+const int bleMotaActionStop = 2;
+
+const int bleMotaFlagChannelReady = 0x01;
+const int bleMotaFlagAttached = 0x02;
+const int bleMotaFlagAnotherLinkActive = 0x04;
 
 // Text message types
 const int txtTypePlain = 0;
@@ -367,6 +377,8 @@ const int maxNameSize = 32;
 // Largest frame the app sends. Kept at 172 so commands still fit radios on
 // firmware built before MAX_FRAME_SIZE grew to 176.
 const int maxFrameSize = 172;
+const int bleMotaMinFirmwareProtocol = 14;
+const int bleMotaLocalCommandMaxBytes = 174;
 // Largest frame current firmware may send (MAX_FRAME_SIZE 176, +4 bytes for
 // region transport codes). Receive paths must accept frames up to this size.
 const int maxRxFrameSize = 176;
@@ -1333,4 +1345,163 @@ String parseCliReplyFrame(Uint8List frame) {
     end--;
   }
   return utf8.decode(frame.sublist(1, end), allowMalformed: true);
+}
+
+// ---- LoRa OTA / Bluetooth mOTA (ported from mikecarper/meshcore-open) ----
+
+bool isAllowedLocalOtaControlCommand(String command) {
+  final bytes = command.codeUnits;
+  if (bytes.isEmpty || bytes.length > bleMotaLocalCommandMaxBytes) {
+    return false;
+  }
+
+  const forbidden = <int>{
+    0x3B, // ;
+    0x26, // &
+    0x7C, // |
+    0x60, // `
+    0x24, // dollar sign
+    0x5C, // backslash
+    0x27, // single quote
+    0x22, // double quote
+  };
+  for (final byte in bytes) {
+    if (byte < 0x20 || byte > 0x7E || forbidden.contains(byte)) {
+      return false;
+    }
+  }
+
+  if (command == 'normalradio') return true;
+  if (command == 'tempradio') return true;
+  if (command.startsWith('tempradio ')) {
+    final fields = command.substring('tempradio '.length).split(',');
+    if (fields.length != 5 || fields.any((field) => field.trim() != field)) {
+      return false;
+    }
+
+    final frequency = double.tryParse(fields[0]);
+    final bandwidth = double.tryParse(fields[1]);
+    final spreadingFactor = int.tryParse(fields[2]);
+    final codingRate = int.tryParse(fields[3]);
+    final minutes = int.tryParse(fields[4]);
+    const allowedBandwidths = <double>[
+      7.8,
+      10.4,
+      15.6,
+      20.8,
+      31.25,
+      41.7,
+      62.5,
+      125,
+      250,
+      500,
+    ];
+    return frequency != null &&
+        frequency.isFinite &&
+        frequency >= 150 &&
+        frequency <= 2500 &&
+        bandwidth != null &&
+        bandwidth.isFinite &&
+        allowedBandwidths.contains(bandwidth) &&
+        spreadingFactor != null &&
+        spreadingFactor >= 5 &&
+        spreadingFactor <= 12 &&
+        codingRate != null &&
+        codingRate >= 5 &&
+        codingRate <= 8 &&
+        minutes != null &&
+        minutes >= 3 &&
+        minutes <= 10080;
+  }
+
+  if (command == 'ota ls' ||
+      command == 'ota status' ||
+      command == 'ota install') {
+    return true;
+  }
+  return RegExp(r'^ota pull [0-9A-Fa-f]{8} flash$').hasMatch(command);
+}
+
+Uint8List buildLocalOtaControlFrame(String command) {
+  if (!isAllowedLocalOtaControlCommand(command)) {
+    throw ArgumentError.value(
+      command,
+      'command',
+      'must be an exact normalradio, tempradio, ota ls/status/install, or '
+          'ota pull <8-hex-id> flash command',
+    );
+  }
+  return Uint8List.fromList([cmdExecLocalOtaControl, ...command.codeUnits]);
+}
+
+Uint8List buildBleMotaSourceFrame(int action) {
+  if (action < bleMotaActionStatus || action > bleMotaActionStop) {
+    throw ArgumentError.value(
+      action,
+      'action',
+      'must be status, start, or stop',
+    );
+  }
+  return Uint8List.fromList([cmdBleMotaSource, action]);
+}
+
+class BleMotaSourceStatus {
+  final int action;
+  final int flags;
+  final int offered;
+  final int advertised;
+  final int? packetsSent;
+
+  const BleMotaSourceStatus({
+    required this.action,
+    required this.flags,
+    required this.offered,
+    required this.advertised,
+    this.packetsSent,
+  });
+
+  bool get channelReady => (flags & bleMotaFlagChannelReady) != 0;
+  bool get attached => (flags & bleMotaFlagAttached) != 0;
+  bool get anotherLinkActive => (flags & bleMotaFlagAnotherLinkActive) != 0;
+}
+
+String parseLocalOtaControlResponse(Uint8List frame) {
+  if (frame.length == 2 && frame[0] == respCodeErr) {
+    throw StateError(
+      'Companion rejected the local OTA command (error ${frame[1]})',
+    );
+  }
+  if (frame.length < 2 || frame[0] != respCodeOk) {
+    throw const FormatException('Malformed local OTA command response');
+  }
+  final replyLength = frame[1];
+  if (frame.length != replyLength + 2) {
+    throw const FormatException('Malformed local OTA reply length');
+  }
+  final reply = frame.sublist(2);
+  if (reply.any((byte) => byte < 0x20 || byte > 0x7E)) {
+    throw const FormatException('Local OTA reply is not printable ASCII');
+  }
+  return ascii.decode(reply);
+}
+
+BleMotaSourceStatus parseBleMotaSourceResponse(
+  Uint8List frame, {
+  required int expectedAction,
+}) {
+  if (frame.length == 2 && frame[0] == respCodeErr) {
+    throw StateError('Bluetooth mOTA source action failed (error ${frame[1]})');
+  }
+  if ((frame.length != 7 && frame.length != 11) ||
+      frame[0] != respCodeOk ||
+      frame[1] != expectedAction) {
+    throw const FormatException('Malformed Bluetooth mOTA source status');
+  }
+  return BleMotaSourceStatus(
+    action: frame[1],
+    flags: frame[2],
+    offered: readUint16LE(frame, 3),
+    advertised: readUint16LE(frame, 5),
+    packetsSent: frame.length == 11 ? readUint32LE(frame, 7) : null,
+  );
 }
