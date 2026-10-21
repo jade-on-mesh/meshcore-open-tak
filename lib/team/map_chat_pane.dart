@@ -22,6 +22,7 @@ import '../vox/voice_message_bubble.dart';
 import '../vox/voice_record_sheet.dart';
 import '../vox/voice_service.dart';
 import '../vox/voice_wire.dart';
+import '../vox/walkie_sheet.dart';
 import 'tak/tak_service.dart';
 import 'team_service.dart';
 import 'watch_feed.dart';
@@ -337,6 +338,7 @@ class _MapChatPaneState extends State<MapChatPane> {
                           .whenComplete(_scrollToLatest);
                     },
                   ),
+                  WalkieButton(channel: channel),
                   Expanded(
                     child: TextField(
                       controller: _text,

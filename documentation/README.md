@@ -31,8 +31,9 @@ MeshCore Open is an open-source Flutter client for MeshCore LoRa mesh networking
 18. [Network Map](network-map.md) - Online repeater map, adding and managing repeaters from it, opt-in uploads, and hiding a repeater
 19. [ATAK Plugin](atak-plugin.md) - Sharing the radio with the MeshCore ATAK plugin, and items shared from ATAK
 20. [MediaMesh](media-mesh.md) - Photos and voice on a second frequency (`radio2`) of the same radio
-- [Update a repeater over LoRa](lora-ota-repeater-tutorial.md) - LoRa OTA from the phone (Repeater Management > LoRa OTA), plus ESP32 Wi-Fi and nRF52 Bluetooth updates for nearby repeaters
-- [Update a Companion](companion-update-tutorial.md) - Settings > Update Companion: nRF52 Bluetooth DFU or ESP32 Wi-Fi OTA
+21. [Walkie-talkie](walkie-talkie.md) - Push-to-talk on a channel over MediaMesh, heard as it's spoken and kept as a voice message
+22. [Update a repeater over LoRa](lora-ota-repeater-tutorial.md) - LoRa OTA from the phone (Repeater Management > LoRa OTA), plus ESP32 Wi-Fi and nRF52 Bluetooth updates for nearby repeaters
+23. [Update a Companion](companion-update-tutorial.md) - Settings > Update Companion: nRF52 Bluetooth DFU or ESP32 Wi-Fi OTA
 
 ## App Overview
 

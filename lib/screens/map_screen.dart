@@ -64,6 +64,10 @@ class MapScreen extends StatefulWidget {
   final LatLng? focusPosition;
   final double focusZoom;
 
+  /// With [focusPosition]: a second place to keep in view (your position,
+  /// for a Bloodhound target), so the map opens showing both.
+  final LatLng? focusAlso;
+
   const MapScreen({
     super.key,
     this.highlightPosition,
@@ -73,6 +77,7 @@ class MapScreen extends StatefulWidget {
     this.hideBackButton = false,
     this.focusPosition,
     this.focusZoom = 15.0,
+    this.focusAlso,
   });
 
   @override
@@ -716,7 +721,18 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
           _showNodeLabels = initialZoom >= _labelZoomThreshold;
           _zoom = initialZoom;
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
+            if (!mounted) return;
+            final focus = widget.focusPosition;
+            final also = widget.focusAlso;
+            if (highlightPosition == null && focus != null && also != null) {
+              _mapController.fitCamera(
+                CameraFit.coordinates(
+                  coordinates: [focus, also],
+                  padding: const EdgeInsets.all(72),
+                  maxZoom: widget.focusZoom,
+                ),
+              );
+            } else {
               _mapController.move(center, initialZoom);
             }
           });

@@ -16,6 +16,7 @@ class MainActivity : FlutterActivity() {
         AeicHdChannel.attach(applicationContext, flutterEngine)
         AppUpdateChannel.attach(this, flutterEngine)
         SpeechChannel.attach(this, flutterEngine)
+        PcmStreamChannel.attach(this, flutterEngine)
         // ESP32 Wi-Fi updates: open the system Wi-Fi settings to join the
         // device's access point (esp32_wifi_ota_screen.dart).
         MethodChannel(

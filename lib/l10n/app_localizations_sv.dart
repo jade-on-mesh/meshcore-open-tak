@@ -7384,4 +7384,67 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get road_voiceOff => 'Spoken directions off';
+
+  @override
+  String get walkie_title => 'Walkie-talkie';
+
+  @override
+  String get walkie_tooltip => 'Walkie-talkie (push to talk)';
+
+  @override
+  String get walkie_holdToTalk => 'Hold to talk';
+
+  @override
+  String get walkie_onAir => 'On air';
+
+  @override
+  String get walkie_releaseToSend => 'Let go to finish';
+
+  @override
+  String get walkie_starting => 'Starting…';
+
+  @override
+  String get walkie_finishing => 'Finishing…';
+
+  @override
+  String get walkie_clear => 'Channel clear';
+
+  @override
+  String get walkie_someoneTalking => 'Someone is talking';
+
+  @override
+  String walkie_nameTalking(String name) {
+    return '$name is talking';
+  }
+
+  @override
+  String walkie_lastTalk(String name) {
+    return 'Last talk: $name';
+  }
+
+  @override
+  String get walkie_reach => 'Reach';
+
+  @override
+  String get walkie_viaRepeaters => 'Repeaters';
+
+  @override
+  String get walkie_direct => 'Direct';
+
+  @override
+  String get walkie_repeatersHelp => 'Through repeaters: reaches the whole MediaMesh, with about 2–3 seconds of delay.';
+
+  @override
+  String get walkie_directHelp => 'Radio to radio: only radios in range hear it. A little faster, and no repeater traffic.';
+
+  @override
+  String get walkie_listenLive => 'Listen live when closed';
+
+  @override
+  String get walkie_listenLiveHelp => 'Play this channel\'s talks as they arrive, even with the walkie-talkie closed.';
+
+  @override
+  String walkie_footer(int seconds) {
+    return 'Up to $seconds seconds a talk. Talks go out on MediaMesh only, and each one is saved in the chat as a voice message. On a computer, hold Space to talk.';
+  }
 }

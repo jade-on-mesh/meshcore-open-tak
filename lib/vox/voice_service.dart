@@ -41,6 +41,7 @@ import 'resample.dart';
 import 'voice_codec.dart';
 import 'voice_codec_choice.dart';
 import 'voice_wire.dart';
+import 'walkie_wire.dart';
 import 'vox_timing.dart';
 import '../utils/lora_airtime.dart';
 import 'wav.dart';
@@ -574,6 +575,71 @@ class VoxVoiceService extends ChangeNotifier {
 
   bool get isAvailable => voxCodecAvailable;
   String? get unavailableReason => voxCodecUnavailableReason;
+
+  // ------------------------------------------------- push-to-talk (walkie)
+
+  /// Push-to-talk packets heard on a channel, for WalkieService.
+  void Function(Uint8List payload, int channelIndex, int? via, int? hops)?
+  liveTalkHandler;
+
+  /// Talks played live: their voice messages don't auto-play again.
+  final Set<String> _heardLive = {};
+
+  void markHeardLive(String sid) {
+    _heardLive.add(sid);
+    if (_heardLive.length > 64) _heardLive.remove(_heardLive.first);
+  }
+
+  /// One second of a talk heard live: it also fills in the talk's voice
+  /// message (the same session id and packet numbers as its VE3 clip).
+  void acceptLivePacket(
+    String sid,
+    int index,
+    Uint8List codec, {
+    int? via,
+    int? hops,
+  }) {
+    if (codec.isEmpty || index >= voxMaxPackets) return;
+    _lastChannelPacket[sid] = DateTime.now();
+    _onPacket(
+      VoxVoicePacket(sessionId: sid, index: index, codecData: codec),
+      via: via,
+      hops: hops,
+    );
+  }
+
+  /// Pause between a talk's packets: [direct] goes radio to radio, otherwise
+  /// it floods through repeaters (and must not talk over their relays).
+  Duration walkieGap({required bool direct}) =>
+      direct ? _zeroHopGap() : _packetGap(flood: true);
+
+  /// Announces a finished talk on [channel] as an ordinary voice message
+  /// (VE3 on the main mesh), with the session id its packets went out under,
+  /// and keeps it to serve to anyone who missed it.
+  Future<VoxVoiceEnvelope> announceTalk(
+    Channel channel,
+    String sid,
+    Uint8List bits, {
+    required int durationSeconds,
+  }) async {
+    final packets = voxPacketize(sid, bits, walkieMode);
+    if (packets.isEmpty) throw StateError('Talk is empty');
+    _remember(sid, walkieMode, bits, own: true);
+    final env = VoxVoiceEnvelope(
+      sessionId: sid,
+      mode: walkieMode,
+      totalPackets: packets.length,
+      durationSeconds: durationSeconds,
+    );
+    _logEvent(
+      'talk: ${packets.length} packets sent live on channel ${channel.name}; '
+      'announcing it as a voice message',
+      sid,
+    );
+    await _connector.sendChannelMessage(channel, env.encode());
+    notifyListeners();
+    return env;
+  }
 
   // ---------------------------------------------------------------- sending
 
@@ -1505,6 +1571,11 @@ class VoxVoiceService extends ChangeNotifier {
     final sender = senderKeyHex != null
         ? contactByKeyHex(senderKeyHex)
         : (senderName == null ? null : contactByName(senderName));
+    if (_heardLive.contains(sid)) {
+      // A push-to-talk heard as it was spoken: kept, not played again.
+      unawaited(warmUp(env, sender: sender, channelIndex: channelIndex));
+      return;
+    }
     _autoSids.add(sid);
     if (env.isImage) {
       if (!imagesAvailable) {
@@ -1592,6 +1663,14 @@ class VoxVoiceService extends ChangeNotifier {
     int? hops,
   }) {
     if (payload.isEmpty) return;
+    if (walkieIsLivePayload(payload)) {
+      // Push-to-talk (walkie_service.dart): only ever sent on a channel.
+      if (channelIndex != null) {
+        _noteVia(voxSessionIdFromBytes(payload, 1), via);
+        liveTalkHandler?.call(payload, channelIndex, via, hops);
+      }
+      return;
+    }
     switch (payload[0]) {
       case voxVoicePacketMagic:
       case voxVoicePacketSaltedMagic:
