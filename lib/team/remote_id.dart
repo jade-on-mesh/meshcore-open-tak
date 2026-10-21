@@ -110,7 +110,10 @@ bool _applyMessage(Uint8List m, RemoteIdObservation o) {
       o.speedCms = (flags & 0x01) == 0 ? raw * 25 : raw * 75 + 255 * 25;
       o.vertSpeedCms = (m[4] >= 128 ? m[4] - 256 : m[4]) * 50;
       final p = _latLon(m, 5);
-      if (p != null) (o.lat, o.lon) = p;
+      if (p != null) {
+        o.lat = p.$1;
+        o.lon = p.$2;
+      }
       final geo = _u16(m, 15), hgt = _u16(m, 17);
       if (geo != 0) o.altGeoM = geo ~/ 2 - 1000;
       if (hgt != 0) o.heightAglM = hgt ~/ 2 - 1000;
@@ -123,7 +126,10 @@ bool _applyMessage(Uint8List m, RemoteIdObservation o) {
       return true;
     case 0x4: // System: where the operator is
       final p = _latLon(m, 2);
-      if (p != null) (o.opLat, o.opLon) = p;
+      if (p != null) {
+        o.opLat = p.$1;
+        o.opLon = p.$2;
+      }
       return true;
     case 0x5: // Operator ID
       final id = _text(m, 2, 20);
