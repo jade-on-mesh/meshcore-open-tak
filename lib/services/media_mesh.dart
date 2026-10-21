@@ -243,8 +243,11 @@ String buildSetRadio2Command(MediaMeshSettings s) => 'set radio2 '
 
 /// `set tempradio2 f,bw,sf,cr,rxtx,minutes`: [s] replaces radio2 for
 /// [minutes] (1-10080).
-String buildTempRadio2Command(MediaMeshSettings s, int minutes) =>
-    'set tempradio2 ${_profileTuple(s, Radio2Mode.rxtx)},$minutes';
+String buildTempRadio2Command(
+  MediaMeshSettings s,
+  int minutes, {
+  Radio2Mode mode = Radio2Mode.rxtx,
+}) => 'set tempradio2 ${_profileTuple(s, mode)},$minutes';
 
 String _stripTag(String reply) {
   var text = reply.trim();

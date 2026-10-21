@@ -12643,6 +12643,53 @@ abstract class AppLocalizations {
   /// **'Spoken directions off'**
   String get road_voiceOff;
 
+  /// No description provided for @mediaMesh_find.
+  ///
+  /// In en, this message translates to:
+  /// **'Find MediaMesh'**
+  String get mediaMesh_find;
+
+  /// No description provided for @mediaMesh_findHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Finds which preset the MediaMesh here uses: radio2 listens on each for about 10 seconds while nearby repeaters are asked to answer. MediaMesh repeaters answer on radio2 too.'**
+  String get mediaMesh_findHelp;
+
+  /// No description provided for @mediaMesh_findListening.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening on {preset} ({step}/2)…'**
+  String mediaMesh_findListening(String preset, int step);
+
+  /// No description provided for @mediaMesh_findFound.
+  ///
+  /// In en, this message translates to:
+  /// **'MediaMesh found on {preset}: {count} packets heard on radio2. Use this preset?'**
+  String mediaMesh_findFound(String preset, int count);
+
+  /// No description provided for @mediaMesh_findNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No MediaMesh answered on 250 or 125 kHz at {frequency} MHz.'**
+  String mediaMesh_findNone(String frequency);
+
+  /// No description provided for @mediaMesh_findNoneOnRadio2.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeaters nearby answered on the main mesh, but none on radio2.'**
+  String get mediaMesh_findNoneOnRadio2;
+
+  /// No description provided for @mediaMesh_findNoRepeaters.
+  ///
+  /// In en, this message translates to:
+  /// **'No repeaters answered at all: out of range, or asked too often. Repeaters answer at most four times in two minutes, so try again shortly.'**
+  String get mediaMesh_findNoRepeaters;
+
+  /// No description provided for @mediaMesh_findUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use it'**
+  String get mediaMesh_findUse;
   /// No description provided for @walkie_title.
   ///
   /// In en, this message translates to:
