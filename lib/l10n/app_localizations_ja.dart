@@ -6943,4 +6943,41 @@ class AppLocalizationsJa extends AppLocalizations {
   String sound_playFailed(String error) {
     return 'Couldn\'t play it: $error';
   }
+
+  @override
+  String get otpCheck_title => 'Check code';
+
+  @override
+  String get otpCheck_subtitle => 'The same code on both devices means the same pad. Read it out, or play it by sound; it reveals nothing about the pad.';
+
+  @override
+  String get otpCheck_play => 'Play the check code';
+
+  @override
+  String get otpCheck_listen => 'Listen for a check code';
+
+  @override
+  String get otpCheck_same => 'Same pad on both devices.';
+
+  @override
+  String get otpCheck_different => 'Different pad bytes. Share the pad again before using it.';
+
+  @override
+  String otpCheck_differentLength(int theirs, int mine) {
+    return 'Different pad: theirs is $theirs bytes, this one $mine. Share it again before using it.';
+  }
+
+  @override
+  String get otpCheck_heard => 'Pad check';
+
+  @override
+  String otpCheck_matches(String name) {
+    return 'Same pad as $name.';
+  }
+
+  @override
+  String get otpCheck_noMatch => 'No pad here matches this check code.';
+
+  @override
+  String get otpCheck_locked => 'Unlock OTP to compare this check code.';
 }

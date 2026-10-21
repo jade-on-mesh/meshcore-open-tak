@@ -49,3 +49,13 @@ microphone hears, and it never re-plays the `[Wavest]` lines it posted, so the
 bridge doesn't echo.
 
 The bridge runs while the Sound link screen is open.
+
+## Checking a one-time pad
+
+An OTP Pad screen shows the pad's **check code**: the same code on two devices
+means they hold the same pad. After scanning a pad by QR, tap **Play the check
+code** on one device and **Listen for a check code** on the other (or read the
+codes out). A code heard on the Sound link screen is compared with every pad
+here. The code is the first 8 bytes of SHA-256 over a fixed label and the whole
+pad, the same on Wadamesh TAK radios, and reveals nothing usable about the pad.
+The pad itself is never sent by sound: anyone in earshot could record it.

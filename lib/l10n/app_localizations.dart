@@ -12288,6 +12288,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t play it: {error}'**
   String sound_playFailed(String error);
+
+  /// No description provided for @otpCheck_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Check code'**
+  String get otpCheck_title;
+
+  /// No description provided for @otpCheck_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The same code on both devices means the same pad. Read it out, or play it by sound; it reveals nothing about the pad.'**
+  String get otpCheck_subtitle;
+
+  /// No description provided for @otpCheck_play.
+  ///
+  /// In en, this message translates to:
+  /// **'Play the check code'**
+  String get otpCheck_play;
+
+  /// No description provided for @otpCheck_listen.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen for a check code'**
+  String get otpCheck_listen;
+
+  /// No description provided for @otpCheck_same.
+  ///
+  /// In en, this message translates to:
+  /// **'Same pad on both devices.'**
+  String get otpCheck_same;
+
+  /// No description provided for @otpCheck_different.
+  ///
+  /// In en, this message translates to:
+  /// **'Different pad bytes. Share the pad again before using it.'**
+  String get otpCheck_different;
+
+  /// No description provided for @otpCheck_differentLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Different pad: theirs is {theirs} bytes, this one {mine}. Share it again before using it.'**
+  String otpCheck_differentLength(int theirs, int mine);
+
+  /// No description provided for @otpCheck_heard.
+  ///
+  /// In en, this message translates to:
+  /// **'Pad check'**
+  String get otpCheck_heard;
+
+  /// No description provided for @otpCheck_matches.
+  ///
+  /// In en, this message translates to:
+  /// **'Same pad as {name}.'**
+  String otpCheck_matches(String name);
+
+  /// No description provided for @otpCheck_noMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No pad here matches this check code.'**
+  String get otpCheck_noMatch;
+
+  /// No description provided for @otpCheck_locked.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock OTP to compare this check code.'**
+  String get otpCheck_locked;
 }
 
 class _AppLocalizationsDelegate
