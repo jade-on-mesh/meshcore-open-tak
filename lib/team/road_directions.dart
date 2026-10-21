@@ -49,12 +49,24 @@ class RoadManeuver {
   /// Street names after it, if any.
   final List<String> streets;
 
+  /// Valhalla's words for speaking it: well before ("Turn left onto Pine
+  /// Street."), at it, and after ("Continue for 2 kilometers.").
+  final String? verbalAlert;
+  final String? verbalPre;
+  final String? verbalPost;
+
   const RoadManeuver({
     required this.instruction,
     required this.type,
     required this.beginIndex,
     this.streets = const [],
+    this.verbalAlert,
+    this.verbalPre,
+    this.verbalPost,
   });
+
+  String get sayAlert => verbalAlert ?? verbalPre ?? instruction;
+  String get sayNow => verbalPre ?? instruction;
 
   bool get isDestination => type >= 4 && type <= 6;
 }
@@ -109,6 +121,8 @@ List<(double, double)> decodePolyline6(String s) {
   return out;
 }
 
+String? _text(Object? v) => v is String && v.trim().isNotEmpty ? v : null;
+
 /// A Valhalla /route answer (one leg) as a [RoadRoute].
 RoadRoute parseValhallaRoute(
   Map<String, dynamic> json, {
@@ -137,6 +151,9 @@ RoadRoute parseValhallaRoute(
           streets: [
             for (final n in (map['street_names'] as List? ?? const [])) '$n',
           ],
+          verbalAlert: _text(map['verbal_transition_alert_instruction']),
+          verbalPre: _text(map['verbal_pre_transition_instruction']),
+          verbalPost: _text(map['verbal_post_transition_instruction']),
         ),
       );
     }
@@ -376,7 +393,10 @@ class RouteTurn {
   final double toTurnM;
   final double remainingM;
 
-  const RouteTurn(this.turnDeg, this.toTurnM, this.remainingM);
+  /// The route vertex it is at (-1: none, only the end).
+  final int at;
+
+  const RouteTurn(this.turnDeg, this.toTurnM, this.remainingM, [this.at = -1]);
 
   bool get hasTurn => turnDeg != 0;
 }
@@ -400,7 +420,7 @@ RouteTurn routeNextTurn(
   if (pts.isEmpty) return const RouteTurn(0, 0, 0);
   final k = next.clamp(0, pts.length - 1);
   var along = teamDistanceMeters(lat, lon, pts[k].$1, pts[k].$2);
-  var turn = 0, toTurn = -1.0;
+  var turn = 0, toTurn = -1.0, at = -1;
   for (var i = k; i < pts.length; i++) {
     if (i > k) {
       along += teamDistanceMeters(
@@ -414,7 +434,8 @@ RouteTurn routeNextTurn(
     if (toTurn < 0 && t.abs() >= 30) {
       turn = t;
       toTurn = along;
+      at = i;
     }
   }
-  return RouteTurn(turn, toTurn < 0 ? along : toTurn, along);
+  return RouteTurn(turn, toTurn < 0 ? along : toTurn, along, at);
 }

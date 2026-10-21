@@ -1532,6 +1532,9 @@ class TeamMapOverlay extends StatelessWidget {
     final own = team.enabled ? team.activeOwnAlert : null;
     final hound = team.bloodhound;
     final fix = team.fix;
+    // Spoken prompts speak the app's language.
+    team.voiceWords = roadVoiceWordsOf(context);
+    team.voiceLanguage = Localizations.localeOf(context).toLanguageTag();
     return Positioned(
       left: 12,
       bottom: 16,
@@ -1596,6 +1599,7 @@ class TeamMapOverlay extends StatelessWidget {
                       ),
                     ),
                     if (team.navRoute != null) ...[
+                      RoadVoiceButton(team: team),
                       IconButton(
                         icon: const Icon(Icons.skip_previous),
                         tooltip: 'Previous checkpoint',

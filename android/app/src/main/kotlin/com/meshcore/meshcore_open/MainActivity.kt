@@ -12,6 +12,7 @@ class MainActivity : FlutterActivity() {
         TakBridgeHub.attach(flutterEngine)
         AeicHdChannel.attach(applicationContext, flutterEngine)
         AppUpdateChannel.attach(this, flutterEngine)
+        SpeechChannel.attach(this, flutterEngine)
     }
 
     override fun onDestroy() {

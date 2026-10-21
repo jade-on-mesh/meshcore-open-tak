@@ -12558,6 +12558,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{distance} away'**
   String hound_away(String distance);
+
+  /// No description provided for @road_sayIn.
+  ///
+  /// In en, this message translates to:
+  /// **'In {distance}, {what}'**
+  String road_sayIn(String distance, String what);
+
+  /// No description provided for @road_sayMeters.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} meters'**
+  String road_sayMeters(String n);
+
+  /// No description provided for @road_sayKilometers.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} kilometers'**
+  String road_sayKilometers(String n);
+
+  /// No description provided for @road_sayTurnLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn left'**
+  String get road_sayTurnLeft;
+
+  /// No description provided for @road_sayTurnRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn right'**
+  String get road_sayTurnRight;
+
+  /// No description provided for @road_sayBearLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Bear left'**
+  String get road_sayBearLeft;
+
+  /// No description provided for @road_sayBearRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Bear right'**
+  String get road_sayBearRight;
+
+  /// No description provided for @road_saySharpLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn sharp left'**
+  String get road_saySharpLeft;
+
+  /// No description provided for @road_saySharpRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn sharp right'**
+  String get road_saySharpRight;
+
+  /// No description provided for @road_sayUTurn.
+  ///
+  /// In en, this message translates to:
+  /// **'Make a U-turn'**
+  String get road_sayUTurn;
+
+  /// No description provided for @road_sayArrived.
+  ///
+  /// In en, this message translates to:
+  /// **'You have arrived.'**
+  String get road_sayArrived;
+
+  /// No description provided for @road_sayRerouting.
+  ///
+  /// In en, this message translates to:
+  /// **'Rerouting.'**
+  String get road_sayRerouting;
+
+  /// No description provided for @road_voiceOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Spoken directions on'**
+  String get road_voiceOn;
+
+  /// No description provided for @road_voiceOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Spoken directions off'**
+  String get road_voiceOff;
 }
 
 class _AppLocalizationsDelegate

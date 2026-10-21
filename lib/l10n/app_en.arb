@@ -3863,5 +3863,22 @@
   "hound_noTeammates": "No teammates heard yet",
   "hound_noNodes": "No nodes with a position yet",
   "hound_away": "{distance} away",
-  "@hound_away": {"placeholders": {"distance": {"type": "String"}}}
+  "@hound_away": {"placeholders": {"distance": {"type": "String"}}},
+  "road_sayIn": "In {distance}, {what}",
+  "@road_sayIn": {"placeholders": {"distance": {"type": "String"}, "what": {"type": "String"}}},
+  "road_sayMeters": "{n} meters",
+  "@road_sayMeters": {"placeholders": {"n": {"type": "String"}}},
+  "road_sayKilometers": "{n} kilometers",
+  "@road_sayKilometers": {"placeholders": {"n": {"type": "String"}}},
+  "road_sayTurnLeft": "Turn left",
+  "road_sayTurnRight": "Turn right",
+  "road_sayBearLeft": "Bear left",
+  "road_sayBearRight": "Bear right",
+  "road_saySharpLeft": "Turn sharp left",
+  "road_saySharpRight": "Turn sharp right",
+  "road_sayUTurn": "Make a U-turn",
+  "road_sayArrived": "You have arrived.",
+  "road_sayRerouting": "Rerouting.",
+  "road_voiceOn": "Spoken directions on",
+  "road_voiceOff": "Spoken directions off"
 }
