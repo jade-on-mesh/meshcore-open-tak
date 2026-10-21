@@ -7265,4 +7265,89 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get otpCheck_locked => 'Unlock OTP to compare this check code.';
+
+  @override
+  String get road_directions => 'Directions';
+
+  @override
+  String road_directionsTo(String target) {
+    return 'Directions to $target';
+  }
+
+  @override
+  String get road_drive => 'Drive';
+
+  @override
+  String get road_walk => 'Walk';
+
+  @override
+  String get road_bike => 'Bike';
+
+  @override
+  String get road_help => 'Turn-by-turn along roads and paths, from OpenStreetMap. Needs the internet; Bloodhound keeps range and bearing without it. It finds a new route if you leave this one or your teammate moves.';
+
+  @override
+  String get road_server => 'Routing server (Valhalla)';
+
+  @override
+  String get road_serverHelp => 'Empty: the public FOSSGIS server, for light use. Put your own Valhalla server here for a team.';
+
+  @override
+  String get road_finding => 'Finding a route...';
+
+  @override
+  String road_then(String distance) {
+    return 'In $distance';
+  }
+
+  @override
+  String road_left(String distance, String time) {
+    return '$distance · $time to go';
+  }
+
+  @override
+  String get road_arrived => 'You have arrived';
+
+  @override
+  String get road_share => 'Share with team';
+
+  @override
+  String get road_shared => 'Route shared with the team: phones and standalone radios can follow it';
+
+  @override
+  String get road_stop => 'Stop directions';
+
+  @override
+  String get road_retry => 'Try again';
+
+  @override
+  String get road_turnSlightLeft => 'Slight left';
+
+  @override
+  String get road_turnLeft => 'Turn left';
+
+  @override
+  String get road_turnSharpLeft => 'Sharp left';
+
+  @override
+  String get road_turnSlightRight => 'Slight right';
+
+  @override
+  String get road_turnRight => 'Turn right';
+
+  @override
+  String get road_turnSharpRight => 'Sharp right';
+
+  @override
+  String get road_uTurn => 'U-turn';
+
+  @override
+  String road_turnIn(String turn, String distance, String left) {
+    return '$turn in $distance · $left left';
+  }
+
+  @override
+  String road_arriveIn(String distance) {
+    return 'Arrive in $distance';
+  }
 }

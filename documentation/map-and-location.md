@@ -108,6 +108,34 @@ Shows node count and pin count. Tappable to expand a legend of all marker types.
 
 ---
 
+## Bloodhound Directions (MeshCore Open TAK)
+
+Bloodhound shows range and bearing to a teammate, a pin or a point. Its
+**Directions** button (the turn sign on the Bloodhound card) adds turn-by-turn
+directions along roads and paths:
+
+1. Start Bloodhound (a teammate's card, a pin, or long-press the map, then
+   *Bloodhound to here*).
+2. Tap **Directions** and pick **Drive**, **Walk** or **Bike**.
+3. The route is drawn in blue. The card shows the next turn, *In 200 m: Turn
+   left onto Pine Street*, and the distance and time left. The instructions are
+   in the app's language.
+4. Leave the route, or have the teammate you're tracking move well away from
+   where it ends, and a new route is found.
+
+Directions come from a [Valhalla](https://github.com/valhalla/valhalla)
+routing server using OpenStreetMap data, so they need the internet. Without
+it, Bloodhound carries on with range and bearing. The default server is the
+public FOSSGIS one, meant for light use. A team can run its own and enter its
+address in the Directions sheet (*Routing server*).
+
+**Share with team** sends the route on the team channel as an ordinary route,
+thinned to fit one mesh packet. Teammates' phones and standalone radios
+(Wadamesh TAK: Team › Pins › Routes › Follow) can follow it with no internet of
+their own. While following a shared route, the card shows the next turn read
+from the route's shape, *Turn left in 150 m · 2.3 km left*, the same as on a
+standalone radio. Street names don't travel with it.
+
 ## Path Trace Map
 
 ### How to Access
