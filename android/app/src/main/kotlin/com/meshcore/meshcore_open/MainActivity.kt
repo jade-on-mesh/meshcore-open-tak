@@ -13,6 +13,7 @@ class MainActivity : FlutterActivity() {
         AeicHdChannel.attach(applicationContext, flutterEngine)
         AppUpdateChannel.attach(this, flutterEngine)
         SpeechChannel.attach(this, flutterEngine)
+        PcmStreamChannel.attach(this, flutterEngine)
     }
 
     override fun onDestroy() {

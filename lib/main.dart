@@ -51,6 +51,7 @@ import 'team/team_service.dart';
 import 'team/watch_feed.dart';
 import 'vox/aeic_hd_service.dart';
 import 'vox/voice_service.dart';
+import 'vox/walkie_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -424,6 +425,10 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
   Timer? _imageSweepTimer;
   late final VoxVoiceService _voxVoiceService =
       widget.voxVoiceService ?? VoxVoiceService(widget.connector);
+  late final WalkieService _walkie = WalkieService(
+    widget.connector,
+    _voxVoiceService,
+  );
   late final TeamService _teamService = TeamService(widget.connector);
   late final TakService _takService = TakService(_teamService);
   late final WatchFeedService _watchFeed = WatchFeedService(widget.connector);
@@ -510,6 +515,7 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
         ChangeNotifierProvider.value(value: widget.imageCodecService),
         ChangeNotifierProvider.value(value: widget.receivedImageStore),
         ChangeNotifierProvider<VoxVoiceService>.value(value: _voxVoiceService),
+        ChangeNotifierProvider<WalkieService>.value(value: _walkie),
         ChangeNotifierProvider<TeamService>.value(value: _teamService),
         ChangeNotifierProvider<TakService>.value(value: _takService),
         ChangeNotifierProvider<WatchFeedService>.value(value: _watchFeed),

@@ -75,6 +75,7 @@ import '../vox/voice_message_bubble.dart';
 import '../vox/voice_record_sheet.dart';
 import '../vox/voice_service.dart';
 import '../vox/voice_wire.dart';
+import '../vox/walkie_sheet.dart';
 import '../utils/share_origin.dart';
 
 class ChannelChatScreen extends StatefulWidget {
@@ -2477,6 +2478,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
               .read<VoxVoiceService>()
               .sendClipToChannel(widget.channel, clip, caption: text),
         ),
+        WalkieButton(channel: widget.channel),
       ],
       header: [
         if (replyTo != null)
