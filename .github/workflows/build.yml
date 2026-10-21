@@ -203,7 +203,7 @@ jobs:
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
-          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-nasm
+          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-nasm perl
       # Photo messages: libaom (BSD-2) built with MinGW like Codec2, the same
       # pinned source as the Android build, into vox_av1.dll next to the exe
       # (lib/vox/av1_ffi.dart).
@@ -227,9 +227,11 @@ jobs:
         shell: msys2 {0}
         run: |
           set -euo pipefail
+          # Errors as annotations: the job log isn't always at hand.
+          report() { tail -25 "$1" | while IFS= read -r l; do echo "::error::aom: $l"; done; exit 1; }
           cmake -S aom-src/aom -B aom-build -G Ninja -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
-            -DCMAKE_BUILD_TYPE=Release -DENABLE_DOCS=0 -DENABLE_EXAMPLES=0 -DENABLE_TESTS=0 -DENABLE_TESTDATA=0 -DENABLE_TOOLS=0 -DCONFIG_AV1_HIGHBITDEPTH=0 -DCONFIG_WEBM_IO=0
-          cmake --build aom-build --target aom
+            -DCMAKE_BUILD_TYPE=Release -DENABLE_DOCS=0 -DENABLE_EXAMPLES=0 -DENABLE_TESTS=0 -DENABLE_TESTDATA=0 -DENABLE_TOOLS=0 -DCONFIG_AV1_HIGHBITDEPTH=0 -DCONFIG_WEBM_IO=0 > aom-cmake.log 2>&1 || report aom-cmake.log
+          cmake --build aom-build --target aom > aom-build.log 2>&1 || report aom-build.log
           out=third_party/aom-windows
           mkdir -p $out/lib $out/include/aom
           cp aom-build/libaom.a $out/lib/
