@@ -392,6 +392,7 @@ public final class MeshDropDown extends DropDownReceiver
             }
             TextView t = Ui.body(c, what + (it.outgoing ? " to " : " from ")
                     + it.fromCallsign + (it.itemUid != null ? " (on a map item)" : "")
+                    + (it.env.caption.isEmpty() ? "" : "\n" + it.env.caption)
                     + "\n" + state);
             row.addView(t);
             row.setPadding(0, Ui.dp(c, 4), 0, Ui.dp(c, 4));

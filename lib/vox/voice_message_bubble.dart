@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../connector/meshcore_connector.dart';
 import '../l10n/l10n.dart';
 import '../models/contact.dart';
+import '../services/chat_text_scale_service.dart';
 import 'image_message_bubble.dart';
 import 'mimi.dart';
 import 'voice_service.dart';
@@ -115,6 +116,22 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
 
   @override
   Widget build(BuildContext context) {
+    final media = _buildMedia(context);
+    final caption = widget.envelope.caption;
+    // A photo puts its caption under the picture itself.
+    if (caption.isEmpty || widget.envelope.isImage) return media;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        media,
+        const SizedBox(height: 4),
+        VoxCaption(caption, color: widget.textColor),
+      ],
+    );
+  }
+
+  Widget _buildMedia(BuildContext context) {
     if (widget.envelope.isImage) {
       return VoxImageMessageContent(
         key: ValueKey('vox-image-${widget.envelope.sessionId}'),
@@ -732,6 +749,25 @@ class VoxMimiTile extends StatelessWidget {
             );
         }
       },
+    );
+  }
+}
+
+/// The text sent with a photo or voice clip, in the bubble's text style and
+/// no wider than a photo.
+class VoxCaption extends StatelessWidget {
+  final String text;
+  final Color color;
+  const VoxCaption(this.text, {super.key, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = context.select<ChatTextScaleService, double>(
+      (service) => service.scale,
+    );
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 260),
+      child: Text(text, style: TextStyle(color: color, fontSize: 14 * scale)),
     );
   }
 }

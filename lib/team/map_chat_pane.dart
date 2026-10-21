@@ -16,6 +16,7 @@ import '../connector/meshcore_protocol.dart';
 import '../models/channel.dart';
 import '../models/channel_message.dart';
 import '../screens/channel_chat_screen.dart';
+import '../vox/caption_field.dart';
 import '../vox/image_send_sheet.dart';
 import '../vox/voice_message_bubble.dart';
 import '../vox/voice_record_sheet.dart';
@@ -176,6 +177,15 @@ class _MapChatPaneState extends State<MapChatPane> {
       for (final c in connector.channels)
         if (c.name.isNotEmpty) c,
     ];
+    // Text typed here goes out as the caption of a photo or voice message.
+    final caption = channel == null
+        ? null
+        : VoxCaptionInput(
+            _text,
+            maxTextBytes: context.read<VoxVoiceService>().maxChannelTextBytes(
+              channel,
+            ),
+          );
 
     // Reading the pane counts as reading the channel.
     if (channel != null && connector.getUnreadCountForChannel(channel) > 0) {
@@ -307,21 +317,23 @@ class _MapChatPaneState extends State<MapChatPane> {
                 children: [
                   VoxImageButton(
                     recipientLabel: channel.name,
-                    onSend: (image) {
+                    caption: caption,
+                    onSend: (image, text) {
                       _scrollToLatest();
                       return context
                           .read<VoxVoiceService>()
-                          .sendImageToChannel(channel, image)
+                          .sendImageToChannel(channel, image, caption: text)
                           .whenComplete(_scrollToLatest);
                     },
                   ),
                   VoxMicButton(
                     recipientLabel: channel.name,
-                    onSend: (clip) {
+                    caption: caption,
+                    onSend: (clip, text) {
                       _scrollToLatest();
                       return context
                           .read<VoxVoiceService>()
-                          .sendClipToChannel(channel, clip)
+                          .sendClipToChannel(channel, clip, caption: text)
                           .whenComplete(_scrollToLatest);
                     },
                   ),

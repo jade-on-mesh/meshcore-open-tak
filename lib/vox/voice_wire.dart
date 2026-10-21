@@ -15,6 +15,7 @@
 // Audio is never pushed unasked: the sender announces the clip with VE3 and
 // each listener pulls the packets when they press play.
 
+import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -190,7 +191,37 @@ int? _parseBase36(String s) {
   return int.tryParse(s, radix: 36);
 }
 
+/// Longest envelope [VoxVoiceEnvelope.encode] makes without a caption:
+/// prefix, then base-36 session id (7), mode (2: a photo's is 40, `14`),
+/// packets (2) and duration or aspect (2), with their colons.
+const int voxEnvelopeMaxLength = 20;
+
+/// Bytes left for a caption in a text message of [maxTextBytes]: the
+/// envelope and the space after it come first.
+int voxCaptionMaxBytes(int maxTextBytes) =>
+    max(0, maxTextBytes - voxEnvelopeMaxLength - 1);
+
+/// [caption] trimmed and cut to at most [maxBytes] of UTF-8, on a character
+/// boundary.
+String voxFitCaption(String caption, int maxBytes) {
+  final t = caption.trim();
+  if (utf8.encode(t).length <= maxBytes) return t;
+  final out = StringBuffer();
+  var used = 0;
+  for (final r in t.runes) {
+    final n = utf8.encode(String.fromCharCode(r)).length;
+    if (used + n > maxBytes) break;
+    out.writeCharCode(r);
+    used += n;
+  }
+  return out.toString().trim();
+}
+
 /// `VE3:` voice envelope carried as a normal text message.
+///
+/// A caption may follow it in the same message, after a space:
+/// `VI1:1ps9wxb:k:i:4b Look at this`. The envelope never contains a space,
+/// and an envelope with no caption is exactly the plain VE3 text.
 class VoxVoiceEnvelope {
   /// Codec2 clips (standard VE3).
   static const String prefix = 'VE3:';
@@ -213,12 +244,34 @@ class VoxVoiceEnvelope {
   final int totalPackets;
   final int durationSeconds;
 
+  /// Text sent with the photo or clip, shown in the same bubble; empty for
+  /// none.
+  final String caption;
+
   const VoxVoiceEnvelope({
     required this.sessionId,
     required this.mode,
     required this.totalPackets,
     required this.durationSeconds,
+    this.caption = '',
   });
+
+  VoxVoiceEnvelope withCaption(String caption) => VoxVoiceEnvelope(
+    sessionId: sessionId,
+    mode: mode,
+    totalPackets: totalPackets,
+    durationSeconds: durationSeconds,
+    caption: caption.trim(),
+  );
+
+  /// What a notification or chat list shows for [text] when it is a photo
+  /// or voice message (`📷 Photo: caption`); null for any other text.
+  static String? previewText(String text) {
+    final env = tryParse(text);
+    if (env == null) return null;
+    final kind = env.isImage ? '📷 Photo' : '🎙 Voice message';
+    return env.caption.isEmpty ? kind : '$kind: ${env.caption}';
+  }
 
   static bool looksLikeEnvelope(String text) =>
       text.startsWith(prefix) ||
@@ -232,7 +285,12 @@ class VoxVoiceEnvelope {
     if (head != prefix && head != mimiPrefix && head != imagePrefix) {
       return null;
     }
-    final parts = t.substring(prefix.length).split(':');
+    // The envelope ends at the first whitespace; any text after it is the
+    // caption.
+    final gap = t.indexOf(RegExp(r'\s'));
+    final fields = gap < 0 ? t : t.substring(0, gap);
+    final caption = gap < 0 ? '' : t.substring(gap + 1).trim();
+    final parts = fields.substring(prefix.length).split(':');
     if (parts.length != 4) return null;
     final sidVal = _parseBase36(parts[0]);
     final modeId = _parseBase36(parts[1]);
@@ -251,15 +309,18 @@ class VoxVoiceEnvelope {
       mode: mode,
       totalPackets: total,
       durationSeconds: dur,
+      caption: caption,
     );
   }
 
   String encode() {
     final sid = int.parse(sessionId, radix: 16).toRadixString(36);
-    return '${prefixFor(mode)}$sid:'
+    final env =
+        '${prefixFor(mode)}$sid:'
         '${mode.wireId.toRadixString(36)}:'
         '${totalPackets.toRadixString(36)}:'
         '${durationSeconds.toRadixString(36)}';
+    return caption.isEmpty ? env : '$env $caption';
   }
 
   bool get isImage => mode.isImage;

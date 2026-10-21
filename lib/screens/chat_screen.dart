@@ -67,6 +67,7 @@ import '../widgets/future_timestamp_indicator.dart';
 import '../widgets/mesh_ui.dart';
 import 'telemetry_screen.dart';
 import '../vox/aeic_hd_screens.dart';
+import '../vox/caption_field.dart';
 import '../vox/image_send_sheet.dart';
 import '../vox/voice_message_bubble.dart';
 import '../vox/voice_record_sheet.dart';
@@ -687,6 +688,11 @@ class _ChatScreenState extends State<ChatScreen> {
         !_sendingOtpImage &&
         connector.canSendOtpImageToContact(contactKeyHex) &&
         _imageCodec?.availability == ImageCodecAvailability.ready;
+    // Text typed here goes out as the caption of a photo or voice message.
+    final caption = VoxCaptionInput(
+      _textController,
+      maxTextBytes: maxContactMessageBytes(),
+    );
     return ChatComposer(
       controller: _textController,
       focusNode: _textFieldFocusNode,
@@ -739,20 +745,26 @@ class _ChatScreenState extends State<ChatScreen> {
                 )
               : null,
           recipientLabel: _resolveContact(connector).name,
-          onSend: (image) => context.read<VoxVoiceService>().sendImageToContact(
-            _resolveContact(connector),
-            image,
-          ),
+          caption: caption,
+          onSend: (image, text) =>
+              context.read<VoxVoiceService>().sendImageToContact(
+                _resolveContact(connector),
+                image,
+                caption: text,
+              ),
         ),
         VoxMicButton(
           recipientLabel: _resolveContact(connector).name,
           codecTarget: VoxVoiceService.contactTarget(
             _resolveContact(connector),
           ),
-          onSend: (clip) => context.read<VoxVoiceService>().sendClipToContact(
-            _resolveContact(connector),
-            clip,
-          ),
+          caption: caption,
+          onSend: (clip, text) =>
+              context.read<VoxVoiceService>().sendClipToContact(
+                _resolveContact(connector),
+                clip,
+                caption: text,
+              ),
         ),
       ],
       onSend: () => _sendMessage(connector),

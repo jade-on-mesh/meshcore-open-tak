@@ -41,6 +41,7 @@ import 'contacts_screen.dart';
 import 'map_screen.dart';
 import 'settings_screen.dart';
 import '../review_mode/review_mode_banner.dart';
+import '../vox/voice_wire.dart';
 
 class ChannelsScreen extends StatefulWidget {
   final bool hideBackButton;
@@ -436,7 +437,7 @@ class _ChannelsScreenState extends State<ChannelsScreen>
         lastMessageText.isNotEmpty &&
             GifHelper.parseGif(lastMessageText) != null
         ? context.l10n.chat_receivedGif
-        : lastMessageText;
+        : VoxVoiceEnvelope.previewText(lastMessageText) ?? lastMessageText;
     final lastTime = lastMessage?.timestamp;
 
     final channelLabel = channel.name.isEmpty

@@ -79,6 +79,7 @@ import '../review_mode/review_radio.dart';
 import '../utils/app_logger.dart';
 import '../utils/battery_utils.dart';
 import '../utils/platform_info.dart';
+import '../vox/voice_wire.dart';
 import 'meshcore_uuids.dart';
 import 'meshcore_protocol.dart';
 import 'pending_command_replies.dart';
@@ -10002,7 +10003,7 @@ class MeshCoreConnector extends ChangeNotifier {
                   : msg.text.trim();
               await _notificationService.showMessageNotification(
                 contactName: c?.name ?? 'Unknown',
-                message: resolvedText,
+                message: VoxVoiceEnvelope.previewText(msg.text) ?? resolvedText,
                 urlImagesEnabled:
                     c != null && isContactUrlImagesEnabled(c.publicKeyHex),
                 contactId: msg.senderKeyHex,
@@ -10018,7 +10019,7 @@ class MeshCoreConnector extends ChangeNotifier {
                   : msg.text.trim();
               await _notificationService.showMessageNotification(
                 contactName: c?.name ?? 'Unknown Room',
-                message: resolvedText,
+                message: VoxVoiceEnvelope.previewText(msg.text) ?? resolvedText,
                 urlImagesEnabled:
                     c != null && isContactUrlImagesEnabled(c.publicKeyHex),
                 contactId: msg.senderKeyHex,
@@ -10384,7 +10385,7 @@ class MeshCoreConnector extends ChangeNotifier {
       await _notificationService.showChannelMessageNotification(
         channelName: label,
         senderName: message.senderName,
-        message: resolvedText,
+        message: VoxVoiceEnvelope.previewText(message.text) ?? resolvedText,
         urlImagesEnabled: isChannelUrlImagesEnabled(channelIndex),
         channelIndex: message.channelIndex,
         badgeCount: getTotalUnreadCount(),

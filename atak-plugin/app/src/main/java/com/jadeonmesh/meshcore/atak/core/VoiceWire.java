@@ -152,13 +152,24 @@ public final class VoiceWire {
         public final int totalPackets;
         /** Seconds for audio; width*100/height for images. */
         public final int durationSeconds;
+        /**
+         * Text sent with the photo or clip, after a space in the same
+         * message ("VI1:... Look at this"); empty for none.
+         */
+        public final String caption;
 
         public Envelope(String sessionId, Mode mode, int totalPackets,
                 int durationSeconds) {
+            this(sessionId, mode, totalPackets, durationSeconds, "");
+        }
+
+        public Envelope(String sessionId, Mode mode, int totalPackets,
+                int durationSeconds, String caption) {
             this.sessionId = sessionId;
             this.mode = mode;
             this.totalPackets = totalPackets;
             this.durationSeconds = durationSeconds;
+            this.caption = caption == null ? "" : caption.trim();
         }
 
         public static String prefixFor(Mode m) {
@@ -178,7 +189,15 @@ public final class VoiceWire {
             if (!head.equals(PREFIX) && !head.equals(MIMI_PREFIX)
                     && !head.equals(IMAGE_PREFIX))
                 return null;
-            String[] parts = t.substring(PREFIX.length()).split(":", -1);
+            // The envelope ends at the first whitespace; the rest is the
+            // caption.
+            int gap = -1;
+            for (int i = 0; i < t.length() && gap < 0; i++)
+                if (Character.isWhitespace(t.charAt(i)))
+                    gap = i;
+            String fields = gap < 0 ? t : t.substring(0, gap);
+            String caption = gap < 0 ? "" : t.substring(gap + 1);
+            String[] parts = fields.substring(PREFIX.length()).split(":", -1);
             if (parts.length != 4)
                 return null;
             Long sid = base36(parts[0]), modeId = base36(parts[1]),
@@ -195,7 +214,7 @@ public final class VoiceWire {
             if (dur < 0 || dur > MAX_DURATION_S)
                 return null;
             return new Envelope(String.format(Locale.US, "%08x", sid), mode,
-                    total.intValue(), dur.intValue());
+                    total.intValue(), dur.intValue(), caption);
         }
 
         public String encode() {
@@ -203,7 +222,8 @@ public final class VoiceWire {
             return prefixFor(mode) + Long.toString(sid, 36) + ":"
                     + Integer.toString(mode.wireId, 36) + ":"
                     + Integer.toString(totalPackets, 36) + ":"
-                    + Integer.toString(durationSeconds, 36);
+                    + Integer.toString(durationSeconds, 36)
+                    + (caption.isEmpty() ? "" : " " + caption);
         }
 
         public boolean isImage() {
