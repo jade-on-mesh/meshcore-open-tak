@@ -12450,6 +12450,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Try again'**
   String get road_retry;
+
+  /// No description provided for @road_turnSlightLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Slight left'**
+  String get road_turnSlightLeft;
+
+  /// No description provided for @road_turnLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn left'**
+  String get road_turnLeft;
+
+  /// No description provided for @road_turnSharpLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Sharp left'**
+  String get road_turnSharpLeft;
+
+  /// No description provided for @road_turnSlightRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Slight right'**
+  String get road_turnSlightRight;
+
+  /// No description provided for @road_turnRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn right'**
+  String get road_turnRight;
+
+  /// No description provided for @road_turnSharpRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Sharp right'**
+  String get road_turnSharpRight;
+
+  /// No description provided for @road_uTurn.
+  ///
+  /// In en, this message translates to:
+  /// **'U-turn'**
+  String get road_uTurn;
+
+  /// No description provided for @road_turnIn.
+  ///
+  /// In en, this message translates to:
+  /// **'{turn} in {distance} · {left} left'**
+  String road_turnIn(String turn, String distance, String left);
+
+  /// No description provided for @road_arriveIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrive in {distance}'**
+  String road_arriveIn(String distance);
 }
 
 class _AppLocalizationsDelegate

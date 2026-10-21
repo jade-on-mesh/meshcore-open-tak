@@ -187,6 +187,20 @@ void main() {
     expect(s.encode().length, lessThanOrEqualTo(teamMaxPayload));
   });
 
+  test('a shared route gives the same turns as a standalone radio', () {
+    // As test/test_team_wire.cpp in Wadamesh TAK: 1.1 km east, left, 1 km north.
+    const pts = [(47.6, -122.33), (47.6, -122.31523), (47.60905, -122.31523)];
+    expect(routeTurnAt(pts, 1), -90);
+    expect(routeTurnAt(pts.reversed.toList(), 1), 90);
+    final t = routeNextTurn(pts, 1, 47.6, -122.325);
+    expect(t.turnDeg, -90);
+    expect(t.toTurnM, closeTo(730, 30));
+    expect(t.remainingM, closeTo(1740, 40));
+    final end = routeNextTurn(pts, 2, 47.605, -122.31523);
+    expect(end.hasTurn, isFalse);
+    expect(end.toTurnM, closeTo(450, 30));
+  });
+
   test('distances and times read naturally', () {
     expect(roadDistance(47), '50 m');
     expect(roadDistance(730), '750 m');

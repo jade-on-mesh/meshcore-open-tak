@@ -7326,4 +7326,35 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get road_retry => 'Try again';
+
+  @override
+  String get road_turnSlightLeft => 'Slight left';
+
+  @override
+  String get road_turnLeft => 'Turn left';
+
+  @override
+  String get road_turnSharpLeft => 'Sharp left';
+
+  @override
+  String get road_turnSlightRight => 'Slight right';
+
+  @override
+  String get road_turnRight => 'Turn right';
+
+  @override
+  String get road_turnSharpRight => 'Sharp right';
+
+  @override
+  String get road_uTurn => 'U-turn';
+
+  @override
+  String road_turnIn(String turn, String distance, String left) {
+    return '$turn in $distance · $left left';
+  }
+
+  @override
+  String road_arriveIn(String distance) {
+    return 'Arrive in $distance';
+  }
 }

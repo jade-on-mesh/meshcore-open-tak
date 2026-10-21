@@ -16,6 +16,7 @@ import '../vox/voice_message_bubble.dart';
 import '../vox/voice_service.dart';
 import '../vox/voice_wire.dart';
 import 'map_highlights.dart';
+import 'road_directions.dart';
 import 'road_directions_ui.dart';
 import 'role_icon_library.dart';
 import 'tak/cot.dart';
@@ -1585,6 +1586,9 @@ class TeamMapOverlay extends StatelessWidget {
                       child: Text(
                         fix == null
                             ? '${hound.label}: waiting for your position'
+                            : team.navRoute != null
+                            // A shared route: the next turn, as standalone radios show it.
+                            ? '${hound.label}\n${routeTurnText(context, routeNextTurn(team.navRoute!.points, team.navIndex, fix.lat, fix.lon))}'
                             : '${hound.label}\n${teamRangeBearing(teamDistanceMeters(fix.lat, fix.lon, hound.lat, hound.lon), teamBearingDeg(fix.lat, fix.lon, hound.lat, hound.lon))}${fix.heading == null ? ' (arrow: north up)' : ''}',
                       ),
                     ),

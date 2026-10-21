@@ -281,3 +281,28 @@ class RoadDirectionsCard extends StatelessWidget {
     );
   }
 }
+
+/// "Turn left in 150 m · 2.3 km left", "Arrive in 80 m".
+String routeTurnText(BuildContext context, RouteTurn t) {
+  final l10n = context.l10n;
+  if (!t.hasTurn) return l10n.road_arriveIn(roadDistance(t.toTurnM));
+  final a = t.turnDeg.abs();
+  final word = a >= 160
+      ? l10n.road_uTurn
+      : t.turnDeg < 0
+      ? (a < 60
+            ? l10n.road_turnSlightLeft
+            : a < 120
+            ? l10n.road_turnLeft
+            : l10n.road_turnSharpLeft)
+      : (a < 60
+            ? l10n.road_turnSlightRight
+            : a < 120
+            ? l10n.road_turnRight
+            : l10n.road_turnSharpRight);
+  return l10n.road_turnIn(
+    word,
+    roadDistance(t.toTurnM),
+    roadDistance(t.remainingM),
+  );
+}

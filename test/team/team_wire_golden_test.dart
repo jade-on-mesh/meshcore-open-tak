@@ -29,7 +29,42 @@ const kR1 = '4ca1b2c3d4020068ec0be0007b07454d5420e29c9a';
 const kR2 = '4c0a0b0c0d110168ec0c44000000';
 const kP3 = '5001020304201b224618b6e10d380000000000fff300064b392d52657814';
 
+// Routes (team_shape_wire.dart): Wadamesh TAK's test/test_team_wire.cpp
+// parses and re-encodes these same bytes.
+const kS1 =
+    '44010203041234abcd00050368e778000a546f20416c7068612d310001030048a1c0ff4556d8008a17920e00';
+const kS3 =
+    '44010203040000000900000268e77800046c696e6500000200000064000000c864c701';
+
 void main() {
+  test('routes match the radio', () {
+    final s1 = TeamShape(
+      authorKey4: '01020304',
+      shapeId: 0x1234abcd,
+      kind: ShapeKind.route,
+      color: TeamColor.orange,
+      time: DateTime.fromMillisecondsSinceEpoch(1760000000 * 1000),
+      label: 'To Alpha-1',
+      routeMethod: RouteMethod.driving,
+      points: const [(47.6, -122.33), (47.6, -122.31523), (47.60905, -122.31523)],
+    );
+    expect(_hex(s1.encode()), kS1);
+    final s3 = TeamShape(
+      authorKey4: '01020304',
+      shapeId: 9,
+      kind: ShapeKind.line,
+      color: TeamColor.yellow,
+      time: DateTime.fromMillisecondsSinceEpoch(1760000000 * 1000),
+      label: 'line',
+      points: const [(0.001, 0.002), (0.0015, 0.001)],
+    );
+    expect(_hex(s3.encode()), kS3);
+    final back = TeamShape.tryParse(_unhex(kS1))!;
+    expect(back.label, 'To Alpha-1');
+    expect(back.points.length, 3);
+    expect(back.routeMethod, RouteMethod.driving);
+  });
+
   test('role names and added roles match the radio', () {
     final r1 = TeamRoleDef(
       authorKey4: 'a1b2c3d4',

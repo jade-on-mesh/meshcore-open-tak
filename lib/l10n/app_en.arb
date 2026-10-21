@@ -3842,5 +3842,16 @@
   "road_share": "Share with team",
   "road_shared": "Route shared with the team: phones and standalone radios can follow it",
   "road_stop": "Stop directions",
-  "road_retry": "Try again"
+  "road_retry": "Try again",
+  "road_turnSlightLeft": "Slight left",
+  "road_turnLeft": "Turn left",
+  "road_turnSharpLeft": "Sharp left",
+  "road_turnSlightRight": "Slight right",
+  "road_turnRight": "Turn right",
+  "road_turnSharpRight": "Sharp right",
+  "road_uTurn": "U-turn",
+  "road_turnIn": "{turn} in {distance} · {left} left",
+  "@road_turnIn": {"placeholders": {"turn": {"type": "String"}, "distance": {"type": "String"}, "left": {"type": "String"}}},
+  "road_arriveIn": "Arrive in {distance}",
+  "@road_arriveIn": {"placeholders": {"distance": {"type": "String"}}}
 }

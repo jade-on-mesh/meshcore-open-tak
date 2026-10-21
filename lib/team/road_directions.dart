@@ -364,3 +364,57 @@ String roadDuration(double s) {
   if (min < 60) return '${max(1, min)} min';
   return '${min ~/ 60} h ${min % 60} min';
 }
+
+/// The next turn on a route followed checkpoint by checkpoint (a route the
+/// team shared), read from its shape as standalone radios do (Wadamesh TAK's
+/// TeamRoute.h): a bend of 30° or more is a turn.
+class RouteTurn {
+  /// Degrees, + right, - left; 0 when nothing but the end is ahead.
+  final int turnDeg;
+
+  /// Metres to the turn (or to the end, with no turn).
+  final double toTurnM;
+  final double remainingM;
+
+  const RouteTurn(this.turnDeg, this.toTurnM, this.remainingM);
+
+  bool get hasTurn => turnDeg != 0;
+}
+
+int routeTurnAt(List<(double, double)> pts, int i) {
+  if (i <= 0 || i >= pts.length - 1) return 0;
+  final a = teamBearingDeg(pts[i - 1].$1, pts[i - 1].$2, pts[i].$1, pts[i].$2);
+  final b = teamBearingDeg(pts[i].$1, pts[i].$2, pts[i + 1].$1, pts[i + 1].$2);
+  var d = (b - a + 540) % 360 - 180;
+  if (d < -180) d += 360;
+  return d.round();
+}
+
+/// From (lat, lon), heading for checkpoint [next] of [pts].
+RouteTurn routeNextTurn(
+  List<(double, double)> pts,
+  int next,
+  double lat,
+  double lon,
+) {
+  if (pts.isEmpty) return const RouteTurn(0, 0, 0);
+  final k = next.clamp(0, pts.length - 1);
+  var along = teamDistanceMeters(lat, lon, pts[k].$1, pts[k].$2);
+  var turn = 0, toTurn = -1.0;
+  for (var i = k; i < pts.length; i++) {
+    if (i > k) {
+      along += teamDistanceMeters(
+        pts[i - 1].$1,
+        pts[i - 1].$2,
+        pts[i].$1,
+        pts[i].$2,
+      );
+    }
+    final t = routeTurnAt(pts, i);
+    if (toTurn < 0 && t.abs() >= 30) {
+      turn = t;
+      toTurn = along;
+    }
+  }
+  return RouteTurn(turn, toTurn < 0 ? along : toTurn, along);
+}
