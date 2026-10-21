@@ -203,7 +203,7 @@ jobs:
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
-          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-nasm perl
+          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-yasm perl
       # Photo messages: libaom (BSD-2) built with MinGW like Codec2, the same
       # pinned source as the Android build, into vox_av1.dll next to the exe
       # (lib/vox/av1_ffi.dart).
@@ -212,7 +212,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: third_party/aom-windows
-          key: aom-windows-v3.12.1-1
+          key: aom-windows-v3.12.1-2
       - name: Fetch libaom source (Windows)
         if: steps.aomwin.outputs.cache-hit != 'true'
         shell: bash
@@ -229,7 +229,9 @@ jobs:
           set -euo pipefail
           # Errors as annotations: the job log isn't always at hand.
           report() { echo "::error::aom ($1): $(grep -iE 'error|fail|not found|could not' "$1" | tail -12 | tr '\n' '|')"; echo "::error::aom tail: $(tail -12 "$1" | tr '\n' '|')"; exit 1; }
-          cmake -S aom-src/aom -B aom-build -G Ninja -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
+          # yasm rather than nasm: libaom's check rejects the nasm MSYS2 ships now
+          # ("multipass optimization not supported"); the SIMD code is the same.
+          cmake -S aom-src/aom -B aom-build -G Ninja -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DENABLE_NASM=0 \
             -DCMAKE_BUILD_TYPE=Release -DENABLE_DOCS=0 -DENABLE_EXAMPLES=0 -DENABLE_TESTS=0 -DENABLE_TESTDATA=0 -DENABLE_TOOLS=0 -DCONFIG_AV1_HIGHBITDEPTH=0 -DCONFIG_WEBM_IO=0 > aom-cmake.log 2>&1 || report aom-cmake.log
           cmake --build aom-build --target aom > aom-build.log 2>&1 || report aom-build.log
           out=third_party/aom-windows
