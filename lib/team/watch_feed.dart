@@ -731,6 +731,44 @@ class WatchFeedService extends ChangeNotifier {
 
   Set<String> get watchedNames => Set.unmodifiable(_watched);
 
+  /// Reports this phone made itself (the drone detector): one per tracked
+  /// thing, shown in the feed and on the map like watched ones.
+  static final Channel localChannel = Channel(
+    index: -1,
+    name: 'This phone',
+    psk: Uint8List(16),
+  );
+  final Map<String, WatchItem> _local = {};
+
+  bool get hasLocal => _local.isNotEmpty;
+
+  /// The report [putLocal] keeps under [key], if any.
+  WatchItem? localItem(String key) => _local[key];
+
+  /// Puts [text] (a watched-report message, e.g. a drone post) in the feed as
+  /// heard by this phone at [time], replacing the last one under [key].
+  void putLocal(String key, String text, DateTime time) {
+    final m = ChannelMessage(
+      senderName: 'Drone detector',
+      text: text,
+      timestamp: time,
+      isOutgoing: true,
+      status: ChannelMessageStatus.sent,
+      messageId: 'local:$key:${time.millisecondsSinceEpoch}',
+    );
+    _local[key] = parseWatchMessage(localChannel, m, time: time);
+    _dirty = true;
+    _announceNew();
+    notifyListeners();
+  }
+
+  void clearLocal() {
+    if (_local.isEmpty) return;
+    _local.clear();
+    _dirty = true;
+    notifyListeners();
+  }
+
   List<Channel> get watchedChannels => [
     for (final c in _connector.channels)
       if (_watched.contains(c.name)) c,
@@ -929,6 +967,7 @@ class WatchFeedService extends ChangeNotifier {
       }
       out.addAll(chan);
     }
+    out.addAll(_local.values);
     out.sort((a, b) => b.time.compareTo(a.time));
     unawaited(_saveFirstSeen());
     _items = out;

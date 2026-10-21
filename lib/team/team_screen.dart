@@ -11,11 +11,14 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../connector/meshcore_connector.dart';
+import '../l10n/l10n.dart';
 import '../screens/map_screen.dart';
 import '../theme/mesh_theme.dart' show MapPalette;
 import '../utils/route_transitions.dart';
 import 'tak/atak_plugin_bridge.dart';
 import 'tak/tak_service.dart';
+import 'drone_detector.dart';
+import 'drone_detector_screen.dart';
 import 'team_casevac_ui.dart';
 import 'team_draw.dart';
 import 'team_forms.dart';
@@ -294,6 +297,14 @@ class _WatchTabState extends State<WatchTab> {
     });
   }
 
+  void _openDrones() {
+    unawaited(
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const DroneDetectorScreen()),
+      ),
+    );
+  }
+
   /// Opens the map on [it] with its pin ringed and pulsing, and lights its
   /// card here for when the user comes back.
   void _showOnMap(WatchItem it) {
@@ -431,7 +442,7 @@ class _WatchTabState extends State<WatchTab> {
   Widget build(BuildContext context) {
     final feed = context.watch<WatchFeedService>();
     final scheme = Theme.of(context).colorScheme;
-    if (feed.watchedChannels.isEmpty) {
+    if (feed.watchedChannels.isEmpty && !feed.hasLocal) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -450,6 +461,12 @@ class _WatchTabState extends State<WatchTab> {
                 icon: const Icon(Icons.add),
                 label: const Text('Choose channels'),
                 onPressed: _chooseChannels,
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.flight),
+                label: Text(context.l10n.drones_title),
+                onPressed: _openDrones,
               ),
             ],
           ),
@@ -522,6 +539,24 @@ class _WatchTabState extends State<WatchTab> {
                 tooltip: 'The map zooms in on each new watched report',
                 selected: feed.autoZoom,
                 onSelected: (v) => unawaited(feed.setAutoZoom(v)),
+              ),
+              const SizedBox(width: 6),
+              Builder(
+                builder: (context) {
+                  final d = context.watch<DroneDetectorService>();
+                  return ActionChip(
+                    avatar: Icon(
+                      d.scanning ? Icons.radar : Icons.flight,
+                      size: 16,
+                    ),
+                    label: Text(
+                      d.tracker.length > 0
+                          ? '${context.l10n.drones_chip} ${d.tracker.length}'
+                          : context.l10n.drones_chip,
+                    ),
+                    onPressed: _openDrones,
+                  );
+                },
               ),
             ],
           ),
