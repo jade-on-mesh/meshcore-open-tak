@@ -1,0 +1,545 @@
+// MeshCore Open TAK - push-to-talk on a channel, over MediaMesh.
+//
+// Hold to talk: the mic is encoded to Codec2 1200 as you speak and each second
+// goes out on the channel as soon as it's ready (walkie_wire.dart). Listeners
+// with the walkie open, or "Listen live" on for the channel, hear it as it
+// arrives. When you let go, the talk is posted as a voice message with the
+// same session id, so it stays in the chat and anyone who missed it can fetch
+// it. Like Open TAK's photos and voice, talks only go out on MediaMesh.
+
+import 'dart:async';
+import 'dart:math';
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:record/record.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../connector/meshcore_connector.dart';
+import '../models/channel.dart';
+import '../services/media_lockdown.dart';
+import 'resample.dart';
+import 'voice_codec.dart';
+import 'voice_service.dart';
+import 'voice_wire.dart';
+import 'walkie_audio.dart';
+import 'walkie_wire.dart';
+
+/// A talk heard on a channel.
+class WalkieTalk {
+  WalkieTalk(this.sessionId, this.channelIndex, DateTime now)
+    : firstHeard = now,
+      lastHeard = now;
+
+  final String sessionId;
+  final int channelIndex;
+  final DateTime firstHeard;
+  DateTime lastHeard;
+  String name = '';
+  bool endHeard = false;
+  bool playing = false;
+  bool played = false;
+  final WalkieJitter jitter = WalkieJitter();
+  VoxCodec2Stream? _decoder;
+
+  /// Still on the air (its end not heard, and heard recently).
+  bool activeAt(DateTime now) =>
+      !endHeard && now.difference(lastHeard) <= walkieTalkTimeout;
+}
+
+/// What the local talk button is doing.
+enum WalkieTx { idle, starting, onAir, finishing }
+
+class _Tx {
+  _Tx(this.channel, this.sessionId, this.direct);
+  final Channel channel;
+  final String sessionId;
+  final bool direct;
+  final AudioRecorder recorder = AudioRecorder();
+  StreamSubscription<Uint8List>? sub;
+  VoxCodec2Stream? encoder;
+  late final WalkiePacketizer packets = WalkiePacketizer(sessionId);
+  final WalkieDecimator decimator = WalkieDecimator(
+    factor: voxRecordSampleRate ~/ 8000,
+  );
+  final List<int> frame = [];
+  int? carry;
+  int samples8k = 0;
+  DateTime? startedAt;
+  DateTime? lastSent;
+  Future<void> chain = Future.value();
+  /// The button was let go (maybe before the mic was even running).
+  bool releaseAsked = false;
+
+  /// Sending what's left and announcing it.
+  bool finishing = false;
+  bool failed = false;
+  bool recording = false;
+  int level = 0;
+}
+
+class WalkieService extends ChangeNotifier {
+  WalkieService(this._connector, this._voice) {
+    _voice.liveTalkHandler = _onLive;
+    unawaited(_load());
+  }
+
+  final MeshCoreConnector _connector;
+  final VoxVoiceService _voice;
+  final WalkieSpeaker _speaker = WalkieSpeaker();
+  final Random _rng = Random.secure();
+
+  static const _kListen = 'walkie_listen_live';
+  static const _kDirect = 'walkie_direct';
+
+  Set<String> _listenKeys = {};
+  Set<String> _directKeys = {};
+  final Map<int, int> _openPanels = {};
+
+  final Map<String, WalkieTalk> _talks = {};
+  final Set<String> _ownSids = {};
+  WalkieTalk? _playing;
+  Timer? _ticker;
+
+  _Tx? _tx;
+  String? _error;
+
+  /// Whether push-to-talk can run in this build (Codec2 is needed).
+  bool get available => voxCodecAvailable;
+
+  WalkieTx get tx => _tx == null
+      ? WalkieTx.idle
+      : _tx!.startedAt == null
+      ? WalkieTx.starting
+      : _tx!.finishing
+      ? WalkieTx.finishing
+      : WalkieTx.onAir;
+
+  /// The channel being talked on, if any.
+  int? get talkingOn => _tx?.channel.index;
+
+  /// How long the current talk has run.
+  Duration get talkElapsed => Duration(
+    milliseconds: (_tx?.samples8k ?? 0) * 1000 ~/ 8000,
+  );
+
+  /// Mic level of the current talk, 0..100.
+  int get talkLevel => _tx?.level ?? 0;
+
+  /// Why the last talk didn't go out, until the next one starts.
+  String? get error => _error;
+
+  void clearError() {
+    if (_error == null) return;
+    _error = null;
+    notifyListeners();
+  }
+
+  // ------------------------------------------------------------ settings
+
+  Future<void> _load() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _listenKeys = (prefs.getStringList(_kListen) ?? const []).toSet();
+      _directKeys = (prefs.getStringList(_kDirect) ?? const []).toSet();
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> _save() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_kListen, _listenKeys.toList());
+      await prefs.setStringList(_kDirect, _directKeys.toList());
+    } catch (_) {}
+  }
+
+  /// Talks on [ch] play live even with the walkie closed.
+  bool listensLive(Channel ch) =>
+      _listenKeys.contains(VoxVoiceService.channelTarget(ch));
+
+  Future<void> setListenLive(Channel ch, bool v) async {
+    final k = VoxVoiceService.channelTarget(ch);
+    if (v ? !_listenKeys.add(k) : !_listenKeys.remove(k)) return;
+    notifyListeners();
+    await _save();
+  }
+
+  /// Talks on [ch] go radio to radio (no repeaters).
+  bool isDirect(Channel ch) =>
+      _directKeys.contains(VoxVoiceService.channelTarget(ch));
+
+  Future<void> setDirect(Channel ch, bool v) async {
+    final k = VoxVoiceService.channelTarget(ch);
+    if (v ? !_directKeys.add(k) : !_directKeys.remove(k)) return;
+    notifyListeners();
+    await _save();
+  }
+
+  /// The walkie for [channelIndex] is on screen: its talks play.
+  void panelOpened(int channelIndex) {
+    _openPanels[channelIndex] = (_openPanels[channelIndex] ?? 0) + 1;
+  }
+
+  void panelClosed(int channelIndex) {
+    final n = (_openPanels[channelIndex] ?? 1) - 1;
+    if (n <= 0) {
+      _openPanels.remove(channelIndex);
+    } else {
+      _openPanels[channelIndex] = n;
+    }
+  }
+
+  bool _listensTo(int channelIndex) {
+    if (_openPanels.containsKey(channelIndex)) return true;
+    for (final ch in _connector.channels) {
+      if (ch.index == channelIndex) return listensLive(ch);
+    }
+    return false;
+  }
+
+  // ------------------------------------------------------------- hearing
+
+  /// The talk on the air on [channelIndex], if someone is talking.
+  WalkieTalk? activeTalkOn(int channelIndex) {
+    final now = DateTime.now();
+    WalkieTalk? best;
+    for (final t in _talks.values) {
+      if (t.channelIndex != channelIndex || !t.activeAt(now)) continue;
+      if (best == null || t.lastHeard.isAfter(best.lastHeard)) best = t;
+    }
+    return best;
+  }
+
+  /// The most recent talk heard on [channelIndex] (on the air or not).
+  WalkieTalk? lastTalkOn(int channelIndex) {
+    WalkieTalk? best;
+    for (final t in _talks.values) {
+      if (t.channelIndex != channelIndex) continue;
+      if (best == null || t.lastHeard.isAfter(best.lastHeard)) best = t;
+    }
+    return best;
+  }
+
+  /// The talk playing right now, if any.
+  WalkieTalk? get playing => _playing;
+
+  void _onLive(Uint8List p, int channelIndex, int? via, int? hops) {
+    final now = DateTime.now();
+    final sid = p.length >= 5 ? voxSessionIdFromBytes(p, 1) : '';
+    if (_ownSids.contains(sid)) return; // our own, relayed back
+    if (p[0] == walkieStartMagic) {
+      final s = WalkieStart.tryParse(p);
+      if (s == null) return;
+      final t = _talk(sid, channelIndex, now);
+      t.name = s.name;
+      t.lastHeard = now;
+      _tick();
+      notifyListeners();
+      return;
+    }
+    final a = WalkieAudio.tryParse(p);
+    if (a == null) return;
+    final t = _talk(sid, channelIndex, now);
+    t.lastHeard = now;
+    if (a.last) t.endHeard = true;
+    _voice.acceptLivePacket(sid, a.index, a.codecData, via: via, hops: hops);
+    t.jitter.add(a, now);
+    if (_playing == null &&
+        _tx == null &&
+        !t.played &&
+        _listensTo(channelIndex)) {
+      unawaited(_startPlaying(t));
+    }
+    _tick();
+    notifyListeners();
+  }
+
+  WalkieTalk _talk(String sid, int channelIndex, DateTime now) {
+    final t = _talks.putIfAbsent(
+      sid,
+      () => WalkieTalk(sid, channelIndex, now),
+    );
+    return t;
+  }
+
+  Future<void> _startPlaying(WalkieTalk t) async {
+    if (!voxCodecAvailable) return;
+    _playing = t;
+    t.playing = true;
+    t.played = true;
+    try {
+      t._decoder = VoxCodec2Stream(walkieMode);
+      _voice.micBusy = true; // nothing else auto-plays meanwhile
+      await _speaker.start();
+    } catch (_) {
+      _stopPlaying(t);
+    }
+  }
+
+  void _stopPlaying(WalkieTalk t, {bool now = false}) {
+    t.playing = false;
+    t._decoder?.dispose();
+    t._decoder = null;
+    if (identical(_playing, t)) {
+      _playing = null;
+      unawaited(now ? _speaker.stop() : _speaker.finish());
+      if (_tx == null) _voice.micBusy = false;
+    }
+  }
+
+  void _tick() {
+    _ticker ??= Timer.periodic(const Duration(milliseconds: 100), (_) {
+      _onTick();
+    });
+  }
+
+  void _onTick() {
+    final now = DateTime.now();
+    final t = _playing;
+    if (t != null) {
+      final dec = t._decoder;
+      if (dec != null) {
+        for (final chunk in t.jitter.due(now)) {
+          try {
+            unawaited(_speaker.write(dec.decode(chunk)));
+            _voice.markHeardLive(t.sessionId);
+          } catch (_) {}
+        }
+      }
+      if (t.jitter.finished(now) || (!t.activeAt(now) && !t.jitter.started)) {
+        _stopPlaying(t);
+        notifyListeners();
+      }
+    }
+    // Forget talks a while after they end; stop ticking when nothing's left.
+    final before = _talks.length;
+    _talks.removeWhere(
+      (_, v) =>
+          !v.playing &&
+          now.difference(v.lastHeard) > const Duration(minutes: 10),
+    );
+    final active = _talks.values.any((v) => v.activeAt(now) || v.playing);
+    if (_talks.length != before) notifyListeners();
+    if (!active && _playing == null && _tx == null) {
+      _ticker?.cancel();
+      _ticker = null;
+      notifyListeners(); // "talking" turns to "clear"
+    } else if (_tx != null) {
+      notifyListeners(); // the talk timer and level
+    }
+  }
+
+  // ------------------------------------------------------------- talking
+
+  /// Starts talking on [ch]. Returns why it can't, or null once started (or
+  /// starting). Call [stopTalk] when the button is let go.
+  Future<String?> startTalk(Channel ch) async {
+    if (_tx != null) return null;
+    _error = null;
+    if (!voxCodecAvailable) {
+      return voxCodecUnavailableReason ?? 'Voice is not available here';
+    }
+    if (!_connector.isConnected) return 'Not connected to a radio';
+    if (!_connector.supportsChannelData) {
+      return "This radio's firmware can't send channel data";
+    }
+    final busy = activeTalkOn(ch.index);
+    if (busy != null) {
+      return busy.name.isEmpty
+          ? 'Someone is talking'
+          : '${busy.name} is talking';
+    }
+    final sid = voxNewSessionId(_rng);
+    final tx = _Tx(ch, sid, isDirect(ch));
+    _tx = tx;
+    _ownSids.add(sid);
+    if (_ownSids.length > 64) _ownSids.remove(_ownSids.first);
+    notifyListeners();
+
+    String? fail;
+    try {
+      if (!await _voice.canSendMedia()) {
+        fail = MediaLockdown.blockedMessage;
+      } else if (!await tx.recorder.hasPermission()) {
+        fail = 'Microphone permission denied';
+      }
+    } catch (e) {
+      fail = '$e';
+    }
+    if (fail == null && tx.releaseAsked) fail = ''; // let go before it started
+    if (fail != null) {
+      await _endTx(tx);
+      if (fail.isNotEmpty) _error = fail;
+      notifyListeners();
+      return fail.isEmpty ? null : fail;
+    }
+
+    // Half duplex: stop anything playing.
+    final p = _playing;
+    if (p != null) _stopPlaying(p, now: true);
+    _voice.micBusy = true;
+    try {
+      tx.encoder = VoxCodec2Stream(walkieMode);
+      _send(
+        tx,
+        WalkieStart(sessionId: sid, name: _connector.selfName ?? '').encode(),
+      );
+      final stream = await tx.recorder.startStream(
+        const RecordConfig(
+          encoder: AudioEncoder.pcm16bits,
+          sampleRate: voxRecordSampleRate,
+          numChannels: 1,
+          autoGain: true,
+          noiseSuppress: true,
+        ),
+      );
+      tx.recording = true;
+      tx.startedAt = DateTime.now();
+      tx.sub = stream.listen((b) => _onMic(tx, b));
+      unawaited(HapticFeedback.mediumImpact());
+    } catch (e) {
+      _error = 'Microphone: $e';
+      await _endTx(tx);
+      notifyListeners();
+      return _error;
+    }
+    _tick();
+    notifyListeners();
+    if (tx.releaseAsked) unawaited(_finish(tx));
+    return null;
+  }
+
+  void _onMic(_Tx tx, Uint8List bytes) {
+    if (!tx.recording || tx.finishing) return;
+    // Whole samples only: a byte left over waits for the next chunk.
+    var data = bytes;
+    if (tx.carry != null) {
+      data = Uint8List(bytes.length + 1)
+        ..[0] = tx.carry!
+        ..setRange(1, bytes.length + 1, bytes);
+      tx.carry = null;
+    }
+    if (data.length.isOdd) {
+      tx.carry = data.last;
+      data = Uint8List.sublistView(data, 0, data.length - 1);
+    }
+    final pcm48 = walkiePcmFromBytes(data);
+    var peak = 0;
+    for (final s in pcm48) {
+      final a = s.abs();
+      if (a > peak) peak = a;
+    }
+    tx.level = min(100, peak * 100 ~/ 32000);
+    final pcm8 = tx.decimator.process(pcm48);
+    tx.frame.addAll(pcm8);
+    tx.samples8k += pcm8.length;
+    _encodeFrames(tx, flush: false);
+    if (talkElapsed >= walkieMaxTalk) unawaited(stopTalk());
+  }
+
+  void _encodeFrames(_Tx tx, {required bool flush}) {
+    final enc = tx.encoder;
+    if (enc == null) return;
+    final spf = enc.samplesPerFrame;
+    if (flush && tx.frame.isNotEmpty && tx.frame.length >= spf ~/ 2) {
+      tx.frame.addAll(List.filled(spf - tx.frame.length % spf, 0));
+    }
+    final whole = tx.frame.length ~/ spf * spf;
+    if (whole == 0) return;
+    final bits = enc.encode(Int16List.fromList(tx.frame.sublist(0, whole)));
+    tx.frame.removeRange(0, whole);
+    for (final pkt in tx.packets.add(bits)) {
+      _send(tx, pkt.encode());
+    }
+  }
+
+  void _send(_Tx tx, Uint8List payload) {
+    tx.chain = tx.chain.then((_) async {
+      if (tx.failed) return;
+      final gap = _voice.walkieGap(direct: tx.direct);
+      final last = tx.lastSent;
+      if (last != null) {
+        final wait = gap - DateTime.now().difference(last);
+        if (wait > Duration.zero) await Future<void>.delayed(wait);
+      }
+      try {
+        await _connector.sendChannelDataPacket(
+          channelIndex: tx.channel.index,
+          dataType: voxChannelDataType,
+          payload: payload,
+          zeroHop: tx.direct,
+        );
+        tx.lastSent = DateTime.now();
+      } catch (e) {
+        tx.failed = true;
+        _error = 'Could not send: $e';
+        notifyListeners();
+      }
+    });
+  }
+
+  /// The button was let go (or the talk ran out): sends what's left, then
+  /// posts the talk as a voice message.
+  Future<void> stopTalk({bool cancel = false}) async {
+    final tx = _tx;
+    if (tx == null) return;
+    tx.releaseAsked = true;
+    if (tx.startedAt == null) return; // startTalk finishes it
+    await _finish(tx, cancel: cancel);
+  }
+
+  Future<void> _finish(_Tx tx, {bool cancel = false}) async {
+    if (tx.finishing) return;
+    tx.finishing = true;
+    notifyListeners();
+    try {
+      await tx.recorder.stop();
+    } catch (_) {}
+    await tx.sub?.cancel();
+    tx.recording = false;
+    _encodeFrames(tx, flush: true);
+    _send(tx, tx.packets.finish().encode());
+    await tx.chain;
+    final bits = tx.packets.bits;
+    final ms = bits.length ~/ walkieMode.bytesPerFrame * walkieMode.frameMs;
+    if (!cancel && !tx.failed && ms >= walkieMinTalk.inMilliseconds) {
+      try {
+        await _voice.announceTalk(
+          tx.channel,
+          tx.sessionId,
+          bits,
+          durationSeconds: max(1, (ms / 1000).ceil()),
+        );
+      } catch (e) {
+        _error = 'Sent live, but the voice message failed: $e';
+      }
+    }
+    await _endTx(tx);
+    notifyListeners();
+  }
+
+  Future<void> _endTx(_Tx tx) async {
+    if (!identical(_tx, tx)) return;
+    _tx = null;
+    tx.recording = false;
+    await tx.sub?.cancel();
+    try {
+      await tx.recorder.dispose();
+    } catch (_) {}
+    tx.encoder?.dispose();
+    tx.encoder = null;
+    if (_playing == null) _voice.micBusy = false;
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    _voice.liveTalkHandler = null;
+    final tx = _tx;
+    if (tx != null) unawaited(_endTx(tx));
+    unawaited(_speaker.dispose());
+    super.dispose();
+  }
+}

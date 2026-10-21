@@ -316,6 +316,26 @@ class _WatchTabState extends State<WatchTab> {
     );
   }
 
+  /// Bloodhound on a report: points the hound at it and opens the map showing
+  /// you and it, with the guidance card.
+  void _houndOnMap(WatchItem it) {
+    FocusScope.of(context).unfocus();
+    final team = context.read<TeamService>();
+    team.houndPoint(it.lat!, it.lon!, it.place ?? it.channel.name);
+    final fix = team.fix;
+    unawaited(
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => MapScreen(
+            focusPosition: LatLng(it.lat!, it.lon!),
+            focusZoom: 16,
+            focusAlso: fix == null ? null : LatLng(fix.lat, fix.lon),
+          ),
+        ),
+      ),
+    );
+  }
+
   /// The search's Enter key or map button: the newest match with a position.
   void _showTopMatch(List<WatchItem> items) {
     final at = items.where((i) => i.hasPosition).firstOrNull;
@@ -598,6 +618,7 @@ class _WatchTabState extends State<WatchTab> {
                       item: it,
                       words: words,
                       onShowOnMap: it.hasPosition ? () => _showOnMap(it) : null,
+                      onHound: it.hasPosition ? () => _houndOnMap(it) : null,
                       unseen: feed.isUnseen(it),
                       expanded: open,
                       range: fix == null || !it.hasPosition
@@ -640,11 +661,13 @@ class _WatchCard extends StatelessWidget {
   /// The Watch search's words, marked wherever they appear.
   final List<String> words;
   final VoidCallback? onShowOnMap;
+  final VoidCallback? onHound;
   const _WatchCard({
     super.key,
     this.highlighted = false,
     this.words = const [],
     this.onShowOnMap,
+    this.onHound,
     required this.item,
     required this.unseen,
     required this.expanded,
@@ -718,25 +741,12 @@ class _WatchCard extends StatelessWidget {
                     tooltip: 'Show on map',
                     onPressed: onShowOnMap,
                   ),
-                if (it.hasPosition)
+                if (onHound != null)
                   IconButton(
                     visualDensity: VisualDensity.compact,
                     icon: const Icon(Icons.track_changes, size: 20),
                     tooltip: 'Bloodhound',
-                    onPressed: () {
-                      context.read<TeamService>().houndPoint(
-                        it.lat!,
-                        it.lon!,
-                        it.place ?? it.channel.name,
-                      );
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Bloodhound set. Open the map to follow it.',
-                          ),
-                        ),
-                      );
-                    },
+                    onPressed: onHound,
                   ),
                 if (it.url != null)
                   IconButton(

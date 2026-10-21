@@ -12690,6 +12690,119 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Use it'**
   String get mediaMesh_findUse;
+  /// No description provided for @walkie_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Walkie-talkie'**
+  String get walkie_title;
+
+  /// No description provided for @walkie_tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Walkie-talkie (push to talk)'**
+  String get walkie_tooltip;
+
+  /// No description provided for @walkie_holdToTalk.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold to talk'**
+  String get walkie_holdToTalk;
+
+  /// No description provided for @walkie_onAir.
+  ///
+  /// In en, this message translates to:
+  /// **'On air'**
+  String get walkie_onAir;
+
+  /// No description provided for @walkie_releaseToSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Let go to finish'**
+  String get walkie_releaseToSend;
+
+  /// No description provided for @walkie_starting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting…'**
+  String get walkie_starting;
+
+  /// No description provided for @walkie_finishing.
+  ///
+  /// In en, this message translates to:
+  /// **'Finishing…'**
+  String get walkie_finishing;
+
+  /// No description provided for @walkie_clear.
+  ///
+  /// In en, this message translates to:
+  /// **'Channel clear'**
+  String get walkie_clear;
+
+  /// No description provided for @walkie_someoneTalking.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone is talking'**
+  String get walkie_someoneTalking;
+
+  /// No description provided for @walkie_nameTalking.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is talking'**
+  String walkie_nameTalking(String name);
+
+  /// No description provided for @walkie_lastTalk.
+  ///
+  /// In en, this message translates to:
+  /// **'Last talk: {name}'**
+  String walkie_lastTalk(String name);
+
+  /// No description provided for @walkie_reach.
+  ///
+  /// In en, this message translates to:
+  /// **'Reach'**
+  String get walkie_reach;
+
+  /// No description provided for @walkie_viaRepeaters.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeaters'**
+  String get walkie_viaRepeaters;
+
+  /// No description provided for @walkie_direct.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct'**
+  String get walkie_direct;
+
+  /// No description provided for @walkie_repeatersHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Through repeaters: reaches the whole MediaMesh, with about 2–3 seconds of delay.'**
+  String get walkie_repeatersHelp;
+
+  /// No description provided for @walkie_directHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Radio to radio: only radios in range hear it. A little faster, and no repeater traffic.'**
+  String get walkie_directHelp;
+
+  /// No description provided for @walkie_listenLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen live when closed'**
+  String get walkie_listenLive;
+
+  /// No description provided for @walkie_listenLiveHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Play this channel\'s talks as they arrive, even with the walkie-talkie closed.'**
+  String get walkie_listenLiveHelp;
+
+  /// No description provided for @walkie_footer.
+  ///
+  /// In en, this message translates to:
+  /// **'Up to {seconds} seconds a talk. Talks go out on MediaMesh only, and each one is saved in the chat as a voice message. On a computer, hold Space to talk.'**
+  String walkie_footer(int seconds);
 }
 
 class _AppLocalizationsDelegate
