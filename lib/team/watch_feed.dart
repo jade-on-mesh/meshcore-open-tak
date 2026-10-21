@@ -595,6 +595,26 @@ class WatchFeedService extends ChangeNotifier {
   static const _kMapTtl = 'watch_map_ttl_min_v1';
   static const _kFirstSeen = 'watch_first_seen_v1';
   static const _kSounds = 'watch_sounds_v1';
+  static const _kAutoZoom = 'watch_auto_zoom_v1';
+
+  bool _autoZoom = false;
+
+  /// The map zooms in on each new watched report as it arrives.
+  bool get autoZoom => _autoZoom;
+
+  Future<void> setAutoZoom(bool v) async {
+    if (v == _autoZoom) return;
+    _autoZoom = v;
+    notifyListeners();
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setBool(_kAutoZoom, v);
+    } catch (_) {}
+  }
+
+  /// The newest watched report with a position that just arrived live (not
+  /// history), for the map's auto-zoom. Set whether or not auto-zoom is on.
+  final ValueNotifier<WatchItem?> latestArrival = ValueNotifier(null);
 
   Duration? _mapTtl = const Duration(hours: 6);
 
@@ -733,6 +753,7 @@ class WatchFeedService extends ChangeNotifier {
           _sounds[e.substring(0, i)] = WatchSound.fromName(e.substring(i + 1));
         }
       }
+      _autoZoom = p.getBool(_kAutoZoom) ?? false;
       final ttl = p.getInt(_kMapTtl);
       if (ttl != null) _mapTtl = ttl == 0 ? null : Duration(minutes: ttl);
       for (final e in p.getStringList(_kFirstSeen) ?? const <String>[]) {
@@ -809,10 +830,18 @@ class WatchFeedService extends ChangeNotifier {
       }
     }
     WatchSound? sound;
+    WatchItem? arrival;
     for (final e in fresh.entries) {
       final silent = _primed.add(e.key) || e.value.length > 5;
       for (final i in e.value) {
         if (!i.hasPosition) continue;
+        // The newest live report, for auto-zoom: drones too, every update.
+        if (!silent &&
+            (cutoff == null || !i.time.isBefore(cutoff)) &&
+            now.difference(i.time).inMinutes <= 30 &&
+            (arrival == null || i.time.isAfter(arrival.time))) {
+          arrival = i;
+        }
         final t = i.trackId;
         if (t != null) {
           final last = _trackHeard[t];
@@ -836,6 +865,7 @@ class WatchFeedService extends ChangeNotifier {
         ..addAll(items.map((i) => i.key));
     }
     if (sound != null) unawaited(_player.play(sound));
+    if (arrival != null) latestArrival.value = arrival;
   }
 
   /// Marks everything up to now as seen (clears the unread badge).
@@ -910,6 +940,7 @@ class WatchFeedService extends ChangeNotifier {
   void dispose() {
     _expiry.cancel();
     _mapFocusTimer?.cancel();
+    latestArrival.dispose();
     _player.dispose();
     _connector.removeListener(_onConnector);
     super.dispose();

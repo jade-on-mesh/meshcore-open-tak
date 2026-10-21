@@ -45,6 +45,12 @@ A point counts as new when it arrives, whether or not the map is open. A point t
 
 Change the time, or turn it off, in **App settings > Map display > Highlight new map points**: off, 1, 5, 10 (default), 15, 30, 60 or 120 minutes. Wadamesh has the same setting under its map settings.
 
+### Auto-zoom to Watched Reports (MeshCore Open TAK)
+
+With **Auto-zoom** on, the map follows your watched channels: each new report with a position that arrives while the map is open moves the map to it, zoomed in to at least street level, and lights it up with the same ring as **Show on map**. Turn it on or off with the focus button in the map's top bar (shown while you watch any channel; turning it on also jumps to the newest report) or the **Auto-zoom** chip in the Watch tab. It stays as you left it.
+
+Only live reports move the map: not a channel's history when it is first watched or the app starts, a burst of stored messages, reports more than 30 minutes old, or reports past the Watch tab's map time. A drone that keeps reporting is followed with each update. The map doesn't move while you're drawing or measuring.
+
 ### Predicted / Guessed Locations
 
 Many contacts on the mesh don't have GPS hardware, so the map has no explicit coordinates for them. Instead of leaving these contacts invisible, the app **infers an approximate position** by analyzing the repeater path the contact's messages travel through. These inferred positions are displayed as markers with a `not_listed_location` icon and a muted grey or colored border, visually distinct from confirmed-location markers.
