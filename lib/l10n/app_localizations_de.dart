@@ -7451,4 +7451,34 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get road_voiceOff => 'Spoken directions off';
+
+  @override
+  String get mediaMesh_find => 'Find MediaMesh';
+
+  @override
+  String get mediaMesh_findHelp => 'Finds which preset the MediaMesh here uses: radio2 listens on each for about 10 seconds while nearby repeaters are asked to answer. MediaMesh repeaters answer on radio2 too.';
+
+  @override
+  String mediaMesh_findListening(String preset, int step) {
+    return 'Listening on $preset ($step/2)…';
+  }
+
+  @override
+  String mediaMesh_findFound(String preset, int count) {
+    return 'MediaMesh found on $preset: $count packets heard on radio2. Use this preset?';
+  }
+
+  @override
+  String mediaMesh_findNone(String frequency) {
+    return 'No MediaMesh answered on 250 or 125 kHz at $frequency MHz.';
+  }
+
+  @override
+  String get mediaMesh_findNoneOnRadio2 => 'Repeaters nearby answered on the main mesh, but none on radio2.';
+
+  @override
+  String get mediaMesh_findNoRepeaters => 'No repeaters answered at all: out of range, or asked too often. Repeaters answer at most four times in two minutes, so try again shortly.';
+
+  @override
+  String get mediaMesh_findUse => 'Use it';
 }

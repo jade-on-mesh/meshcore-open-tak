@@ -3880,5 +3880,16 @@
   "road_sayArrived": "You have arrived.",
   "road_sayRerouting": "Rerouting.",
   "road_voiceOn": "Spoken directions on",
-  "road_voiceOff": "Spoken directions off"
+  "road_voiceOff": "Spoken directions off",
+  "mediaMesh_find": "Find MediaMesh",
+  "mediaMesh_findHelp": "Finds which preset the MediaMesh here uses: radio2 listens on each for about 10 seconds while nearby repeaters are asked to answer. MediaMesh repeaters answer on radio2 too.",
+  "mediaMesh_findListening": "Listening on {preset} ({step}/2)…",
+  "@mediaMesh_findListening": {"placeholders": {"preset": {"type": "String"}, "step": {"type": "int"}}},
+  "mediaMesh_findFound": "MediaMesh found on {preset}: {count} packets heard on radio2. Use this preset?",
+  "@mediaMesh_findFound": {"placeholders": {"preset": {"type": "String"}, "count": {"type": "int"}}},
+  "mediaMesh_findNone": "No MediaMesh answered on 250 or 125 kHz at {frequency} MHz.",
+  "@mediaMesh_findNone": {"placeholders": {"frequency": {"type": "String"}}},
+  "mediaMesh_findNoneOnRadio2": "Repeaters nearby answered on the main mesh, but none on radio2.",
+  "mediaMesh_findNoRepeaters": "No repeaters answered at all: out of range, or asked too often. Repeaters answer at most four times in two minutes, so try again shortly.",
+  "mediaMesh_findUse": "Use it"
 }

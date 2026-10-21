@@ -9,6 +9,7 @@ import '../models/radio_settings.dart';
 import '../screens/radio_console_screen.dart';
 import '../services/media_lockdown.dart';
 import '../services/media_mesh.dart';
+import '../services/media_mesh_find.dart';
 
 /// MediaMesh Settings: the connected radio's second LoRa profile (`radio2`),
 /// what goes on it, a temporary profile, and live figures. Under the normal
@@ -194,6 +195,116 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
       if (mounted) setState(() => _busyTemp = false);
     }
     await _refresh();
+  }
+
+  /// Find MediaMesh: which preset the MediaMesh here uses (media_mesh_find.dart).
+  Future<void> _find() async {
+    final l10n = context.l10n;
+    final freq =
+        double.tryParse(_frequencyController.text.trim()) ??
+        _settings.frequencyMHz;
+    final step = ValueNotifier<int>(0);
+    setState(() => _busyTemp = true);
+    final progress = showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: Text(l10n.mediaMesh_find),
+          content: ValueListenableBuilder<int>(
+            valueListenable: step,
+            builder: (context, i, child) => Row(
+              children: [
+                const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 3),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    l10n.mediaMesh_findListening(
+                      i == 0 ? l10n.mediaMesh_presetFast : l10n.mediaMesh_presetRange,
+                      i + 1,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    MediaMeshFindResult? result;
+    String? error;
+    try {
+      result = await MediaMeshFinder(
+        widget.connector,
+        _controller,
+      ).run(frequencyMHz: freq, onStep: (i) => step.value = i);
+    } on MediaMeshException catch (e) {
+      error = e.message;
+    } catch (e) {
+      error = '$e';
+    }
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+    await progress;
+    step.dispose();
+    if (!mounted) return;
+    setState(() => _busyTemp = false);
+    unawaited(_refresh());
+    if (error != null) {
+      showDismissibleSnackBar(context, content: Text(error));
+      return;
+    }
+    final r = result!;
+    final pick = r.pick;
+    final presetName = pick == LoRaBandwidth.bw125
+        ? l10n.mediaMesh_presetRange
+        : l10n.mediaMesh_presetFast;
+    final use = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.mediaMesh_find),
+        content: Text(
+          pick == null
+              ? '${l10n.mediaMesh_findNone(r.frequencyMHz.toStringAsFixed(3))}\n\n'
+                    '${r.repeatersAnswered > 0 ? l10n.mediaMesh_findNoneOnRadio2 : l10n.mediaMesh_findNoRepeaters}'
+              : l10n.mediaMesh_findFound(presetName, r.heardOnPick),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              pick == null
+                  ? MaterialLocalizations.of(ctx).okButtonLabel
+                  : MaterialLocalizations.of(ctx).cancelButtonLabel,
+            ),
+          ),
+          if (pick != null)
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(l10n.mediaMesh_findUse),
+            ),
+        ],
+      ),
+    );
+    if (use != true || pick == null || !mounted) return;
+    final wasOff = !_settings.enabled;
+    setState(() {
+      _settings = _settings.copyWith(
+        frequencyMHz: r.frequencyMHz,
+        bandwidth: pick,
+        spreadingFactor: LoRaSpreadingFactor.sf7,
+        codingRate: LoRaCodingRate.cr4_5,
+        mode: wasOff ? Radio2Mode.rxtx : _settings.mode,
+        media: wasOff ? MediaChoice.photosAndVoice : _settings.media,
+      );
+      _frequencyController.text = r.frequencyMHz.toStringAsFixed(3);
+    });
+    await _save();
   }
 
   @override
@@ -403,6 +514,17 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
         ),
         const SizedBox(height: 6),
         Text(l10n.mediaMesh_presetHelp, style: small),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: OutlinedButton.icon(
+            icon: const Icon(Icons.radar),
+            label: Text(l10n.mediaMesh_find),
+            onPressed: _saving || _busyTemp ? null : _find,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(l10n.mediaMesh_findHelp, style: small),
         const SizedBox(height: 16),
         DropdownButtonFormField<LoRaBandwidth>(
           key: ValueKey('bw-${_settings.bandwidth.name}'),

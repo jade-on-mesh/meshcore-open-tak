@@ -26,11 +26,34 @@ switching between them, so you keep hearing the main mesh.
    tuned for 910.525 (flat about 908.6-912.8 MHz) and 625 kHz above the main
    channel. It must differ from the main radio, and every node on the MediaMesh
    needs the same settings.
+   Not sure which preset the MediaMesh where you are uses? **Find MediaMesh**
+   (under the presets) tells you: see below.
 4. **Save**. The settings live on the radio, so they also apply when you are not
    connected (for example a Wadamesh radio fetching a photo by itself).
 
 The dialog also shows, every few seconds while it is open: packets received and
 sent on each profile, the measured switch time, and the radio's timing warnings.
+
+### Find MediaMesh
+
+**Find MediaMesh** finds which preset nearby MediaMesh repeaters run, in about
+20 seconds:
+
+1. radio2 listens on the *250 kHz · fast* preset, at the frequency in the form,
+   with a listen-only temporary radio2 (`set tempradio2 <MHz>,250,7,5,rx,2`).
+2. A repeater discovery request goes out on the main mesh. MediaMesh repeaters
+   (keymindCascade, `tx.reply both` by default) answer on both of their radios,
+   so their radio2 answer is only heard when radio2 listens on the preset they
+   run. The rise in `get radio2.status`'s radio2 receive count shows it.
+3. About 9 seconds later, the same on *125 kHz · range*.
+4. `set tempradio2 off` brings the saved radio2 back, and the preset that heard
+   packets is offered (a tie goes to 250 kHz). **Use it** saves it, turning
+   radio2 on for photos and voice if it was off.
+
+It needs a MediaMesh repeater in direct range. Repeaters answer at most four
+discovery requests every two minutes, so running it twice in a row may find
+nothing the second time. It won't run while a temporary radio2 is running.
+Wadamesh TAK standalones have the same button (Settings → MediaMesh).
 
 **Photos and voice stay off the main mesh.** They only go out when the
 connected radio sends them on radio2 alone (*On*, *Photos & voice*).
