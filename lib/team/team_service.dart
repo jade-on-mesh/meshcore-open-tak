@@ -15,6 +15,7 @@ import '../models/channel_message.dart';
 import '../services/image_chunk_transport.dart'
     show parseChannelDataFrame, respCodeChannelDataRecv;
 import '../services/notification_service.dart';
+import 'road_directions.dart';
 import 'team_coords.dart';
 import 'team_wire.dart';
 import 'team_wire_atak.dart';
@@ -186,6 +187,7 @@ class TeamService extends ChangeNotifier {
       _coordFormat = CoordFormat.fromIndex(p.getInt(_kCoordFormat) ?? 0);
       _recordTrack = p.getBool(_kRecordTrack) ?? true;
       _showTracks = p.getBool(_kShowTracks) ?? true;
+      _routingServer = p.getString(_kRoutingServer) ?? '';
       _myTrack.addAll(decodeTeamTrack(p.getString(_kMyTrack) ?? ''));
       _hidden.addAll(p.getStringList(_kHidden) ?? const <String>[]);
       for (final b64 in p.getStringList(_kMarkers) ?? const <String>[]) {
@@ -501,6 +503,7 @@ class TeamService extends ChangeNotifier {
       trail: trail,
     );
     onRemotePosition?.call(_members[p.senderKey4]!);
+    if (_houndMember == p.senderKey4) _updateRoad();
     _checkGeofences(
       p.senderKey4,
       _members[p.senderKey4]!.callsign,
@@ -549,6 +552,7 @@ class TeamService extends ChangeNotifier {
 
   void houndMember(String key4) {
     _routeKey = null;
+    _stopRoad();
     _houndMember = key4;
     _houndPoint = null;
     notifyListeners();
@@ -556,6 +560,7 @@ class TeamService extends ChangeNotifier {
 
   void houndPoint(double lat, double lon, String label) {
     _routeKey = null;
+    _stopRoad();
     _houndMember = null;
     _houndPoint = (lat, lon, label);
     notifyListeners();
@@ -565,7 +570,153 @@ class TeamService extends ChangeNotifier {
     _routeKey = null;
     _houndMember = null;
     _houndPoint = null;
+    _stopRoad();
     notifyListeners();
+  }
+
+  // ------------------------------------------------------ road directions
+  // Directions along roads to Bloodhound's target (road_directions.dart).
+  // Needs the internet; asks again when the phone leaves the route or a
+  // tracked teammate moves well away from where it ended.
+
+  static const _kRoutingServer = 'team_routing_server';
+  String _routingServer = '';
+  String get routingServer => _routingServer;
+  Future<void> setRoutingServer(String v) async {
+    _routingServer = v.trim();
+    await _save((p) => p.setString(_kRoutingServer, _routingServer));
+    notifyListeners();
+  }
+
+  RoadMode? _roadMode;
+  RoadRoute? _road;
+  RoadGuide? _roadGuide;
+  RoadProgress? _roadProgress;
+  String? _roadError;
+  bool _roadBusy = false;
+  DateTime? _roadAskedAt;
+  int _offRouteFixes = 0;
+  String _roadLanguage = 'en-US';
+
+  RoadMode? get roadMode => _roadMode;
+  RoadRoute? get roadRoute => _road;
+  RoadProgress? get roadProgress => _roadProgress;
+  String? get roadError => _roadError;
+  bool get roadBusy => _roadBusy;
+
+  /// For tests: where routes come from.
+  RoadRouter Function(String server)? routerFactory;
+
+  /// Directions to what Bloodhound tracks now.
+  Future<void> startDirections(RoadMode mode, {String? language}) async {
+    if (bloodhound == null || navRoute != null) return;
+    _roadMode = mode;
+    if (language != null) _roadLanguage = language;
+    _road = null;
+    _roadGuide = null;
+    _roadProgress = null;
+    _roadError = null;
+    notifyListeners();
+    await _askRoad(force: true);
+  }
+
+  void stopDirections() {
+    _stopRoad();
+    notifyListeners();
+  }
+
+  void _stopRoad() {
+    _roadMode = null;
+    _road = null;
+    _roadGuide = null;
+    _roadProgress = null;
+    _roadError = null;
+    _offRouteFixes = 0;
+  }
+
+  Future<void> _askRoad({bool force = false}) async {
+    final mode = _roadMode;
+    final target = bloodhound;
+    final f = fix;
+    if (mode == null || target == null || _roadBusy) return;
+    if (f == null) {
+      _roadError = 'Waiting for your position';
+      notifyListeners();
+      return;
+    }
+    final last = _roadAskedAt;
+    if (!force &&
+        last != null &&
+        DateTime.now().difference(last) < const Duration(seconds: 20)) {
+      return;
+    }
+    _roadBusy = true;
+    _roadAskedAt = DateTime.now();
+    notifyListeners();
+    try {
+      final router =
+          routerFactory?.call(_routingServer) ??
+          RoadRouter(server: _routingServer);
+      final r = await router.route(
+        (f.lat, f.lon),
+        (target.lat, target.lon),
+        mode,
+        language: _roadLanguage,
+      );
+      if (_roadMode != mode) return; // stopped or changed meanwhile
+      _road = r;
+      _roadGuide = RoadGuide(r);
+      _roadError = null;
+      _offRouteFixes = 0;
+      _updateRoad(ask: false);
+    } on RoadRouteError catch (e) {
+      if (_roadMode == mode) _roadError = e.message;
+    } finally {
+      _roadBusy = false;
+      notifyListeners();
+    }
+  }
+
+  /// After the phone or the target moved.
+  void _updateRoad({bool ask = true}) {
+    final g = _roadGuide, f = fix, mode = _roadMode;
+    if (mode == null) return;
+    if (g == null || f == null) {
+      if (ask && _road == null && _roadError != null) unawaited(_askRoad());
+      return;
+    }
+    final pr = g.update(f.lat, f.lon);
+    _roadProgress = pr;
+    if (!ask) return;
+    if (pr.offRouteM > roadOffRouteM(mode)) {
+      _offRouteFixes++;
+    } else {
+      _offRouteFixes = 0;
+    }
+    final t = bloodhound;
+    final targetMoved =
+        t != null &&
+        teamDistanceMeters(t.lat, t.lon, g.route.to.$1, g.route.to.$2) >
+            max(100.0, pr.remainingM * 0.15);
+    if (_offRouteFixes >= 3 || targetMoved) unawaited(_askRoad());
+  }
+
+  /// Shares the directions with the team as a route shape, which teammates'
+  /// phones and standalone radios can follow.
+  Future<TeamShape?> shareRoad() async {
+    final r = _road;
+    final t = bloodhound;
+    if (r == null) return null;
+    final label = t == null ? 'Directions' : 'To ${t.label}';
+    return putShape(
+      kind: ShapeKind.route,
+      points: roadRouteForTeam(r),
+      color: TeamColor.orange,
+      label: label,
+      routeMethod: r.mode == RoadMode.walk
+          ? RouteMethod.walking
+          : RouteMethod.driving,
+    );
   }
 
   // ------------------------------------------------------- route navigation
@@ -598,6 +749,7 @@ class TeamService extends ChangeNotifier {
         : route;
     _houndMember = null;
     _houndPoint = null;
+    _stopRoad();
     _routeKey = route.key;
     _routeReverse = reverse;
     _routeIdx = 0;
@@ -652,6 +804,7 @@ class TeamService extends ChangeNotifier {
   void _onSelfMoved() {
     _recordSelf();
     _advanceRoute();
+    _updateRoad();
     final f = fix;
     if (f != null) _checkGeofences(selfKey4, 'You', f.lat, f.lon);
   }

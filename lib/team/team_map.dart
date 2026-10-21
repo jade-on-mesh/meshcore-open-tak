@@ -10,11 +10,13 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/l10n.dart';
 import '../vox/image_message_bubble.dart' show voxRgbToUiImage;
 import '../vox/voice_message_bubble.dart';
 import '../vox/voice_service.dart';
 import '../vox/voice_wire.dart';
 import 'map_highlights.dart';
+import 'road_directions_ui.dart';
 import 'role_icon_library.dart';
 import 'tak/cot.dart';
 import 'tak/tak_service.dart';
@@ -247,7 +249,16 @@ class TeamMapLayer extends StatelessWidget {
             strokeWidth: 2,
             pattern: StrokePattern.dashed(segments: const [8, 6]),
           ),
-      if (hound != null && fix != null)
+      // Road directions to Bloodhound's target (road_directions.dart).
+      if (team.roadRoute != null)
+        Polyline(
+          points: [for (final p in team.roadRoute!.shape) LatLng(p.$1, p.$2)],
+          color: const Color(0xFF2979FF),
+          strokeWidth: 6,
+          borderColor: Colors.black54,
+          borderStrokeWidth: 1.5,
+        ),
+      if (hound != null && fix != null && team.roadRoute == null)
         Polyline(
           points: [LatLng(fix.lat, fix.lon), LatLng(hound.lat, hound.lon)],
           color: const Color(0xFFFF6D00),
@@ -1543,6 +1554,8 @@ class TeamMapOverlay extends StatelessWidget {
                 ),
               ),
             ),
+          if (hound != null && team.roadMode != null)
+            RoadDirectionsCard(team: team),
           if (hound != null)
             Card(
               child: Padding(
@@ -1592,6 +1605,12 @@ class TeamMapOverlay extends StatelessWidget {
                             : null,
                       ),
                     ],
+                    if (team.navRoute == null && team.roadMode == null)
+                      IconButton(
+                        icon: const Icon(Icons.directions),
+                        tooltip: context.l10n.road_directions,
+                        onPressed: () => showRoadDirectionsSheet(context, team),
+                      ),
                     IconButton(
                       icon: const Icon(Icons.close),
                       onPressed: team.stopHound,

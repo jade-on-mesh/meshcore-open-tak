@@ -12354,6 +12354,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unlock OTP to compare this check code.'**
   String get otpCheck_locked;
+
+  /// No description provided for @road_directions.
+  ///
+  /// In en, this message translates to:
+  /// **'Directions'**
+  String get road_directions;
+
+  /// No description provided for @road_directionsTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Directions to {target}'**
+  String road_directionsTo(String target);
+
+  /// No description provided for @road_drive.
+  ///
+  /// In en, this message translates to:
+  /// **'Drive'**
+  String get road_drive;
+
+  /// No description provided for @road_walk.
+  ///
+  /// In en, this message translates to:
+  /// **'Walk'**
+  String get road_walk;
+
+  /// No description provided for @road_bike.
+  ///
+  /// In en, this message translates to:
+  /// **'Bike'**
+  String get road_bike;
+
+  /// No description provided for @road_help.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn-by-turn along roads and paths, from OpenStreetMap. Needs the internet; Bloodhound keeps range and bearing without it. It finds a new route if you leave this one or your teammate moves.'**
+  String get road_help;
+
+  /// No description provided for @road_server.
+  ///
+  /// In en, this message translates to:
+  /// **'Routing server (Valhalla)'**
+  String get road_server;
+
+  /// No description provided for @road_serverHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty: the public FOSSGIS server, for light use. Put your own Valhalla server here for a team.'**
+  String get road_serverHelp;
+
+  /// No description provided for @road_finding.
+  ///
+  /// In en, this message translates to:
+  /// **'Finding a route...'**
+  String get road_finding;
+
+  /// No description provided for @road_then.
+  ///
+  /// In en, this message translates to:
+  /// **'In {distance}'**
+  String road_then(String distance);
+
+  /// No description provided for @road_left.
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} · {time} to go'**
+  String road_left(String distance, String time);
+
+  /// No description provided for @road_arrived.
+  ///
+  /// In en, this message translates to:
+  /// **'You have arrived'**
+  String get road_arrived;
+
+  /// No description provided for @road_share.
+  ///
+  /// In en, this message translates to:
+  /// **'Share with team'**
+  String get road_share;
+
+  /// No description provided for @road_shared.
+  ///
+  /// In en, this message translates to:
+  /// **'Route shared with the team: phones and standalone radios can follow it'**
+  String get road_shared;
+
+  /// No description provided for @road_stop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop directions'**
+  String get road_stop;
+
+  /// No description provided for @road_retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get road_retry;
 }
 
 class _AppLocalizationsDelegate
