@@ -1617,8 +1617,7 @@ class TeamMapOverlay extends StatelessWidget {
                       ),
                     ],
                     if (team.navRoute == null && team.roadMode == null)
-                      IconButton(
-                        icon: const Icon(Icons.directions),
+                      RoadSignButton(
                         tooltip: context.l10n.road_directions,
                         onPressed: () => showRoadDirectionsSheet(context, team),
                       ),
