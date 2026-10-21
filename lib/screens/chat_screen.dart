@@ -746,9 +746,8 @@ class _ChatScreenState extends State<ChatScreen> {
               : null,
           recipientLabel: _resolveContact(connector).name,
           caption: caption,
-          onSend: (image, text) => context
-              .read<VoxVoiceService>()
-              .sendImageToContact(
+          onSend: (image, text) =>
+              context.read<VoxVoiceService>().sendImageToContact(
                 _resolveContact(connector),
                 image,
                 caption: text,
@@ -760,9 +759,8 @@ class _ChatScreenState extends State<ChatScreen> {
             _resolveContact(connector),
           ),
           caption: caption,
-          onSend: (clip, text) => context
-              .read<VoxVoiceService>()
-              .sendClipToContact(
+          onSend: (clip, text) =>
+              context.read<VoxVoiceService>().sendClipToContact(
                 _resolveContact(connector),
                 clip,
                 caption: text,
