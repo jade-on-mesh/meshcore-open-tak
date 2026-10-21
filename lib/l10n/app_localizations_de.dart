@@ -7456,7 +7456,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get mediaMesh_find => 'Find MediaMesh';
 
   @override
-  String get mediaMesh_findHelp => 'Finds which preset the MediaMesh here uses: radio2 listens on each for about 10 seconds while nearby repeaters are asked to answer. MediaMesh repeaters answer on radio2 too.';
+  String get mediaMesh_findHelp => 'Asks the repeaters in range which radio2 profile they run, like Discover Repeaters. If none can say, radio2 listens on each preset for about 10 seconds instead.';
 
   @override
   String mediaMesh_findListening(String preset, int step) {
@@ -7542,4 +7542,27 @@ class AppLocalizationsDe extends AppLocalizations {
   String walkie_footer(int seconds) {
     return 'Up to $seconds seconds a talk. Talks go out on MediaMesh only, and each one is saved in the chat as a voice message. On a computer, hold Space to talk.';
   }
+
+  @override
+  String get mediaMesh_findAsking => 'Asking repeaters nearby…';
+
+  @override
+  String mediaMesh_findReported(int count, int total, String profile) {
+    return '$count of $total repeaters nearby run radio2 on $profile.';
+  }
+
+  @override
+  String get mediaMesh_findReportedNone => 'Repeaters nearby answered, but none has radio2 on.';
+
+  @override
+  String get mediaMesh_findRadio2Off => 'radio2 off';
+
+  @override
+  String get mediaMesh_findNotSaid => 'didn\'t say';
+
+  @override
+  String get mediaMesh_findListenOnly => 'listen only';
+
+  @override
+  String get mediaMesh_findTemporary => 'temporary';
 }
