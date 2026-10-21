@@ -964,16 +964,24 @@ Uint8List buildSendControlDataFrame(Uint8List payload) {
   return writer.toBytes();
 }
 
+/// DISCOVER_REQ flag (byte 0, bit 1): "include your radio2 profile". Proposed
+/// for keymindCascade repeaters ([DiscoverRadio2]); stock firmware only looks
+/// at the top four bits of byte 0, so it ignores the flag.
+const int discoverReqWantRadio2 = 0x02;
+
 Uint8List buildDiscoveryRequestPayload(
   int tag, {
   bool prefixOnly = false,
+  bool wantRadio2 = false,
   int typeMask = 1 << advTypeRepeater,
 }) {
   final writer = BufferWriter();
   // The high bit must be set for CMD_SEND_CONTROL_DATA; DISCOVER_REQ uses
   // subtype 0x8, with the low bit selecting short/full public keys in replies.
   writer.writeByte(
-    (controlSubtypeDiscoverReq << 4) | (prefixOnly ? 0x01 : 0x00),
+    (controlSubtypeDiscoverReq << 4) |
+        (prefixOnly ? 0x01 : 0x00) |
+        (wantRadio2 ? discoverReqWantRadio2 : 0x00),
   );
   writer.writeByte(typeMask);
   writer.writeUInt32LE(tag);
@@ -987,8 +995,75 @@ Uint8List buildDiscoveryRequestPayload(
 const int nodeDiscoverScanTypeMask =
     (1 << advTypeRepeater) | (1 << advTypeRoom) | (1 << advTypeSensor);
 
+/// A repeater's radio2 (MediaMesh) profile, appended to its DISCOVER_RESP
+/// after the public key when the request set [discoverReqWantRadio2]:
+/// `[ver=1][flags][freq u32 LE, MHz x1000][bw u32 LE, kHz x1000][sf][cr]`.
+/// flags: bit 0 radio2 configured, bits 1-2 mode (0 off, 1 rx, 2 rxtx),
+/// bit 3 a temporary profile (tempradio2). Radio2 off is just `[1][0]`.
+/// The same layout as Wadamesh TAK's mediamesh::DiscoverRadio2 (MediaMeshCore.h).
+class DiscoverRadio2 {
+  const DiscoverRadio2({
+    required this.configured,
+    this.mode = 0,
+    this.temporary = false,
+    this.frequencyKHz = 0,
+    this.bandwidthHz = 0,
+    this.spreadingFactor = 0,
+    this.codingRate = 0,
+  });
+
+  static const int version = 1;
+  static const int fullLength = 12;
+
+  final bool configured;
+
+  /// 0 off, 1 listen only, 2 listen and send.
+  final int mode;
+  final bool temporary;
+  final int frequencyKHz;
+  final int bandwidthHz;
+  final int spreadingFactor;
+  final int codingRate;
+
+  /// radio2 is on (configured and not off).
+  bool get active => configured && mode != 0;
+  double get frequencyMHz => frequencyKHz / 1000.0;
+
+  /// Null when [bytes] is not this trailer. A later version may append more;
+  /// the first twelve bytes keep their meaning.
+  static DiscoverRadio2? tryParse(Uint8List bytes) {
+    if (bytes.length < 2 || bytes[0] < version) return null;
+    final flags = bytes[1];
+    if ((flags & 0x01) == 0) return const DiscoverRadio2(configured: false);
+    if (bytes.length < fullLength) return null;
+    final data = ByteData.sublistView(bytes);
+    return DiscoverRadio2(
+      configured: true,
+      mode: (flags >> 1) & 0x03,
+      temporary: (flags & 0x08) != 0,
+      frequencyKHz: data.getUint32(2, Endian.little),
+      bandwidthHz: data.getUint32(6, Endian.little),
+      spreadingFactor: bytes[10],
+      codingRate: bytes[11],
+    );
+  }
+
+  Uint8List encode() {
+    if (!configured) return Uint8List.fromList([version, 0]);
+    final out = Uint8List(fullLength);
+    final data = ByteData.sublistView(out);
+    out[0] = version;
+    out[1] = 0x01 | ((mode & 0x03) << 1) | (temporary ? 0x08 : 0);
+    data.setUint32(2, frequencyKHz, Endian.little);
+    data.setUint32(6, bandwidthHz, Endian.little);
+    out[10] = spreadingFactor;
+    out[11] = codingRate;
+    return out;
+  }
+}
+
 /// One DISCOVER_RESP, as pushed by the companion in PUSH_CODE_CONTROL_DATA:
-/// `[0x8E][snr x4 int8][rssi int8][path_len][0x9<type>][snr x4 int8][tag u32 LE][pub_key 8|32]`.
+/// `[0x8E][snr x4 int8][rssi int8][path_len][0x9<type>][snr x4 int8][tag u32 LE][pub_key 8|32][radio2?]`.
 class NodeDiscoverResponse {
   NodeDiscoverResponse({
     required this.nodeType,
@@ -997,7 +1072,15 @@ class NodeDiscoverResponse {
     required this.remoteSnr,
     required this.tag,
     required this.publicKey,
-  });
+    Uint8List? extra,
+  }) : extra = extra ?? Uint8List(0);
+
+  /// Bytes after the public key: a [DiscoverRadio2] trailer when asked for.
+  final Uint8List extra;
+
+  /// The repeater's radio2 profile, or null when it didn't say (stock or
+  /// older firmware, or not asked).
+  DiscoverRadio2? get radio2 => DiscoverRadio2.tryParse(extra);
 
   final int nodeType;
 
@@ -1033,6 +1116,8 @@ NodeDiscoverResponse? parseNodeDiscoverResponse(Uint8List frame) {
   final remoteSnr = reader.readInt8() / 4.0;
   final tag = reader.readUInt32LE();
   final keyBytes = reader.readRemainingBytes();
+  // A full key with a radio2 trailer is 44+ bytes; a prefix with one is at
+  // most 20, so the key length still follows from what is left.
   final keyLength = keyBytes.length >= pubKeySize ? pubKeySize : 8;
   return NodeDiscoverResponse(
     nodeType: typeByte & 0x0F,
@@ -1041,6 +1126,7 @@ NodeDiscoverResponse? parseNodeDiscoverResponse(Uint8List frame) {
     remoteSnr: remoteSnr,
     tag: tag,
     publicKey: Uint8List.fromList(keyBytes.sublist(0, keyLength)),
+    extra: Uint8List.fromList(keyBytes.sublist(keyLength)),
   );
 }
 

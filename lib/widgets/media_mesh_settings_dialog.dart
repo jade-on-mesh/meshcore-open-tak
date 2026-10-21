@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../connector/meshcore_connector.dart';
+import '../connector/meshcore_protocol.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../l10n/l10n.dart';
 import '../models/radio_settings.dart';
@@ -197,13 +198,14 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
     await _refresh();
   }
 
-  /// Find MediaMesh: which preset the MediaMesh here uses (media_mesh_find.dart).
+  /// Find MediaMesh: the radio2 profile the MediaMesh here uses
+  /// (media_mesh_find.dart).
   Future<void> _find() async {
     final l10n = context.l10n;
     final freq =
         double.tryParse(_frequencyController.text.trim()) ??
         _settings.frequencyMHz;
-    final step = ValueNotifier<int>(0);
+    final step = ValueNotifier<int>(-1);
     setState(() => _busyTemp = true);
     final progress = showDialog<void>(
       context: context,
@@ -224,10 +226,14 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(
-                    l10n.mediaMesh_findListening(
-                      i == 0 ? l10n.mediaMesh_presetFast : l10n.mediaMesh_presetRange,
-                      i + 1,
-                    ),
+                    i < 0
+                        ? l10n.mediaMesh_findAsking
+                        : l10n.mediaMesh_findListening(
+                            i == 0
+                                ? l10n.mediaMesh_presetFast
+                                : l10n.mediaMesh_presetRange,
+                            i + 1,
+                          ),
                   ),
                 ),
               ],
@@ -260,6 +266,10 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
       return;
     }
     final r = result!;
+    if (r.asked) {
+      await _foundAsked(r);
+      return;
+    }
     final pick = r.pick;
     final presetName = pick == LoRaBandwidth.bw125
         ? l10n.mediaMesh_presetRange
@@ -304,6 +314,103 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
       );
       _frequencyController.text = r.frequencyMHz.toStringAsFixed(3);
     });
+    await _save();
+  }
+
+  /// The repeaters answered with their radio2 profiles: list them, and offer
+  /// the one most of them run.
+  Future<void> _foundAsked(MediaMeshFindResult r) async {
+    final l10n = context.l10n;
+    final p = r.reported;
+    String describe(DiscoverRadio2? d) {
+      if (d == null) return l10n.mediaMesh_findNotSaid;
+      if (!d.active) return l10n.mediaMesh_findRadio2Off;
+      final parts = <String>[
+        '${d.frequencyMHz.toStringAsFixed(3)} MHz',
+        '${(d.bandwidthHz / 1000).toStringAsFixed(d.bandwidthHz % 1000 == 0 ? 0 : 2)} kHz',
+        'SF${d.spreadingFactor}',
+        if (d.mode == 1) l10n.mediaMesh_findListenOnly,
+        if (d.temporary) l10n.mediaMesh_findTemporary,
+      ];
+      return parts.join(' · ');
+    }
+
+    final use = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.mediaMesh_find),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                p == null
+                    ? l10n.mediaMesh_findReportedNone
+                    : l10n.mediaMesh_findReported(
+                        p.repeaters,
+                        r.nearby.length,
+                        p.label,
+                      ),
+              ),
+              const SizedBox(height: 12),
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    for (final n in r.nearby)
+                      ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.cell_tower),
+                        title: Text(
+                          n.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(describe(n.radio2)),
+                        trailing: Text(
+                          'SNR ${n.response.snr.toStringAsFixed(1)}',
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              p == null
+                  ? MaterialLocalizations.of(ctx).okButtonLabel
+                  : MaterialLocalizations.of(ctx).cancelButtonLabel,
+            ),
+          ),
+          if (p != null)
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(l10n.mediaMesh_findUse),
+            ),
+        ],
+      ),
+    );
+    if (use != true || p == null || !mounted) return;
+    final wasOff = !_settings.enabled;
+    setState(() {
+      _settings = _settings.copyWith(
+        frequencyMHz: p.frequencyMHz,
+        bandwidth: p.bandwidth,
+        spreadingFactor: p.spreadingFactor,
+        codingRate: p.codingRate,
+        mode: wasOff ? Radio2Mode.rxtx : _settings.mode,
+        media: wasOff ? MediaChoice.photosAndVoice : _settings.media,
+      );
+      _frequencyController.text = p.frequencyMHz.toStringAsFixed(3);
+    });
+    _validateFrequency(_frequencyController.text);
     await _save();
   }
 

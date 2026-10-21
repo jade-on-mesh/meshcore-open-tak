@@ -12652,7 +12652,7 @@ abstract class AppLocalizations {
   /// No description provided for @mediaMesh_findHelp.
   ///
   /// In en, this message translates to:
-  /// **'Finds which preset the MediaMesh here uses: radio2 listens on each for about 10 seconds while nearby repeaters are asked to answer. MediaMesh repeaters answer on radio2 too.'**
+  /// **'Asks the repeaters in range which radio2 profile they run, like Discover Repeaters. If none can say, radio2 listens on each preset for about 10 seconds instead.'**
   String get mediaMesh_findHelp;
 
   /// No description provided for @mediaMesh_findListening.
@@ -12803,6 +12803,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Up to {seconds} seconds a talk. Talks go out on MediaMesh only, and each one is saved in the chat as a voice message. On a computer, hold Space to talk.'**
   String walkie_footer(int seconds);
+
+  /// No description provided for @mediaMesh_findAsking.
+  ///
+  /// In en, this message translates to:
+  /// **'Asking repeaters nearby…'**
+  String get mediaMesh_findAsking;
+
+  /// No description provided for @mediaMesh_findReported.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} of {total} repeaters nearby run radio2 on {profile}.'**
+  String mediaMesh_findReported(int count, int total, String profile);
+
+  /// No description provided for @mediaMesh_findReportedNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeaters nearby answered, but none has radio2 on.'**
+  String get mediaMesh_findReportedNone;
+
+  /// No description provided for @mediaMesh_findRadio2Off.
+  ///
+  /// In en, this message translates to:
+  /// **'radio2 off'**
+  String get mediaMesh_findRadio2Off;
+
+  /// No description provided for @mediaMesh_findNotSaid.
+  ///
+  /// In en, this message translates to:
+  /// **'didn\'t say'**
+  String get mediaMesh_findNotSaid;
+
+  /// No description provided for @mediaMesh_findListenOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'listen only'**
+  String get mediaMesh_findListenOnly;
+
+  /// No description provided for @mediaMesh_findTemporary.
+  ///
+  /// In en, this message translates to:
+  /// **'temporary'**
+  String get mediaMesh_findTemporary;
 }
 
 class _AppLocalizationsDelegate
