@@ -3853,5 +3853,15 @@
   "road_turnIn": "{turn} in {distance} · {left} left",
   "@road_turnIn": {"placeholders": {"turn": {"type": "String"}, "distance": {"type": "String"}, "left": {"type": "String"}}},
   "road_arriveIn": "Arrive in {distance}",
-  "@road_arriveIn": {"placeholders": {"distance": {"type": "String"}}}
+  "@road_arriveIn": {"placeholders": {"distance": {"type": "String"}}},
+  "hound_title": "Bloodhound",
+  "hound_help": "Live range and bearing to a target, and directions to it.",
+  "hound_teammates": "Teammates",
+  "hound_nodes": "Nodes with a position (nearest first)",
+  "hound_watched": "Watched reports on the map",
+  "hound_mapCentre": "Centre of the map",
+  "hound_noTeammates": "No teammates heard yet",
+  "hound_noNodes": "No nodes with a position yet",
+  "hound_away": "{distance} away",
+  "@hound_away": {"placeholders": {"distance": {"type": "String"}}}
 }

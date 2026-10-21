@@ -7374,4 +7374,33 @@ class AppLocalizationsDe extends AppLocalizations {
   String road_arriveIn(String distance) {
     return 'Arrive in $distance';
   }
+
+  @override
+  String get hound_title => 'Bloodhound';
+
+  @override
+  String get hound_help => 'Live range and bearing to a target, and directions to it.';
+
+  @override
+  String get hound_teammates => 'Teammates';
+
+  @override
+  String get hound_nodes => 'Nodes with a position (nearest first)';
+
+  @override
+  String get hound_watched => 'Watched reports on the map';
+
+  @override
+  String get hound_mapCentre => 'Centre of the map';
+
+  @override
+  String get hound_noTeammates => 'No teammates heard yet';
+
+  @override
+  String get hound_noNodes => 'No nodes with a position yet';
+
+  @override
+  String hound_away(String distance) {
+    return '$distance away';
+  }
 }

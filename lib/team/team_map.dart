@@ -172,6 +172,7 @@ class TeamMapLayer extends StatelessWidget {
     final shared = team.points;
     final atakShapes = team.atakShapes;
     if (!team.enabled &&
+        team.bloodhound == null &&
         tak.entities.isEmpty &&
         watched.isEmpty &&
         team.shapes.isEmpty &&
@@ -1525,8 +1526,10 @@ class TeamMapOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final team = context.watch<TeamService>();
-    if (!team.enabled) return const SizedBox.shrink();
-    final own = team.activeOwnAlert;
+    // Bloodhound works without a team (a repeater, a watched report): then
+    // only its cards show.
+    if (!team.enabled && team.bloodhound == null) return const SizedBox.shrink();
+    final own = team.enabled ? team.activeOwnAlert : null;
     final hound = team.bloodhound;
     final fix = team.fix;
     return Positioned(
@@ -1626,26 +1629,28 @@ class TeamMapOverlay extends StatelessWidget {
                 ),
               ),
             ),
-          const SizedBox(height: 6),
-          _StatusPill(team: team),
-          if (fix != null) ...[
-            const SizedBox(height: 4),
-            _CoordPill(team: team, fix: fix),
-          ],
-          const SizedBox(height: 8),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _SosButton(team: team),
-              const SizedBox(width: 10),
-              FloatingActionButton.small(
-                heroTag: 'tak-quick',
-                tooltip: 'Pin, report or status',
-                onPressed: () => _quickActions(context, team),
-                child: const Icon(Icons.add),
-              ),
+          if (team.enabled) ...[
+            const SizedBox(height: 6),
+            _StatusPill(team: team),
+            if (fix != null) ...[
+              const SizedBox(height: 4),
+              _CoordPill(team: team, fix: fix),
             ],
-          ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _SosButton(team: team),
+                const SizedBox(width: 10),
+                FloatingActionButton.small(
+                  heroTag: 'tak-quick',
+                  tooltip: 'Pin, report or status',
+                  onPressed: () => _quickActions(context, team),
+                  child: const Icon(Icons.add),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

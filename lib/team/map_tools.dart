@@ -7,9 +7,15 @@ import 'package:flutter_map/flutter_map.dart' show LatLngBounds;
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
+import '../connector/meshcore_connector.dart';
+import '../connector/meshcore_protocol.dart'
+    show advTypeChat, advTypeRepeater, advTypeRoom, advTypeSensor;
+import '../l10n/contact_localization.dart';
+import '../l10n/l10n.dart';
 import '../screens/map_packs_screen.dart';
 import '../vox/image_send_sheet.dart';
 import '../vox/voice_service.dart';
+import 'road_directions.dart' show roadDistance;
 import 'team_casevac_ui.dart';
 import 'team_draw.dart';
 import 'team_forms.dart';
@@ -20,6 +26,7 @@ import 'team_packages.dart';
 import 'team_screen.dart';
 import 'team_service.dart';
 import 'team_wire.dart';
+import 'watch_feed.dart';
 
 class _Tool {
   final IconData icon;
@@ -129,7 +136,6 @@ Future<void> showMapTools(
       'Bloodhound',
       (c) => _showHoundPicker(c, team, mapCenter),
       color: const Color(0xFFFF6D00),
-      needsTeam: true,
     ),
     _Tool(Icons.groups_outlined, 'Team', (c) => _openTactical(c, 0)),
     _Tool(Icons.place_outlined, 'Pins', (c) => _openTactical(c, 2)),
@@ -417,63 +423,133 @@ Future<void> _showHoundPicker(
   BuildContext context,
   TeamService team,
   LatLng mapCenter,
-) => showModalBottomSheet<void>(
-  context: context,
-  showDragHandle: true,
-  isScrollControlled: true,
-  builder: (c) {
-    final members = team.members;
-    return SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(c).size.height * 0.6,
-        ),
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            const ListTile(
-              title: Text('Bloodhound'),
-              subtitle: Text('Live range and bearing to a target.'),
-            ),
-            for (final m in members)
+) {
+  final l10n = context.l10n;
+  final connector = context.read<MeshCoreConnector>();
+  final watch = context.read<WatchFeedService>();
+  final fix = team.fix;
+  final here = fix == null ? mapCenter : LatLng(fix.lat, fix.lon);
+  double away(double lat, double lon) =>
+      teamDistanceMeters(here.latitude, here.longitude, lat, lon);
+  // Repeaters, rooms, sensors and chat nodes with a position, nearest first.
+  final nodes = [
+    for (final c in connector.contacts)
+      if (c.hasLocation) (c, away(c.latitude!, c.longitude!)),
+  ]..sort((a, b) => a.$2.compareTo(b.$2));
+  final watched = [
+    for (final w in watch.mapItems)
+      if (w.hasPosition) (w, away(w.lat!, w.lon!)),
+  ]..sort((a, b) => a.$2.compareTo(b.$2));
+  IconData nodeIcon(int type) => switch (type) {
+    advTypeChat => Icons.person,
+    advTypeRepeater => Icons.router,
+    advTypeRoom => Icons.meeting_room,
+    advTypeSensor => Icons.sensors,
+    _ => Icons.device_unknown,
+  };
+  Widget header(BuildContext c, String t) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+    child: Text(t, style: Theme.of(c).textTheme.labelLarge),
+  );
+  return showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (c) {
+      final members = team.enabled ? team.members : const <TeamMember>[];
+      return SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(c).size.height * 0.75,
+          ),
+          child: ListView(
+            shrinkWrap: true,
+            children: [
               ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: Color(m.position.color.argb),
-                  child: Icon(
-                    teamRoleIconFor(team, m.position.roleId),
-                    color: Colors.white,
-                  ),
-                ),
-                title: Text(m.callsign),
-                subtitle: Text(team.roleName(m.position.roleId)),
+                title: Text(l10n.hound_title),
+                subtitle: Text(l10n.hound_help),
+              ),
+              ListTile(
+                leading: const Icon(Icons.center_focus_strong),
+                title: Text(l10n.hound_mapCentre),
                 onTap: () {
-                  team.houndMember(m.key4);
+                  team.houndPoint(
+                    mapCenter.latitude,
+                    mapCenter.longitude,
+                    l10n.hound_mapCentre,
+                  );
                   Navigator.pop(c);
                 },
               ),
-            if (members.isEmpty)
-              const ListTile(
-                enabled: false,
-                title: Text('No teammates heard yet'),
-              ),
-            ListTile(
-              leading: const Icon(Icons.center_focus_strong),
-              title: const Text('Centre of the map'),
-              onTap: () {
-                team.houndPoint(
-                  mapCenter.latitude,
-                  mapCenter.longitude,
-                  'Map point',
-                );
-                Navigator.pop(c);
-              },
-            ),
-          ],
+              if (team.enabled) ...[
+                header(c, l10n.hound_teammates),
+                for (final m in members)
+                  ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Color(m.position.color.argb),
+                      child: Icon(
+                        teamRoleIconFor(team, m.position.roleId),
+                        color: Colors.white,
+                      ),
+                    ),
+                    title: Text(m.callsign),
+                    subtitle: Text(team.roleName(m.position.roleId)),
+                    onTap: () {
+                      team.houndMember(m.key4);
+                      Navigator.pop(c);
+                    },
+                  ),
+                if (members.isEmpty)
+                  ListTile(enabled: false, title: Text(l10n.hound_noTeammates)),
+              ],
+              if (watched.isNotEmpty) ...[
+                header(c, l10n.hound_watched),
+                for (final (w, d) in watched.take(30))
+                  ListTile(
+                    leading: Icon(
+                      w.isDrone ? Icons.flight : Icons.place,
+                      color: Color(w.level.argb),
+                    ),
+                    title: Text(
+                      w.headline,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(
+                      '${w.channel.name} · ${l10n.hound_away(roadDistance(d))}',
+                    ),
+                    onTap: () {
+                      team.houndPoint(
+                        w.lat!,
+                        w.lon!,
+                        w.place ?? w.headline,
+                      );
+                      Navigator.pop(c);
+                    },
+                  ),
+              ],
+              header(c, l10n.hound_nodes),
+              for (final (n, d) in nodes.take(60))
+                ListTile(
+                  leading: Icon(nodeIcon(n.type)),
+                  title: Text(n.name),
+                  subtitle: Text(
+                    '${n.typeLabel(l10n)} · ${l10n.hound_away(roadDistance(d))}',
+                  ),
+                  onTap: () {
+                    team.houndContact(n.publicKeyHex);
+                    Navigator.pop(c);
+                  },
+                ),
+              if (nodes.isEmpty)
+                ListTile(enabled: false, title: Text(l10n.hound_noNodes)),
+            ],
+          ),
         ),
-      ),
-    );
-  },
-);
+      );
+    },
+  );
+}
 
 // ----------------------------------------------------------------- status
 
