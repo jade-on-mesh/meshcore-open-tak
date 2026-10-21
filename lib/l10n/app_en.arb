@@ -3810,5 +3810,18 @@
   "sound_playing": "Playing…",
   "sound_playByShareHelp": "For a T-Deck or another phone: they listen (Scan, then Listen) while this plays.",
   "sound_playFailed": "Couldn't play it: {error}",
-  "@sound_playFailed": {"placeholders": {"error": {"type": "String"}}}
+  "@sound_playFailed": {"placeholders": {"error": {"type": "String"}}},
+  "otpCheck_title": "Check code",
+  "otpCheck_subtitle": "The same code on both devices means the same pad. Read it out, or play it by sound; it reveals nothing about the pad.",
+  "otpCheck_play": "Play the check code",
+  "otpCheck_listen": "Listen for a check code",
+  "otpCheck_same": "Same pad on both devices.",
+  "otpCheck_different": "Different pad bytes. Share the pad again before using it.",
+  "otpCheck_differentLength": "Different pad: theirs is {theirs} bytes, this one {mine}. Share it again before using it.",
+  "@otpCheck_differentLength": {"placeholders": {"theirs": {"type": "int"}, "mine": {"type": "int"}}},
+  "otpCheck_heard": "Pad check",
+  "otpCheck_matches": "Same pad as {name}.",
+  "@otpCheck_matches": {"placeholders": {"name": {"type": "String"}}},
+  "otpCheck_noMatch": "No pad here matches this check code.",
+  "otpCheck_locked": "Unlock OTP to compare this check code."
 }

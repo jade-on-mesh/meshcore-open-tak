@@ -9,8 +9,10 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../connector/meshcore_connector.dart';
+import '../l10n/app_localizations.dart';
 import '../l10n/l10n.dart';
 import '../models/channel.dart';
+import '../services/otp_pad_check.dart';
 import '../utils/channel_qr.dart';
 import 'ggwave_ffi.dart';
 import 'sound_link.dart';
@@ -138,6 +140,23 @@ class _SoundLinkScreenState extends State<SoundLinkScreen> {
   }
 
   Future<void> _onHeard(String heard) async {
+    final check = parsePadCheck(heard);
+    if (check != null) {
+      if (!mounted) return;
+      // An OTP pad's check code: say whether a pad here is the same one.
+      final l10n = context.l10n;
+      final result = _comparePadCheck(check, l10n);
+      setState(
+        () => _lines.insert(
+          0,
+          _Line(
+            WavestMessage(sender: l10n.otpCheck_heard, text: result, raw: true),
+            false,
+          ),
+        ),
+      );
+      return;
+    }
     final m = await wavestParse(heard, passkey: _passkey.text);
     if (!mounted) return;
     setState(() => _lines.insert(0, _Line(m, false)));
@@ -147,6 +166,25 @@ class _SoundLinkScreenState extends State<SoundLinkScreen> {
     if (ch != null && c != null && !m.raw && m.readable && m.text.isNotEmpty) {
       await c.sendChannelMessage(ch, '$_bridgeTag ${m.sender}: ${m.text}');
     }
+  }
+
+  String _comparePadCheck(PadCheck check, AppLocalizations l10n) {
+    final c = _connector;
+    if (c == null) return l10n.otpCheck_noMatch;
+    if (c.otpLocked) return l10n.otpCheck_locked;
+    for (final contact in c.contacts) {
+      final pad = c.getContactOtpPad(contact.publicKeyHex);
+      if (pad != null && padCheckOfHex(pad.padHex).sameAs(check)) {
+        return l10n.otpCheck_matches(contact.name);
+      }
+    }
+    for (final channel in c.channels) {
+      final pad = c.getChannelOtpPad(channel.index);
+      if (pad != null && padCheckOfHex(pad.padHex).sameAs(check)) {
+        return l10n.otpCheck_matches(channel.name);
+      }
+    }
+    return l10n.otpCheck_noMatch;
   }
 
   // ---- sending -------------------------------------------------------------

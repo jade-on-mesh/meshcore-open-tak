@@ -11,11 +11,15 @@ import '../models/contact.dart';
 import '../models/otp_pad.dart';
 import '../models/otp_sync_status.dart';
 import '../models/otp_theme.dart';
+import '../l10n/l10n.dart';
 import '../services/app_settings_service.dart';
+import '../services/otp_pad_check.dart';
 import '../services/otp_service.dart';
 import '../theme/mesh_theme.dart';
 import '../widgets/adaptive_app_bar_title.dart';
 import '../widgets/mesh_ui.dart';
+import '../sound/sound_link.dart';
+import '../sound/sound_share_widgets.dart';
 import '../widgets/otp_pad_qr_dialog.dart';
 import 'otp_lock_screen.dart';
 
@@ -45,6 +49,12 @@ class _OtpPadScreenState extends State<OtpPadScreen> {
   int _generateBytes = 2048;
   bool _busy = false;
   String? _formError;
+  // Checking the pad (otp_pad_check.dart): the last result, and whether it
+  // was a match. Cleared when the pad changes.
+  String? _checkResult;
+  bool _checkOk = false;
+  String? _checkFor;
+  bool _checkPlaying = false;
 
   bool get _isChannel => widget.channel != null;
 
@@ -731,6 +741,8 @@ class _OtpPadScreenState extends State<OtpPadScreen> {
             onTap: () => _showPadQr(pad),
           ),
           const Divider(height: 8),
+          _buildCheck(context, pad),
+          const Divider(height: 8),
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: Icon(Icons.refresh, color: MeshPalette.warn),
@@ -757,6 +769,104 @@ class _OtpPadScreenState extends State<OtpPadScreen> {
         ],
       ),
     );
+  }
+
+  // ── Check code: the same on both devices means the same pad ─────────
+
+  Widget _buildCheck(BuildContext context, OtpPad pad) {
+    final l10n = context.l10n;
+    final check = padCheckOfHex(pad.padHex);
+    final result = _checkFor == check.fingerprint ? _checkResult : null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.fact_check_outlined),
+          title: Text(l10n.otpCheck_title),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SelectableText(
+                check.code,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontFamily: 'monospace',
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(l10n.otpCheck_subtitle),
+            ],
+          ),
+        ),
+        if (result != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              children: [
+                Icon(
+                  _checkOk ? Icons.check_circle : Icons.error,
+                  color: _checkOk ? MeshPalette.signal : MeshPalette.alert,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(child: Text(result)),
+              ],
+            ),
+          ),
+        if (SoundLink.instance.available)
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _checkPlaying ? null : () => _playCheck(check),
+                icon: const Icon(Icons.graphic_eq),
+                label: Text(l10n.otpCheck_play),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _listenCheck(check),
+                icon: const Icon(Icons.hearing),
+                label: Text(l10n.otpCheck_listen),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Future<void> _playCheck(PadCheck check) async {
+    setState(() => _checkPlaying = true);
+    try {
+      await SoundLink.instance.play(check.link);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.sound_playFailed('$e'))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _checkPlaying = false);
+    }
+  }
+
+  Future<void> _listenCheck(PadCheck mine) async {
+    final heard = await showSoundListenSheet(
+      context,
+      accept: (h) => parsePadCheck(h) != null,
+    );
+    if (heard == null || !mounted) return;
+    final theirs = parsePadCheck(heard)!;
+    final l10n = context.l10n;
+    setState(() {
+      _checkFor = mine.fingerprint;
+      _checkOk = theirs.sameAs(mine);
+      _checkResult = _checkOk
+          ? l10n.otpCheck_same
+          : theirs.length != 0 && theirs.length != mine.length
+          ? l10n.otpCheck_differentLength(theirs.length, mine.length)
+          : l10n.otpCheck_different;
+    });
   }
 
   // ── Chat theme (one global choice, same set as OTP_3_RC1.lua's Themes
