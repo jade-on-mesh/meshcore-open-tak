@@ -13056,6 +13056,138 @@ abstract class AppLocalizations {
   /// **'Talks on any channel play as they arrive, while the app is running, walkie-talkie open or not.'**
   String get walkie_liveAllHelp;
 
+  /// No description provided for @teamSetup_noTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a team channel first'**
+  String get teamSetup_noTeam;
+
+  /// No description provided for @teamSetup_share.
+  ///
+  /// In en, this message translates to:
+  /// **'Share team setup'**
+  String get teamSetup_share;
+
+  /// No description provided for @teamSetup_shareTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share this team'**
+  String get teamSetup_shareTitle;
+
+  /// No description provided for @teamSetup_playingPart.
+  ///
+  /// In en, this message translates to:
+  /// **'Playing part {part} of {parts}…'**
+  String teamSetup_playingPart(int part, int parts);
+
+  /// No description provided for @teamSetup_soundHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'For a standalone without a camera: Sound link hears it, in {parts} part(s) of a few seconds each.'**
+  String teamSetup_soundHelp(int parts);
+
+  /// No description provided for @teamSetup_shareWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone who scans or hears this can join your team channel and see your positions.'**
+  String get teamSetup_shareWarning;
+
+  /// No description provided for @teamSetup_teamChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Team channel: {name}'**
+  String teamSetup_teamChannel(String name);
+
+  /// No description provided for @teamSetup_teamChannelHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Added if this radio hasn\'t it, and team mode turned on with it.'**
+  String get teamSetup_teamChannelHelp;
+
+  /// No description provided for @teamSetup_watch.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch: {names}'**
+  String teamSetup_watch(String names);
+
+  /// No description provided for @teamSetup_watchHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Added if needed, and their reports shown on the map.'**
+  String get teamSetup_watchHelp;
+
+  /// No description provided for @teamSetup_mediaMesh.
+  ///
+  /// In en, this message translates to:
+  /// **'MediaMesh: {profile}'**
+  String teamSetup_mediaMesh(String profile);
+
+  /// No description provided for @teamSetup_mediaMeshHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'This radio\'s radio2 set to the team\'s MediaMesh, for photos, voice and push-to-talk.'**
+  String get teamSetup_mediaMeshHelp;
+
+  /// No description provided for @teamSetup_joinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Join a team'**
+  String get teamSetup_joinTitle;
+
+  /// No description provided for @teamSetup_join.
+  ///
+  /// In en, this message translates to:
+  /// **'Join'**
+  String get teamSetup_join;
+
+  /// No description provided for @teamSetup_notATeam.
+  ///
+  /// In en, this message translates to:
+  /// **'That isn\'t a team setup code'**
+  String get teamSetup_notATeam;
+
+  /// No description provided for @teamSetup_scanHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan the team code on a teammate\'s phone or standalone'**
+  String get teamSetup_scanHelp;
+
+  /// No description provided for @teamSetup_listenHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the team setup to be played…'**
+  String get teamSetup_listenHelp;
+
+  /// No description provided for @teamSetup_heardParts.
+  ///
+  /// In en, this message translates to:
+  /// **'Heard {got} of {total} parts…'**
+  String teamSetup_heardParts(int got, int total);
+
+  /// No description provided for @teamSetup_notConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to your radio first'**
+  String get teamSetup_notConnected;
+
+  /// No description provided for @teamSetup_noSlot.
+  ///
+  /// In en, this message translates to:
+  /// **'No free channel slot for {name}'**
+  String teamSetup_noSlot(String name);
+
+  /// No description provided for @teamSetup_noMediaMesh.
+  ///
+  /// In en, this message translates to:
+  /// **'This radio has no MediaMesh (radio2)'**
+  String get teamSetup_noMediaMesh;
+
+  /// No description provided for @teamSetup_joined.
+  ///
+  /// In en, this message translates to:
+  /// **'Joined {name}'**
+  String teamSetup_joined(String name);
+
   /// No description provided for @appSettings_redLight.
   ///
   /// In en, this message translates to:

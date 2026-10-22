@@ -27,6 +27,7 @@ import 'team_mini_map.dart';
 import 'team_pins.dart';
 import 'team_roles_screen.dart';
 import 'team_service.dart';
+import 'team_setup_ui.dart';
 import 'team_wire.dart';
 import 'team_wire_atak.dart' show TeamPoint;
 import 'watch_feed.dart';
@@ -1664,6 +1665,28 @@ class _SetupTabState extends State<_SetupTab> {
                 },
               ),
             ),
+          // One scan (or Sound link) sets a newcomer up: team_setup_ui.dart.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.qr_code_2),
+                  label: Text(context.l10n.teamSetup_share),
+                  onPressed: current == null
+                      ? null
+                      : () => unawaited(showTeamSetupShare(context)),
+                ),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.qr_code_scanner),
+                  label: Text(context.l10n.teamSetup_joinTitle),
+                  onPressed: () => unawaited(showTeamSetupJoin(context)),
+                ),
+              ],
+            ),
+          ),
         ]),
         _section(context, 2, 'You', done: team.callsignSetting.isNotEmpty, [
           Padding(

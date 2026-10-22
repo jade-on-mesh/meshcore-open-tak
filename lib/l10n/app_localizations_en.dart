@@ -7577,6 +7577,88 @@ class AppLocalizationsEn extends AppLocalizations {
   String get walkie_liveAllHelp => 'Talks on any channel play as they arrive, while the app is running, walkie-talkie open or not.';
 
   @override
+  String get teamSetup_noTeam => 'Pick a team channel first';
+
+  @override
+  String get teamSetup_share => 'Share team setup';
+
+  @override
+  String get teamSetup_shareTitle => 'Share this team';
+
+  @override
+  String teamSetup_playingPart(int part, int parts) {
+    return 'Playing part $part of $parts…';
+  }
+
+  @override
+  String teamSetup_soundHelp(int parts) {
+    return 'For a standalone without a camera: Sound link hears it, in $parts part(s) of a few seconds each.';
+  }
+
+  @override
+  String get teamSetup_shareWarning => 'Anyone who scans or hears this can join your team channel and see your positions.';
+
+  @override
+  String teamSetup_teamChannel(String name) {
+    return 'Team channel: $name';
+  }
+
+  @override
+  String get teamSetup_teamChannelHelp => 'Added if this radio hasn\'t it, and team mode turned on with it.';
+
+  @override
+  String teamSetup_watch(String names) {
+    return 'Watch: $names';
+  }
+
+  @override
+  String get teamSetup_watchHelp => 'Added if needed, and their reports shown on the map.';
+
+  @override
+  String teamSetup_mediaMesh(String profile) {
+    return 'MediaMesh: $profile';
+  }
+
+  @override
+  String get teamSetup_mediaMeshHelp => 'This radio\'s radio2 set to the team\'s MediaMesh, for photos, voice and push-to-talk.';
+
+  @override
+  String get teamSetup_joinTitle => 'Join a team';
+
+  @override
+  String get teamSetup_join => 'Join';
+
+  @override
+  String get teamSetup_notATeam => 'That isn\'t a team setup code';
+
+  @override
+  String get teamSetup_scanHelp => 'Scan the team code on a teammate\'s phone or standalone';
+
+  @override
+  String get teamSetup_listenHelp => 'Waiting for the team setup to be played…';
+
+  @override
+  String teamSetup_heardParts(int got, int total) {
+    return 'Heard $got of $total parts…';
+  }
+
+  @override
+  String get teamSetup_notConnected => 'Connect to your radio first';
+
+  @override
+  String teamSetup_noSlot(String name) {
+    return 'No free channel slot for $name';
+  }
+
+  @override
+  String get teamSetup_noMediaMesh => 'This radio has no MediaMesh (radio2)';
+
+  @override
+  String teamSetup_joined(String name) {
+    return 'Joined $name';
+  }
+
+  @override
   String get appSettings_redLight => 'Red light (night vision)';
 
   @override
