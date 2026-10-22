@@ -896,6 +896,12 @@ class MeshCoreConnector extends ChangeNotifier {
   /// hex and text) before it is stored or notified.
   bool Function(String senderKeyHex, String text)? voxControlTextInterceptor;
 
+  /// MeshCore Open TAK: returns true to swallow an incoming channel text (by
+  /// channel, sender name and text) before it is stored: MeshCore TEAM's
+  /// tracking messages (team_compat_bridge.dart).
+  bool Function(int channelIndex, String senderName, String text)?
+  teamCompatTextInterceptor;
+
   /// MeshCore Open TAK: told about every new incoming DM or channel message
   /// (used to auto-play voice clips as they arrive).
   void Function(
@@ -10783,6 +10789,17 @@ class MeshCoreConnector extends ChangeNotifier {
         }
         parsed = parsed.copyWith(text: otpResult.displayText);
       }
+      if (!parsed.isOutgoing &&
+          (teamCompatTextInterceptor?.call(
+                parsed.channelIndex!,
+                parsed.senderName,
+                parsed.text,
+              ) ??
+              false)) {
+        _lastChannelMsgRxTime = DateTime.now();
+        _handleQueuedMessageReceived();
+        return;
+      }
       _lastChannelMsgRxTime = DateTime.now();
       final contentHash = _computeContentHash(
         parsed.channelIndex!,
@@ -10934,6 +10951,14 @@ class MeshCoreConnector extends ChangeNotifier {
             region: _resolveTransportRegion(packet),
             packetHash: pktHash,
           );
+          if (teamCompatTextInterceptor?.call(
+                slot,
+                parsed.senderName,
+                decodedText,
+              ) ??
+              false) {
+            return;
+          }
 
           _updateContactLastMessageAtByName(
             parsed.senderName,

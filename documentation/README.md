@@ -35,6 +35,7 @@ MeshCore Open is an open-source Flutter client for MeshCore LoRa mesh networking
 22. [Update a repeater over LoRa](lora-ota-repeater-tutorial.md) - LoRa OTA from the phone (Repeater Management > LoRa OTA), plus ESP32 Wi-Fi and nRF52 Bluetooth updates for nearby repeaters
 23. [Update a Companion](companion-update-tutorial.md) - Settings > Update Companion: nRF52 Bluetooth DFU or ESP32 Wi-Fi OTA
 24. [Drone detector](drone-detector.md) - Remote ID drones heard by the phone's Bluetooth, on the map and posted to a channel
+25. [MeshCore TEAM](meshcore-team.md) - Seeing MeshCore TEAM users on the team channel, and being seen by them
 
 ## App Overview
 

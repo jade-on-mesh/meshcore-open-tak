@@ -18,6 +18,7 @@ import '../services/notification_service.dart';
 import '../services/speech_service.dart';
 import 'road_directions.dart';
 import 'road_voice.dart';
+import 'team_compat_bridge.dart';
 import 'team_coords.dart';
 import 'team_wire.dart';
 import 'team_wire_atak.dart';
@@ -91,9 +92,10 @@ class TeamGeofenceEvent {
   String get headline => '$who ${entered ? 'entered' : 'left'} $fence';
 }
 
-class TeamService extends ChangeNotifier {
+class TeamService extends ChangeNotifier implements TeamCompatHost {
   TeamService(this._connector) {
     _sub = _connector.receivedFrames.listen(_onFrame);
+    _connector.teamCompatTextInterceptor = compat.onChannelText;
     _connector.addListener(_onConnectorChanged);
     unawaited(_load());
     _tick = Timer.periodic(const Duration(seconds: 10), (_) => _onTick());
@@ -101,6 +103,9 @@ class TeamService extends ChangeNotifier {
 
   final MeshCoreConnector _connector;
   late final StreamSubscription<Uint8List> _sub;
+
+  /// MeshCore TEAM users on the team channel (team_compat_bridge.dart).
+  late final TeamCompatBridge compat = TeamCompatBridge(this, _connector);
   late final Timer _tick;
   final _rng = Random.secure();
 
@@ -130,6 +135,7 @@ class TeamService extends ChangeNotifier {
   TeamStatus _status = TeamStatus.none;
 
   bool get enabled => _enabled;
+  @override
   String get callsign =>
       _callsign.isNotEmpty ? _callsign : (_connector.selfName ?? 'Me');
   String get callsignSetting => _callsign;
@@ -356,6 +362,32 @@ class TeamService extends ChangeNotifier {
     await _save((p) => p.setInt(_kStatus, s.index));
   }
 
+  // ------------------------------------------------ MeshCore TEAM interop
+
+  @override
+  int? get teamChannelIndex => _enabled ? teamChannel?.index : null;
+
+  @override
+  bool get sharesPosition => _sharePosition && active;
+
+  @override
+  ({double lat, double lon})? get compatFix {
+    final f = fix;
+    return f == null ? null : (lat: f.lat, lon: f.lon);
+  }
+
+  @override
+  void acceptCompatPosition(TeamPosition p) => _onPosition(p);
+
+  @override
+  void forgetCompatMember(String key4) {
+    if (_members.remove(key4) != null) notifyListeners();
+  }
+
+  @override
+  void compatChanged() => notifyListeners();
+
+  @override
   String get selfKey4 {
     final k = _connector.selfPublicKey;
     if (k == null || k.length < 4) return '00000000';
@@ -1000,6 +1032,7 @@ class TeamService extends ChangeNotifier {
       if (ok) {
         _lastBeacon = DateTime.now();
         _lastBeaconFix = fix;
+        unawaited(compat.afterBeacon());
         onSelfPosition?.call(p);
         notifyListeners();
       }
@@ -1271,6 +1304,7 @@ class TeamService extends ChangeNotifier {
     onMarkerChanged?.call(m);
     notifyListeners();
     await _send(m.encode());
+    unawaited(compat.ownMarker(m));
     return m;
   }
 
@@ -1297,6 +1331,7 @@ class TeamService extends ChangeNotifier {
   }
 
   /// Adds a marker that came from outside the mesh (TAK), without sending.
+  @override
   void putExternalMarker(TeamMarker m) => _onMarker(m);
 
   // ---------------------------------------------------------------- roles
@@ -1604,6 +1639,7 @@ class TeamService extends ChangeNotifier {
     onShapeChanged?.call(s);
     notifyListeners();
     await _send(s.encode());
+    unawaited(compat.ownShape(s));
     return s;
   }
 
@@ -1619,6 +1655,7 @@ class TeamService extends ChangeNotifier {
 
   /// Adds a shape that came from outside the mesh (a TAK data package),
   /// without sending it.
+  @override
   void putExternalShape(TeamShape s) => _onShape(s);
 
   /// A fresh random id for imported items.
@@ -1967,6 +2004,9 @@ class TeamService extends ChangeNotifier {
     unawaited(_sub.cancel());
     unawaited(_gpsSub?.cancel());
     _connector.removeListener(_onConnectorChanged);
+    if (_connector.teamCompatTextInterceptor == compat.onChannelText) {
+      _connector.teamCompatTextInterceptor = null;
+    }
     super.dispose();
   }
 }
