@@ -37,6 +37,7 @@ MeshCore Open is an open-source Flutter client for MeshCore LoRa mesh networking
 24. [Drone detector](drone-detector.md) - Remote ID drones heard by the phone's Bluetooth, on the map and posted to a channel
 25. [MeshCore TEAM](meshcore-team.md) - Seeing MeshCore TEAM users on the team channel, and being seen by them
 26. [Sharing a team in one scan](team-setup.md) - One QR code (or Sound link) with the team channel, watched channels and MediaMesh profile
+27. [AR view](ar-view.md) - Hold the phone up to see teammates, pins and watched reports as labels with their distance
 
 ## App Overview
 

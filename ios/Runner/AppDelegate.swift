@@ -1,4 +1,6 @@
 import AVFoundation
+import CoreLocation
+import CoreMotion
 import Flutter
 import UIKit
 import UserNotifications
@@ -21,6 +23,10 @@ import UserNotifications
     // Push-to-talk audio (lib/vox/walkie_audio.dart).
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "MeshPcmStream") {
       MeshPcmStream.shared.attach(messenger: registrar.messenger())
+    }
+    // The AR view's sensors (lib/team/ar_view.dart).
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "MeshOrientation") {
+      MeshOrientation.shared.attach(messenger: registrar.messenger())
     }
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "MeshAppBadge") {
       let channel = FlutterMethodChannel(
@@ -189,5 +195,59 @@ final class MeshPcmStream {
     format = nil
     pending = 0
     try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+  }
+}
+
+/// The AR view's sensors (lib/team/ar_view.dart): gravity and the magnetic field
+/// in device axes, given the same way Android does (gravity pointing up, in
+/// m/s^2), plus the magnetic declination from the compass heading, about 20 times
+/// a second as [gx, gy, gz, mx, my, mz, declinationDeg]. The maths is in Dart.
+final class MeshOrientation: NSObject, FlutterStreamHandler, CLLocationManagerDelegate {
+  static let shared = MeshOrientation()
+  private let motion = CMMotionManager()
+  private let location = CLLocationManager()
+  private var sink: FlutterEventSink?
+  private var declination = 0.0
+
+  func attach(messenger: FlutterBinaryMessenger) {
+    FlutterEventChannel(name: "meshcore_open/orientation", binaryMessenger: messenger)
+      .setStreamHandler(self)
+    // Android works out the declination from a position; here the compass does.
+    FlutterMethodChannel(name: "meshcore_open/orientation_ctl", binaryMessenger: messenger)
+      .setMethodCallHandler { _, result in result(nil) }
+    location.delegate = self
+  }
+
+  func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
+    sink = events
+    guard motion.isDeviceMotionAvailable,
+      CMMotionManager.availableAttitudeReferenceFrames().contains(.xMagneticNorthZVertical)
+    else {
+      return FlutterError(code: "no_sensors", message: "This device has no compass", details: nil)
+    }
+    if CLLocationManager.headingAvailable() { location.startUpdatingHeading() }
+    motion.deviceMotionUpdateInterval = 0.05
+    motion.startDeviceMotionUpdates(using: .xMagneticNorthZVertical, to: .main) { [weak self] m, _ in
+      guard let self = self, let m = m, let sink = self.sink else { return }
+      let g = m.gravity
+      let f = m.magneticField.field
+      sink([-g.x * 9.81, -g.y * 9.81, -g.z * 9.81, f.x, f.y, f.z, self.declination])
+    }
+    return nil
+  }
+
+  func onCancel(withArguments arguments: Any?) -> FlutterError? {
+    motion.stopDeviceMotionUpdates()
+    location.stopUpdatingHeading()
+    sink = nil
+    return nil
+  }
+
+  func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+    guard newHeading.trueHeading >= 0, newHeading.magneticHeading >= 0 else { return }
+    var d = newHeading.trueHeading - newHeading.magneticHeading
+    if d > 180 { d -= 360 }
+    if d < -180 { d += 360 }
+    declination = d
   }
 }

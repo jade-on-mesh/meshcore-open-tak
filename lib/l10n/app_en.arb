@@ -4007,5 +4007,11 @@
   "teamSetup_joined": "Joined {name}",
   "@teamSetup_joined": {"placeholders": {"name": {"type": "String"}}},
   "appSettings_redLight": "Red light (night vision)",
-  "appSettings_redLightHelp": "Everything in dim red, the map and photos too, to keep your eyes used to the dark."
+  "appSettings_redLightHelp": "Everything in dim red, the map and photos too, to keep your eyes used to the dark.",
+  "ar_title": "AR view",
+  "ar_noPosition": "Waiting for your position: labels appear once the phone has a GPS fix.",
+  "ar_noCompass": "The compass isn't available ({reason}), so labels can't be placed.",
+  "@ar_noCompass": {"placeholders": {"reason": {"type": "String"}}},
+  "ar_hounding": "Bloodhound: {name}",
+  "@ar_hounding": {"placeholders": {"name": {"type": "String"}}}
 }

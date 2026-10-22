@@ -7367,4 +7367,20 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appSettings_redLightHelp => 'Everything in dim red, the map and photos too, to keep your eyes used to the dark.';
+
+  @override
+  String get ar_title => 'AR view';
+
+  @override
+  String get ar_noPosition => 'Waiting for your position: labels appear once the phone has a GPS fix.';
+
+  @override
+  String ar_noCompass(String reason) {
+    return 'The compass isn\'t available ($reason), so labels can\'t be placed.';
+  }
+
+  @override
+  String ar_hounding(String name) {
+    return 'Bloodhound: $name';
+  }
 }

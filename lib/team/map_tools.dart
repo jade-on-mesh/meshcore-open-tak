@@ -15,6 +15,7 @@ import '../l10n/l10n.dart';
 import '../screens/map_packs_screen.dart';
 import '../vox/image_send_sheet.dart';
 import '../vox/voice_service.dart';
+import 'ar_view.dart';
 import 'road_directions.dart' show roadDistance;
 import 'team_casevac_ui.dart';
 import 'team_draw.dart';
@@ -122,6 +123,13 @@ Future<void> showMapTools(
       if (k != null) onDraw(k, true);
     }, needsTeam: true),
     _Tool(Icons.straighten, 'Range & Bearing', (_) => onMeasure()),
+    _Tool(
+      Icons.view_in_ar,
+      'AR View',
+      (c) => Navigator.of(c).push(
+        MaterialPageRoute<void>(builder: (_) => const ArViewScreen()),
+      ),
+    ),
     _Tool(Icons.my_location, 'Go To', (c) => _showGoTo(c, team, onGoTo)),
     _Tool(Icons.timeline, 'Track History', (c) => _showTrackHistory(c)),
     _Tool(
