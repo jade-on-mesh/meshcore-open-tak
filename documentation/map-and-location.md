@@ -47,7 +47,7 @@ Change the time, or turn it off, in **App settings > Map display > Highlight new
 
 ### Auto-zoom to Watched Reports (MeshCore Open TAK)
 
-With **Auto-zoom** on, the map follows your watched channels: each new report with a position that arrives while the map is open moves the map to it, zoomed in to at least street level, and lights it up with the same ring as **Show on map**. Turn it on or off with the focus button in the map's top bar (shown while you watch any channel; turning it on also jumps to the newest report) or the **Auto-zoom** chip in the Watch tab. It stays as you left it.
+With **Auto-zoom** on, the map follows your watched channels: each new report with a position that arrives while the map is open moves the map to it, zoomed in to at least street level, and lights it up with the same ring as **Show on map**. Turn it on or off with the focus button under the map's zoom buttons (shown while you watch any channel; turning it on also jumps to the newest report) or the **Auto-zoom** chip in the Watch tab. It stays as you left it.
 
 Only live reports move the map: not a channel's history when it is first watched or the app starts, a burst of stored messages, reports more than 30 minutes old, or reports past the Watch tab's map time. A drone that keeps reporting is followed with each update. The map doesn't move while you're drawing or measuring.
 

@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 
 import '../team/map_screen_tak.dart';
 import '../team/team_service.dart';
+import '../team/watch_auto_zoom.dart';
 import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
 import '../l10n/l10n.dart';
@@ -472,6 +473,12 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                     max(_zoom, 14),
                   ),
                 ),
+              // Auto-zoom to new watched reports (shown while any channel is
+              // watched).
+              WatchAutoZoomButton(
+                mapController: _mapController,
+                color: _overlayPrimaryTextColor,
+              ),
             ],
           ),
         ),
