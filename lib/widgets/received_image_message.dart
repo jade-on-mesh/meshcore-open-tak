@@ -514,9 +514,10 @@ class _ReceivedImageMessageState extends State<ReceivedImageMessage> {
             ),
           if (!entry.isOutgoing &&
               entry.state != ReceivedImageState.receiving &&
-              entry.state != ReceivedImageState.failedIncomplete)
+              entry.state != ReceivedImageState.failedIncomplete &&
+              VoxReceivedVia.forReceived(entry.viaMask) != null)
             VoxReceivedViaLabel(
-              via: VoxReceivedVia.forReceived(entry.viaMask),
+              via: VoxReceivedVia.forReceived(entry.viaMask)!,
               color: widget.fallbackTextColor.withValues(alpha: 0.65),
             ),
         ],
