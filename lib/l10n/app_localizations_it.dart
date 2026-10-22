@@ -7717,4 +7717,10 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get coverage_clear => 'Clear';
+
+  @override
+  String get appSettings_redLight => 'Red light (night vision)';
+
+  @override
+  String get appSettings_redLightHelp => 'Everything in dim red, the map and photos too, to keep your eyes used to the dark.';
 }

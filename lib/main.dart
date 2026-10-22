@@ -553,20 +553,22 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
             ),
             theme: MeshTheme.light(),
             darkTheme: MeshTheme.dark(),
-            themeMode: _themeModeFromSetting(
-              settingsService.settings.themeMode,
-            ),
+            // Red light: the dark theme, under the red filter below.
+            themeMode: settingsService.settings.redLight
+                ? ThemeMode.dark
+                : _themeModeFromSetting(settingsService.settings.themeMode),
             builder: (context, child) {
               // Update notification service with resolved locale
               final locale = Localizations.localeOf(context);
               NotificationService().setLocale(locale);
+              final app = TeamAlertHost(
+                child: AppUpdateBanner(child: child ?? const SizedBox.shrink()),
+              );
               return AnnotatedRegion<SystemUiOverlayStyle>(
                 value: _systemUiOverlayStyle(context),
-                child: TeamAlertHost(
-                  child: AppUpdateBanner(
-                    child: child ?? const SizedBox.shrink(),
-                  ),
-                ),
+                child: settingsService.settings.redLight
+                    ? ColorFiltered(colorFilter: redLightFilter, child: app)
+                    : app,
               );
             },
             home: (PlatformInfo.isWeb && !PlatformInfo.isChrome)

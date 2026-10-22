@@ -3975,5 +3975,7 @@
   "coverage_none": "None",
   "coverage_help": "Only repeaters with MediaMesh (radio2 on) count. Good: 5 dB or more to spare on radio2; Marginal: 0–5 dB; Out: heard, but radio2 wouldn't reach; None: no MediaMesh repeater answered.",
   "coverage_export": "Export (GeoJSON)",
-  "coverage_clear": "Clear"
+  "coverage_clear": "Clear",
+  "appSettings_redLight": "Red light (night vision)",
+  "appSettings_redLightHelp": "Everything in dim red, the map and photos too, to keep your eyes used to the dark."
 }

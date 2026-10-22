@@ -116,6 +116,7 @@ A dedicated sub-screen for app-level preferences (nothing here is sent to the de
 
 ### Appearance
 - **Theme**: System / Light / Dark
+- **Red light (night vision)**: Everything in dim red, the map tiles, markers and photos too, to keep your eyes used to the dark. It uses the dark theme underneath, whatever Theme says. Wadamesh TAK standalones have the same filter (Settings > Theme > Red light).
 - **Language**: System default or one of 18 languages (English, French, Spanish, German, Polish, Slovenian, Portuguese, Italian, Chinese, Swedish, Dutch, Slovak, Bulgarian, Russian, Ukrainian, Hungarian, Japanese, Korean)
 
 ### Notifications
