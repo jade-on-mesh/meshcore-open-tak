@@ -158,7 +158,6 @@ class MapScreenTak {
   }
 
   List<Widget> appBarActions(BuildContext context) => [
-    WatchAutoZoomButton(mapController: mapController),
     MapChatButton(open: _chatOpen, onPressed: toggleChat),
     IconButton(
       tooltip: 'Tools',

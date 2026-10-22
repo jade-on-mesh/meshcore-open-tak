@@ -83,11 +83,16 @@ class _WatchAutoZoomState extends State<WatchAutoZoom> {
   Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
-/// The map's app-bar toggle, shown while any channel is watched. Turning it
-/// on also jumps to the newest report on the map.
+/// The toggle on the map's zoom rail, shown while any channel is watched.
+/// Turning it on also jumps to the newest report on the map.
 class WatchAutoZoomButton extends StatelessWidget {
   final MapController mapController;
-  const WatchAutoZoomButton({super.key, required this.mapController});
+  final Color? color;
+  const WatchAutoZoomButton({
+    super.key,
+    required this.mapController,
+    this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -100,6 +105,7 @@ class WatchAutoZoomButton extends StatelessWidget {
     if (feed.watchedNames.isEmpty) return const SizedBox.shrink();
     final on = feed.autoZoom;
     return IconButton(
+      color: color,
       tooltip: on
           ? 'Auto-zoom to new watched reports: on'
           : 'Auto-zoom to new watched reports: off',
