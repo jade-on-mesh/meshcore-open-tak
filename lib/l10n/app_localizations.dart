@@ -13187,6 +13187,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Joined {name}'**
   String teamSetup_joined(String name);
+
+  /// No description provided for @appSettings_redLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Red light (night vision)'**
+  String get appSettings_redLight;
+
+  /// No description provided for @appSettings_redLightHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything in dim red, the map and photos too, to keep your eyes used to the dark.'**
+  String get appSettings_redLightHelp;
 }
 
 class _AppLocalizationsDelegate

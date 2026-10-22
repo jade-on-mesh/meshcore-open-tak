@@ -3991,5 +3991,7 @@
   "@teamSetup_noSlot": {"placeholders": {"name": {"type": "String"}}},
   "teamSetup_noMediaMesh": "This radio has no MediaMesh (radio2)",
   "teamSetup_joined": "Joined {name}",
-  "@teamSetup_joined": {"placeholders": {"name": {"type": "String"}}}
+  "@teamSetup_joined": {"placeholders": {"name": {"type": "String"}}},
+  "appSettings_redLight": "Red light (night vision)",
+  "appSettings_redLightHelp": "Everything in dim red, the map and photos too, to keep your eyes used to the dark."
 }

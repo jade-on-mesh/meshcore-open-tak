@@ -7463,4 +7463,10 @@ class AppLocalizationsKo extends AppLocalizations {
   String teamSetup_joined(String name) {
     return 'Joined $name';
   }
+
+  @override
+  String get appSettings_redLight => 'Red light (night vision)';
+
+  @override
+  String get appSettings_redLightHelp => 'Everything in dim red, the map and photos too, to keep your eyes used to the dark.';
 }

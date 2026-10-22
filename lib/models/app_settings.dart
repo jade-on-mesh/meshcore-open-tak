@@ -128,6 +128,9 @@ class AppSettings {
   /// different first-hop repeaters also satisfies the channel resend.
   final bool channelMinHopsCountRepeaters;
   final String themeMode;
+
+  /// Night vision: everything shown in dim red (Settings > App settings).
+  final bool redLight;
   final String? languageOverride; // null = system default
   final bool appDebugLogEnabled;
   final Map<String, String> batteryChemistryByDeviceId;
@@ -255,6 +258,7 @@ class AppSettings {
     this.channelMinHopsRetries = 1,
     this.channelMinHopsCountRepeaters = false,
     this.themeMode = 'system',
+    this.redLight = false,
     this.languageOverride,
     this.appDebugLogEnabled = false,
     Map<String, String>? batteryChemistryByDeviceId,
@@ -345,6 +349,7 @@ class AppSettings {
       'channel_min_hops_retries': channelMinHopsRetries,
       'channel_min_hops_count_repeaters': channelMinHopsCountRepeaters,
       'theme_mode': themeMode,
+      'red_light': redLight,
       'language_override': languageOverride,
       'app_debug_log_enabled': appDebugLogEnabled,
       'battery_chemistry_by_device_id': batteryChemistryByDeviceId,
@@ -464,6 +469,7 @@ class AppSettings {
       channelMinHopsCountRepeaters:
           json['channel_min_hops_count_repeaters'] as bool? ?? false,
       themeMode: json['theme_mode'] as String? ?? 'system',
+      redLight: json['red_light'] as bool? ?? false,
       languageOverride: json['language_override'] as String?,
       appDebugLogEnabled: json['app_debug_log_enabled'] as bool? ?? false,
       batteryChemistryByDeviceId:
@@ -607,6 +613,7 @@ class AppSettings {
     int? channelMinHopsRetries,
     bool? channelMinHopsCountRepeaters,
     String? themeMode,
+    bool? redLight,
     Object? languageOverride = _unset,
     bool? appDebugLogEnabled,
     Map<String, String>? batteryChemistryByDeviceId,
@@ -693,6 +700,7 @@ class AppSettings {
       channelMinHopsCountRepeaters:
           channelMinHopsCountRepeaters ?? this.channelMinHopsCountRepeaters,
       themeMode: themeMode ?? this.themeMode,
+      redLight: redLight ?? this.redLight,
       languageOverride: languageOverride == _unset
           ? this.languageOverride
           : languageOverride as String?,
