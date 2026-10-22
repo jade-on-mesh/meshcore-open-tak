@@ -29,8 +29,10 @@ with the drone's label, its operator, and its direction of travel.
 
 ## Posting to the mesh
 
-Pick an **Alert channel** (for example `#dronewatch`; Public isn't offered) and
-turn on **Post drones there**. Each drone is posted at most once a minute, and
+The **Alert channel** is `#dronewatch` unless you pick another (Public isn't
+offered), the same default as Wadamesh TAK standalones. If your radio hasn't
+joined `#dronewatch`, it shows as "(not joined)" with a **Join #dronewatch**
+button under it. Then turn on **Post drones there**. Each drone is posted at most once a minute, and
 again only after it moves 200 m:
 
 ```

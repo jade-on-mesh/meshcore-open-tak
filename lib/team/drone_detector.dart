@@ -38,10 +38,14 @@ class DroneDetectorService extends ChangeNotifier {
   static const _kSound = 'drones_sound_v1';
   static final Guid _service = Guid('fffa');
 
+  /// The alert channel until one is picked: a hashtag channel, so anyone can
+  /// join it by name. Wadamesh TAK standalones default to it too.
+  static const defaultChannel = '#dronewatch';
+
   bool _listen = false;
   bool _share = false;
   bool _sound = true;
-  String? _channel;
+  String? _channel = defaultChannel;
   bool _scanning = false;
   String? _error;
   String? _shareError;
@@ -84,7 +88,11 @@ class DroneDetectorService extends ChangeNotifier {
       _listen = p.getBool(_kListen) ?? false;
       _share = p.getBool(_kShare) ?? false;
       _sound = p.getBool(_kSound) ?? true;
-      _channel = p.getString(_kChannel);
+      // Missing: the default. Empty: "no channel" was picked.
+      final saved = p.getString(_kChannel);
+      _channel = saved == null
+          ? defaultChannel
+          : (saved.isEmpty ? null : saved);
     } catch (_) {}
     notifyListeners();
     if (_listen) unawaited(_start());
@@ -96,11 +104,7 @@ class DroneDetectorService extends ChangeNotifier {
       await p.setBool(_kListen, _listen);
       await p.setBool(_kShare, _share);
       await p.setBool(_kSound, _sound);
-      if (_channel == null) {
-        await p.remove(_kChannel);
-      } else {
-        await p.setString(_kChannel, _channel!);
-      }
+      await p.setString(_kChannel, _channel ?? '');
     } catch (_) {}
   }
 
@@ -135,6 +139,35 @@ class DroneDetectorService extends ChangeNotifier {
     _shareError = null;
     notifyListeners();
     unawaited(_save());
+  }
+
+  /// The alert channel is the default and this radio hasn't joined it.
+  bool get needsJoin =>
+      _channel == defaultChannel &&
+      channel == null &&
+      _connector.isConnected &&
+      _connector.hasLoadedChannels &&
+      !_connector.isSyncingChannels;
+
+  /// Joins [defaultChannel] in the first free slot, with the same key as
+  /// Channels > Add > hashtag. False when every slot is in use.
+  Future<bool> joinDefaultChannel() async {
+    final used = {
+      ..._connector.channels.map((c) => c.index),
+      ..._connector.unconfirmedChannelSlots,
+    };
+    for (var i = 0; i < _connector.maxChannels; i++) {
+      if (used.contains(i)) continue;
+      await _connector.setChannel(
+        i,
+        defaultChannel,
+        Channel.derivePskFromHashtag(defaultChannel),
+      );
+      _shareError = null;
+      notifyListeners();
+      return true;
+    }
+    return false;
   }
 
   void clear() {
