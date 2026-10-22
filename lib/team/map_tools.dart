@@ -15,6 +15,7 @@ import '../l10n/l10n.dart';
 import '../screens/map_packs_screen.dart';
 import '../vox/image_send_sheet.dart';
 import '../vox/voice_service.dart';
+import 'photo_mosaic.dart' show showPhotoMosaicSheet;
 import 'road_directions.dart' show roadDistance;
 import 'team_casevac_ui.dart';
 import 'team_draw.dart';
@@ -124,6 +125,7 @@ Future<void> showMapTools(
     _Tool(Icons.straighten, 'Range & Bearing', (_) => onMeasure()),
     _Tool(Icons.my_location, 'Go To', (c) => _showGoTo(c, team, onGoTo)),
     _Tool(Icons.timeline, 'Track History', (c) => _showTrackHistory(c)),
+    _Tool(Icons.photo_library_outlined, 'Photos', showPhotoMosaicSheet),
     _Tool(
       Icons.download_for_offline_outlined,
       'Offline Maps',

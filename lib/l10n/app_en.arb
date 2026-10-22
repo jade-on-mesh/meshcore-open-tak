@@ -4007,5 +4007,14 @@
   "teamSetup_joined": "Joined {name}",
   "@teamSetup_joined": {"placeholders": {"name": {"type": "String"}}},
   "appSettings_redLight": "Red light (night vision)",
-  "appSettings_redLightHelp": "Everything in dim red, the map and photos too, to keep your eyes used to the dark."
+  "appSettings_redLightHelp": "Everything in dim red, the map and photos too, to keep your eyes used to the dark.",
+  "mosaic_show": "Photos on the map",
+  "mosaic_showHelp": "Thumbnails where each photo was taken, grouped when zoomed out. {count} photos have a place.",
+  "@mosaic_showHelp": {"placeholders": {"count": {"type": "int"}}},
+  "mosaic_tag": "Tag my photos with where I am",
+  "mosaic_tagHelp": "Adds 📍 and your position to the caption of photos you send. Everyone who can see the photo sees it.",
+  "mosaic_all": "All photos as a timeline",
+  "mosaic_timelineTitle": "{count} photos",
+  "@mosaic_timelineTitle": {"placeholders": {"count": {"type": "int"}}},
+  "mosaic_approx": "About here: where the sender was then"
 }
