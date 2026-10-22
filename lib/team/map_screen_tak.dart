@@ -36,6 +36,7 @@ import 'team_draw.dart';
 import 'team_map.dart';
 import 'team_service.dart';
 import 'watch_auto_zoom.dart';
+import 'coverage_layer.dart';
 
 class MapScreenTak {
   final MapController mapController;
@@ -185,6 +186,7 @@ class MapScreenTak {
   List<Widget> layers({required ValueChanged<LatLng> onGoToTap}) {
     final goTo = _goTo;
     return [
+      const MediaMeshCoverageLayer(),
       const TeamMapLayer(),
       TeamDrawLayer(controller: draw),
       if (goTo != null)

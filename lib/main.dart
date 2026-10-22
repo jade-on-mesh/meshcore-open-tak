@@ -13,6 +13,7 @@ import 'review_mode/review_mode_storage.dart';
 import 'screens/chrome_required_screen.dart';
 import 'team/drone_detector.dart';
 import 'team/map_highlights.dart';
+import 'services/mediamesh_coverage.dart';
 import 'services/media_mesh_nearby.dart';
 import 'services/media_lockdown.dart';
 import 'utils/platform_info.dart';
@@ -438,6 +439,9 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
     _watchFeed,
   );
   late final AtakPluginBridge _atakBridge;
+  late final MediaMeshCoverageService _coverage = MediaMeshCoverageService(
+    widget.connector,
+  );
 
   @override
   void initState() {
@@ -525,6 +529,9 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
         ChangeNotifierProvider<TakService>.value(value: _takService),
         ChangeNotifierProvider<WatchFeedService>.value(value: _watchFeed),
         ChangeNotifierProvider<DroneDetectorService>.value(value: _drones),
+        ChangeNotifierProvider<MediaMeshCoverageService>.value(
+          value: _coverage,
+        ),
         Provider<AtakPluginBridge>.value(value: _atakBridge),
         ChangeNotifierProvider.value(value: widget.networkMapUploadService),
       ],

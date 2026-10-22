@@ -102,6 +102,17 @@ A reboot ends it too.
 keeps a history: schedules (`radioat2`, `tempradioat2`), `tempradio`,
 `normalradio`, `get radio2.timing` and the rest of Wadamesh's `MEDIAMESH.md`.
 
+### Coverage map
+
+**Map MediaMesh coverage** (MediaMesh Settings, under Find MediaMesh) records where the MediaMesh repeaters reach as you walk or drive, to find the holes and where the next one should go. Only repeaters with MediaMesh (radio2 on) count; plain repeaters are left out.
+
+- Each time you've moved 150 m (at most every 40 seconds, because repeaters answer four discovery requests every two minutes), the app asks the repeaters in direct range, as Find MediaMesh does, and marks the spot.
+- The dot's colour is the best MediaMesh repeater's margin on radio2: **Good** (green, 5 dB or more to spare), **Marginal** (amber, 0-5 dB), **Out** (red, heard but radio2 wouldn't reach), **None** (grey, no MediaMesh repeater answered).
+- The ask goes out on the main mesh, and the radio doesn't say which radio an answer came in on, so radio2's reach is estimated: the weaker direction's SNR (ours of the answer, the repeater's of the ask), less the extra noise radio2's wider bandwidth hears (10·log10 of radio2's bandwidth over the main mesh's: 6 dB from 62.5 to 250 kHz), against the lowest SNR radio2's spreading factor decodes (SF7: −7.5 dB, 2.5 dB lower each step).
+- **Show on the map** puts the dots on the Tactical map. **Export** shares them as GeoJSON (each point with its time, reach and the repeaters heard, their SNR and margin), for a coverage map on a website. **Clear** starts over. The points are kept across restarts (the latest 3,000).
+
+On Android a notification shows while it's recording, so it keeps going with the screen off. Wadamesh TAK standalones record the same (Settings › MediaMesh › Map coverage), with the same colours.
+
 ### Per contact and per channel
 
 Long-press a contact or channel and pick **Send on…**: *Auto* (follow the

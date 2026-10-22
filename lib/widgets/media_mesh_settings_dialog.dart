@@ -11,6 +11,7 @@ import '../screens/radio_console_screen.dart';
 import '../services/media_lockdown.dart';
 import '../services/media_mesh.dart';
 import '../services/media_mesh_find.dart';
+import 'mediamesh_coverage_tile.dart';
 
 /// MediaMesh Settings: the connected radio's second LoRa profile (`radio2`),
 /// what goes on it, a temporary profile, and live figures. Under the normal
@@ -632,6 +633,9 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
         ),
         const SizedBox(height: 4),
         Text(l10n.mediaMesh_findHelp, style: small),
+        const SizedBox(height: 16),
+        // Where the MediaMesh repeaters reach, as you move.
+        const MediaMeshCoverageTile(),
         const SizedBox(height: 16),
         DropdownButtonFormField<LoRaBandwidth>(
           key: ValueKey('bw-${_settings.bandwidth.name}'),

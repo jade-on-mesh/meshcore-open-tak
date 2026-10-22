@@ -13056,6 +13056,84 @@ abstract class AppLocalizations {
   /// **'Talks on any channel play as they arrive, while the app is running, walkie-talkie open or not.'**
   String get walkie_liveAllHelp;
 
+  /// No description provided for @coverage_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Coverage map'**
+  String get coverage_title;
+
+  /// No description provided for @coverage_record.
+  ///
+  /// In en, this message translates to:
+  /// **'Map MediaMesh coverage'**
+  String get coverage_record;
+
+  /// No description provided for @coverage_recordHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'As you move, asks the MediaMesh repeaters in range every 150 m and marks the map with how well MediaMesh reaches there.'**
+  String get coverage_recordHelp;
+
+  /// No description provided for @coverage_asking.
+  ///
+  /// In en, this message translates to:
+  /// **'Asking the MediaMesh repeaters…'**
+  String get coverage_asking;
+
+  /// No description provided for @coverage_show.
+  ///
+  /// In en, this message translates to:
+  /// **'Show on the map'**
+  String get coverage_show;
+
+  /// No description provided for @coverage_points.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} points'**
+  String coverage_points(int count);
+
+  /// No description provided for @coverage_good.
+  ///
+  /// In en, this message translates to:
+  /// **'Good'**
+  String get coverage_good;
+
+  /// No description provided for @coverage_marginal.
+  ///
+  /// In en, this message translates to:
+  /// **'Marginal'**
+  String get coverage_marginal;
+
+  /// No description provided for @coverage_out.
+  ///
+  /// In en, this message translates to:
+  /// **'Out'**
+  String get coverage_out;
+
+  /// No description provided for @coverage_none.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get coverage_none;
+
+  /// No description provided for @coverage_help.
+  ///
+  /// In en, this message translates to:
+  /// **'Only repeaters with MediaMesh (radio2 on) count. Good: 5 dB or more to spare on radio2; Marginal: 0–5 dB; Out: heard, but radio2 wouldn\'t reach; None: no MediaMesh repeater answered.'**
+  String get coverage_help;
+
+  /// No description provided for @coverage_export.
+  ///
+  /// In en, this message translates to:
+  /// **'Export (GeoJSON)'**
+  String get coverage_export;
+
+  /// No description provided for @coverage_clear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get coverage_clear;
+
   /// No description provided for @teamSetup_noTeam.
   ///
   /// In en, this message translates to:
