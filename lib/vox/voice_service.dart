@@ -29,7 +29,8 @@ import '../models/channel.dart';
 import '../models/contact.dart';
 import '../services/media_lockdown.dart';
 import '../services/otp_service.dart';
-import '../services/media_mesh.dart' show MediaAirProfile, loadMediaAirProfile;
+import '../services/media_mesh.dart'
+    show MediaAirProfile, Radio2Reply, loadMediaAirProfile;
 import '../services/media_mesh_nearby.dart';
 import '../services/image_chunk_transport.dart'
     show parseChannelDataFrame, respCodeChannelDataRecv;
@@ -66,11 +67,18 @@ enum VoxReceivedVia {
     _ => null,
   };
 
-  /// What to show for something this radio received. Only Wadamesh with a
-  /// second radio (MediaMesh) tags frames; any other radio has one radio, so
-  /// whatever it received came over the main mesh.
-  static VoxReceivedVia forReceived(int? mask) =>
-      fromMask(mask) ?? VoxReceivedVia.mainMesh;
+  /// The connected radio has radio2 on (its last `get radio2` answer). Set
+  /// by [VoxVoiceService].
+  static bool connectedRadioHasRadio2 = false;
+
+  /// What to show for something this radio received, null for nothing.
+  /// Wadamesh tags each frame with the radio it came in on. An untagged
+  /// frame from a radio without radio2 came over the main mesh; from one
+  /// with radio2 (keymindCascade doesn't tag frames) it could have come
+  /// either way, so nothing is claimed.
+  static VoxReceivedVia? forReceived(int? mask) =>
+      fromMask(mask) ??
+      (connectedRadioHasRadio2 ? null : VoxReceivedVia.mainMesh);
 }
 
 class VoxClipState {
@@ -1663,6 +1671,9 @@ class VoxVoiceService extends ChangeNotifier {
     int? hops,
   }) {
     if (payload.isEmpty) return;
+    // An untagged frame: find out whether this radio has radio2, for the
+    // "Received via" label (cached for minutes, so not asked per packet).
+    if (via == null) unawaited(_refreshMediaAir());
     if (walkieIsLivePayload(payload)) {
       // Push-to-talk (walkie_service.dart): only ever sent on a channel.
       if (channelIndex != null) {
@@ -2147,7 +2158,10 @@ class VoxVoiceService extends ChangeNotifier {
                 ? const Duration(minutes: 3)
                 : const Duration(minutes: 10));
     if (radio == null || fresh) {
-      if (radio == null) _mediaAir = null;
+      if (radio == null) {
+        _mediaAir = null;
+        VoxReceivedVia.connectedRadioHasRadio2 = false;
+      }
       return Future.value();
     }
     return _mediaAirLoading ??= () async {
@@ -2155,9 +2169,18 @@ class VoxVoiceService extends ChangeNotifier {
       try {
         air = await loadMediaAirProfile((c) async {
           try {
-            return await _connector
+            final reply = await _connector
                 .runLocalCliCommand(c)
                 .timeout(const Duration(seconds: 4));
+            if (c == 'get radio2') {
+              final r2 = reply == null ? null : Radio2Reply.tryParse(reply);
+              final had = VoxReceivedVia.connectedRadioHasRadio2;
+              VoxReceivedVia.connectedRadioHasRadio2 = r2 != null && !r2.off;
+              if (had != VoxReceivedVia.connectedRadioHasRadio2) {
+                notifyListeners();
+              }
+            }
+            return reply;
           } catch (_) {
             return null;
           }

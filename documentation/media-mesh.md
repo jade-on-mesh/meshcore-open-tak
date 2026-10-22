@@ -139,6 +139,10 @@ Tap it to open MediaMesh Settings. It appears a few seconds after connecting, on
 
 The app asks the connected radio for `get radio2.status` once a minute. Wadamesh reports `heard=Ns` (seconds since the last valid radio2 packet), so packets the radio relays or that aren't for you count too. On other firmware, the app counts a rise in the radio2 receive count as heard. A photo or voice packet that reaches the app over radio2 lights the icon straight away. The time is saved, so the icon stays lit across an app restart until the 2 hours run out. A radio that doesn't answer three times in a row is asked every 10 minutes after that.
 
+## Received via
+
+Under a received photo or voice message, the app says how its packets reached your radio: **Received via MediaMesh**, **Received via main mesh**, or both. Wadamesh tells the app which radio each packet came in on (a byte in the frame, see the Wadamesh MEDIAMESH.md). keymindCascade doesn't yet, so with a Cascade companion that has radio2 on, the app shows nothing rather than guess. A radio without radio2 can only have used the main mesh, so that's what it shows.
+
 ## Firmware
 
 MediaMesh needs radio firmware with a second LoRa profile and media routing:
