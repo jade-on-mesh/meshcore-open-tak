@@ -3910,8 +3910,8 @@
   "walkie_direct": "Direct",
   "walkie_repeatersHelp": "Through repeaters: reaches the whole MediaMesh, with about 2–3 seconds of delay.",
   "walkie_directHelp": "Radio to radio: only radios in range hear it. A little faster, and no repeater traffic.",
-  "walkie_listenLive": "Listen live when closed",
-  "walkie_listenLiveHelp": "Play this channel's talks as they arrive, even with the walkie-talkie closed.",
+  "walkie_listenLive": "Play this channel's talks live",
+  "walkie_listenLiveHelp": "Off mutes this channel: its talks wait in the chat as voice messages.",
   "walkie_footer": "Up to {seconds} seconds a talk. Talks go out on MediaMesh only, and each one is saved in the chat as a voice message. On a computer, hold Space to talk.",
   "@walkie_footer": {"placeholders": {"seconds": {"type": "int"}}},
   "drones_title": "Drone detector",
@@ -3959,5 +3959,7 @@
   "drones_joinDefault": "Join {channel}",
   "@drones_joinDefault": {"placeholders": {"channel": {"type": "String"}}},
   "drones_notJoined": "{channel} (not joined)",
-  "@drones_notJoined": {"placeholders": {"channel": {"type": "String"}}}
+  "@drones_notJoined": {"placeholders": {"channel": {"type": "String"}}},
+  "walkie_liveAll": "Play talks live",
+  "walkie_liveAllHelp": "Talks on any channel play as they arrive, while the app is running, walkie-talkie open or not."
 }

@@ -598,6 +598,47 @@ class VoxVoiceService extends ChangeNotifier {
     if (_heardLive.length > 64) _heardLive.remove(_heardLive.first);
   }
 
+  /// Session ids heard (or sent) as push-to-talk, for clips announced by
+  /// versions without the talk caption.
+  final Set<String> _talkSids = {};
+
+  void _noteTalk(String sid) {
+    if (!_talkSids.add(sid)) return;
+    if (_talkSids.length > 200) _talkSids.remove(_talkSids.first);
+  }
+
+  /// [env] is a push-to-talk (shown with a waveform, not as a plain voice
+  /// message).
+  bool isTalk(VoxVoiceEnvelope env) =>
+      env.isTalk || _talkSids.contains(env.sessionId);
+
+  final Map<String, List<double>> _waves = {};
+
+  /// The clip's loudness in [voxWaveBars] bars (0..1), once it's here; null
+  /// before (or for Mimi, or without Codec2 on this platform).
+  List<double>? waveformFor(VoxVoiceEnvelope env) {
+    final sid = env.sessionId;
+    final cached = _waves[sid];
+    if (cached != null) return cached;
+    final bits = _bits[sid];
+    if (bits == null || env.mode.isMimi || env.isImage) return null;
+    try {
+      final dec = VoxCodec2Stream(env.mode);
+      final Int16List pcm;
+      try {
+        pcm = dec.decode(bits);
+      } finally {
+        dec.dispose();
+      }
+      final wave = voxWaveform(pcm);
+      _waves[sid] = wave;
+      if (_waves.length > 100) _waves.remove(_waves.keys.first);
+      return wave;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// One second of a talk heard live: it also fills in the talk's voice
   /// message (the same session id and packet numbers as its VE3 clip).
   void acceptLivePacket(
@@ -608,6 +649,7 @@ class VoxVoiceService extends ChangeNotifier {
     int? hops,
   }) {
     if (codec.isEmpty || index >= voxMaxPackets) return;
+    _noteTalk(sid);
     _lastChannelPacket[sid] = DateTime.now();
     _onPacket(
       VoxVoicePacket(sessionId: sid, index: index, codecData: codec),
@@ -638,7 +680,9 @@ class VoxVoiceService extends ChangeNotifier {
       mode: walkieMode,
       totalPackets: packets.length,
       durationSeconds: durationSeconds,
+      caption: walkieTalkCaption,
     );
+    _noteTalk(sid);
     _logEvent(
       'talk: ${packets.length} packets sent live on channel ${channel.name}; '
       'announcing it as a voice message',

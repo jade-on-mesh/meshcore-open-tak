@@ -1,6 +1,7 @@
 // MeshCore Open TAK - chat bubble content for a VE3 voice message.
 
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,6 +15,7 @@ import 'image_message_bubble.dart';
 import 'mimi.dart';
 import 'voice_service.dart';
 import 'voice_wire.dart';
+import 'walkie_wire.dart' show voxWaveBars;
 
 class VoxVoiceMessageContent extends StatefulWidget {
   final VoxVoiceEnvelope envelope;
@@ -118,8 +120,11 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
   Widget build(BuildContext context) {
     final media = _buildMedia(context);
     final caption = widget.envelope.caption;
-    // A photo puts its caption under the picture itself.
-    if (caption.isEmpty || widget.envelope.isImage) return media;
+    // A photo puts its caption under the picture itself; a talk's caption is
+    // only its marker.
+    if (caption.isEmpty || widget.envelope.isImage || widget.envelope.isTalk) {
+      return media;
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -159,6 +164,7 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
         st.status == VoxClipStatus.requesting ||
         st.status == VoxClipStatus.receiving;
     final accent = Theme.of(context).colorScheme.primary;
+    final talk = s.isTalk(env);
 
     final connector = context.read<MeshCoreConnector>();
     final sf = connector.currentSf;
@@ -269,10 +275,53 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'Voice message',
-                    style: TextStyle(color: color, fontWeight: FontWeight.w600),
-                  ),
+                  if (talk)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.record_voice_over_outlined,
+                          size: 16,
+                          color: accent,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Talk',
+                          style: TextStyle(
+                            color: color,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    Text(
+                      'Voice message',
+                      style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  if (talk)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: playback == VoxPlayback.playing
+                          ? ValueListenableBuilder<double>(
+                              valueListenable: s.playbackFraction,
+                              builder: (_, f, _) => VoxWaveform(
+                                bars: s.waveformFor(env),
+                                played: f,
+                                color: meta,
+                                playedColor: accent,
+                              ),
+                            )
+                          : VoxWaveform(
+                              bars: s.waveformFor(env),
+                              played: 0,
+                              color: meta,
+                              playedColor: accent,
+                            ),
+                    ),
                   if (playback == VoxPlayback.playing)
                     ValueListenableBuilder<double>(
                       valueListenable: s.playbackFraction,
@@ -302,6 +351,71 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
       ),
     );
   }
+}
+
+/// A clip's loudness as bars; those before [played] (0..1) in [playedColor].
+/// With no [bars] yet (not downloaded), a flat placeholder.
+class VoxWaveform extends StatelessWidget {
+  final List<double>? bars;
+  final double played;
+  final Color color;
+  final Color playedColor;
+  final double width;
+  final double height;
+
+  const VoxWaveform({
+    super.key,
+    required this.bars,
+    required this.played,
+    required this.color,
+    required this.playedColor,
+    this.width = 160,
+    this.height = 26,
+  });
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+    size: Size(width, height),
+    painter: _WavePainter(bars, played, color, playedColor),
+  );
+}
+
+class _WavePainter extends CustomPainter {
+  _WavePainter(this.bars, this.played, this.color, this.playedColor);
+
+  final List<double>? bars;
+  final double played;
+  final Color color;
+  final Color playedColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final b = bars;
+    final n = b?.length ?? voxWaveBars;
+    if (n == 0) return;
+    final step = size.width / n;
+    final w = max(1.5, step * 0.6);
+    final paint = Paint()
+      ..strokeWidth = w
+      ..strokeCap = StrokeCap.round;
+    final mid = size.height / 2;
+    for (var i = 0; i < n; i++) {
+      final v = b == null ? 0.08 : b[i];
+      final h = max(w, v * size.height);
+      final x = step * i + step / 2;
+      paint.color = (i + 0.5) / n <= played
+          ? playedColor
+          : color.withValues(alpha: b == null ? 0.35 : 0.75);
+      canvas.drawLine(Offset(x, mid - h / 2), Offset(x, mid + h / 2), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_WavePainter old) =>
+      old.bars != bars ||
+      old.played != played ||
+      old.color != color ||
+      old.playedColor != playedColor;
 }
 
 /// Shows VOX's voice diagnostic log with a copy button.

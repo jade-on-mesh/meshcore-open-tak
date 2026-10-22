@@ -198,4 +198,42 @@ void main() {
     expect(rms(low), closeTo(10000 / sqrt2, 400));
     expect(rms(run(tone(6000))), lessThan(300));
   });
+
+  group('talk marker and waveform', () {
+    test('a talk is announced with the PTT caption', () {
+      const env = VoxVoiceEnvelope(
+        sessionId: '1a2b3c4d',
+        mode: VoxVoiceMode.mode1200,
+        totalPackets: 3,
+        durationSeconds: 3,
+        caption: walkieTalkCaption,
+      );
+      final text = env.encode();
+      expect(text, endsWith(' PTT'));
+      final back = VoxVoiceEnvelope.tryParse(text)!;
+      expect(back.isTalk, isTrue);
+      final plain = VoxVoiceEnvelope.tryParse(text.replaceAll(' PTT', ''))!;
+      expect(plain.isTalk, isFalse);
+    });
+
+    test('loud then quiet', () {
+      final pcm = Int16List(8000);
+      for (var i = 0; i < 4000; i++) {
+        pcm[i] = (sin(i / 3) * 12000).round();
+      }
+      for (var i = 4000; i < 8000; i++) {
+        pcm[i] = (sin(i / 3) * 300).round();
+      }
+      final w = voxWaveform(pcm);
+      expect(w.length, voxWaveBars);
+      expect(w.first, closeTo(1, 0.05));
+      expect(w.last, lessThan(0.3));
+      expect(w.every((v) => v >= 0 && v <= 1), isTrue);
+    });
+
+    test('silence is flat', () {
+      expect(voxWaveform(Int16List(800)).every((v) => v == 0), isTrue);
+      expect(voxWaveform(Int16List(0)).length, voxWaveBars);
+    });
+  });
 }

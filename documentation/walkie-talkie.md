@@ -15,8 +15,9 @@ talk back.
 3. **Hold to talk.** Let go to finish. On a computer, hold **Space** instead.
    A talk can be up to 20 seconds.
 
-While the walkie-talkie is open, talks on that channel play as they arrive.
-The status line shows who is talking. While someone is talking, the button
+Talks play by themselves as they arrive, on any channel, while the app is
+running, whether the walkie-talkie is open or not, like a scanner. The status
+line shows who is talking. While someone is talking, the button
 waits until they finish, as on a real radio. It's half duplex: while you talk,
 nothing plays.
 
@@ -26,12 +27,20 @@ nothing plays.
 - **Reach: Direct** sends radio to radio, with no repeaters: only radios in
   range hear it live. It's a little faster and adds no repeater traffic. People
   out of range still get the voice message and can fetch it as usual.
-- **Listen live when closed** plays that channel's talks as they arrive even
-  with the walkie-talkie closed (while the app is running). Without it, a talk
-  you weren't listening to arrives as a voice message and follows your
-  auto-play setting.
+- **Play talks live** (on by default) is the switch for all channels. Off,
+  talks only play while that channel's walkie-talkie is open.
+- **Play this channel's talks live** mutes one channel when turned off. Its
+  talks still arrive as voice messages and follow your auto-play setting.
 
 A talk heard live isn't played again when its voice message arrives.
+
+## In the chat
+
+A talk shows in the chat as **Talk**, with the walkie-talkie icon and a
+waveform of the speech instead of a plain voice message. The waveform appears
+once the talk is on your radio (straight away when it was heard live; a flat
+line until it's downloaded otherwise) and fills in with the accent colour as
+it plays. Wadamesh TAK standalones show talks the same way.
 
 ## Airtime
 
@@ -61,8 +70,11 @@ on radio2 only and MediaMesh repeaters relay them there:
 - Audio packet *i* is exactly packet *i* of the talk's VE3 voice message: 156
   bytes (26 frames), fewer in the last. Packets heard live complete the voice
   message, so playing it later needs no download.
-- After the last packet, the talk is announced with `VE3:<id>:1:<packets>:<seconds>`
-  on the channel, with the same session id. The sender keeps it, and answers
+- After the last packet, the talk is announced with
+  `VE3:<id>:1:<packets>:<seconds> PTT` on the channel, with the same session
+  id. The `PTT` caption marks it as a talk; versions that don't know it show
+  "Voice message: PTT". A talk announced without it still shows as a talk to
+  anyone who heard its packets live. The sender keeps it, and answers
   requests for missing packets like any voice message.
 
 Listeners wait about half a second after the first packet before playing, so

@@ -12789,13 +12789,13 @@ abstract class AppLocalizations {
   /// No description provided for @walkie_listenLive.
   ///
   /// In en, this message translates to:
-  /// **'Listen live when closed'**
+  /// **'Play this channel\'s talks live'**
   String get walkie_listenLive;
 
   /// No description provided for @walkie_listenLiveHelp.
   ///
   /// In en, this message translates to:
-  /// **'Play this channel\'s talks as they arrive, even with the walkie-talkie closed.'**
+  /// **'Off mutes this channel: its talks wait in the chat as voice messages.'**
   String get walkie_listenLiveHelp;
 
   /// No description provided for @walkie_footer.
@@ -13043,6 +13043,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{channel} (not joined)'**
   String drones_notJoined(String channel);
+
+  /// No description provided for @walkie_liveAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Play talks live'**
+  String get walkie_liveAll;
+
+  /// No description provided for @walkie_liveAllHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Talks on any channel play as they arrive, while the app is running, walkie-talkie open or not.'**
+  String get walkie_liveAllHelp;
 }
 
 class _AppLocalizationsDelegate
