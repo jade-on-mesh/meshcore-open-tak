@@ -4022,5 +4022,6 @@
   "reach_heardAgo": "Heard it · {ago}",
   "@reach_heardAgo": {"placeholders": {"ago": {"type": "String"}}},
   "reach_notYet": "Not heard yet",
-  "reach_teamHelp": "Teammates say what they heard in their next position beacon, usually within a minute. Older app and firmware versions don't, so they stay \"Not heard yet\"."
+  "reach_teamHelp": "Teammates say what they heard in their next position beacon, usually within a minute. Older app and firmware versions don't, so they stay \"Not heard yet\".",
+  "reach_now": "just now"
 }

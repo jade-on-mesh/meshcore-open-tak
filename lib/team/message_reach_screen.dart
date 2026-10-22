@@ -209,7 +209,7 @@ class MessageReachScreen extends StatelessWidget {
 
     String ago(DateTime d) {
       final s = DateTime.now().difference(d);
-      if (s.inMinutes < 1) return l.quickReply_now;
+      if (s.inMinutes < 1) return l.reach_now;
       if (s.inHours < 1) return '${s.inMinutes}m';
       return '${s.inHours}h';
     }

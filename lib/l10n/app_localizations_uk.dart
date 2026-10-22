@@ -7858,4 +7858,7 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get reach_teamHelp => 'Teammates say what they heard in their next position beacon, usually within a minute. Older app and firmware versions don\'t, so they stay "Not heard yet".';
+
+  @override
+  String get reach_now => 'just now';
 }

@@ -13349,6 +13349,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Teammates say what they heard in their next position beacon, usually within a minute. Older app and firmware versions don\'t, so they stay "Not heard yet".'**
   String get reach_teamHelp;
+
+  /// No description provided for @reach_now.
+  ///
+  /// In en, this message translates to:
+  /// **'just now'**
+  String get reach_now;
 }
 
 class _AppLocalizationsDelegate
