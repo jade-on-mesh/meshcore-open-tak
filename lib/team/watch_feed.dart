@@ -21,7 +21,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../connector/meshcore_connector.dart';
 import '../models/channel.dart';
 import '../models/channel_message.dart';
-import 'team_wire.dart' show teamBearingDeg, teamDistanceMeters;
+import 'team_wire.dart'
+    show
+        TeamReplyCode,
+        parseWatchReply,
+        teamBearingDeg,
+        teamDistanceMeters,
+        watchReplyText;
 import 'watch_sounds.dart';
 
 /// Status levels found in feed reports, most urgent first.
@@ -162,6 +168,9 @@ class WatchItem {
       statusWord != null || place != null || counts.isNotEmpty;
   bool get hasPosition => lat != null && lon != null;
   String get key => '${channel.index}:${message.messageId}';
+
+  /// The id quick replies to this report carry: its reaction hash.
+  String get replyHash => message.computeReactionHash();
 
   /// Everything the Watch search looks through, lower-cased.
   String get searchText => [
@@ -940,9 +949,27 @@ class WatchFeedService extends ChangeNotifier {
     }
   }
 
+  // Quick replies heard on the watched channels, by "channel:hash" of the
+  // report they answer (team_reply_wire.dart). Rebuilt with [items].
+  final Map<String, List<WatchReplyHeard>> _replies = {};
+
+  /// The quick replies to [item], oldest first (one per person: their newest).
+  List<WatchReplyHeard> repliesFor(WatchItem item) {
+    if (_dirty) items;
+    return _replies['${item.channel.index}:${item.replyHash}'] ?? const [];
+  }
+
+  /// Answers [item] on its channel: "On my way ↩3fa1".
+  Future<void> reply(WatchItem item, TeamReplyCode code, {int arg = 0}) =>
+      _connector.sendChannelMessage(
+        item.channel,
+        watchReplyText(code, item.replyHash, arg: arg),
+      );
+
   /// Newest first, at most 200 per channel.
   List<WatchItem> get items {
     if (!_dirty) return _items;
+    _replies.clear();
     final out = <WatchItem>[];
     for (final c in watchedChannels) {
       final msgs = _connector.getChannelMessages(c);
@@ -951,6 +978,23 @@ class WatchFeedService extends ChangeNotifier {
       for (var i = start; i < msgs.length; i++) {
         final m = msgs[i];
         if (m.text.trim().isEmpty) continue;
+        // A quick reply belongs to the report it answers, not the feed.
+        final qr = parseWatchReply(m.text);
+        if (qr != null) {
+          final list = _replies.putIfAbsent('${c.index}:${qr.hash}', () => []);
+          list.removeWhere((x) => x.sender == m.senderName);
+          list.add(
+            WatchReplyHeard(
+              sender: m.senderName,
+              said: qr.said,
+              code: qr.code,
+              arg: qr.arg,
+              at: m.timestamp,
+              own: m.isOutgoing,
+            ),
+          );
+          continue;
+        }
         final key = '${c.index}:${m.messageId}';
         final it = parseWatchMessage(c, m, time: _timeOf(key, m.timestamp));
         // A bot's bare link right after its own report belongs to that report.
@@ -984,4 +1028,22 @@ class WatchFeedService extends ChangeNotifier {
     _connector.removeListener(_onConnector);
     super.dispose();
   }
+}
+
+/// A quick reply to a watched report ("Sam: On my way").
+class WatchReplyHeard {
+  final String sender;
+  final String said;
+  final TeamReplyCode? code;
+  final int arg;
+  final DateTime at;
+  final bool own;
+  const WatchReplyHeard({
+    required this.sender,
+    required this.said,
+    required this.code,
+    required this.arg,
+    required this.at,
+    required this.own,
+  });
 }

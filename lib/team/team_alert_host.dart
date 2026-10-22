@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/l10n.dart';
+import 'quick_reply_ui.dart';
 import 'team_service.dart';
 import 'team_wire.dart';
 
@@ -158,7 +160,33 @@ class _TeamAlertHostState extends State<TeamAlertHost> {
                           style: const TextStyle(color: Colors.white70),
                         ),
                       ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
+                    // One tap answers the teammate and silences the alarm.
+                    Text(
+                      context.l10n.quickReply_answerAlert,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: QuickReplyChips(
+                        codes: teamAlertReplies,
+                        onColor: true,
+                        onPick: (code, arg) {
+                          unawaited(
+                            team.sendReply(
+                              ref: TeamReplyRef.alert,
+                              toKey4: a.senderKey4,
+                              refId: a.alertId,
+                              code: code,
+                              arg: arg,
+                            ),
+                          );
+                          team.acknowledge(a);
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 24),
                     if (a.lat != null)
                       FilledButton.icon(
                         style: FilledButton.styleFrom(

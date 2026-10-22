@@ -13277,6 +13277,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Everything in dim red, the map and photos too, to keep your eyes used to the dark.'**
   String get appSettings_redLightHelp;
+
+  /// No description provided for @quickReply_copy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get quickReply_copy;
+
+  /// No description provided for @quickReply_onMyWay.
+  ///
+  /// In en, this message translates to:
+  /// **'On my way'**
+  String get quickReply_onMyWay;
+
+  /// No description provided for @quickReply_eta.
+  ///
+  /// In en, this message translates to:
+  /// **'ETA…'**
+  String get quickReply_eta;
+
+  /// No description provided for @quickReply_etaMin.
+  ///
+  /// In en, this message translates to:
+  /// **'ETA {minutes} min'**
+  String quickReply_etaMin(int minutes);
+
+  /// No description provided for @quickReply_etaPick.
+  ///
+  /// In en, this message translates to:
+  /// **'How long until you\'re there?'**
+  String get quickReply_etaPick;
+
+  /// No description provided for @quickReply_cantHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t help'**
+  String get quickReply_cantHelp;
+
+  /// No description provided for @quickReply_seenIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Seen it'**
+  String get quickReply_seenIt;
+
+  /// No description provided for @quickReply_needBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Need backup'**
+  String get quickReply_needBackup;
+
+  /// No description provided for @quickReply_allClear.
+  ///
+  /// In en, this message translates to:
+  /// **'All clear'**
+  String get quickReply_allClear;
+
+  /// No description provided for @quickReply_you.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get quickReply_you;
+
+  /// No description provided for @quickReply_now.
+  ///
+  /// In en, this message translates to:
+  /// **'now'**
+  String get quickReply_now;
+
+  /// No description provided for @quickReply_answers.
+  ///
+  /// In en, this message translates to:
+  /// **'Answers'**
+  String get quickReply_answers;
+
+  /// No description provided for @quickReply_answerAlert.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer (also acknowledges)'**
+  String get quickReply_answerAlert;
+
+  /// No description provided for @quickReply_summary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} answered: {who}'**
+  String quickReply_summary(int count, String who);
 }
 
 class _AppLocalizationsDelegate

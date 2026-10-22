@@ -4007,5 +4007,21 @@
   "teamSetup_joined": "Joined {name}",
   "@teamSetup_joined": {"placeholders": {"name": {"type": "String"}}},
   "appSettings_redLight": "Red light (night vision)",
-  "appSettings_redLightHelp": "Everything in dim red, the map and photos too, to keep your eyes used to the dark."
+  "appSettings_redLightHelp": "Everything in dim red, the map and photos too, to keep your eyes used to the dark.",
+  "quickReply_copy": "Copy",
+  "quickReply_onMyWay": "On my way",
+  "quickReply_eta": "ETA…",
+  "quickReply_etaMin": "ETA {minutes} min",
+  "@quickReply_etaMin": {"placeholders": {"minutes": {"type": "int"}}},
+  "quickReply_etaPick": "How long until you're there?",
+  "quickReply_cantHelp": "Can't help",
+  "quickReply_seenIt": "Seen it",
+  "quickReply_needBackup": "Need backup",
+  "quickReply_allClear": "All clear",
+  "quickReply_you": "You",
+  "quickReply_now": "now",
+  "quickReply_answers": "Answers",
+  "quickReply_answerAlert": "Answer (also acknowledges)",
+  "quickReply_summary": "{count} answered: {who}",
+  "@quickReply_summary": {"placeholders": {"count": {"type": "int"}, "who": {"type": "String"}}}
 }
