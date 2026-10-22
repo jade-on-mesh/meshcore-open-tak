@@ -28,10 +28,20 @@
 //             [lat0 i32][lon0 i32][zigzag varint deltas...] (1e-5 degrees)
 //   casevac   [0x43][key4][id u32][op u8][lat i32][lon i32][time u32] then
 //             the 9 lines (see team_casevac_wire.dart)
+//   reply     [0x51][key4][toKey4][refKind u8][refId u32][code u8][arg u8]
+//             [callsignLen][callsign]   (a quick reply; team_reply_wire.dart)
 //
 // A position's role is the high nibble of its role/colour byte; roles 15 and
 // up (added roles) write 15 there, set flag 0x20 and append the role id as
 // one byte after the callsign. Older readers see an unknown role.
+//
+// Flag 0x40 adds, after that, what lets a sender see who heard their channel
+// messages (documentation/message-reach.md):
+//   [nameHash u16][n u8 (0-4)][heard u16 x n]
+// nameHash is the radio name's string hash (low 16 bits, the same hash as the
+// reactions'), so teammates can tell this member's channel messages apart;
+// heard are the reaction hashes of the last teammates' channel messages this
+// member heard. Older readers stop at the callsign.
 //
 // Added with the ATAK plugin (atak-plugin/), which also speaks position,
 // alert, marker and report; formats in team_wire_atak.dart:
@@ -50,6 +60,7 @@ import 'team_coords.dart';
 
 part 'team_shape_wire.dart';
 part 'team_casevac_wire.dart';
+part 'team_reply_wire.dart';
 
 /// GRP_DATA data type for team traffic ('VT').
 const int teamChannelDataType = 0x5654;
@@ -297,7 +308,8 @@ const int teamMsgChunk = 0x58; // 'X'
       p[0] != teamMsgCasevac &&
       p[0] != teamMsgPoint &&
       p[0] != teamMsgAtakShape &&
-      p[0] != teamMsgChunk) {
+      p[0] != teamMsgChunk &&
+      p[0] != teamMsgReply) {
     return null;
   }
   return (p[0], teamKey4Hex(p, 1));
@@ -325,6 +337,12 @@ class TeamPosition {
   /// A TAK user's position relayed onto the mesh by a gateway phone.
   final bool relayed;
 
+  /// The low 16 bits of the sender's radio name hash (flag 0x40), if sent.
+  final int? nameHash;
+
+  /// Reaction hashes of teammates' channel messages this member heard last.
+  final List<int> heard;
+
   const TeamPosition({
     required this.senderKey4,
     required this.lat,
@@ -341,6 +359,8 @@ class TeamPosition {
     this.fromRadio = false,
     this.sosActive = false,
     this.relayed = false,
+    this.nameHash,
+    this.heard = const [],
   });
 
   /// The default role, or [TeamRole.member] for an added one.
@@ -358,7 +378,8 @@ class TeamPosition {
             (fromRadio ? 0x04 : 0) |
             (sosActive ? 0x08 : 0) |
             (relayed ? 0x10 : 0) |
-            (extended ? 0x20 : 0),
+            (extended ? 0x20 : 0) |
+            (nameHash != null ? 0x40 : 0),
       )
       ..i32(_deg(lat))
       ..i32(_deg(lon))
@@ -371,6 +392,15 @@ class TeamPosition {
       ..u8(status.index)
       ..str(callsign, teamMaxCallsignBytes);
     if (extended) w.u8(rid);
+    if (nameHash != null) {
+      final h = heard.length > 4 ? heard.sublist(heard.length - 4) : heard;
+      w
+        ..u16(nameHash! & 0xFFFF)
+        ..u8(h.length);
+      for (final x in h) {
+        w.u16(x & 0xFFFF);
+      }
+    }
     return w.done();
   }
 
@@ -394,6 +424,15 @@ class TeamPosition {
       roleId = flags & 0x20 != 0 && r.has(1) ? r.u8() : 0;
       if (roleId > teamMaxRoleId) roleId = 0;
     }
+    int? nameHash;
+    final heard = <int>[];
+    if (flags & 0x40 != 0 && r.has(3)) {
+      nameHash = r.u16();
+      final n = min(r.u8(), 4);
+      for (var i = 0; i < n && r.has(2); i++) {
+        heard.add(r.u16());
+      }
+    }
     return TeamPosition(
       senderKey4: key,
       lat: lat,
@@ -410,6 +449,8 @@ class TeamPosition {
       fromRadio: flags & 0x04 != 0,
       sosActive: flags & 0x08 != 0,
       relayed: flags & 0x10 != 0,
+      nameHash: nameHash,
+      heard: heard,
     );
   }
 }
