@@ -279,14 +279,14 @@ class WalkieJitter {
         _next++;
         continue;
       }
-      // Missing: skip it once it can no longer arrive in time, if anything
-      // after it has come (or the talk has ended).
+      // Missing: skip it once it can no longer arrive in time, if something
+      // after it has come or the talk's length is known. With neither there is
+      // nothing to skip to: a talk that went quiet without its last packet
+      // used to skip here forever and froze the app; finished() ends it.
       final playEnd = _playEnd ?? now;
       final late = !now.isBefore(playEnd.add(skipGrace));
       final later = _packets.keys.any((k) => k > _next) || _total != null;
-      final quiet =
-          _lastHeard != null && now.difference(_lastHeard!) > walkieTalkTimeout;
-      if (late && (later || quiet)) {
+      if (late && later) {
         _next++;
         continue;
       }
