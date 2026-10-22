@@ -398,7 +398,7 @@ class _WatchTabState extends State<WatchTab> {
           shrinkWrap: true,
           children: [
             const ListTile(
-              title: Text('Channels to watch'),
+              title: Text('Channels to watch (e.g. #icewatch, #dronewatch)'),
               subtitle: Text(
                 'Their messages show here as a compact feed. Give a channel '
                 'a sound to hear when one of its reports lands on the map.',
