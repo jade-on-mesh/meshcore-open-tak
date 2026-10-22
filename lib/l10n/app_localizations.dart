@@ -13361,6 +13361,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} answered: {who}'**
   String quickReply_summary(int count, String who);
+
+  /// No description provided for @reach_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Who got it'**
+  String get reach_title;
+
+  /// No description provided for @reach_action.
+  ///
+  /// In en, this message translates to:
+  /// **'Who got it (map)'**
+  String get reach_action;
+
+  /// No description provided for @reach_noPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'This radio has no position, so there\'s nothing to draw from. The lists below still show who got it.'**
+  String get reach_noPosition;
+
+  /// No description provided for @reach_summary.
+  ///
+  /// In en, this message translates to:
+  /// **'{repeaters} repeaters re-sent it · {teammates} teammates heard it'**
+  String reach_summary(int repeaters, int teammates);
+
+  /// No description provided for @reach_noRepeats.
+  ///
+  /// In en, this message translates to:
+  /// **'No repeater has been heard re-sending it yet. Echoes show up here as they come in.'**
+  String get reach_noRepeats;
+
+  /// No description provided for @reach_direct.
+  ///
+  /// In en, this message translates to:
+  /// **'Heard you directly'**
+  String get reach_direct;
+
+  /// No description provided for @reach_hops.
+  ///
+  /// In en, this message translates to:
+  /// **'{hops} hops out'**
+  String reach_hops(int hops);
+
+  /// No description provided for @reach_noLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'location unknown'**
+  String get reach_noLocation;
+
+  /// No description provided for @reach_teammates.
+  ///
+  /// In en, this message translates to:
+  /// **'Teammates'**
+  String get reach_teammates;
+
+  /// No description provided for @reach_heardAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'Heard it · {ago}'**
+  String reach_heardAgo(String ago);
+
+  /// No description provided for @reach_notYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not heard yet'**
+  String get reach_notYet;
+
+  /// No description provided for @reach_teamHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Teammates say what they heard in their next position beacon, usually within a minute. Older app and firmware versions don\'t, so they stay "Not heard yet".'**
+  String get reach_teamHelp;
+
+  /// No description provided for @reach_now.
+  ///
+  /// In en, this message translates to:
+  /// **'just now'**
+  String get reach_now;
 }
 
 class _AppLocalizationsDelegate

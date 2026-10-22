@@ -912,6 +912,10 @@ class MeshCoreConnector extends ChangeNotifier {
     DateTime? timestamp,
   })?
   voxIncomingTextObserver;
+
+  /// MeshCore Open TAK: every new incoming channel message, for the team's
+  /// "who heard it" (documentation/message-reach.md).
+  void Function(ChannelMessage message)? teamChannelHeardObserver;
   Uint8List? get selfPublicKey => _selfPublicKey;
   String get selfPublicKeyHex => pubKeyToHex(_selfPublicKey ?? Uint8List(0));
 
@@ -10823,6 +10827,7 @@ class MeshCoreConnector extends ChangeNotifier {
           channelIndex: message.channelIndex,
           timestamp: message.timestamp,
         );
+        teamChannelHeardObserver?.call(message);
       }
       if (isNew && !message.isOutgoing) {
         final msg = message; // capture for closure
@@ -10976,6 +10981,7 @@ class MeshCoreConnector extends ChangeNotifier {
               channelIndex: channel.index,
               timestamp: message.timestamp,
             );
+            teamChannelHeardObserver?.call(message);
           }
           if (isNew) {
             // Run translation + notification asynchronously to avoid blocking

@@ -35,6 +35,14 @@
 // up (added roles) write 15 there, set flag 0x20 and append the role id as
 // one byte after the callsign. Older readers see an unknown role.
 //
+// Flag 0x40 adds, after that, what lets a sender see who heard their channel
+// messages (documentation/message-reach.md):
+//   [nameHash u16][n u8 (0-4)][heard u16 x n]
+// nameHash is the radio name's string hash (low 16 bits, the same hash as the
+// reactions'), so teammates can tell this member's channel messages apart;
+// heard are the reaction hashes of the last teammates' channel messages this
+// member heard. Older readers stop at the callsign.
+//
 // Added with the ATAK plugin (atak-plugin/), which also speaks position,
 // alert, marker and report; formats in team_wire_atak.dart:
 //   point     [0x4F] any single-point CoT item (spot marker, 2525 unit...)
@@ -329,6 +337,12 @@ class TeamPosition {
   /// A TAK user's position relayed onto the mesh by a gateway phone.
   final bool relayed;
 
+  /// The low 16 bits of the sender's radio name hash (flag 0x40), if sent.
+  final int? nameHash;
+
+  /// Reaction hashes of teammates' channel messages this member heard last.
+  final List<int> heard;
+
   const TeamPosition({
     required this.senderKey4,
     required this.lat,
@@ -345,6 +359,8 @@ class TeamPosition {
     this.fromRadio = false,
     this.sosActive = false,
     this.relayed = false,
+    this.nameHash,
+    this.heard = const [],
   });
 
   /// The default role, or [TeamRole.member] for an added one.
@@ -362,7 +378,8 @@ class TeamPosition {
             (fromRadio ? 0x04 : 0) |
             (sosActive ? 0x08 : 0) |
             (relayed ? 0x10 : 0) |
-            (extended ? 0x20 : 0),
+            (extended ? 0x20 : 0) |
+            (nameHash != null ? 0x40 : 0),
       )
       ..i32(_deg(lat))
       ..i32(_deg(lon))
@@ -375,6 +392,15 @@ class TeamPosition {
       ..u8(status.index)
       ..str(callsign, teamMaxCallsignBytes);
     if (extended) w.u8(rid);
+    if (nameHash != null) {
+      final h = heard.length > 4 ? heard.sublist(heard.length - 4) : heard;
+      w
+        ..u16(nameHash! & 0xFFFF)
+        ..u8(h.length);
+      for (final x in h) {
+        w.u16(x & 0xFFFF);
+      }
+    }
     return w.done();
   }
 
@@ -398,6 +424,15 @@ class TeamPosition {
       roleId = flags & 0x20 != 0 && r.has(1) ? r.u8() : 0;
       if (roleId > teamMaxRoleId) roleId = 0;
     }
+    int? nameHash;
+    final heard = <int>[];
+    if (flags & 0x40 != 0 && r.has(3)) {
+      nameHash = r.u16();
+      final n = min(r.u8(), 4);
+      for (var i = 0; i < n && r.has(2); i++) {
+        heard.add(r.u16());
+      }
+    }
     return TeamPosition(
       senderKey4: key,
       lat: lat,
@@ -414,6 +449,8 @@ class TeamPosition {
       fromRadio: flags & 0x04 != 0,
       sosActive: flags & 0x08 != 0,
       relayed: flags & 0x10 != 0,
+      nameHash: nameHash,
+      heard: heard,
     );
   }
 }

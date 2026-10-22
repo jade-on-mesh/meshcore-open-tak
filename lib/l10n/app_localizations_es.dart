@@ -7844,4 +7844,49 @@ class AppLocalizationsEs extends AppLocalizations {
   String quickReply_summary(int count, String who) {
     return '$count answered: $who';
   }
+
+  @override
+  String get reach_title => 'Who got it';
+
+  @override
+  String get reach_action => 'Who got it (map)';
+
+  @override
+  String get reach_noPosition => 'This radio has no position, so there\'s nothing to draw from. The lists below still show who got it.';
+
+  @override
+  String reach_summary(int repeaters, int teammates) {
+    return '$repeaters repeaters re-sent it · $teammates teammates heard it';
+  }
+
+  @override
+  String get reach_noRepeats => 'No repeater has been heard re-sending it yet. Echoes show up here as they come in.';
+
+  @override
+  String get reach_direct => 'Heard you directly';
+
+  @override
+  String reach_hops(int hops) {
+    return '$hops hops out';
+  }
+
+  @override
+  String get reach_noLocation => 'location unknown';
+
+  @override
+  String get reach_teammates => 'Teammates';
+
+  @override
+  String reach_heardAgo(String ago) {
+    return 'Heard it · $ago';
+  }
+
+  @override
+  String get reach_notYet => 'Not heard yet';
+
+  @override
+  String get reach_teamHelp => 'Teammates say what they heard in their next position beacon, usually within a minute. Older app and firmware versions don\'t, so they stay "Not heard yet".';
+
+  @override
+  String get reach_now => 'just now';
 }

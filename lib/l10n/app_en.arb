@@ -4023,5 +4023,21 @@
   "quickReply_answers": "Answers",
   "quickReply_answerAlert": "Answer (also acknowledges)",
   "quickReply_summary": "{count} answered: {who}",
-  "@quickReply_summary": {"placeholders": {"count": {"type": "int"}, "who": {"type": "String"}}}
+  "@quickReply_summary": {"placeholders": {"count": {"type": "int"}, "who": {"type": "String"}}},
+  "reach_title": "Who got it",
+  "reach_action": "Who got it (map)",
+  "reach_noPosition": "This radio has no position, so there's nothing to draw from. The lists below still show who got it.",
+  "reach_summary": "{repeaters} repeaters re-sent it · {teammates} teammates heard it",
+  "@reach_summary": {"placeholders": {"repeaters": {"type": "int"}, "teammates": {"type": "int"}}},
+  "reach_noRepeats": "No repeater has been heard re-sending it yet. Echoes show up here as they come in.",
+  "reach_direct": "Heard you directly",
+  "reach_hops": "{hops} hops out",
+  "@reach_hops": {"placeholders": {"hops": {"type": "int"}}},
+  "reach_noLocation": "location unknown",
+  "reach_teammates": "Teammates",
+  "reach_heardAgo": "Heard it · {ago}",
+  "@reach_heardAgo": {"placeholders": {"ago": {"type": "String"}}},
+  "reach_notYet": "Not heard yet",
+  "reach_teamHelp": "Teammates say what they heard in their next position beacon, usually within a minute. Older app and firmware versions don't, so they stay \"Not heard yet\".",
+  "reach_now": "just now"
 }

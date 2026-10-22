@@ -10,6 +10,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../connector/meshcore_connector.dart';
+import '../helpers/reaction_helper.dart';
 import '../models/channel.dart';
 import '../models/channel_message.dart';
 import '../services/image_chunk_transport.dart'
@@ -96,6 +97,7 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
   TeamService(this._connector) {
     _sub = _connector.receivedFrames.listen(_onFrame);
     _connector.teamCompatTextInterceptor = compat.onChannelText;
+    _connector.teamChannelHeardObserver = _onChannelHeard;
     _connector.addListener(_onConnectorChanged);
     unawaited(_load());
     _tick = Timer.periodic(const Duration(seconds: 10), (_) => _onTick());
@@ -523,6 +525,7 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
   static const int _trailMax = 300;
 
   void _onPosition(TeamPosition p) {
+    _noteHeard(p);
     final prev = _members[p.senderKey4];
     if (prev == null) _newcomerHeard();
     final trail = [...?prev?.trail];
@@ -992,6 +995,72 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
     if (send) unawaited(sendPosition());
   }
 
+  // ---------------------------------------------------------- who heard it
+  // documentation/message-reach.md: each beacon carries a hash of this radio's
+  // name and the reaction hashes of the last teammates' channel messages it
+  // heard, so a sender can see which teammates got a message.
+
+  /// The low 16 bits of a radio name's string hash, as beacons carry it.
+  static int nameHash(String name) =>
+      ReactionHelper.stableStringHash(name) & 0xFFFF;
+
+  /// A channel message's id for "heard by": its reaction hash.
+  static int messageHash(ChannelMessage m) =>
+      int.parse(m.computeReactionHash(), radix: 16);
+
+  final List<int> _heardRecent = [];
+  // message hash -> member key4 -> when their beacon said so
+  final Map<int, Map<String, DateTime>> _heardBy = {};
+  DateTime? _heardBeaconAt;
+  Timer? _heardBeacon;
+
+  void _onChannelHeard(ChannelMessage m) {
+    if (!active) return;
+    final from = nameHash(m.senderName);
+    final teammate =
+        m.channelIndex == teamChannel?.index ||
+        _members.values.any((x) => x.position.nameHash == from);
+    if (!teammate) return;
+    final h = messageHash(m);
+    if (_heardRecent.contains(h)) return;
+    _heardRecent.add(h);
+    if (_heardRecent.length > 4) _heardRecent.removeAt(0);
+    // Say so soon (a beacon in 15-45 s), at most once every 2 minutes, so
+    // the sender sees it while they still care.
+    final last = _heardBeaconAt;
+    if (_heardBeacon != null ||
+        (last != null &&
+            DateTime.now().difference(last) < const Duration(minutes: 2))) {
+      return;
+    }
+    _heardBeacon = Timer(Duration(seconds: 15 + _rng.nextInt(31)), () {
+      _heardBeacon = null;
+      _heardBeaconAt = DateTime.now();
+      _forceBeacon = true;
+    });
+  }
+
+  void _noteHeard(TeamPosition p) {
+    final now = DateTime.now();
+    for (final h in p.heard) {
+      (_heardBy[h] ??= {})[p.senderKey4] = now;
+    }
+    while (_heardBy.length > 300) {
+      _heardBy.remove(_heardBy.keys.first);
+    }
+  }
+
+  /// Teammates whose beacons said they heard [m] (one of this phone's own
+  /// channel messages), with when they said so.
+  List<(TeamMember, DateTime)> heardBy(ChannelMessage m) {
+    final by = _heardBy[messageHash(m)];
+    if (by == null) return const [];
+    return [
+      for (final e in by.entries)
+        if (_members[e.key] != null) (_members[e.key]!, e.value),
+    ];
+  }
+
   TeamPosition? _selfPosition() {
     final f = fix;
     if (f == null) return null;
@@ -1018,6 +1087,8 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
           : callsign,
       fromRadio: f.source == TeamFixSource.radio,
       sosActive: _activeOwnAlert != null,
+      nameHash: nameHash(_connector.selfName ?? ''),
+      heard: List.of(_heardRecent),
     );
   }
 
@@ -2078,6 +2149,10 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
 
   @override
   void dispose() {
+    _heardBeacon?.cancel();
+    if (_connector.teamChannelHeardObserver == _onChannelHeard) {
+      _connector.teamChannelHeardObserver = null;
+    }
     if (_trackDirty) {
       final enc = encodeTeamTrack(_myTrack);
       unawaited(_save((p) => p.setString(_kMyTrack, enc)));
