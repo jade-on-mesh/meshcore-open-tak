@@ -202,6 +202,18 @@ class AppSettingsScreen extends StatelessWidget {
                   settingsService.setThemeMode(selection.first);
                 },
               ),
+              const SizedBox(height: 4),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                secondary: Icon(
+                  Icons.nightlight_outlined,
+                  color: scheme.onSurfaceVariant,
+                ),
+                title: Text(context.l10n.appSettings_redLight),
+                subtitle: Text(context.l10n.appSettings_redLightHelp),
+                value: settingsService.settings.redLight,
+                onChanged: settingsService.setRedLight,
+              ),
             ],
           ),
         ),

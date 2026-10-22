@@ -3961,5 +3961,7 @@
   "drones_notJoined": "{channel} (not joined)",
   "@drones_notJoined": {"placeholders": {"channel": {"type": "String"}}},
   "walkie_liveAll": "Play talks live",
-  "walkie_liveAllHelp": "Talks on any channel play as they arrive, while the app is running, walkie-talkie open or not."
+  "walkie_liveAllHelp": "Talks on any channel play as they arrive, while the app is running, walkie-talkie open or not.",
+  "appSettings_redLight": "Red light (night vision)",
+  "appSettings_redLightHelp": "Everything in dim red, the map and photos too, to keep your eyes used to the dark."
 }
