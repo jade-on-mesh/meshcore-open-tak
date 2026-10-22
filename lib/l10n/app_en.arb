@@ -3961,5 +3961,19 @@
   "drones_notJoined": "{channel} (not joined)",
   "@drones_notJoined": {"placeholders": {"channel": {"type": "String"}}},
   "walkie_liveAll": "Play talks live",
-  "walkie_liveAllHelp": "Talks on any channel play as they arrive, while the app is running, walkie-talkie open or not."
+  "walkie_liveAllHelp": "Talks on any channel play as they arrive, while the app is running, walkie-talkie open or not.",
+  "coverage_title": "Coverage map",
+  "coverage_record": "Map MediaMesh coverage",
+  "coverage_recordHelp": "As you move, asks the MediaMesh repeaters in range every 150 m and marks the map with how well MediaMesh reaches there.",
+  "coverage_asking": "Asking the MediaMesh repeaters…",
+  "coverage_show": "Show on the map",
+  "coverage_points": "{count} points",
+  "@coverage_points": {"placeholders": {"count": {"type": "int"}}},
+  "coverage_good": "Good",
+  "coverage_marginal": "Marginal",
+  "coverage_out": "Out",
+  "coverage_none": "None",
+  "coverage_help": "Only repeaters with MediaMesh (radio2 on) count. Good: 5 dB or more to spare on radio2; Marginal: 0–5 dB; Out: heard, but radio2 wouldn't reach; None: no MediaMesh repeater answered.",
+  "coverage_export": "Export (GeoJSON)",
+  "coverage_clear": "Clear"
 }

@@ -7613,4 +7613,45 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get walkie_liveAllHelp => 'Talks on any channel play as they arrive, while the app is running, walkie-talkie open or not.';
+
+  @override
+  String get coverage_title => 'Coverage map';
+
+  @override
+  String get coverage_record => 'Map MediaMesh coverage';
+
+  @override
+  String get coverage_recordHelp => 'As you move, asks the MediaMesh repeaters in range every 150 m and marks the map with how well MediaMesh reaches there.';
+
+  @override
+  String get coverage_asking => 'Asking the MediaMesh repeaters…';
+
+  @override
+  String get coverage_show => 'Show on the map';
+
+  @override
+  String coverage_points(int count) {
+    return '$count points';
+  }
+
+  @override
+  String get coverage_good => 'Good';
+
+  @override
+  String get coverage_marginal => 'Marginal';
+
+  @override
+  String get coverage_out => 'Out';
+
+  @override
+  String get coverage_none => 'None';
+
+  @override
+  String get coverage_help => 'Only repeaters with MediaMesh (radio2 on) count. Good: 5 dB or more to spare on radio2; Marginal: 0–5 dB; Out: heard, but radio2 wouldn\'t reach; None: no MediaMesh repeater answered.';
+
+  @override
+  String get coverage_export => 'Export (GeoJSON)';
+
+  @override
+  String get coverage_clear => 'Clear';
 }
