@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 
 import 'review_mode/review_mode_storage.dart';
 import 'screens/chrome_required_screen.dart';
+import 'team/drone_detector.dart';
 import 'team/map_highlights.dart';
 import 'services/media_mesh_nearby.dart';
 import 'services/media_lockdown.dart';
@@ -432,6 +433,10 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
   late final TeamService _teamService = TeamService(widget.connector);
   late final TakService _takService = TakService(_teamService);
   late final WatchFeedService _watchFeed = WatchFeedService(widget.connector);
+  late final DroneDetectorService _drones = DroneDetectorService(
+    widget.connector,
+    _watchFeed,
+  );
   late final AtakPluginBridge _atakBridge;
 
   @override
@@ -519,6 +524,7 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
         ChangeNotifierProvider<TeamService>.value(value: _teamService),
         ChangeNotifierProvider<TakService>.value(value: _takService),
         ChangeNotifierProvider<WatchFeedService>.value(value: _watchFeed),
+        ChangeNotifierProvider<DroneDetectorService>.value(value: _drones),
         Provider<AtakPluginBridge>.value(value: _atakBridge),
         ChangeNotifierProvider.value(value: widget.networkMapUploadService),
       ],

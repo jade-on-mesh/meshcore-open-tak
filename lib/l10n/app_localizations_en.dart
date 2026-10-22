@@ -7439,6 +7439,105 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get drones_title => 'Drone detector';
+
+  @override
+  String get drones_chip => 'Drones';
+
+  @override
+  String get drones_listen => 'Listen for drones';
+
+  @override
+  String get drones_listenHelp => 'Hears drones that broadcast Remote ID over Bluetooth: their ID, position, height, speed and where the operator is. Drones without Remote ID aren\'t detected.';
+
+  @override
+  String get drones_scanning => 'Listening';
+
+  @override
+  String get drones_paused => 'Paused while the app searches for radios';
+
+  @override
+  String get drones_none => 'No drones heard yet.';
+
+  @override
+  String get drones_noPosition => 'no position yet';
+
+  @override
+  String get drones_stale => 'not heard for a minute';
+
+  @override
+  String get drones_type => 'Type';
+
+  @override
+  String get drones_height => 'Height';
+
+  @override
+  String get drones_altitude => 'Altitude';
+
+  @override
+  String get drones_speed => 'Speed';
+
+  @override
+  String get drones_heading => 'Heading';
+
+  @override
+  String get drones_operator => 'Operator';
+
+  @override
+  String get drones_operatorId => 'Operator ID';
+
+  @override
+  String get drones_description => 'Description';
+
+  @override
+  String get drones_signal => 'Signal';
+
+  @override
+  String get drones_lastHeard => 'Last heard';
+
+  @override
+  String get drones_showOnMap => 'Show on map';
+
+  @override
+  String get drones_post => 'Post to the alert channel';
+
+  @override
+  String get drones_posted => 'Posted';
+
+  @override
+  String get drones_alertChannel => 'Alert channel';
+
+  @override
+  String get drones_noChannel => 'None';
+
+  @override
+  String get drones_share => 'Post drones there';
+
+  @override
+  String get drones_shareHelp => 'Each drone at most once a minute, and again after it moves 200 m. Never on Public. Others watching the channel see them on their map, with the operator.';
+
+  @override
+  String get drones_sound => 'Sound when a new drone appears';
+
+  @override
+  String get drones_clear => 'Clear the list';
+
+  @override
+  String drones_counts(int heard, int posted) {
+    return '$heard broadcasts heard · $posted posted';
+  }
+
+  @override
+  String drones_secondsAgo(int n) {
+    return '$n s ago';
+  }
+
+  @override
+  String drones_minutesAgo(int n) {
+    return '$n min ago';
+  }
+
+  @override
   String get mediaMesh_findAsking => 'Asking repeaters nearby…';
 
   @override

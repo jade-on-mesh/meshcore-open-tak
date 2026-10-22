@@ -12804,6 +12804,192 @@ abstract class AppLocalizations {
   /// **'Up to {seconds} seconds a talk. Talks go out on MediaMesh only, and each one is saved in the chat as a voice message. On a computer, hold Space to talk.'**
   String walkie_footer(int seconds);
 
+  /// No description provided for @drones_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Drone detector'**
+  String get drones_title;
+
+  /// No description provided for @drones_chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Drones'**
+  String get drones_chip;
+
+  /// No description provided for @drones_listen.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen for drones'**
+  String get drones_listen;
+
+  /// No description provided for @drones_listenHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Hears drones that broadcast Remote ID over Bluetooth: their ID, position, height, speed and where the operator is. Drones without Remote ID aren\'t detected.'**
+  String get drones_listenHelp;
+
+  /// No description provided for @drones_scanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening'**
+  String get drones_scanning;
+
+  /// No description provided for @drones_paused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused while the app searches for radios'**
+  String get drones_paused;
+
+  /// No description provided for @drones_none.
+  ///
+  /// In en, this message translates to:
+  /// **'No drones heard yet.'**
+  String get drones_none;
+
+  /// No description provided for @drones_noPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'no position yet'**
+  String get drones_noPosition;
+
+  /// No description provided for @drones_stale.
+  ///
+  /// In en, this message translates to:
+  /// **'not heard for a minute'**
+  String get drones_stale;
+
+  /// No description provided for @drones_type.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get drones_type;
+
+  /// No description provided for @drones_height.
+  ///
+  /// In en, this message translates to:
+  /// **'Height'**
+  String get drones_height;
+
+  /// No description provided for @drones_altitude.
+  ///
+  /// In en, this message translates to:
+  /// **'Altitude'**
+  String get drones_altitude;
+
+  /// No description provided for @drones_speed.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed'**
+  String get drones_speed;
+
+  /// No description provided for @drones_heading.
+  ///
+  /// In en, this message translates to:
+  /// **'Heading'**
+  String get drones_heading;
+
+  /// No description provided for @drones_operator.
+  ///
+  /// In en, this message translates to:
+  /// **'Operator'**
+  String get drones_operator;
+
+  /// No description provided for @drones_operatorId.
+  ///
+  /// In en, this message translates to:
+  /// **'Operator ID'**
+  String get drones_operatorId;
+
+  /// No description provided for @drones_description.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get drones_description;
+
+  /// No description provided for @drones_signal.
+  ///
+  /// In en, this message translates to:
+  /// **'Signal'**
+  String get drones_signal;
+
+  /// No description provided for @drones_lastHeard.
+  ///
+  /// In en, this message translates to:
+  /// **'Last heard'**
+  String get drones_lastHeard;
+
+  /// No description provided for @drones_showOnMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Show on map'**
+  String get drones_showOnMap;
+
+  /// No description provided for @drones_post.
+  ///
+  /// In en, this message translates to:
+  /// **'Post to the alert channel'**
+  String get drones_post;
+
+  /// No description provided for @drones_posted.
+  ///
+  /// In en, this message translates to:
+  /// **'Posted'**
+  String get drones_posted;
+
+  /// No description provided for @drones_alertChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Alert channel'**
+  String get drones_alertChannel;
+
+  /// No description provided for @drones_noChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get drones_noChannel;
+
+  /// No description provided for @drones_share.
+  ///
+  /// In en, this message translates to:
+  /// **'Post drones there'**
+  String get drones_share;
+
+  /// No description provided for @drones_shareHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Each drone at most once a minute, and again after it moves 200 m. Never on Public. Others watching the channel see them on their map, with the operator.'**
+  String get drones_shareHelp;
+
+  /// No description provided for @drones_sound.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound when a new drone appears'**
+  String get drones_sound;
+
+  /// No description provided for @drones_clear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear the list'**
+  String get drones_clear;
+
+  /// No description provided for @drones_counts.
+  ///
+  /// In en, this message translates to:
+  /// **'{heard} broadcasts heard · {posted} posted'**
+  String drones_counts(int heard, int posted);
+
+  /// No description provided for @drones_secondsAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} s ago'**
+  String drones_secondsAgo(int n);
+
+  /// No description provided for @drones_minutesAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} min ago'**
+  String drones_minutesAgo(int n);
+
   /// No description provided for @mediaMesh_findAsking.
   ///
   /// In en, this message translates to:
