@@ -75,6 +75,7 @@ import '../vox/voice_message_bubble.dart';
 import '../vox/voice_record_sheet.dart';
 import '../vox/voice_service.dart';
 import '../vox/voice_wire.dart';
+import '../team/message_reach_screen.dart';
 import '../vox/walkie_sheet.dart';
 import '../utils/share_origin.dart';
 
@@ -984,6 +985,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
               ],
               Flexible(
                 child: GestureDetector(
+                  // A tap on one of my messages: who got it.
+                  onTap: message.isOutgoing ? () => _showReach(message) : null,
                   onLongPress: () => _showMessageActions(message),
                   onSecondaryTapUp: PlatformInfo.isDesktop
                       ? (_) => _showMessageActions(message)
@@ -2631,6 +2634,17 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     _sendGuard.markDispatched();
   }
 
+  /// Who got one of my messages: repeaters and teammates on a map.
+  void _showReach(ChannelMessage message) {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (context) =>
+            MessageReachScreen(message: message, channel: widget.channel),
+      ),
+    );
+  }
+
   void _showMessagePathInfo(ChannelMessage message) {
     Navigator.push(
       context,
@@ -2673,6 +2687,15 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                 _setReplyingTo(message);
               },
             ),
+            if (message.isOutgoing)
+              ListTile(
+                leading: const Icon(Icons.wifi_tethering),
+                title: Text(context.l10n.reach_action),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _showReach(message);
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.route),
               title: Text(context.l10n.chat_path),
