@@ -3955,5 +3955,9 @@
   "mediaMesh_findRadio2Off": "radio2 off",
   "mediaMesh_findNotSaid": "didn't say",
   "mediaMesh_findListenOnly": "listen only",
-  "mediaMesh_findTemporary": "temporary"
+  "mediaMesh_findTemporary": "temporary",
+  "drones_joinDefault": "Join {channel}",
+  "@drones_joinDefault": {"placeholders": {"channel": {"type": "String"}}},
+  "drones_notJoined": "{channel} (not joined)",
+  "@drones_notJoined": {"placeholders": {"channel": {"type": "String"}}}
 }

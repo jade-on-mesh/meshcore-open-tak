@@ -7355,4 +7355,14 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get mediaMesh_findTemporary => 'temporary';
+
+  @override
+  String drones_joinDefault(String channel) {
+    return 'Join $channel';
+  }
+
+  @override
+  String drones_notJoined(String channel) {
+    return '$channel (not joined)';
+  }
 }

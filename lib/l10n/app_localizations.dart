@@ -13031,6 +13031,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'temporary'**
   String get mediaMesh_findTemporary;
+
+  /// No description provided for @drones_joinDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Join {channel}'**
+  String drones_joinDefault(String channel);
+
+  /// No description provided for @drones_notJoined.
+  ///
+  /// In en, this message translates to:
+  /// **'{channel} (not joined)'**
+  String drones_notJoined(String channel);
 }
 
 class _AppLocalizationsDelegate

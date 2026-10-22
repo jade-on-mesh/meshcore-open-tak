@@ -76,17 +76,48 @@ class DroneDetectorScreen extends StatelessWidget {
           for (final t in tracks) _TrackCard(track: t, now: now),
           const Divider(),
           DropdownButtonFormField<String?>(
-            initialValue: usable.any((c) => c.name == d.channelName)
-                ? d.channelName
-                : null,
+            key: ValueKey(d.channelName),
+            initialValue: d.channelName,
             decoration: InputDecoration(labelText: l10n.drones_alertChannel),
             items: [
               DropdownMenuItem<String?>(value: null, child: Text(l10n.drones_noChannel)),
               for (final c in usable)
                 DropdownMenuItem<String?>(value: c.name, child: Text(c.name)),
+              // The saved channel, when this radio doesn't have it (the
+              // default before it's joined, or one deleted since).
+              if (d.channelName != null &&
+                  !usable.any((c) => c.name == d.channelName))
+                DropdownMenuItem<String?>(
+                  value: d.channelName,
+                  child: Text(l10n.drones_notJoined(d.channelName!)),
+                ),
             ],
             onChanged: d.setChannel,
           ),
+          if (d.needsJoin)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                icon: const Icon(Icons.tag),
+                label: Text(
+                  l10n.drones_joinDefault(DroneDetectorService.defaultChannel),
+                ),
+                onPressed: () async {
+                  final ok = await d.joinDefaultChannel();
+                  if (!context.mounted) return;
+                  showDismissibleSnackBar(
+                    context,
+                    content: Text(
+                      ok
+                          ? l10n.channels_channelAdded(
+                              DroneDetectorService.defaultChannel,
+                            )
+                          : l10n.channels_noFreeSlots,
+                    ),
+                  );
+                },
+              ),
+            ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: Text(l10n.drones_share),
