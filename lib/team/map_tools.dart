@@ -27,7 +27,7 @@ import 'team_screen.dart';
 import 'team_service.dart';
 import 'team_wire.dart';
 import 'watch_feed.dart';
-import 'photo_mosaic.dart' show showPhotoMosaicSheet;   // last: other branches add imports above
+import 'photo_mosaic.dart' show showPhotoMosaicSheet;
 
 class _Tool {
   final IconData icon;
