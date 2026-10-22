@@ -7656,4 +7656,10 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get walkie_liveAllHelp => 'Talks on any channel play as they arrive, while the app is running, walkie-talkie open or not.';
+
+  @override
+  String get appSettings_redLight => 'Red light (night vision)';
+
+  @override
+  String get appSettings_redLightHelp => 'Everything in dim red, the map and photos too, to keep your eyes used to the dark.';
 }

@@ -257,6 +257,10 @@ class AppSettingsService extends ChangeNotifier {
     await updateSettings(_settings.copyWith(themeMode: value));
   }
 
+  Future<void> setRedLight(bool value) async {
+    await updateSettings(_settings.copyWith(redLight: value));
+  }
+
   Future<void> setLanguageOverride(String? value) async {
     await updateSettings(_settings.copyWith(languageOverride: value));
   }

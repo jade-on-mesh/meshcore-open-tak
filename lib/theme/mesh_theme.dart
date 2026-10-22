@@ -146,6 +146,16 @@ class MeshFonts {
   ];
 }
 
+/// Red light (night vision): every pixel as its brightness in red alone
+/// (BT.709 weights), over the whole app, map tiles and photos included. The
+/// same filter Wadamesh TAK standalones apply on their way to the screen.
+const ColorFilter redLightFilter = ColorFilter.matrix(<double>[
+  0.2126, 0.7152, 0.0722, 0, 0, //
+  0, 0, 0, 0, 0, //
+  0, 0, 0, 0, 0, //
+  0, 0, 0, 1, 0, //
+]);
+
 /// Radii used consistently across the app.
 class MeshRadii {
   MeshRadii._();

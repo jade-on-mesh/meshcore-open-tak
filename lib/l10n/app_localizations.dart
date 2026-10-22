@@ -13055,6 +13055,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Talks on any channel play as they arrive, while the app is running, walkie-talkie open or not.'**
   String get walkie_liveAllHelp;
+
+  /// No description provided for @appSettings_redLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Red light (night vision)'**
+  String get appSettings_redLight;
+
+  /// No description provided for @appSettings_redLightHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything in dim red, the map and photos too, to keep your eyes used to the dark.'**
+  String get appSettings_redLightHelp;
 }
 
 class _AppLocalizationsDelegate
