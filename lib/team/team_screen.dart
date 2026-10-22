@@ -26,6 +26,7 @@ import 'team_map.dart';
 import 'team_mini_map.dart';
 import 'team_pins.dart';
 import 'team_roles_screen.dart';
+import 'quick_reply_ui.dart';
 import 'team_service.dart';
 import 'team_setup_ui.dart';
 import 'team_wire.dart';
@@ -736,6 +737,8 @@ class _WatchCard extends StatelessWidget {
       ?range,
     ].join(' · ');
     final mark = scheme.tertiaryContainer;
+    final feed = context.read<WatchFeedService>();
+    final replies = watchReplyEntries(context, feed.repliesFor(it));
     final head = it.headline.toLowerCase();
     final snippet = words.isEmpty || words.every(head.contains)
         ? null
@@ -813,6 +816,23 @@ class _WatchCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
+            if (!expanded && replies.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  Icon(Icons.reply, size: 14, color: scheme.primary),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      quickReplySummary(context, replies),
+                      style: t.bodySmall?.copyWith(color: scheme.primary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
             // Searching: the words in context, when the headline lacks them.
             if (!expanded && snippet != null) ...[
               const SizedBox(height: 2),
@@ -834,6 +854,17 @@ class _WatchCard extends StatelessWidget {
                 'From ${it.message.senderName} · ${teamAgo(it.time)}',
                 style: t.bodySmall,
               ),
+              // Answer on the report's channel, tied to this report.
+              if (it.channel.index >= 0) ...[
+                const SizedBox(height: 8),
+                QuickReplySection(
+                  entries: replies,
+                  codes: teamReportReplies,
+                  canReply: !it.message.isOutgoing,
+                  onPick: (code, arg) =>
+                      unawaited(feed.reply(it, code, arg: arg)),
+                ),
+              ],
             ],
           ],
         ),

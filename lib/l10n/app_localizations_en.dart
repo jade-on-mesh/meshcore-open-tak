@@ -7706,6 +7706,52 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appSettings_redLightHelp => 'Everything in dim red, the map and photos too, to keep your eyes used to the dark.';
 
   @override
+  String get quickReply_copy => 'Copy';
+
+  @override
+  String get quickReply_onMyWay => 'On my way';
+
+  @override
+  String get quickReply_eta => 'ETA…';
+
+  @override
+  String quickReply_etaMin(int minutes) {
+    return 'ETA $minutes min';
+  }
+
+  @override
+  String get quickReply_etaPick => 'How long until you\'re there?';
+
+  @override
+  String get quickReply_cantHelp => 'Can\'t help';
+
+  @override
+  String get quickReply_seenIt => 'Seen it';
+
+  @override
+  String get quickReply_needBackup => 'Need backup';
+
+  @override
+  String get quickReply_allClear => 'All clear';
+
+  @override
+  String get quickReply_you => 'You';
+
+  @override
+  String get quickReply_now => 'now';
+
+  @override
+  String get quickReply_answers => 'Answers';
+
+  @override
+  String get quickReply_answerAlert => 'Answer (also acknowledges)';
+
+  @override
+  String quickReply_summary(int count, String who) {
+    return '$count answered: $who';
+  }
+
+  @override
   String get reach_title => 'Who got it';
 
   @override
