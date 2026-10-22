@@ -7501,10 +7501,10 @@ class AppLocalizationsSl extends AppLocalizations {
   String get walkie_directHelp => 'Radio to radio: only radios in range hear it. A little faster, and no repeater traffic.';
 
   @override
-  String get walkie_listenLive => 'Listen live when closed';
+  String get walkie_listenLive => 'Play this channel\'s talks live';
 
   @override
-  String get walkie_listenLiveHelp => 'Play this channel\'s talks as they arrive, even with the walkie-talkie closed.';
+  String get walkie_listenLiveHelp => 'Off mutes this channel: its talks wait in the chat as voice messages.';
 
   @override
   String walkie_footer(int seconds) {
@@ -7642,4 +7642,10 @@ class AppLocalizationsSl extends AppLocalizations {
   String drones_notJoined(String channel) {
     return '$channel (not joined)';
   }
+
+  @override
+  String get walkie_liveAll => 'Play talks live';
+
+  @override
+  String get walkie_liveAllHelp => 'Talks on any channel play as they arrive, while the app is running, walkie-talkie open or not.';
 }

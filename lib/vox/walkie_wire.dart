@@ -359,3 +359,29 @@ Int16List walkiePcmFromBytes(Uint8List bytes) {
   }
   return out;
 }
+
+/// Bars in a voice waveform.
+const int voxWaveBars = 40;
+
+/// [pcm] as [voxWaveBars] loudness bars, 0..1: each bar the RMS of its slice,
+/// scaled to the loudest (square-rooted, so quiet speech still shows).
+List<double> voxWaveform(Int16List pcm, {int bars = voxWaveBars}) {
+  final out = List<double>.filled(bars, 0);
+  if (pcm.isEmpty) return out;
+  var top = 0.0;
+  for (var b = 0; b < bars; b++) {
+    final from = pcm.length * b ~/ bars;
+    final to = max(from + 1, pcm.length * (b + 1) ~/ bars);
+    var sum = 0.0;
+    for (var i = from; i < to && i < pcm.length; i++) {
+      sum += pcm[i] * pcm[i].toDouble();
+    }
+    out[b] = sqrt(sum / (to - from));
+    if (out[b] > top) top = out[b];
+  }
+  if (top < 200) return out..fillRange(0, bars, 0); // silence
+  for (var b = 0; b < bars; b++) {
+    out[b] = sqrt(out[b] / top).clamp(0.0, 1.0);
+  }
+  return out;
+}

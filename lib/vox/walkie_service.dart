@@ -2,10 +2,10 @@
 //
 // Hold to talk: the mic is encoded to Codec2 1200 as you speak and each second
 // goes out on the channel as soon as it's ready (walkie_wire.dart). Listeners
-// with the walkie open, or "Listen live" on for the channel, hear it as it
-// arrives. When you let go, the talk is posted as a voice message with the
+// hear it as it arrives. When you let go, the talk is posted as a voice message with the
 // same session id, so it stays in the chat and anyone who missed it can fetch
-// it. Like Open TAK's photos and voice, talks only go out on MediaMesh.
+// it. Talks on every channel play live by default (like a scanner); "Play
+// talks live" turns that off, and each channel can be muted. Like Open TAK's photos and voice, talks only go out on MediaMesh.
 
 import 'dart:async';
 import 'dart:math';
@@ -90,10 +90,12 @@ class WalkieService extends ChangeNotifier {
   final WalkieSpeaker _speaker = WalkieSpeaker();
   final Random _rng = Random.secure();
 
-  static const _kListen = 'walkie_listen_live';
+  static const _kLiveAll = 'walkie_live_all';
+  static const _kMuted = 'walkie_muted';
   static const _kDirect = 'walkie_direct';
 
-  Set<String> _listenKeys = {};
+  bool _liveAll = true;
+  Set<String> _mutedKeys = {};
   Set<String> _directKeys = {};
   final Map<int, int> _openPanels = {};
 
@@ -141,7 +143,8 @@ class WalkieService extends ChangeNotifier {
   Future<void> _load() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _listenKeys = (prefs.getStringList(_kListen) ?? const []).toSet();
+      _liveAll = prefs.getBool(_kLiveAll) ?? true;
+      _mutedKeys = (prefs.getStringList(_kMuted) ?? const []).toSet();
       _directKeys = (prefs.getStringList(_kDirect) ?? const []).toSet();
       notifyListeners();
     } catch (_) {}
@@ -150,18 +153,35 @@ class WalkieService extends ChangeNotifier {
   Future<void> _save() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList(_kListen, _listenKeys.toList());
+      await prefs.setBool(_kLiveAll, _liveAll);
+      await prefs.setStringList(_kMuted, _mutedKeys.toList());
       await prefs.setStringList(_kDirect, _directKeys.toList());
     } catch (_) {}
   }
 
-  /// Talks on [ch] play live even with the walkie closed.
+  /// Talks on every channel not muted play as they arrive, walkie open or
+  /// not (on by default).
+  bool get liveAll => _liveAll;
+
+  Future<void> setLiveAll(bool v) async {
+    if (v == _liveAll) return;
+    _liveAll = v;
+    notifyListeners();
+    await _save();
+  }
+
+  /// Talks on [ch] play live even with the walkie closed: [liveAll], unless
+  /// the channel is muted.
   bool listensLive(Channel ch) =>
-      _listenKeys.contains(VoxVoiceService.channelTarget(ch));
+      _liveAll && !_mutedKeys.contains(VoxVoiceService.channelTarget(ch));
+
+  /// [ch] isn't muted (it plays live while [liveAll] is on).
+  bool channelLive(Channel ch) =>
+      !_mutedKeys.contains(VoxVoiceService.channelTarget(ch));
 
   Future<void> setListenLive(Channel ch, bool v) async {
     final k = VoxVoiceService.channelTarget(ch);
-    if (v ? !_listenKeys.add(k) : !_listenKeys.remove(k)) return;
+    if (v ? !_mutedKeys.remove(k) : !_mutedKeys.add(k)) return;
     notifyListeners();
     await _save();
   }

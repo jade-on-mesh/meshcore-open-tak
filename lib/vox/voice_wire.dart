@@ -217,6 +217,11 @@ String voxFitCaption(String caption, int maxBytes) {
   return out.toString().trim();
 }
 
+/// The caption a push-to-talk's voice message is announced with, so every
+/// listener (and Wadamesh) shows it as a talk. Versions that don't know it
+/// show it as a caption: "Voice message: PTT".
+const String walkieTalkCaption = 'PTT';
+
 /// `VE3:` voice envelope carried as a normal text message.
 ///
 /// A caption may follow it in the same message, after a space:
@@ -269,6 +274,7 @@ class VoxVoiceEnvelope {
   static String? previewText(String text) {
     final env = tryParse(text);
     if (env == null) return null;
+    if (env.isTalk) return '🎙 Talk';
     final kind = env.isImage ? '📷 Photo' : '🎙 Voice message';
     return env.caption.isEmpty ? kind : '$kind: ${env.caption}';
   }
@@ -324,6 +330,9 @@ class VoxVoiceEnvelope {
   }
 
   bool get isImage => mode.isImage;
+
+  /// A push-to-talk, announced with the [walkieTalkCaption] caption.
+  bool get isTalk => !isImage && caption == walkieTalkCaption;
 
   /// Image aspect ratio (width / height); 1 for audio or unknown.
   double get imageAspect =>
