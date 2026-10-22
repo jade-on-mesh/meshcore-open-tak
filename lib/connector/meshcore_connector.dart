@@ -8351,6 +8351,7 @@ class MeshCoreConnector extends ChangeNotifier {
   Stream<NodeDiscoverResponse> discoverNearbyNodes({
     int typeMask = nodeDiscoverScanTypeMask,
     Duration timeout = const Duration(seconds: 12),
+    bool wantRadio2 = false,
   }) {
     late final StreamController<NodeDiscoverResponse> controller;
     StreamSubscription<Uint8List>? subscription;
@@ -8382,7 +8383,11 @@ class MeshCoreConnector extends ChangeNotifier {
         try {
           await sendFrame(
             buildSendControlDataFrame(
-              buildDiscoveryRequestPayload(tag, typeMask: typeMask),
+              buildDiscoveryRequestPayload(
+                tag,
+                typeMask: typeMask,
+                wantRadio2: wantRadio2,
+              ),
             ),
           );
         } catch (e) {

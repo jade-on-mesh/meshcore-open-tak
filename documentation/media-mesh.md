@@ -36,8 +36,23 @@ sent on each profile, the measured switch time, and the radio's timing warnings.
 
 ### Find MediaMesh
 
-**Find MediaMesh** finds which preset nearby MediaMesh repeaters run, in about
-20 seconds:
+**Find MediaMesh** works like Discover Repeaters: it asks the repeaters in
+direct range which radio2 profile they run, and lists them with what each said
+and the SNR it heard them at:
+
+- One zero-hop discovery request goes out on the main mesh with the radio2 flag
+  (byte 0 `0x82`). Repeaters that support it answer within about 12 seconds
+  with their radio2 profile after their key: frequency, bandwidth, SF, CR,
+  listen only or listen and send, and whether it is a temporary profile.
+- The profile most of them run is offered (the stronger signal breaks a tie),
+  and **Use it** saves it, turning radio2 on for photos and voice if it was off.
+- Repeaters that don't support it show as *didn't say*; ones with radio2 off
+  show as *radio2 off*.
+
+Answering with the profile is a proposed addition to keymindCascade (see
+[the wire format](#discover-reply-radio2-profile) below); stock repeaters
+ignore the flag and answer as usual. **When no repeater says**, Find falls back
+to listening, in about 20 more seconds:
 
 1. radio2 listens on the *250 kHz · fast* preset, at the frequency in the form,
    with a listen-only temporary radio2 (`set tempradio2 <MHz>,250,7,5,rx,2`).
@@ -47,13 +62,30 @@ sent on each profile, the measured switch time, and the radio's timing warnings.
    run. The rise in `get radio2.status`'s radio2 receive count shows it.
 3. About 9 seconds later, the same on *125 kHz · range*.
 4. `set tempradio2 off` brings the saved radio2 back, and the preset that heard
-   packets is offered (a tie goes to 250 kHz). **Use it** saves it, turning
-   radio2 on for photos and voice if it was off.
+   packets is offered (a tie goes to 250 kHz).
 
 It needs a MediaMesh repeater in direct range. Repeaters answer at most four
-discovery requests every two minutes, so running it twice in a row may find
-nothing the second time. It won't run while a temporary radio2 is running.
-Wadamesh TAK standalones have the same button (Settings → MediaMesh).
+discovery requests every two minutes (asking uses one, listening two more), so
+running it twice in a row may find nothing the second time. The listening
+fallback won't run while a temporary radio2 is running. Wadamesh TAK
+standalones have the same button (Settings → MediaMesh).
+
+#### Discover reply: radio2 profile
+
+Requested by bit 1 of DISCOVER_REQ byte 0 (`0x80 | 0x02`, combinable with the
+prefix-only bit 0). The repeater appends 12 bytes after its key (after the
+8-byte prefix in prefix-only mode):
+
+```
+[ver=1][flags][freq u32 LE, MHz x1000][bw u32 LE, kHz x1000][sf][cr]
+flags: bit 0 radio2 configured, bits 1-2 mode (0 off, 1 rx, 2 rxtx),
+       bit 3 temporary profile (tempradio2)
+radio2 off: just [1][0]
+example: 910.525 MHz, 250 kHz, SF7, CR5, rxtx = 0105bde40d0090d003000705
+```
+
+Stock clients check only `len >= 6+32` and ignore what follows. A later
+version may append more; the first twelve bytes keep their meaning.
 
 **Photos and voice stay off the main mesh.** They only go out when the
 connected radio sends them on radio2 alone (*On*, *Photos & voice*).
