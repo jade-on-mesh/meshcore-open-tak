@@ -28,6 +28,8 @@
 //             [lat0 i32][lon0 i32][zigzag varint deltas...] (1e-5 degrees)
 //   casevac   [0x43][key4][id u32][op u8][lat i32][lon i32][time u32] then
 //             the 9 lines (see team_casevac_wire.dart)
+//   reply     [0x51][key4][toKey4][refKind u8][refId u32][code u8][arg u8]
+//             [callsignLen][callsign]   (a quick reply; team_reply_wire.dart)
 //
 // A position's role is the high nibble of its role/colour byte; roles 15 and
 // up (added roles) write 15 there, set flag 0x20 and append the role id as
@@ -50,6 +52,7 @@ import 'team_coords.dart';
 
 part 'team_shape_wire.dart';
 part 'team_casevac_wire.dart';
+part 'team_reply_wire.dart';
 
 /// GRP_DATA data type for team traffic ('VT').
 const int teamChannelDataType = 0x5654;
@@ -297,7 +300,8 @@ const int teamMsgChunk = 0x58; // 'X'
       p[0] != teamMsgCasevac &&
       p[0] != teamMsgPoint &&
       p[0] != teamMsgAtakShape &&
-      p[0] != teamMsgChunk) {
+      p[0] != teamMsgChunk &&
+      p[0] != teamMsgReply) {
     return null;
   }
   return (p[0], teamKey4Hex(p, 1));

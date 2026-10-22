@@ -740,6 +740,34 @@ class NotificationService {
     }
   }
 
+  /// A teammate answered this phone's alert, report or pin ("Sam: On my way").
+  Future<void> showTeamReply({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    if (!await _ensureCanNotify()) return;
+    try {
+      await _notifications.show(
+        id: id,
+        title: title,
+        body: body,
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'vox_team_replies',
+            'Team replies',
+            channelDescription: 'Teammates answering your alerts, reports and pins',
+            importance: Importance.high,
+            priority: Priority.high,
+            icon: '@mipmap/ic_launcher',
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Failed to show team reply: $e');
+    }
+  }
+
   Future<void> cancelTeamAlert(int id) async {
     try {
       await _notifications.cancel(id: id);

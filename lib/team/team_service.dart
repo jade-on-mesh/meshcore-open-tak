@@ -1857,6 +1857,86 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
     notifyListeners();
   }
 
+  // ------------------------------------------------------- quick replies
+
+  final Map<String, List<TeamReplyHeard>> _replies = {};
+
+  /// Replies heard (and sent) to the item with [refKey], oldest first:
+  /// [teamReplyRefKey] of an alert, report or pin.
+  List<TeamReplyHeard> repliesFor(String refKey) =>
+      List.unmodifiable(_replies[refKey] ?? const []);
+
+  /// A teammate answered something of this phone's: for a snackbar.
+  void Function(TeamReplyHeard r, String refKey)? onReplyToMe;
+
+  void _addReply(String refKey, TeamReplyHeard r) {
+    final list = _replies.putIfAbsent(refKey, () => []);
+    // One answer per person per item: the newest replaces theirs.
+    list.removeWhere((x) => x.senderKey4 == r.senderKey4);
+    list.add(r);
+    if (_replies.length > 200) _replies.remove(_replies.keys.first);
+  }
+
+  void _onReply(TeamReply r) {
+    final heard = TeamReplyHeard(
+      senderKey4: r.senderKey4,
+      callsign: r.callsign.isEmpty ? r.senderKey4 : r.callsign,
+      code: r.code,
+      arg: r.arg,
+      at: DateTime.now(),
+      own: false,
+    );
+    _addReply(r.refKey, heard);
+    if (r.toKey4 == selfKey4) {
+      onReplyToMe?.call(heard, r.refKey);
+      unawaited(
+        NotificationService().showTeamReply(
+          id: r.refKey.hashCode ^ r.senderKey4.hashCode,
+          title: '${heard.callsign}: ${r.code.wire(r.arg)}',
+          body: switch (r.ref) {
+            TeamReplyRef.alert => 'Answering your alert',
+            TeamReplyRef.report => 'Answering your report',
+            TeamReplyRef.pin => 'Answering your pin',
+            TeamReplyRef.none => '',
+          },
+        ),
+      );
+    }
+    notifyListeners();
+  }
+
+  /// Answers a teammate's alert, report or pin in one tap.
+  Future<bool> sendReply({
+    required TeamReplyRef ref,
+    required String toKey4,
+    required int refId,
+    required TeamReplyCode code,
+    int arg = 0,
+  }) async {
+    final r = TeamReply(
+      senderKey4: selfKey4,
+      toKey4: toKey4,
+      ref: ref,
+      refId: refId,
+      code: code,
+      arg: arg,
+      callsign: callsign,
+    );
+    _addReply(
+      r.refKey,
+      TeamReplyHeard(
+        senderKey4: selfKey4,
+        callsign: callsign,
+        code: code,
+        arg: arg,
+        at: DateTime.now(),
+        own: true,
+      ),
+    );
+    notifyListeners();
+    return _send(r.encode());
+  }
+
   void _onAlert(TeamAlert a) {
     final prev = _alerts[a.key];
     _alerts[a.key] = a;
@@ -1982,6 +2062,9 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
       case teamMsgAtakShape:
         final ash = TeamAtakShape.tryParse(p);
         if (ash != null) _onAtakShape(ash);
+      case teamMsgReply:
+        final r = TeamReply.tryParse(p);
+        if (r != null) _onReply(r);
       case teamMsgChunk:
         final blob = _chunks.accept(p);
         if (blob == null) return;
@@ -2039,4 +2122,22 @@ double teamTrackLength(List<(double, double, DateTime)> t) {
     d += teamDistanceMeters(t[i - 1].$1, t[i - 1].$2, t[i].$1, t[i].$2);
   }
   return d;
+}
+
+/// A quick reply heard on the team channel (or sent from here).
+class TeamReplyHeard {
+  final String senderKey4;
+  final String callsign;
+  final TeamReplyCode code;
+  final int arg;
+  final DateTime at;
+  final bool own;
+  const TeamReplyHeard({
+    required this.senderKey4,
+    required this.callsign,
+    required this.code,
+    required this.arg,
+    required this.at,
+    required this.own,
+  });
 }

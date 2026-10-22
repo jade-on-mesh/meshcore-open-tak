@@ -16,6 +16,7 @@ import '../vox/voice_message_bubble.dart';
 import '../vox/voice_service.dart';
 import '../vox/voice_wire.dart';
 import 'map_highlights.dart';
+import 'quick_reply_ui.dart';
 import 'road_directions.dart';
 import 'road_directions_ui.dart';
 import 'role_icon_library.dart';
@@ -1178,6 +1179,29 @@ Future<void> showTeamMemberSheet(
                 ),
               ),
             if (p.status != TeamStatus.none) Text('Status: ${p.status.label}'),
+            for (final al in team.activeAlerts)
+              if (al.senderKey4 == key4)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: QuickReplySection(
+                    entries: teamReplyEntries(
+                      context,
+                      team.repliesFor(
+                        teamReplyRefKey(TeamReplyRef.alert, key4, al.alertId),
+                      ),
+                    ),
+                    codes: teamAlertReplies,
+                    onPick: (code, arg) => unawaited(
+                      team.sendReply(
+                        ref: TeamReplyRef.alert,
+                        toKey4: key4,
+                        refId: al.alertId,
+                        code: code,
+                        arg: arg,
+                      ),
+                    ),
+                  ),
+                ),
             Text(
               'Heard ${teamAgo(m.heard)}${p.fromRadio ? ' · radio GPS' : ''}',
             ),
@@ -1245,6 +1269,26 @@ Future<void> showTeamPinSheet(
               const SizedBox(height: 12),
               _attachmentView(context, m.attachment!, m.authorKey4),
             ],
+            const SizedBox(height: 12),
+            QuickReplySection(
+              entries: teamReplyEntries(
+                context,
+                team.repliesFor(
+                  teamReplyRefKey(TeamReplyRef.pin, m.authorKey4, m.markerId),
+                ),
+              ),
+              codes: teamReportReplies,
+              canReply: !team.isMine(m),
+              onPick: (code, arg) => unawaited(
+                team.sendReply(
+                  ref: TeamReplyRef.pin,
+                  toKey4: m.authorKey4,
+                  refId: m.markerId,
+                  code: code,
+                  arg: arg,
+                ),
+              ),
+            ),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -1362,6 +1406,26 @@ Future<void> showTeamReportSheet(
               const SizedBox(height: 12),
               _attachmentView(context, r.attachment!, r.authorKey4),
             ],
+            const SizedBox(height: 12),
+            QuickReplySection(
+              entries: teamReplyEntries(
+                context,
+                team.repliesFor(
+                  teamReplyRefKey(TeamReplyRef.report, r.authorKey4, r.reportId),
+                ),
+              ),
+              codes: teamReportReplies,
+              canReply: !team.isMyReport(r),
+              onPick: (code, arg) => unawaited(
+                team.sendReply(
+                  ref: TeamReplyRef.report,
+                  toKey4: r.authorKey4,
+                  refId: r.reportId,
+                  code: code,
+                  arg: arg,
+                ),
+              ),
+            ),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -1551,12 +1615,32 @@ class TeamMapOverlay extends StatelessWidget {
                 onTap: () => _confirmCancel(context, team),
                 child: Padding(
                   padding: const EdgeInsets.all(10),
-                  child: Text(
-                    '${own.type.label.toUpperCase()} ACTIVE · tap to cancel',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${own.type.label.toUpperCase()} ACTIVE · tap to cancel',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      // Teammates' answers, as they come in.
+                      QuickReplyList(
+                        onColor: true,
+                        entries: teamReplyEntries(
+                          context,
+                          team.repliesFor(
+                            teamReplyRefKey(
+                              TeamReplyRef.alert,
+                              team.selfKey4,
+                              own.alertId,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
