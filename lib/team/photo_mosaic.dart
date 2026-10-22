@@ -100,10 +100,7 @@ List<MosaicPhoto> collectMosaicPhotos(
   (double, double)? senderAt(String name, DateTime t, bool own) {
     if (own) return mosaicNearestInTime(team.myTrack, t);
     for (final m in team.members) {
-      if (m.callsign != name &&
-          m.position.nameHash != TeamService.nameHash(name)) {
-        continue;
-      }
+      if (m.callsign != name) continue;
       return mosaicNearestInTime(m.trail, t) ??
           (m.heard.difference(t).abs() < const Duration(minutes: 30)
               ? (m.position.lat, m.position.lon)
