@@ -15,7 +15,6 @@ import '../l10n/l10n.dart';
 import '../screens/map_packs_screen.dart';
 import '../vox/image_send_sheet.dart';
 import '../vox/voice_service.dart';
-import 'photo_mosaic.dart' show showPhotoMosaicSheet;
 import 'road_directions.dart' show roadDistance;
 import 'team_casevac_ui.dart';
 import 'team_draw.dart';
@@ -28,6 +27,7 @@ import 'team_screen.dart';
 import 'team_service.dart';
 import 'team_wire.dart';
 import 'watch_feed.dart';
+import 'photo_mosaic.dart' show showPhotoMosaicSheet;   // last: other branches add imports above
 
 class _Tool {
   final IconData icon;
