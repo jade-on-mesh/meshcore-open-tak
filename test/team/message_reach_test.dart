@@ -45,7 +45,12 @@ void main() {
   });
 
   test('older beacons have none', () {
-    const p = TeamPosition(senderKey4: 'a1b2c3d4', lat: 1, lon: 2);
+    const p = TeamPosition(
+      senderKey4: 'a1b2c3d4',
+      lat: 1,
+      lon: 2,
+      callsign: 'Sam',
+    );
     final back = TeamPosition.tryParse(p.encode())!;
     expect(back.nameHash, isNull);
     expect(back.heard, isEmpty);
