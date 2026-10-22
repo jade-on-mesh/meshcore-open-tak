@@ -6186,6 +6186,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appUpdate_view => 'Update';
 
   @override
+  String get ar_title => 'AR view';
+
+  @override
+  String get ar_noPosition => 'Waiting for your position: labels appear once the phone has a GPS fix.';
+
+  @override
+  String ar_noCompass(String reason) {
+    return 'The compass isn\'t available ($reason), so labels can\'t be placed.';
+  }
+
+  @override
+  String ar_hounding(String name) {
+    return 'Bloodhound: $name';
+  }
+
+  @override
   String get appUpdate_bannerTitle => 'A new version of MeshCore Open TAK is ready';
 
   @override
@@ -7459,19 +7475,4 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get reach_now => 'just now';
 
-  @override
-  String get ar_title => 'AR view';
-
-  @override
-  String get ar_noPosition => 'Waiting for your position: labels appear once the phone has a GPS fix.';
-
-  @override
-  String ar_noCompass(String reason) {
-    return 'The compass isn\'t available ($reason), so labels can\'t be placed.';
-  }
-
-  @override
-  String ar_hounding(String name) {
-    return 'Bloodhound: $name';
-  }
 }
