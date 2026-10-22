@@ -168,6 +168,26 @@ void main() {
       expect(j.finished(at(2000)), isFalse);
       expect(j.finished(at(5000)), isTrue);
     });
+
+    test('a talk that goes quiet without its end does not hang', () {
+      // The last packet lost: due() kept skipping forever and froze the app.
+      final j = WalkieJitter();
+      j.add(pkt(0), at(0));
+      j.add(pkt(1), at(1000));
+      expect(j.due(at(1000)).length, 2);
+      expect(j.due(at(9000)), isEmpty);
+      expect(j.nextIndex, 2);
+      expect(j.finished(at(9000)), isTrue);
+    });
+
+    test('a quiet talk still skips a gap to what came after it', () {
+      final j = WalkieJitter();
+      j.add(pkt(0), at(0));
+      j.add(pkt(2), at(10));
+      j.due(at(10));
+      expect(j.due(at(9000)).single.first, 2);
+      expect(j.due(at(9100)), isEmpty);
+    });
   });
 
   test('decimator keeps a tone and drops what is above 4 kHz', () {
