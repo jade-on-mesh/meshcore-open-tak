@@ -2880,7 +2880,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get repeater_features => 'Features';
 
   @override
-  String get repeater_packetForwarding => 'Packet Forwarding';
+  String get repeater_packetForwarding => 'Repeat';
 
   @override
   String get repeater_packetForwardingSubtitle =>
@@ -3181,7 +3181,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get repeater_refreshTxPower => 'Refresh TX power';
 
   @override
-  String get repeater_refreshPacketForwarding => 'Refresh Packet Forwarding';
+  String get repeater_refreshPacketForwarding => 'Refresh Repeat';
 
   @override
   String get repeater_refreshGuestAccess => 'Refresh Guest Access';
