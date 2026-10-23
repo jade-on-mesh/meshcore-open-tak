@@ -211,11 +211,12 @@ Future<void> showVoxImagePicker(
 }
 
 /// Decodes a picked file to the RGB reference picture (at most
-/// [voxImageWorkSide] px on its long side).
+/// [voxImageMaxWorkSide] px on its long side; levels below Super Sharp scale
+/// it to [voxImageWorkSide] when they encode).
 Future<VoxRgbImage> voxLoadReference(Uint8List fileBytes) async {
   final buffer = await ui.ImmutableBuffer.fromUint8List(fileBytes);
   final desc = await ui.ImageDescriptor.encoded(buffer);
-  final (w, h) = voxFitSize(desc.width, desc.height, voxImageWorkSide);
+  final (w, h) = voxFitSize(desc.width, desc.height, voxImageMaxWorkSide);
   final codec = await desc.instantiateCodec(targetWidth: w, targetHeight: h);
   final frame = await codec.getNextFrame();
   final data = await frame.image.toByteData(format: ui.ImageByteFormat.rawRgba);
@@ -473,6 +474,7 @@ class _VoxImageSendSheetState extends State<VoxImageSendSheet> {
                   VoxImageDetail.standard => 'Same airtime as one voice message',
                   VoxImageDetail.more => '2× a voice message',
                   VoxImageDetail.sharp => 'About 2× the resolution, 4× a voice message',
+                  VoxImageDetail.superSharp => 'Up to 1024 px, 14× a voice message',
                 }}'
                 ' · ${_airFor(_detail)}',
                 style: theme.textTheme.bodySmall,
@@ -510,6 +512,8 @@ class _VoxImageSendSheetState extends State<VoxImageSendSheet> {
                       Expanded(
                         child: Text(
                           switch (_detail) {
+                            VoxImageDetail.superSharp =>
+                              'Small text may still be hard to read.',
                             VoxImageDetail.sharp =>
                               'Small text may still be hard to read.',
                             VoxImageDetail.more =>
