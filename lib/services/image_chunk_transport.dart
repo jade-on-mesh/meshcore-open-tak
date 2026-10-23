@@ -1276,6 +1276,11 @@ class ParsedChannelData {
   /// null unknown. Wadamesh puts it in the first reserved byte.
   final int? via;
 
+  /// The path hash (1-3 bytes) of the repeater that relayed this radio2
+  /// (MediaMesh) packet to the radio last, when Wadamesh says: it puts
+  /// `0xB0 | n` in the second reserved byte and the n bytes after the data.
+  final Uint8List? lastHop;
+
   const ParsedChannelData({
     required this.snrRaw,
     required this.channelIndex,
@@ -1283,6 +1288,7 @@ class ParsedChannelData {
     required this.dataType,
     required this.payload,
     this.via,
+    this.lastHop,
   });
 
   bool get arrivedByFlood => pathLenByte != 0xFF;
@@ -1302,6 +1308,12 @@ ParsedChannelData? parseChannelDataFrame(Uint8List frame) {
   final dataLen = frame[8];
   if (frame.length < 9 + dataLen) return null;
   final snr = frame[1] >= 128 ? frame[1] - 256 : frame[1];
+  final hopLen = (frame[3] & 0xF0) == 0xB0 ? frame[3] & 0x0F : 0;
+  final hopAt = 9 + dataLen;
+  Uint8List? lastHop;
+  if (hopLen >= 1 && hopLen <= 3 && frame.length >= hopAt + hopLen) {
+    lastHop = Uint8List.fromList(frame.sublist(hopAt, hopAt + hopLen));
+  }
   return ParsedChannelData(
     snrRaw: snr,
     channelIndex: frame[4],
@@ -1313,6 +1325,7 @@ ParsedChannelData? parseChannelDataFrame(Uint8List frame) {
       0xA1 => 1,
       _ => null,
     },
+    lastHop: lastHop,
   );
 }
 

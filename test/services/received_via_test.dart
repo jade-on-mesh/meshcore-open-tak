@@ -32,6 +32,22 @@ void main() {
     expect(parseChannelDataFrame(frame(0))!.via, isNull); // stock firmware
   });
 
+  test('channel data: the MediaMesh repeater after the data', () {
+    final f = Uint8List.fromList([
+      respCodeChannelDataRecv, 12, 0xA1, 0xB2, // code, snr, via, 0xB0 | 2
+      3, 0x41, 0x43, 0x56, 2, 9, 8, //          idx, path, type, len, data
+      0x1F, 0xFB, //                            the last repeater's hash
+    ]);
+    final p = parseChannelDataFrame(f)!;
+    expect(p.payload, [9, 8]);
+    expect(p.lastHop, [0x1F, 0xFB]);
+    // Stock firmware (0) or a frame too short for the bytes: none.
+    final stock = Uint8List.fromList(f)..[3] = 0;
+    expect(parseChannelDataFrame(stock)!.lastHop, isNull);
+    final cut = Uint8List.fromList(f.sublist(0, f.length - 1));
+    expect(parseChannelDataFrame(cut)!.lastHop, isNull);
+  });
+
   test('mask to label', () {
     expect(VoxReceivedVia.fromMask(null), isNull);
     expect(VoxReceivedVia.fromMask(0), isNull);

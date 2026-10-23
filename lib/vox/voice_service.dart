@@ -92,12 +92,17 @@ class VoxClipState {
   /// radio said (Wadamesh with MediaMesh on).
   final VoxReceivedVia? via;
 
+  /// The MediaMesh repeater that relayed its last radio2 packet, as hex
+  /// ("1ffb"), when the radio said.
+  final String? viaRepeater;
+
   const VoxClipState(
     this.status, {
     this.received = 0,
     this.total = 0,
     this.message,
     this.via,
+    this.viaRepeater,
   });
 
   double get progress => total == 0 ? 0 : received / total;
@@ -198,6 +203,12 @@ class VoxVoiceService extends ChangeNotifier {
   /// bit 1 radio2). Kept for finished clips so the label survives a restart.
   final Map<String, int> _viaMask = {};
 
+  static const _kReceivedViaHop = 'vox_received_via_hop';
+
+  /// sid -> the MediaMesh repeater (path hash, hex) its last radio2 packet
+  /// came through, for "Received via MediaMesh (1ffb)".
+  final Map<String, String> _viaHop = {};
+
   Future<void> _loadReceivedVia() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -208,6 +219,15 @@ class VoxVoiceService extends ChangeNotifier {
       for (final e in map.entries) {
         if (e.key is String && e.value is int) {
           _viaMask.putIfAbsent(e.key as String, () => e.value as int);
+        }
+      }
+      final hops = prefs.getString(_kReceivedViaHop);
+      final hmap = hops == null ? null : jsonDecode(hops);
+      if (hmap is Map) {
+        for (final e in hmap.entries) {
+          if (e.key is String && e.value is String) {
+            _viaHop.putIfAbsent(e.key as String, () => e.value as String);
+          }
         }
       }
       notifyListeners();
@@ -233,8 +253,20 @@ class VoxVoiceService extends ChangeNotifier {
     _logEvent('packets arriving via $key', sid);
   }
 
-  void _noteVia(String sid, int? via) {
+  void _noteVia(String sid, int? via, [Uint8List? lastHop]) {
     if (via == null) return;
+    // The MediaMesh repeater this radio2 packet came through, the latest kept.
+    if (via == 1 && lastHop != null && lastHop.isNotEmpty) {
+      final hex = StringBuffer();
+      for (final b in lastHop) {
+        hex.write(b.toRadixString(16).padLeft(2, '0'));
+      }
+      _viaHop.remove(sid);
+      _viaHop[sid] = hex.toString();
+      while (_viaHop.length > _maxReceivedVia) {
+        _viaHop.remove(_viaHop.keys.first);
+      }
+    }
     // Heard on radio2: a MediaMesh is on the air here.
     if (via == 1) MediaMeshNearby.instance.markHeard();
     // Re-inserted, so the most recent clips are the ones kept.
@@ -253,6 +285,11 @@ class VoxVoiceService extends ChangeNotifier {
       };
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_kReceivedVia, jsonEncode(done));
+      final hops = {
+        for (final e in _viaHop.entries)
+          if (_bits.containsKey(e.key)) e.key: e.value,
+      };
+      await prefs.setString(_kReceivedViaHop, jsonEncode(hops));
     } catch (_) {}
   }
 
@@ -941,6 +978,7 @@ class VoxVoiceService extends ChangeNotifier {
   VoxClipState stateFor(VoxVoiceEnvelope env) {
     final sid = env.sessionId;
     if (_bits.containsKey(sid)) {
+      final r2 = ((_viaMask[sid] ?? 0) & 2) != 0;
       return VoxClipState(
         VoxClipStatus.complete,
         received: env.totalPackets,
@@ -948,6 +986,7 @@ class VoxVoiceService extends ChangeNotifier {
         via: _ownClips.contains(sid)
             ? null
             : VoxReceivedVia.forReceived(_viaMask[sid]),
+        viaRepeater: _ownClips.contains(sid) || !r2 ? null : _viaHop[sid],
       );
     }
     final clip = _incoming[sid];
@@ -1712,6 +1751,7 @@ class VoxVoiceService extends ChangeNotifier {
           channelIndex: parsed.channelIndex,
           via: parsed.via,
           hops: parsed.hopCount,
+          lastHop: parsed.lastHop,
         );
       }
     }
@@ -1722,6 +1762,7 @@ class VoxVoiceService extends ChangeNotifier {
     required int? channelIndex,
     int? via,
     int? hops,
+    Uint8List? lastHop,
   }) {
     if (payload.isEmpty) return;
     // An untagged frame: find out whether this radio has radio2, for the
@@ -1744,7 +1785,12 @@ class VoxVoiceService extends ChangeNotifier {
           _lastChannelPacket[pkt.sessionId] = DateTime.now();
         }
         _logArrival(pkt.sessionId, via, channelIndex == null ? null : hops);
-        _onPacket(pkt, via: via, hops: channelIndex == null ? null : hops);
+        _onPacket(
+          pkt,
+          via: via,
+          hops: channelIndex == null ? null : hops,
+          lastHop: lastHop,
+        );
       case _pingMagic:
         _onPing(payload);
         return;
@@ -1779,10 +1825,15 @@ class VoxVoiceService extends ChangeNotifier {
     return true; // never show VR3 control messages in the chat
   }
 
-  void _onPacket(VoxVoicePacket pkt, {int? via, int? hops}) {
+  void _onPacket(
+    VoxVoicePacket pkt, {
+    int? via,
+    int? hops,
+    Uint8List? lastHop,
+  }) {
     final sid = pkt.sessionId;
     if (_bits.containsKey(sid)) return;
-    _noteVia(sid, via);
+    _noteVia(sid, via, lastHop);
     // Raw data doesn't say how far it came: treat it as relayed.
     final relayed = hops == null || hops > 0;
     final clip = _incoming[sid];
