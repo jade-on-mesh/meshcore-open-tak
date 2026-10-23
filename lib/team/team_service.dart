@@ -17,6 +17,7 @@ import '../services/image_chunk_transport.dart'
     show parseChannelDataFrame, respCodeChannelDataRecv;
 import '../services/notification_service.dart';
 import '../services/speech_service.dart';
+import 'photo_mosaic_prefs.dart';
 import 'road_directions.dart';
 import 'road_voice.dart';
 import 'team_compat_bridge.dart';
@@ -97,6 +98,10 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
   TeamService(this._connector) {
     _sub = _connector.receivedFrames.listen(_onFrame);
     _connector.teamCompatTextInterceptor = compat.onChannelText;
+    PhotoMosaicPrefs.ownPosition = () {
+      final f = fix;
+      return f == null ? null : (f.lat, f.lon);
+    };
     _connector.teamChannelHeardObserver = _onChannelHeard;
     _connector.addListener(_onConnectorChanged);
     unawaited(_load());

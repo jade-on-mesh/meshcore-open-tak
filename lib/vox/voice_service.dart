@@ -46,6 +46,7 @@ import 'walkie_wire.dart';
 import 'vox_timing.dart';
 import '../utils/lora_airtime.dart';
 import 'wav.dart';
+import '../team/photo_mosaic_prefs.dart';
 
 enum VoxClipStatus { remote, requesting, receiving, complete, unavailable }
 
@@ -1403,13 +1404,21 @@ class VoxVoiceService extends ChangeNotifier {
     Contact contact,
     VoxEncodedImage image, {
     String caption = '',
-  }) => sendClipToContact(contact, _imageClip(image), caption: caption);
+  }) => sendClipToContact(
+    contact,
+    _imageClip(image),
+    caption: PhotoMosaicPrefs.tagged(caption),
+  );
 
   Future<VoxVoiceEnvelope> sendImageToChannel(
     Channel channel,
     VoxEncodedImage image, {
     String caption = '',
-  }) => sendClipToChannel(channel, _imageClip(image), caption: caption);
+  }) => sendClipToChannel(
+    channel,
+    _imageClip(image),
+    caption: PhotoMosaicPrefs.tagged(caption),
+  );
 
   VoxEncodedClip _imageClip(VoxEncodedImage image) => VoxEncodedClip(
     VoxVoiceMode.av1Image,

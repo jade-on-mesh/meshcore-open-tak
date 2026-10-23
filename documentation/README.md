@@ -39,6 +39,7 @@ MeshCore Open is an open-source Flutter client for MeshCore LoRa mesh networking
 26. [Sharing a team in one scan](team-setup.md) - One QR code (or Sound link) with the team channel, watched channels and MediaMesh profile
 27. [Quick replies](quick-replies.md) - One-tap answers to teammates' alerts, reports and pins, and to watched reports
 28. [Who got it](message-reach.md) - Tap a sent channel message to see the repeaters that re-sent it and the teammates who heard it, on a map
+29. [Photos on the map](photo-mosaic.md) - Photos received over MediaMesh as thumbnails where they were taken, with a timeline (a toggle)
 
 ## App Overview
 
