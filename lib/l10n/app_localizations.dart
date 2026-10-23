@@ -364,6 +364,48 @@ abstract class AppLocalizations {
   /// **'Sent. Waiting for the contact to confirm.'**
   String get messageStatus_sentDirect;
 
+  /// No description provided for @mosaic_show.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos on the map'**
+  String get mosaic_show;
+
+  /// No description provided for @mosaic_showHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Thumbnails where each photo was taken, grouped when zoomed out. {count} photos have a place.'**
+  String mosaic_showHelp(int count);
+
+  /// No description provided for @mosaic_tag.
+  ///
+  /// In en, this message translates to:
+  /// **'Tag my photos with where I am'**
+  String get mosaic_tag;
+
+  /// No description provided for @mosaic_tagHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Adds 📍 and your position to the caption of photos you send. Everyone who can see the photo sees it.'**
+  String get mosaic_tagHelp;
+
+  /// No description provided for @mosaic_all.
+  ///
+  /// In en, this message translates to:
+  /// **'All photos as a timeline'**
+  String get mosaic_all;
+
+  /// No description provided for @mosaic_timelineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} photos'**
+  String mosaic_timelineTitle(int count);
+
+  /// No description provided for @mosaic_approx.
+  ///
+  /// In en, this message translates to:
+  /// **'About here: where the sender was then'**
+  String get mosaic_approx;
+
   /// No description provided for @messageStatus_heardRepeatedCount.
   ///
   /// In en, this message translates to:

@@ -37,6 +37,7 @@ import 'team_map.dart';
 import 'team_service.dart';
 import 'watch_auto_zoom.dart';
 import 'coverage_layer.dart';
+import 'photo_mosaic.dart';
 
 class MapScreenTak {
   final MapController mapController;
@@ -187,6 +188,7 @@ class MapScreenTak {
     final goTo = _goTo;
     return [
       const MediaMeshCoverageLayer(),
+      const PhotoMosaicLayer(),
       const TeamMapLayer(),
       TeamDrawLayer(controller: draw),
       if (goTo != null)

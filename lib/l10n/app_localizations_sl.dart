@@ -133,6 +133,31 @@ class AppLocalizationsSl extends AppLocalizations {
   String get messageStatus_sentDirect => 'Poslano. Čaka se na potrditev stika.';
 
   @override
+  String get mosaic_show => 'Photos on the map';
+
+  @override
+  String mosaic_showHelp(int count) {
+    return 'Thumbnails where each photo was taken, grouped when zoomed out. $count photos have a place.';
+  }
+
+  @override
+  String get mosaic_tag => 'Tag my photos with where I am';
+
+  @override
+  String get mosaic_tagHelp => 'Adds 📍 and your position to the caption of photos you send. Everyone who can see the photo sees it.';
+
+  @override
+  String get mosaic_all => 'All photos as a timeline';
+
+  @override
+  String mosaic_timelineTitle(int count) {
+    return '$count photos';
+  }
+
+  @override
+  String get mosaic_approx => 'About here: where the sender was then';
+
+  @override
   String messageStatus_heardRepeatedCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

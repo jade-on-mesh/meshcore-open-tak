@@ -28,6 +28,7 @@ import 'team_screen.dart';
 import 'team_service.dart';
 import 'team_wire.dart';
 import 'watch_feed.dart';
+import 'photo_mosaic.dart' show showPhotoMosaicSheet;
 
 class _Tool {
   final IconData icon;
@@ -132,6 +133,7 @@ Future<void> showMapTools(
     ),
     _Tool(Icons.my_location, 'Go To', (c) => _showGoTo(c, team, onGoTo)),
     _Tool(Icons.timeline, 'Track History', (c) => _showTrackHistory(c)),
+    _Tool(Icons.photo_library_outlined, 'Photos', showPhotoMosaicSheet),
     _Tool(
       Icons.download_for_offline_outlined,
       'Offline Maps',

@@ -1,0 +1,62 @@
+# When main moves, open PRs that now conflict only in the files every feature
+# branch touches (the l10n files, and list lines in the docs) are fixed here:
+# main is merged in, both sides are kept (scripts/l10n/resolve_conflicts.py),
+# and the PR's checks are started again. A conflict anywhere else is left for
+# a person, and the run says which PR and file.
+name: Resolve l10n conflicts in PRs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write       # push the merge to the PR's branch
+  pull-requests: read
+  actions: write        # start the PR's checks (a push by this token doesn't)
+
+concurrency:
+  group: resolve-conflicts
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Merge main into conflicted PRs, keeping both sides
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # main's copy of the resolver, whatever the branch carries
+          cp scripts/l10n/resolve_conflicts.py /tmp/resolve_conflicts.py
+          gh api "repos/$GITHUB_REPOSITORY/pulls?state=open&base=main&per_page=100" \
+            --jq ".[] | select(.head.repo.full_name == \"$GITHUB_REPOSITORY\") | \"\(.number) \(.head.ref)\"" > /tmp/prs
+          while read -r num branch; do
+            git checkout -q -B "$branch" "origin/$branch" || continue
+            if git merge -q --no-edit origin/main >/dev/null 2>&1; then
+              git reset -q --hard "origin/$branch"   # merges cleanly: nothing to do
+              continue
+            fi
+            if python3 /tmp/resolve_conflicts.py; then
+              git add -A
+              git commit -q -m "Merge main into $branch: keep both sides (resolve_conflicts.py)"
+              if git push -q origin "HEAD:$branch"; then
+                echo "::notice::PR #$num ($branch): resolved and pushed"
+                for wf in check.yml format.yml; do
+                  gh workflow run "$wf" --ref "$branch" || echo "::warning::couldn't start $wf on $branch"
+                done
+              else
+                echo "::warning::PR #$num ($branch): resolved, but the push failed"
+              fi
+            else
+              echo "::warning::PR #$num ($branch): conflicts this can't resolve:"
+              git diff --name-only --diff-filter=U | sed 's/^/  /'
+              git merge --abort
+            fi
+          done < /tmp/prs
