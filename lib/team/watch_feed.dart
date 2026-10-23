@@ -736,6 +736,10 @@ class WatchFeedService extends ChangeNotifier {
 
   /// Watched channels by name (names survive index changes).
   final Set<String> _watched = {};
+
+  /// Watched from the start, as a demonstration (IceBot posts there).
+  static const List<String> defaultWatchedChannels = ['#icewatch'];
+  static const _kDefaultsApplied = 'watch_feed_defaults_v1';
   DateTime _seen = DateTime.fromMillisecondsSinceEpoch(0);
 
   Set<String> get watchedNames => Set.unmodifiable(_watched);
@@ -792,6 +796,14 @@ class WatchFeedService extends ChangeNotifier {
     try {
       final p = await SharedPreferences.getInstance();
       _watched.addAll(p.getStringList(_kChannels) ?? const []);
+      // #icewatch is watched by default, to show what watching does: added
+      // once (fresh installs and existing ones alike), then it's an ordinary
+      // choice the user can turn off. It only matters with that channel added.
+      if (p.getBool(_kDefaultsApplied) != true) {
+        _watched.addAll(defaultWatchedChannels);
+        await p.setStringList(_kChannels, _watched.toList());
+        await p.setBool(_kDefaultsApplied, true);
+      }
       final s = p.getInt(_kSeen);
       if (s != null) _seen = DateTime.fromMillisecondsSinceEpoch(s);
       for (final e in p.getStringList(_kSounds) ?? const <String>[]) {
