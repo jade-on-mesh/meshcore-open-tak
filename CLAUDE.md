@@ -47,7 +47,7 @@ Most JSON stores scope keys by the first 10 hex chars of the connected device's 
 
 ## Localization
 
-Use `context.l10n` (from `lib/l10n/l10n.dart`) for all user-facing strings. `lib/l10n/app_en.arb` is the template; add new keys there first. Keys missing from other locales are written to `untranslated.json` (configured in `l10n.yaml`). Contact-type names live in `lib/l10n/contact_localization.dart`.
+Use `context.l10n` (from `lib/l10n/l10n.dart`) for all user-facing strings. `lib/l10n/app_en.arb` is the template; add new keys there first. Keys missing from other locales are written to `untranslated.json` (configured in `l10n.yaml`). Add a feature's strings with `python3 scripts/l10n/add_strings.py keys.json`, which places them where they sort instead of at the end, so branches don't conflict. Resolve l10n merge conflicts with `scripts/l10n/resolve_conflicts.py`; see `scripts/l10n/README.md`. Contact-type names live in `lib/l10n/contact_localization.dart`.
 
 ## Transport and platform notes
 
