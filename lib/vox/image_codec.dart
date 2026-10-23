@@ -1,8 +1,8 @@
 // MeshCore Open TAK - image messages: fit a photo into a byte budget.
 //
 // Pipeline (all on the sending phone):
-//   1. Scale the photo to at most [voxImageWorkSide] px; that is the
-//      reference everything is scored against.
+//   1. Scale the photo to at most [voxImageWorkSide] px ([voxImageMaxWorkSide]
+//      for Super Sharp); that is the reference everything is scored against.
 //   2. Optional focus: detectors mark text and faces; everything else is
 //      softened slightly so AV1 spends its bytes on the marked regions. Every
 //      pixel the receiver sees still comes from the photo.
@@ -25,6 +25,10 @@ const int voxImageBaseBudget = 2750;
 /// Longest side of the reference picture.
 const int voxImageWorkSide = 768;
 
+/// Longest side of the reference picture for [VoxImageDetail.superSharp],
+/// and so of a picked photo (the other levels scale it to [voxImageWorkSide]).
+const int voxImageMaxWorkSide = 1024;
+
 /// Encoder speed meaning "fast all-intra trial" (see vox_av1.c).
 const int voxAv1TrialSpeed = 10;
 
@@ -38,12 +42,21 @@ enum VoxImageDetail {
 
   /// Four times the bytes: about twice the resolution. Meant for a fast
   /// MediaMesh preset, where 71 packets take ~11 s of air at 250 kHz.
-  sharp(4, 'Sharp');
+  sharp(4, 'Sharp'),
+
+  /// The most a photo can carry: 14 voice messages (38.5 KB, 247 of the 255
+  /// packets a transfer can have), from a reference up to
+  /// [voxImageMaxWorkSide] px. For MediaMesh, ~40 s of air at 250 kHz.
+  superSharp(14, 'Super Sharp');
 
   const VoxImageDetail(this.multiple, this.label);
   final int multiple;
   final String label;
   int get budget => voxImageBaseBudget * multiple;
+
+  /// Longest side of the reference picture this level is encoded from.
+  int get workSide =>
+      this == superSharp ? voxImageMaxWorkSide : voxImageWorkSide;
 
   /// Box-blur radius and passes for the background when text or faces are
   /// sharpened. The blur caps the background's detail whatever the budget,
@@ -53,6 +66,7 @@ enum VoxImageDetail {
     standard => (2, 3),
     more => (1, 1),
     sharp => null,
+    superSharp => null,
   };
 }
 
@@ -74,6 +88,16 @@ class VoxFocusRegions {
   static const none = VoxFocusRegions();
   bool get isEmpty => text.isEmpty && faces.isEmpty;
   List<VoxRect> get all => [...text, ...faces];
+
+  /// The same regions in a picture scaled by [k].
+  VoxFocusRegions scaled(double k) {
+    VoxRect sc(VoxRect r) =>
+        VoxRect(r.left * k, r.top * k, r.width * k, r.height * k);
+    return VoxFocusRegions(
+      text: [for (final r in text) sc(r)],
+      faces: [for (final r in faces) sc(r)],
+    );
+  }
 }
 
 class VoxEncodedImage {
@@ -289,6 +313,8 @@ const List<int> voxImageSides = [
   576,
   640,
   768,
+  896,
+  1024,
 ];
 
 class _Fit {
@@ -307,6 +333,19 @@ VoxEncodedImage voxEncodeImage({
   VoxFocusRegions focus = VoxFocusRegions.none,
   bool useFocus = true,
 }) {
+  // A reference bigger than this level works from (a photo picked at the
+  // Super Sharp size): scale it, and the regions with it, first.
+  if (max(ref.width, ref.height) > detail.workSide) {
+    final (rw, rh) = voxFitSize(ref.width, ref.height, detail.workSide);
+    return voxEncodeImage(
+      ref: voxResize(ref, rw, rh),
+      detail: detail,
+      encode: encode,
+      decode: decode,
+      focus: focus.scaled(rw / ref.width),
+      useFocus: useFocus,
+    );
+  }
   final budget = detail.budget - 1; // minus the version byte
   final w = ref.width, h = ref.height;
   final focused = useFocus && !focus.isEmpty;

@@ -84,6 +84,16 @@ void main() {
         VoxVoiceMode.av1Image,
       );
       expect(most.length, lessThanOrEqualTo(voxMaxPackets));
+      // Super Sharp is the largest a transfer can carry: 247 of 255 packets.
+      final top = voxPacketize(
+        '0000000a',
+        Uint8List(VoxImageDetail.superSharp.budget),
+        VoxVoiceMode.av1Image,
+      );
+      expect(top.length, 247);
+      expect(top.length, lessThanOrEqualTo(voxMaxPackets));
+      expect(VoxImageDetail.superSharp.workSide, voxImageMaxWorkSide);
+      expect(VoxImageDetail.sharp.workSide, voxImageWorkSide);
     });
   });
 
@@ -125,6 +135,7 @@ void main() {
       expect(VoxImageDetail.standard.backgroundSoften, (2, 3));
       expect(VoxImageDetail.more.backgroundSoften, (1, 1));
       expect(VoxImageDetail.sharp.backgroundSoften, isNull);
+      expect(VoxImageDetail.superSharp.backgroundSoften, isNull);
     });
 
     test('text boxes come from connected regions of the probability map', () {
