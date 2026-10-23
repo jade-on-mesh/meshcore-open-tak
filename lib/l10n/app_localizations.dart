@@ -5183,7 +5183,7 @@ abstract class AppLocalizations {
   /// No description provided for @repeater_packetForwarding.
   ///
   /// In en, this message translates to:
-  /// **'Packet Forwarding'**
+  /// **'Repeat'**
   String get repeater_packetForwarding;
 
   /// No description provided for @repeater_packetForwardingSubtitle.
@@ -5693,7 +5693,7 @@ abstract class AppLocalizations {
   /// No description provided for @repeater_refreshPacketForwarding.
   ///
   /// In en, this message translates to:
-  /// **'Refresh Packet Forwarding'**
+  /// **'Refresh Repeat'**
   String get repeater_refreshPacketForwarding;
 
   /// No description provided for @repeater_refreshGuestAccess.
