@@ -11179,6 +11179,30 @@ abstract class AppLocalizations {
   /// **'Update'**
   String get appUpdate_view;
 
+  /// No description provided for @ar_title.
+  ///
+  /// In en, this message translates to:
+  /// **'AR view'**
+  String get ar_title;
+
+  /// No description provided for @ar_noPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for your position: labels appear once the phone has a GPS fix.'**
+  String get ar_noPosition;
+
+  /// No description provided for @ar_noCompass.
+  ///
+  /// In en, this message translates to:
+  /// **'The compass isn\'t available ({reason}), so labels can\'t be placed.'**
+  String ar_noCompass(String reason);
+
+  /// No description provided for @ar_hounding.
+  ///
+  /// In en, this message translates to:
+  /// **'Bloodhound: {name}'**
+  String ar_hounding(String name);
+
   /// No description provided for @appUpdate_bannerTitle.
   ///
   /// In en, this message translates to:
