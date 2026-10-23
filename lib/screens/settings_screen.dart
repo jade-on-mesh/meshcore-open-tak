@@ -62,12 +62,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  /// App version plus the OTP patch-series build id (see build_info.dart),
-  /// e.g. "9.5.0 · OTP 0026-pad-consumption-fix" — mirrors the Lua app's
-  /// "Build: `<BUILD_ID>`" line on its Settings screen, so you can tell which
-  /// numbered OTP patches actually landed on this install.
-  String get _appVersionWithOtpBuild =>
-      _appVersion.isEmpty ? '' : '$_appVersion  ·  OTP $otpBuildId';
+  /// App version plus the release it was built as (see build_info.dart), e.g.
+  /// "9.5.0-tak BETA · build 1234 · 22 Oct 2026 · a1b2c3d". The OTP patch id
+  /// is on the OTP Pad screen.
+  String get _appVersionWithBuild =>
+      _appVersion.isEmpty ? '' : '$_appVersion  ·  ${appReleaseInfo()}';
 
   @override
   Widget build(BuildContext context) {
@@ -234,7 +233,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     subtitle: l10n.settings_aboutVersion(
                       _appVersion.isEmpty
                           ? l10n.common_loading
-                          : _appVersionWithOtpBuild,
+                          : _appVersionWithBuild,
                     ),
                     showChevron: false,
                     onTap: () => _showAbout(context),
@@ -1151,7 +1150,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       applicationName: l10n.appTitle,
       applicationVersion: _appVersion.isEmpty
           ? l10n.common_loading
-          : _appVersionWithOtpBuild,
+          : _appVersionWithBuild,
       applicationLegalese: l10n.settings_aboutLegalese,
       children: [
         const SizedBox(height: 16),

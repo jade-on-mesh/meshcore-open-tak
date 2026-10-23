@@ -148,7 +148,8 @@ jobs:
           echo "Version ${upstream}-tak, build $((1000 + GITHUB_RUN_NUMBER))"
           flutter build apk --release --no-pub --target-platform android-arm64 \
             --build-name="${upstream}-tak" --build-number=$((1000 + GITHUB_RUN_NUMBER)) \
-            --dart-define=APP_VERSION="${upstream}-tak" --dart-define=APP_BUILD=$((1000 + GITHUB_RUN_NUMBER))
+            --dart-define=APP_VERSION="${upstream}-tak" --dart-define=APP_BUILD=$((1000 + GITHUB_RUN_NUMBER)) \
+            --dart-define=APP_BUILD_DATE="$(date -u '+%d %b %Y')" --dart-define=APP_COMMIT="${GITHUB_SHA::7}"
       - name: Check VOX native libraries and models are in the APK
         run: |
           unzip -l build/app/outputs/flutter-apk/app-release.apk > /tmp/apk.txt
@@ -276,7 +277,8 @@ jobs:
           upstream=$(sed -n 's/^version:[[:space:]]*\([^+[:space:]]*\).*/\1/p' pubspec.yaml)
           build=$((1000 + GITHUB_RUN_NUMBER))
           flutter build windows --release --no-pub --build-name="$upstream" --build-number=$build \
-            --dart-define=APP_VERSION="${upstream}-tak" --dart-define=APP_BUILD=$build
+            --dart-define=APP_VERSION="${upstream}-tak" --dart-define=APP_BUILD=$build \
+            --dart-define=APP_BUILD_DATE="$(date -u '+%d %b %Y')" --dart-define=APP_COMMIT="${GITHUB_SHA::7}"
           cp libcodec2.dll libggwave.dll vox_av1.dll build/windows/x64/runner/Release/
           echo "VERSION=${upstream}-tak" >> "$GITHUB_ENV"
           echo "NUMERIC_VERSION=$upstream" >> "$GITHUB_ENV"
@@ -346,7 +348,8 @@ jobs:
           upstream=$(sed -n 's/^version:[[:space:]]*\([^+[:space:]]*\).*/\1/p' pubspec.yaml)
           build=$((1000 + GITHUB_RUN_NUMBER))
           flutter build macos --release --no-pub --build-name="$upstream" --build-number=$build \
-            --dart-define=APP_VERSION="${upstream}-tak" --dart-define=APP_BUILD=$build
+            --dart-define=APP_VERSION="${upstream}-tak" --dart-define=APP_BUILD=$build \
+            --dart-define=APP_BUILD_DATE="$(date -u '+%d %b %Y')" --dart-define=APP_COMMIT="${GITHUB_SHA::7}"
       - name: Check photo messages are in the app
         run: |
           set -euo pipefail
@@ -429,7 +432,8 @@ jobs:
           upstream=$(sed -n 's/^version:[[:space:]]*\([^+[:space:]]*\).*/\1/p' pubspec.yaml)
           build=$((1000 + GITHUB_RUN_NUMBER))
           flutter build linux --release --no-pub --build-name="$upstream" --build-number=$build \
-            --dart-define=APP_VERSION="${upstream}-tak" --dart-define=APP_BUILD=$build
+            --dart-define=APP_VERSION="${upstream}-tak" --dart-define=APP_BUILD=$build \
+            --dart-define=APP_BUILD_DATE="$(date -u '+%d %b %Y')" --dart-define=APP_COMMIT="${GITHUB_SHA::7}"
           src=third_party/codec2/src
           files=""
           for f in dump lpc nlp postfilter sine codec2 codec2_fft kiss_fft kiss_fftr interp lsp mbest \
