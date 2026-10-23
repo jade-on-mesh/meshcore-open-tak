@@ -40,7 +40,9 @@ Future<TeamSetup?> currentTeamSetup(BuildContext context) async {
     for (final c in connector.channels) {
       if (c.name != name || c.isPublicChannel || c.index == ch.index) continue;
       watched.add(
-        c.isHashtagChannel ? TeamSetupChannel(c.name) : TeamSetupChannel(c.name, c.pskHex),
+        c.isHashtagChannel
+            ? TeamSetupChannel(c.name)
+            : TeamSetupChannel(c.name, c.pskHex),
       );
       break;
     }
@@ -199,9 +201,9 @@ class _Summary extends StatelessWidget {
 
 /// Scan a team QR code (or listen for one played by sound), then set it up.
 Future<void> showTeamSetupJoin(BuildContext context) async {
-  final setup = await Navigator.of(context).push<TeamSetup>(
-    MaterialPageRoute(builder: (_) => const _JoinScreen()),
-  );
+  final setup = await Navigator.of(
+    context,
+  ).push<TeamSetup>(MaterialPageRoute(builder: (_) => const _JoinScreen()));
   if (setup == null || !context.mounted) return;
   await showTeamSetupConfirm(context, setup);
 }
@@ -374,9 +376,10 @@ class _ConfirmSheetState extends State<_ConfirmSheet> {
           final ch = await _ensureChannel(
             connector,
             w.name,
-            w.secretHex ?? Channel.derivePskFromHashtag(w.name)
-                .map((b) => b.toRadixString(16).padLeft(2, '0'))
-                .join(),
+            w.secretHex ??
+                Channel.derivePskFromHashtag(
+                  w.name,
+                ).map((b) => b.toRadixString(16).padLeft(2, '0')).join(),
           );
           if (ch == null) {
             problems.add(l10n.teamSetup_noSlot(w.name));
@@ -462,7 +465,8 @@ class _ConfirmSheetState extends State<_ConfirmSheet> {
     }
     if (slot == null) return null;
     final psk = Uint8List.fromList([
-      for (var i = 0; i < 32; i += 2) int.parse(key.substring(i, i + 2), radix: 16),
+      for (var i = 0; i < 32; i += 2)
+        int.parse(key.substring(i, i + 2), radix: 16),
     ]);
     await connector.setChannel(slot, name, psk);
     for (var t = 0; t < 30; t++) {

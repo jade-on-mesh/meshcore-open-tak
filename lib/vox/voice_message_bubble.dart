@@ -881,7 +881,10 @@ class VoxCaption extends StatelessWidget {
     );
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 260),
-      child: Text(text, style: TextStyle(color: color, fontSize: 14 * scale)),
+      child: Text(
+        text,
+        style: TextStyle(color: color, fontSize: 14 * scale),
+      ),
     );
   }
 }
@@ -891,7 +894,11 @@ class VoxCaption extends StatelessWidget {
 class VoxReceivedViaLabel extends StatelessWidget {
   final VoxReceivedVia via;
   final Color color;
-  const VoxReceivedViaLabel({super.key, required this.via, required this.color});
+  const VoxReceivedViaLabel({
+    super.key,
+    required this.via,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -907,7 +914,9 @@ class VoxReceivedViaLabel extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            via == VoxReceivedVia.mainMesh ? Icons.hub_outlined : Icons.perm_media_outlined,
+            via == VoxReceivedVia.mainMesh
+                ? Icons.hub_outlined
+                : Icons.perm_media_outlined,
             size: 12,
             color: color,
           ),

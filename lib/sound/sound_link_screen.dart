@@ -67,9 +67,11 @@ class _SoundLinkScreenState extends State<SoundLinkScreen> {
     if (!mounted) return;
     final c = context.read<MeshCoreConnector>();
     setState(() {
-      _callsign.text = p.getString(_kCallsign) ?? wavestCallsign(c.selfName ?? 'Mesh');
+      _callsign.text =
+          p.getString(_kCallsign) ?? wavestCallsign(c.selfName ?? 'Mesh');
       _passkey.text = p.getString(_kPasskey) ?? '';
-      _protocol = GgwaveProtocol.values[(p.getInt(_kProtocol) ?? 1).clamp(0, 5)];
+      _protocol =
+          GgwaveProtocol.values[(p.getInt(_kProtocol) ?? 1).clamp(0, 5)];
       _volume = p.getInt(_kVolume) ?? 60;
       _forwardTo = p.getInt(_kForward);
       _playChannel = p.getBool(_kPlayChannel) ?? false;
@@ -195,7 +197,11 @@ class _SoundLinkScreenState extends State<SoundLinkScreen> {
         ? text
         : await wavestBuild(_callsign.text, text, passkey: _passkey.text);
     if (!mounted) return;
-    if (!await wavestFits(_callsign.text, raw ? '' : text, passkey: _passkey.text) ||
+    if (!await wavestFits(
+          _callsign.text,
+          raw ? '' : text,
+          passkey: _passkey.text,
+        ) ||
         payload.length > wavestMaxBytes) {
       setState(() => _error = context.l10n.sound_tooLong);
       return;
@@ -205,7 +211,11 @@ class _SoundLinkScreenState extends State<SoundLinkScreen> {
       _error = null;
     });
     try {
-      await SoundLink.instance.play(payload, protocol: _protocol, volume: _volume);
+      await SoundLink.instance.play(
+        payload,
+        protocol: _protocol,
+        volume: _volume,
+      );
       if (!mounted) return;
       setState(() {
         _lines.insert(
@@ -249,7 +259,8 @@ class _SoundLinkScreenState extends State<SoundLinkScreen> {
     for (var i = _seen; i < msgs.length; i++) {
       final m = msgs[i];
       // Not our own, and not what this bridge posted (no echo).
-      if (!_playChannel || m.isOutgoing || m.text.startsWith(_bridgeTag)) continue;
+      if (!_playChannel || m.isOutgoing || m.text.startsWith(_bridgeTag))
+        continue;
       var t = m.text.trim();
       while (t.isNotEmpty && !_fitsSync(m.senderName, t)) {
         t = t.substring(0, t.length - 1);
@@ -268,16 +279,28 @@ class _SoundLinkScreenState extends State<SoundLinkScreen> {
     final item = _queue.removeAt(0);
     final cut = item.indexOf('\u0000');
     final sender = item.substring(0, cut), text = item.substring(cut + 1);
-    final payload = await wavestBuild(sender, text);   // plain: it came off the mesh as plain text
+    final payload = await wavestBuild(
+      sender,
+      text,
+    ); // plain: it came off the mesh as plain text
     if (!mounted) return;
     setState(() => _sending = true);
     try {
-      await SoundLink.instance.play(payload, protocol: _protocol, volume: _volume);
+      await SoundLink.instance.play(
+        payload,
+        protocol: _protocol,
+        volume: _volume,
+      );
       if (mounted) {
-        setState(() => _lines.insert(
-          0,
-          _Line(WavestMessage(sender: wavestCallsign(sender), text: text), true),
-        ));
+        setState(
+          () => _lines.insert(
+            0,
+            _Line(
+              WavestMessage(sender: wavestCallsign(sender), text: text),
+              true,
+            ),
+          ),
+        );
       }
     } catch (_) {
     } finally {
@@ -296,14 +319,21 @@ class _SoundLinkScreenState extends State<SoundLinkScreen> {
       scheme: 'meshcore',
       host: 'contact',
       path: '/add',
-      queryParameters: {'name': c.selfName ?? '', 'public_key': key, 'type': '1'},
+      queryParameters: {
+        'name': c.selfName ?? '',
+        'public_key': key,
+        'type': '1',
+      },
     ).toString();
   }
 
   Future<void> _shareChannel() async {
     final c = _connector;
     if (c == null) return;
-    final chans = [for (final ch in c.channels) if (!ch.isEmpty) ch];
+    final chans = [
+      for (final ch in c.channels)
+        if (!ch.isEmpty) ch,
+    ];
     final picked = await showModalBottomSheet<Channel>(
       context: context,
       showDragHandle: true,
@@ -337,7 +367,10 @@ class _SoundLinkScreenState extends State<SoundLinkScreen> {
         body: Center(child: Text(l10n.sound_unavailable)),
       );
     }
-    final chans = [for (final ch in connector.channels) if (!ch.isEmpty) ch];
+    final chans = [
+      for (final ch in connector.channels)
+        if (!ch.isEmpty) ch,
+    ];
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.sound_title),
@@ -349,7 +382,9 @@ class _SoundLinkScreenState extends State<SoundLinkScreen> {
                 Icon(
                   Icons.hearing,
                   size: 18,
-                  color: _listening ? theme.colorScheme.primary : theme.disabledColor,
+                  color: _listening
+                      ? theme.colorScheme.primary
+                      : theme.disabledColor,
                 ),
                 Switch(
                   value: _listening,
@@ -374,7 +409,9 @@ class _SoundLinkScreenState extends State<SoundLinkScreen> {
                   children: [
                     TextField(
                       controller: _callsign,
-                      decoration: InputDecoration(labelText: l10n.sound_callsign),
+                      decoration: InputDecoration(
+                        labelText: l10n.sound_callsign,
+                      ),
                       onChanged: (_) => unawaited(_save()),
                     ),
                     TextField(
@@ -394,7 +431,10 @@ class _SoundLinkScreenState extends State<SoundLinkScreen> {
                       decoration: InputDecoration(labelText: l10n.sound_mode),
                       items: [
                         for (final p in GgwaveProtocol.values)
-                          DropdownMenuItem(value: p, child: Text(_protocolName(context, p))),
+                          DropdownMenuItem(
+                            value: p,
+                            child: Text(_protocolName(context, p)),
+                          ),
                       ],
                       onChanged: (p) {
                         if (p == null) return;
@@ -412,7 +452,8 @@ class _SoundLinkScreenState extends State<SoundLinkScreen> {
                             max: 100,
                             divisions: 9,
                             label: '$_volume',
-                            onChanged: (v) => setState(() => _volume = v.round()),
+                            onChanged: (v) =>
+                                setState(() => _volume = v.round()),
                             onChangeEnd: (_) => unawaited(_save()),
                           ),
                         ),
@@ -424,17 +465,27 @@ class _SoundLinkScreenState extends State<SoundLinkScreen> {
                   tilePadding: EdgeInsets.zero,
                   title: Text(l10n.sound_bridge),
                   subtitle: Text(
-                    _bridged == null ? l10n.sound_bridgeOff : '#${_bridged!.name}',
+                    _bridged == null
+                        ? l10n.sound_bridgeOff
+                        : '#${_bridged!.name}',
                   ),
                   children: [
                     DropdownButtonFormField<int?>(
                       key: ValueKey(_forwardTo),
                       initialValue: _forwardTo,
-                      decoration: InputDecoration(labelText: l10n.sound_bridgeChannel),
+                      decoration: InputDecoration(
+                        labelText: l10n.sound_bridgeChannel,
+                      ),
                       items: [
-                        DropdownMenuItem<int?>(value: null, child: Text(l10n.sound_bridgeOff)),
+                        DropdownMenuItem<int?>(
+                          value: null,
+                          child: Text(l10n.sound_bridgeOff),
+                        ),
                         for (final ch in chans)
-                          DropdownMenuItem<int?>(value: ch.index, child: Text(ch.name)),
+                          DropdownMenuItem<int?>(
+                            value: ch.index,
+                            child: Text(ch.name),
+                          ),
                       ],
                       onChanged: (i) {
                         setState(() {
@@ -465,12 +516,15 @@ class _SoundLinkScreenState extends State<SoundLinkScreen> {
                     OutlinedButton.icon(
                       onPressed: _sending || _myContactLink() == null
                           ? null
-                          : () => unawaited(_send(_myContactLink()!, raw: true)),
+                          : () =>
+                                unawaited(_send(_myContactLink()!, raw: true)),
                       icon: const Icon(Icons.person),
                       label: Text(l10n.sound_shareContact),
                     ),
                     OutlinedButton.icon(
-                      onPressed: _sending ? null : () => unawaited(_shareChannel()),
+                      onPressed: _sending
+                          ? null
+                          : () => unawaited(_shareChannel()),
                       icon: const Icon(Icons.tag),
                       label: Text(l10n.sound_shareChannel),
                     ),
@@ -479,7 +533,10 @@ class _SoundLinkScreenState extends State<SoundLinkScreen> {
                 if (_error != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
-                    child: Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
+                    child: Text(
+                      _error!,
+                      style: TextStyle(color: theme.colorScheme.error),
+                    ),
                   ),
                 const Divider(),
                 for (final l in _lines) _lineTile(context, l),
@@ -487,7 +544,9 @@ class _SoundLinkScreenState extends State<SoundLinkScreen> {
                   Padding(
                     padding: const EdgeInsets.all(24),
                     child: Text(
-                      _listening ? l10n.sound_listeningHelp : l10n.sound_notListening,
+                      _listening
+                          ? l10n.sound_listeningHelp
+                          : l10n.sound_notListening,
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodySmall,
                     ),
@@ -555,8 +614,12 @@ class _SoundLinkScreenState extends State<SoundLinkScreen> {
       title: Text.rich(
         TextSpan(
           children: [
-            TextSpan(text: who, style: const TextStyle(fontWeight: FontWeight.w600)),
-            if (m.encrypted) const WidgetSpan(child: Icon(Icons.lock, size: 14)),
+            TextSpan(
+              text: who,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            if (m.encrypted)
+              const WidgetSpan(child: Icon(Icons.lock, size: 14)),
           ],
         ),
       ),

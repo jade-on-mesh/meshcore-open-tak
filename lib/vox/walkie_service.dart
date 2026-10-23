@@ -69,6 +69,7 @@ class _Tx {
   DateTime? startedAt;
   DateTime? lastSent;
   Future<void> chain = Future.value();
+
   /// The button was let go (maybe before the mic was even running).
   bool releaseAsked = false;
 
@@ -122,9 +123,8 @@ class WalkieService extends ChangeNotifier {
   int? get talkingOn => _tx?.channel.index;
 
   /// How long the current talk has run.
-  Duration get talkElapsed => Duration(
-    milliseconds: (_tx?.samples8k ?? 0) * 1000 ~/ 8000,
-  );
+  Duration get talkElapsed =>
+      Duration(milliseconds: (_tx?.samples8k ?? 0) * 1000 ~/ 8000);
 
   /// Mic level of the current talk, 0..100.
   int get talkLevel => _tx?.level ?? 0;
@@ -277,10 +277,7 @@ class WalkieService extends ChangeNotifier {
   }
 
   WalkieTalk _talk(String sid, int channelIndex, DateTime now) {
-    final t = _talks.putIfAbsent(
-      sid,
-      () => WalkieTalk(sid, channelIndex, now),
-    );
+    final t = _talks.putIfAbsent(sid, () => WalkieTalk(sid, channelIndex, now));
     return t;
   }
 

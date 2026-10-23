@@ -15,7 +15,10 @@ void main() {
 
   test('marking: every word, any case', () {
     const mark = Colors.yellow;
-    final span = watchMarked('Drone over Alberta Park', ['alberta', 'dr'], mark);
+    final span = watchMarked('Drone over Alberta Park', [
+      'alberta',
+      'dr',
+    ], mark);
     final parts = [
       for (final c in span.children!.cast<TextSpan>())
         (c.text, c.style?.backgroundColor == mark),

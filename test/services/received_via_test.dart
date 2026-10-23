@@ -59,9 +59,7 @@ void main() {
     );
     final back = ReceivedImageEntry.fromJson(entry.toJson());
     expect(back.viaMask, 2);
-    final old = ReceivedImageEntry.fromJson(
-      entry.toJson()..remove('viaMask'),
-    );
+    final old = ReceivedImageEntry.fromJson(entry.toJson()..remove('viaMask'));
     expect(old.viaMask, 0);
   });
 }

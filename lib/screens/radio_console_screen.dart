@@ -136,7 +136,10 @@ class _RadioConsoleScreenState extends State<RadioConsoleScreen> {
                 controller: _scroll,
                 padding: const EdgeInsets.all(16),
                 children: [
-                  Text(l10n.radioConsole_intro, style: theme.textTheme.bodySmall),
+                  Text(
+                    l10n.radioConsole_intro,
+                    style: theme.textTheme.bodySmall,
+                  ),
                   const SizedBox(height: 12),
                   for (final line in _lines)
                     Padding(
@@ -179,20 +182,20 @@ class _RadioConsoleScreenState extends State<RadioConsoleScreen> {
                 children: [
                   Expanded(
                     child: TextField(
-                        controller: _input,
-                        focusNode: _focus,
-                        autofocus: true,
-                        autocorrect: false,
-                        enableSuggestions: false,
-                        textCapitalization: TextCapitalization.none,
-                        style: mono,
-                        textInputAction: TextInputAction.send,
-                        onSubmitted: (_) => _run(),
-                        decoration: InputDecoration(
-                          hintText: l10n.radioConsole_hint,
-                          border: const OutlineInputBorder(),
-                          isDense: true,
-                        ),
+                      controller: _input,
+                      focusNode: _focus,
+                      autofocus: true,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      textCapitalization: TextCapitalization.none,
+                      style: mono,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _run(),
+                      decoration: InputDecoration(
+                        hintText: l10n.radioConsole_hint,
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),

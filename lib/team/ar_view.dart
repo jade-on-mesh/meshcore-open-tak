@@ -84,7 +84,9 @@ class _Orientation {
   StreamSubscription<dynamic>? _sub;
   List<double>? _g, _m;
   double _decl = 0;
-  final ValueNotifier<({double azimuth, double pitch})?> pose = ValueNotifier(null);
+  final ValueNotifier<({double azimuth, double pitch})?> pose = ValueNotifier(
+    null,
+  );
   final ValueNotifier<String?> error = ValueNotifier(null);
 
   void start() {
@@ -301,7 +303,8 @@ class _ArViewScreenState extends State<ArViewScreen> {
     List<ArTarget> targets,
   ) {
     if (pose == null || me == null) return const SizedBox.shrink();
-    final horizon = size.height / 2 + pose.pitch / (_vFov / 2) * size.height / 2;
+    final horizon =
+        size.height / 2 + pose.pitch / (_vFov / 2) * size.height / 2;
     final placed = <Rect>[];
     final labels = <Widget>[];
     final left = <(ArTarget, double)>[], right = <(ArTarget, double)>[];
@@ -348,8 +351,16 @@ class _ArViewScreenState extends State<ArViewScreen> {
         ),
       );
     }
-    String cardinal(double a) =>
-        const ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][((a + 22.5) % 360) ~/ 45];
+    String cardinal(double a) => const [
+      'N',
+      'NE',
+      'E',
+      'SE',
+      'S',
+      'SW',
+      'W',
+      'NW',
+    ][((a + 22.5) % 360) ~/ 45];
     Widget side(List<(ArTarget, double)> list, bool isLeft) => Positioned(
       left: isLeft ? 8 : null,
       right: isLeft ? null : 8,

@@ -116,10 +116,7 @@ void main() {
       expect(parseShareReply('Unknown command'), isNull);
       expect(parseShareReply('Error: unknown setting'), isNull);
       // keymindCascade's wording.
-      expect(
-        parseTxMediaReply('> tx.media radio2; active=radio2'),
-        'radio2',
-      );
+      expect(parseTxMediaReply('> tx.media radio2; active=radio2'), 'radio2');
       expect(
         parseTxMediaReply('> tx.media auto; active=channel/global'),
         'auto',
@@ -260,8 +257,9 @@ void main() {
       expect(c.radio2Unavailable, isTrue);
       expect(c.active, 'none');
       expect(
-        TxRouteReply.tryParse('> tx.channel 0 "Public" auto; active=radio')!
-            .choice,
+        TxRouteReply.tryParse(
+          '> tx.channel 0 "Public" auto; active=radio',
+        )!.choice,
         TxChoice.auto,
       );
       expect(TxRouteReply.tryParse('Error: user not found'), isNull);
@@ -372,4 +370,3 @@ void main() {
     });
   });
 }
-

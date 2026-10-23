@@ -9,7 +9,11 @@ import 'team_wire.dart';
 import 'watch_feed.dart' show WatchReplyHeard;
 
 /// The words for [code] in the user's language ("ETA 10 min").
-String quickReplyLabel(BuildContext context, TeamReplyCode code, [int arg = 0]) {
+String quickReplyLabel(
+  BuildContext context,
+  TeamReplyCode code, [
+  int arg = 0,
+]) {
   final l = context.l10n;
   return switch (code) {
     TeamReplyCode.copy => l.quickReply_copy,
@@ -104,7 +108,9 @@ class QuickReplyChips extends StatelessWidget {
             ),
             label: Text(quickReplyLabel(context, c)),
             labelStyle: onColor ? const TextStyle(color: Colors.white) : null,
-            backgroundColor: onColor ? Colors.white.withValues(alpha: 0.12) : null,
+            backgroundColor: onColor
+                ? Colors.white.withValues(alpha: 0.12)
+                : null,
             side: BorderSide(
               color: c == mine
                   ? (onColor ? Colors.white : scheme.primary)
@@ -136,7 +142,11 @@ String _ago(BuildContext context, DateTime t) {
 class QuickReplyList extends StatelessWidget {
   final List<QuickReplyEntry> entries;
   final bool onColor;
-  const QuickReplyList({super.key, required this.entries, this.onColor = false});
+  const QuickReplyList({
+    super.key,
+    required this.entries,
+    this.onColor = false,
+  });
 
   @override
   Widget build(BuildContext context) {

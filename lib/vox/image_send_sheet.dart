@@ -107,34 +107,38 @@ Future<void> showVoxImagePicker(
   // Windows, Linux and macOS: no camera here, so straight to choosing a file
   // (image_picker opens the system file chooser), unless there is a kind of
   // photo to choose first.
-  final desktop = !kIsWeb &&
+  final desktop =
+      !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.windows ||
           defaultTargetPlatform == TargetPlatform.linux ||
           defaultTargetPlatform == TargetPlatform.macOS);
   final source = desktop && aiSketch == null
       ? ImageSource.gallery
       : await showModalBottomSheet<ImageSource>(
-    context: context,
-    builder: (context) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (aiSketch != null) _PhotoKindChooser(hd: aiSketch.sendHd != null),
-          if (!desktop)
-            ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('Take photo'),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
+          context: context,
+          builder: (context) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (aiSketch != null)
+                  _PhotoKindChooser(hd: aiSketch.sendHd != null),
+                if (!desktop)
+                  ListTile(
+                    leading: const Icon(Icons.photo_camera_outlined),
+                    title: const Text('Take photo'),
+                    onTap: () => Navigator.pop(context, ImageSource.camera),
+                  ),
+                ListTile(
+                  leading: const Icon(Icons.photo_library_outlined),
+                  title: Text(
+                    desktop ? 'Choose a picture' : 'Choose from gallery',
+                  ),
+                  onTap: () => Navigator.pop(context, ImageSource.gallery),
+                ),
+              ],
             ),
-          ListTile(
-            leading: const Icon(Icons.photo_library_outlined),
-            title: Text(desktop ? 'Choose a picture' : 'Choose from gallery'),
-            onTap: () => Navigator.pop(context, ImageSource.gallery),
           ),
-        ],
-      ),
-    ),
-  );
+        );
   if (source == null || !context.mounted) return;
   final sketch =
       aiSketch != null && (voice.photoAiSketch || !voice.imagesAvailable);

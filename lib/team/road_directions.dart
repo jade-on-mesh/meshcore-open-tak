@@ -147,7 +147,8 @@ RoadRoute parseValhallaRoute(
         RoadManeuver(
           instruction: '${map['instruction'] ?? ''}',
           type: (map['type'] as num?)?.toInt() ?? 0,
-          beginIndex: offset + ((map['begin_shape_index'] as num?)?.toInt() ?? 0),
+          beginIndex:
+              offset + ((map['begin_shape_index'] as num?)?.toInt() ?? 0),
           streets: [
             for (final n in (map['street_names'] as List? ?? const [])) '$n',
           ],

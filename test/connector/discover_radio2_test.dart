@@ -9,7 +9,8 @@ import 'package:meshcore_open/models/radio_settings.dart';
 import 'package:meshcore_open/services/media_mesh_find.dart';
 
 Uint8List _hex(String h) => Uint8List.fromList([
-  for (var i = 0; i < h.length; i += 2) int.parse(h.substring(i, i + 2), radix: 16),
+  for (var i = 0; i < h.length; i += 2)
+    int.parse(h.substring(i, i + 2), radix: 16),
 ]);
 
 String _toHex(Uint8List b) =>
@@ -86,7 +87,10 @@ void main() {
     final v2 = DiscoverRadio2.tryParse(_hex('0205bde40d0090d003000705ffff'))!;
     expect(v2.frequencyKHz, 910525);
     // Configured but mode off is not active.
-    expect(DiscoverRadio2.tryParse(_hex('0101bde40d0090d003000705'))!.active, isFalse);
+    expect(
+      DiscoverRadio2.tryParse(_hex('0101bde40d0090d003000705'))!.active,
+      isFalse,
+    );
   });
 
   test('response carries the trailer after a full key or a prefix', () {
@@ -106,7 +110,9 @@ void main() {
     final stock = parseNodeDiscoverResponse(_resp(key, const []))!;
     expect(stock.radio2, isNull);
     expect(stock.extra, isEmpty);
-    final stockPrefix = parseNodeDiscoverResponse(_resp(key.sublist(0, 8), const []))!;
+    final stockPrefix = parseNodeDiscoverResponse(
+      _resp(key.sublist(0, 8), const []),
+    )!;
     expect(stockPrefix.radio2, isNull);
   });
 
@@ -129,7 +135,10 @@ void main() {
       codingRate: 5,
     );
     expect(mediaMeshProfilePick(const []), isNull);
-    expect(mediaMeshProfilePick([(radio2: off, snr: 9.0), (radio2: odd, snr: 9.0)]), isNull);
+    expect(
+      mediaMeshProfilePick([(radio2: off, snr: 9.0), (radio2: odd, snr: 9.0)]),
+      isNull,
+    );
 
     var p = mediaMeshProfilePick([
       (radio2: range, snr: 10.0),

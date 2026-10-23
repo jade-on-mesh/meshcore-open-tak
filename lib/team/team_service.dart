@@ -676,7 +676,9 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
 
   void _speak(String? text, {String? language}) {
     if (!_voice || text == null || text.isEmpty) return;
-    unawaited(SpeechService.instance.say(text, language: language ?? voiceLanguage));
+    unawaited(
+      SpeechService.instance.say(text, language: language ?? voiceLanguage),
+    );
   }
 
   RoadMode? _roadMode;

@@ -1447,6 +1447,7 @@ class VoxVoiceService extends ChangeNotifier {
       await prefs.setBool(_kPushChannel, v);
     } catch (_) {}
   }
+
   bool _autoPlay = true;
   bool _autoDownloadChannels = false;
 
@@ -1902,7 +1903,8 @@ class VoxVoiceService extends ChangeNotifier {
       return;
     }
     final key = '${req.sessionId}/ch$channel';
-    final sig = '$key/${req.requesterKey6}|${req.missingIndices?.join(',') ?? 'all'}';
+    final sig =
+        '$key/${req.requesterKey6}|${req.missingIndices?.join(',') ?? 'all'}';
     final now = DateTime.now();
     final last = _recentServes[sig];
     if (last != null && now.difference(last) < const Duration(seconds: 6)) {
@@ -1948,7 +1950,11 @@ class VoxVoiceService extends ChangeNotifier {
         return;
       }
       if (!await _loadFromStore(burst.sid)) return;
-      final packets = voxPacketize(burst.sid, _bits[burst.sid]!, _modes[burst.sid]!);
+      final packets = voxPacketize(
+        burst.sid,
+        _bits[burst.sid]!,
+        _modes[burst.sid]!,
+      );
       // Listen before the burst, briefly: the request that started it may
       // still be relayed. Within the burst the gaps do this. A push answers
       // no request, and its lead after the announcement already went by.
@@ -2063,7 +2069,10 @@ class VoxVoiceService extends ChangeNotifier {
     if (_serveGen[key] != gen) return; // superseded while queued
     await _refreshMediaAir();
     if (!_mediaAllowed) {
-      _logEvent('not answering: it would go out on the main mesh', req.sessionId);
+      _logEvent(
+        'not answering: it would go out on the main mesh',
+        req.sessionId,
+      );
       return;
     }
     if (!await _loadFromStore(req.sessionId)) {

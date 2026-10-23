@@ -85,66 +85,69 @@ class TeamScreen extends StatelessWidget {
       // A context under the tab controller, for the Map tab's onTap.
       child: Builder(
         builder: (context) => Scaffold(
-        appBar: AppBar(
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Tactical'),
-              Text(
-                [
-                  if (!team.enabled)
-                    'Team mode off'
-                  else if (ch == null)
-                    'No team channel'
-                  else
-                    '${ch.name} · $live live',
-                  if (tak.state == TakState.connected) 'TAK connected',
-                  if (tak.state == TakState.error) 'TAK offline',
-                ].join(' · '),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ),
-          bottom: TabBar(
-            isScrollable: true,
-            tabAlignment: TabAlignment.start,
-            // Map is a shortcut: it opens the map instead of a page here.
-            onTap: (i) {
-              if (i != 1) return;
-              final tabs = DefaultTabController.of(context);
-              tabs.index = tabs.previousIndex;
-              _openMap(context);
-            },
-            tabs: [
-              const Tab(icon: Icon(Icons.groups_outlined), text: 'Team'),
-              const Tab(icon: Icon(Icons.map_outlined), text: 'Map'),
-              Tab(
-                icon: Badge(
-                  isLabelVisible: watch.unseenCount > 0,
-                  label: Text('${watch.unseenCount}'),
-                  child: const Icon(Icons.visibility_outlined),
+          appBar: AppBar(
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Tactical'),
+                Text(
+                  [
+                    if (!team.enabled)
+                      'Team mode off'
+                    else if (ch == null)
+                      'No team channel'
+                    else
+                      '${ch.name} · $live live',
+                    if (tak.state == TakState.connected) 'TAK connected',
+                    if (tak.state == TakState.error) 'TAK offline',
+                  ].join(' · '),
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
-                text: 'Watch',
-              ),
-              const Tab(icon: Icon(Icons.place_outlined), text: 'Pins'),
-              const Tab(icon: Icon(Icons.assignment_outlined), text: 'Reports'),
-              const Tab(icon: Icon(Icons.tune), text: 'Setup'),
+              ],
+            ),
+            bottom: TabBar(
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              // Map is a shortcut: it opens the map instead of a page here.
+              onTap: (i) {
+                if (i != 1) return;
+                final tabs = DefaultTabController.of(context);
+                tabs.index = tabs.previousIndex;
+                _openMap(context);
+              },
+              tabs: [
+                const Tab(icon: Icon(Icons.groups_outlined), text: 'Team'),
+                const Tab(icon: Icon(Icons.map_outlined), text: 'Map'),
+                Tab(
+                  icon: Badge(
+                    isLabelVisible: watch.unseenCount > 0,
+                    label: Text('${watch.unseenCount}'),
+                    child: const Icon(Icons.visibility_outlined),
+                  ),
+                  text: 'Watch',
+                ),
+                const Tab(icon: Icon(Icons.place_outlined), text: 'Pins'),
+                const Tab(
+                  icon: Icon(Icons.assignment_outlined),
+                  text: 'Reports',
+                ),
+                const Tab(icon: Icon(Icons.tune), text: 'Setup'),
+              ],
+            ),
+          ),
+          // No swipe between tabs: the Pins and Reports maps pan sideways.
+          body: TabBarView(
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              const _RosterTab(),
+              const SizedBox.shrink(), // Map: opens the map (TabBar.onTap)
+              WatchTab(focusKey: watchFocusKey),
+              const _PinsTab(),
+              const _ReportsTab(),
+              const _SetupTab(),
             ],
           ),
         ),
-        // No swipe between tabs: the Pins and Reports maps pan sideways.
-        body: TabBarView(
-          physics: const NeverScrollableScrollPhysics(),
-          children: [
-            const _RosterTab(),
-            const SizedBox.shrink(), // Map: opens the map (TabBar.onTap)
-            WatchTab(focusKey: watchFocusKey),
-            const _PinsTab(),
-            const _ReportsTab(),
-            const _SetupTab(),
-          ],
-        ),
-      ),
       ),
     );
   }
@@ -320,10 +323,8 @@ class _WatchTabState extends State<WatchTab> {
     unawaited(
       Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => MapScreen(
-            focusPosition: LatLng(it.lat!, it.lon!),
-            focusZoom: 16,
-          ),
+          builder: (_) =>
+              MapScreen(focusPosition: LatLng(it.lat!, it.lon!), focusZoom: 16),
         ),
       ),
     );

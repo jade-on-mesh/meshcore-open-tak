@@ -152,7 +152,10 @@ void main() {
     final bad = RoadRouter(
       client: MockClient(
         (_) async => http.Response(
-          jsonEncode({'error_code': 442, 'error': 'No path could be found for input'}),
+          jsonEncode({
+            'error_code': 442,
+            'error': 'No path could be found for input',
+          }),
           400,
         ),
       ),

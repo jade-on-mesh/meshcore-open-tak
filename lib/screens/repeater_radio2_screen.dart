@@ -250,7 +250,9 @@ class _RepeaterRadio2ScreenState extends State<RepeaterRadio2Screen> {
       if (!mounted) return;
       final back = await _ctl.radio2();
       if (back != null && mounted) {
-        setState(() => _setSaved(Radio2Profile.fromReply(back, fallback: _edit)));
+        setState(
+          () => _setSaved(Radio2Profile.fromReply(back, fallback: _edit)),
+        );
       }
       await _loadLive();
     });
@@ -320,7 +322,9 @@ class _RepeaterRadio2ScreenState extends State<RepeaterRadio2Screen> {
 
   bool get _profileValid =>
       _edit.mode == Radio2Mode.off ||
-      (!_freqInvalid && !_onMain && (_edit.preamble == null || !_preambleInvalid));
+      (!_freqInvalid &&
+          !_onMain &&
+          (_edit.preamble == null || !_preambleInvalid));
 
   bool get _dirty => !_edit.sameAs(_saved);
 
@@ -707,9 +711,7 @@ class _RepeaterRadio2ScreenState extends State<RepeaterRadio2Screen> {
           children: [
             if (rxTotal > 0) ...[
               Text(
-                l10n.rr2_heardShare(
-                  (status.rx[1] * 100 / rxTotal).round(),
-                ),
+                l10n.rr2_heardShare((status.rx[1] * 100 / rxTotal).round()),
                 style: theme.textTheme.bodySmall,
               ),
               const SizedBox(height: 6),
@@ -802,19 +804,24 @@ class _RepeaterRadio2ScreenState extends State<RepeaterRadio2Screen> {
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeOut,
             alignment: Alignment.topCenter,
-            child: on ? _profileFields(context) : const SizedBox(width: double.infinity),
+            child: on
+                ? _profileFields(context)
+                : const SizedBox(width: double.infinity),
           ),
           const SizedBox(height: 14),
           Row(
             children: [
               if (_dirty)
                 TextButton(
-                  onPressed: busy ? null : () => setState(() => _setSaved(_saved)),
+                  onPressed: busy
+                      ? null
+                      : () => setState(() => _setSaved(_saved)),
                   child: Text(l10n.rr2_reset),
                 ),
               const Spacer(),
               FilledButton.icon(
-                onPressed: busy || !_dirty || !_profileValid || _busy != _Busy.none
+                onPressed:
+                    busy || !_dirty || !_profileValid || _busy != _Busy.none
                     ? null
                     : _applyProfile,
                 icon: busy
@@ -914,7 +921,9 @@ class _RepeaterRadio2ScreenState extends State<RepeaterRadio2Screen> {
                   ],
                   onChanged: (v) {
                     if (v != null) {
-                      setState(() => _edit = _edit.copyWith(spreadingFactor: v));
+                      setState(
+                        () => _edit = _edit.copyWith(spreadingFactor: v),
+                      );
                     }
                   },
                 ),
@@ -975,7 +984,8 @@ class _RepeaterRadio2ScreenState extends State<RepeaterRadio2Screen> {
                 _edit = _edit.copyWith(preamble: () => null);
                 _preambleInvalid = false;
               } else {
-                final p = int.tryParse(_preambleController.text) ??
+                final p =
+                    int.tryParse(_preambleController.text) ??
                     _status?.preamble?[1] ??
                     32;
                 _preambleController.text = '$p';
@@ -1107,7 +1117,8 @@ class _RepeaterRadio2ScreenState extends State<RepeaterRadio2Screen> {
               subtitle: Text(l10n.rr2_forceHelp),
               value: reply.force,
               onChanged: _busy == _Busy.none
-                  ? (v) => _setReply(TxReplySetting(route: reply.route, force: v))
+                  ? (v) =>
+                        _setReply(TxReplySetting(route: reply.route, force: v))
                   : null,
             ),
           ),
@@ -1346,7 +1357,10 @@ class _BandsCard extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
                 const SizedBox(width: 8),
-                Text(loadingText ?? '', style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  loadingText ?? '',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ],
             ),
           ] else if (modeChip != null) ...[
@@ -1608,9 +1622,9 @@ class _Fact extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ),
           Text(
@@ -1649,8 +1663,16 @@ class _ShareBar extends StatelessWidget {
         height: 8,
         child: Row(
           children: [
-            if (a > 0) Expanded(flex: a * 1000 ~/ total + 1, child: ColoredBox(color: aColor)),
-            if (b > 0) Expanded(flex: b * 1000 ~/ total + 1, child: ColoredBox(color: bColor)),
+            if (a > 0)
+              Expanded(
+                flex: a * 1000 ~/ total + 1,
+                child: ColoredBox(color: aColor),
+              ),
+            if (b > 0)
+              Expanded(
+                flex: b * 1000 ~/ total + 1,
+                child: ColoredBox(color: bColor),
+              ),
           ],
         ),
       ),

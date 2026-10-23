@@ -69,8 +69,9 @@ int? teamBatteryMv(int b) {
 
 /// Millivolts as the battery percent our Team shows (the same 3.3-4.2 V line
 /// it uses for its own radios).
-int? teamBatteryPct(int? mv) =>
-    mv == null ? null : ((mv - 3300) / (4200 - 3300) * 100).round().clamp(0, 100);
+int? teamBatteryPct(int? mv) => mv == null
+    ? null
+    : ((mv - 3300) / (4200 - 3300) * 100).round().clamp(0, 100);
 
 // --------------------------------------------------------------- base64 body
 
@@ -409,7 +410,8 @@ class TeamCompatWaypoint {
   }
 
   /// Field text without TEAM's separator.
-  static String _clean(String s) => s.replaceAll('|', '/').replaceAll('\n', ' ');
+  static String _clean(String s) =>
+      s.replaceAll('|', '/').replaceAll('\n', ' ');
 }
 
 /// A #WRC route part.

@@ -127,6 +127,7 @@ class MapHighlights extends ChangeNotifier {
       }
     }
   }
+
   Duration get duration => Duration(minutes: _minutes);
 
   Future<void> load() async {

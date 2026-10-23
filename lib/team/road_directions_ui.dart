@@ -176,7 +176,9 @@ class RoadDirectionsCard extends StatelessWidget {
           else
             Icon(Icons.error_outline, color: theme.colorScheme.error),
           const SizedBox(width: 10),
-          Expanded(child: Text(team.roadBusy ? l10n.road_finding : (error ?? ''))),
+          Expanded(
+            child: Text(team.roadBusy ? l10n.road_finding : (error ?? '')),
+          ),
           if (!team.roadBusy)
             TextButton(
               onPressed: () => team.startDirections(mode),
@@ -257,7 +259,10 @@ class RoadDirectionsCard extends StatelessWidget {
               children: [
                 Icon(_modeIcon(mode), size: 16),
                 const SizedBox(width: 4),
-                Text(_modeLabel(context, mode), style: theme.textTheme.bodySmall),
+                Text(
+                  _modeLabel(context, mode),
+                  style: theme.textTheme.bodySmall,
+                ),
                 const SizedBox(width: 8),
                 if (route != null && team.enabled)
                   TextButton.icon(

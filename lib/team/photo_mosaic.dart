@@ -59,9 +59,12 @@ class MosaicPhoto {
 
 /// Where the first position written in [caption] is, or null.
 (double, double)? mosaicCaptionPosition(String caption) {
-  final tag = RegExp(r'📍\s*(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)').firstMatch(caption);
+  final tag = RegExp(
+    r'📍\s*(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)',
+  ).firstMatch(caption);
   if (tag != null) {
-    final la = double.tryParse(tag.group(1)!), lo = double.tryParse(tag.group(2)!);
+    final la = double.tryParse(tag.group(1)!),
+        lo = double.tryParse(tag.group(2)!);
     if (la != null && lo != null && la.abs() <= 90 && lo.abs() <= 180) {
       return (la, lo);
     }
@@ -160,8 +163,9 @@ List<MosaicPhoto> collectMosaicPhotos(
     );
   }
 
-  String who(String key4) =>
-      key4 == team.selfKey4 ? team.callsign : team.memberByKey(key4)?.callsign ?? key4.toUpperCase();
+  String who(String key4) => key4 == team.selfKey4
+      ? team.callsign
+      : team.memberByKey(key4)?.callsign ?? key4.toUpperCase();
   for (final m in team.markers) {
     final env = attached(m.attachment);
     if (env == null || out.containsKey(env.sessionId)) continue;
@@ -315,10 +319,7 @@ class _MosaicMarkers extends StatelessWidget {
       for (final p in collectMosaicPhotos(connector, team))
         if (bounds.contains(p.point) && !thumbs.missing(p.sid)) p,
     ].take(120).toList();
-    final groups = clusterMosaic(
-      photos,
-      (p) => camera.latLngToScreenOffset(p),
-    );
+    final groups = clusterMosaic(photos, (p) => camera.latLngToScreenOffset(p));
     return MarkerLayer(
       markers: [
         for (final g in groups)
@@ -409,7 +410,10 @@ String _when(BuildContext context, DateTime t) {
 }
 
 /// [photos] in time order (newest first); a tap opens one full size.
-Future<void> showMosaicTimeline(BuildContext context, List<MosaicPhoto> photos) {
+Future<void> showMosaicTimeline(
+  BuildContext context,
+  List<MosaicPhoto> photos,
+) {
   final voice = context.read<VoxVoiceService>();
   final sorted = [...photos]..sort((a, b) => b.time.compareTo(a.time));
   return showModalBottomSheet<void>(
@@ -438,7 +442,9 @@ Future<void> showMosaicTimeline(BuildContext context, List<MosaicPhoto> photos) 
                   final p = sorted[i];
                   final img = _Thumbs.instance.get(voice, p.envelope);
                   return InkWell(
-                    onTap: img == null ? null : () => _openFull(context, p, img),
+                    onTap: img == null
+                        ? null
+                        : () => _openFull(context, p, img),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,

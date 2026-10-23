@@ -23,12 +23,17 @@ void main() {
     pad[1000] ^= 1;
     expect(padCheckOfBytes(pad).sameAs(a), isFalse);
     pad[1000] ^= 1;
-    expect(padCheckOfBytes(Uint8List.sublistView(pad, 0, 4095)).sameAs(a), isFalse);
+    expect(
+      padCheckOfBytes(Uint8List.sublistView(pad, 0, 4095)).sameAs(a),
+      isFalse,
+    );
   });
 
   test('hex and bytes agree', () {
-    expect(padCheckOfHex('000102').fingerprint,
-        padCheckOfBytes(Uint8List.fromList([0, 1, 2])).fingerprint);
+    expect(
+      padCheckOfHex('000102').fingerprint,
+      padCheckOfBytes(Uint8List.fromList([0, 1, 2])).fingerprint,
+    );
   });
 
   test('reads links', () {

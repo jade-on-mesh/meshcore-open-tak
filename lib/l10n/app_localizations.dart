@@ -133,7 +133,7 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
-  /// **'MeshCore Open'**
+  /// **'MeshCore Open TAK'**
   String get appTitle;
 
   /// No description provided for @nav_contacts.
@@ -469,7 +469,7 @@ abstract class AppLocalizations {
   /// No description provided for @scanner_title.
   ///
   /// In en, this message translates to:
-  /// **'MeshCore Open'**
+  /// **'MeshCore Open TAK'**
   String get scanner_title;
 
   /// No description provided for @connectionChoiceUsbLabel.
@@ -11122,7 +11122,7 @@ abstract class AppLocalizations {
   /// No description provided for @appUpdate_permissionNeeded.
   ///
   /// In en, this message translates to:
-  /// **'Android needs your permission for MeshCore Open TAK to install updates. Turn on "Allow from this source", then come back and tap Download and install again.'**
+  /// **'Android needs your permission for MeshCore Open TAK to install updates. Turn on \"Allow from this source\", then come back and tap Download and install again.'**
   String get appUpdate_permissionNeeded;
 
   /// No description provided for @appUpdate_openPermission.
@@ -12250,7 +12250,7 @@ abstract class AppLocalizations {
   /// No description provided for @sound_bridgeHelp.
   ///
   /// In en, this message translates to:
-  /// **'What is heard is posted to the channel as "[Wavest] callsign: text". With this on, the channel\'s new messages are played too, so people nearby without a radio can follow and reply.'**
+  /// **'What is heard is posted to the channel as \"[Wavest] callsign: text\". With this on, the channel\'s new messages are played too, so people nearby without a radio can follow and reply.'**
   String get sound_bridgeHelp;
 
   /// No description provided for @sound_shareContact.
@@ -13498,7 +13498,7 @@ abstract class AppLocalizations {
   /// No description provided for @reach_teamHelp.
   ///
   /// In en, this message translates to:
-  /// **'Teammates say what they heard in their next position beacon, usually within a minute. Older app and firmware versions don\'t, so they stay "Not heard yet".'**
+  /// **'Teammates say what they heard in their next position beacon, usually within a minute. Older app and firmware versions don\'t, so they stay \"Not heard yet\".'**
   String get reach_teamHelp;
 
   /// No description provided for @reach_now.
@@ -13506,7 +13506,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'just now'**
   String get reach_now;
-
 }
 
 class _AppLocalizationsDelegate

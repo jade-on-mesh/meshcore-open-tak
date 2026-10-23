@@ -94,7 +94,9 @@ class AppUpdateInfo {
       size: url != null && size is int ? size : null,
       commit: json['commit'] is String ? json['commit'] as String : null,
       signedWithReleaseKey: json['signed'] != false,
-      changes: changes is List ? changes.whereType<String>().toList() : const [],
+      changes: changes is List
+          ? changes.whereType<String>().toList()
+          : const [],
     );
   }
 
@@ -429,7 +431,9 @@ class AppUpdateService extends ChangeNotifier {
       try {
         if (file != null && file.existsSync()) file.deleteSync();
       } catch (_) {}
-      if (!afterRecheck && e is FormatException && e.message.contains('checksum')) {
+      if (!afterRecheck &&
+          e is FormatException &&
+          e.message.contains('checksum')) {
         _status = AppUpdateStatus.available;
         await check();
         final again = _latest;
