@@ -297,7 +297,11 @@ class _VoxImageMessageContentState extends State<VoxImageMessageContent> {
             st.status == VoxClipStatus.complete &&
             !_failed &&
             st.via != null)
-          VoxReceivedViaLabel(via: st.via!, color: meta),
+          VoxReceivedViaLabel(
+            via: st.via!,
+            color: meta,
+            repeater: st.viaRepeater,
+          ),
       ],
     );
   }

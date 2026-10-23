@@ -336,7 +336,11 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
                   if (!widget.isOutgoing &&
                       st.status == VoxClipStatus.complete &&
                       st.via != null)
-                    VoxReceivedViaLabel(via: st.via!, color: meta),
+                    VoxReceivedViaLabel(
+                      via: st.via!,
+                      color: meta,
+                      repeater: st.viaRepeater,
+                    ),
                 ],
               ),
             ),
@@ -891,16 +895,27 @@ class VoxCaption extends StatelessWidget {
 class VoxReceivedViaLabel extends StatelessWidget {
   final VoxReceivedVia via;
   final Color color;
-  const VoxReceivedViaLabel({super.key, required this.via, required this.color});
+
+  /// The MediaMesh repeater its last radio2 packet came through ("1ffb").
+  final String? repeater;
+  const VoxReceivedViaLabel({
+    super.key,
+    required this.via,
+    required this.color,
+    this.repeater,
+  });
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final text = switch (via) {
+    final label = switch (via) {
       VoxReceivedVia.mediaMesh => l10n.vox_receivedViaMediaMesh,
       VoxReceivedVia.mainMesh => l10n.vox_receivedViaMainMesh,
       VoxReceivedVia.both => l10n.vox_receivedViaBoth,
     };
+    final text = repeater != null && via != VoxReceivedVia.mainMesh
+        ? '$label ($repeater)'
+        : label;
     return Padding(
       padding: const EdgeInsets.only(top: 2),
       child: Row(
