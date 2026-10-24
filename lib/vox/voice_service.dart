@@ -1489,6 +1489,47 @@ class VoxVoiceService extends ChangeNotifier {
     }();
   }
 
+  /// Thumbnails decoded from photos' first packets (most recent last).
+  final Map<String, VoxRgbImage> _thumbCache = {};
+  final Set<String> _thumbDecoding = {};
+  final Set<String> _thumbFailed = {};
+
+  /// The small thumbnail a photo carries in its first packet, as soon as that
+  /// packet is here: shown while the rest downloads. Null until then (or for
+  /// a photo from a version that sends none); decoding starts on the first
+  /// call and [notifyListeners] says when it's ready.
+  VoxRgbImage? thumbFor(VoxVoiceEnvelope env) {
+    if (!env.isImage || !imagesAvailable) return null;
+    final sid = env.sessionId;
+    final cached = _thumbCache[sid];
+    if (cached != null ||
+        _thumbDecoding.contains(sid) ||
+        _thumbFailed.contains(sid)) {
+      return cached;
+    }
+    final first =
+        _incoming[sid]?.packets[0] ?? _orphans[sid]?[0] ?? _bits[sid];
+    if (first == null || voxImageThumbObus(first) == null) return null;
+    _thumbDecoding.add(sid);
+    unawaited(() async {
+      try {
+        final img = await compute(_decodeThumbJob, first);
+        if (img == null) {
+          _thumbFailed.add(sid);
+          return;
+        }
+        _thumbCache[sid] = img;
+        while (_thumbCache.length > 24) {
+          _thumbCache.remove(_thumbCache.keys.first);
+        }
+        notifyListeners();
+      } finally {
+        _thumbDecoding.remove(sid);
+      }
+    }());
+    return null;
+  }
+
   /// Encodes a picture for sending, off the UI thread.
   Future<VoxEncodedImage> encodeImage(
     VoxRgbImage ref,
@@ -2639,6 +2680,12 @@ VoxEncodedImage _encodeImageJob(_ImageEncodeJob j) {
     encode: (img, q, speed) => av1.encode(img, q, speed: speed),
     decode: (obus) => av1.decode(obus),
   );
+}
+
+VoxRgbImage? _decodeThumbJob(Uint8List prefix) {
+  final av1 = VoxAv1.instanceOrNull;
+  if (av1 == null) return null;
+  return voxDecodeImageThumb(prefix, (obus) => av1.decode(obus, maxSide: 256));
 }
 
 VoxRgbImage? _decodeImageJob(Uint8List payload) {
