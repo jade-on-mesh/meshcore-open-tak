@@ -255,5 +255,33 @@ void main() {
       expect(voxWaveform(Int16List(800)).every((v) => v == 0), isTrue);
       expect(voxWaveform(Int16List(0)).length, voxWaveBars);
     });
+
+    test('a waveform fills in as packets arrive', () {
+      Int16List tone(double amp) {
+        final p = Int16List(8320);
+        for (var i = 0; i < p.length; i++) {
+          p[i] = (sin(i / 3) * amp).round();
+        }
+        return p;
+      }
+
+      final levels = voxSliceLevels(tone(10000), 8);
+      expect(levels.length, 8);
+      expect(levels.every((v) => (v - 10000 / sqrt2).abs() < 300), isTrue);
+      // Nothing here yet: no waveform.
+      expect(voxPartialWaveform(List.filled(4, null), 8), isNull);
+      // Packets 0 and 2 of 4: their bars, the others still to come (-1).
+      final w = voxPartialWaveform([
+        voxSliceLevels(tone(10000), 8),
+        null,
+        voxSliceLevels(tone(2500), 8),
+        null,
+      ], 8)!;
+      expect(w.length, voxWaveBars);
+      expect(w.first, closeTo(1, 0.05));
+      expect(w[voxWaveBars ~/ 4], -1);
+      expect(w[voxWaveBars ~/ 2], closeTo(0.5, 0.05)); // a quarter as loud
+      expect(w.last, -1);
+    });
   });
 }

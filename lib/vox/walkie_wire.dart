@@ -363,6 +363,57 @@ Int16List walkiePcmFromBytes(Uint8List bytes) {
 /// Bars in a voice waveform.
 const int voxWaveBars = 40;
 
+/// [pcm] as [n] RMS levels (PCM16 scale), one per equal slice.
+List<double> voxSliceLevels(Int16List pcm, int n) {
+  final out = List<double>.filled(n, 0);
+  if (pcm.isEmpty) return out;
+  for (var k = 0; k < n; k++) {
+    final from = pcm.length * k ~/ n;
+    final to = max(from + 1, pcm.length * (k + 1) ~/ n);
+    var sum = 0.0;
+    for (var i = from; i < to && i < pcm.length; i++) {
+      sum += pcm[i] * pcm[i].toDouble();
+    }
+    out[k] = sqrt(sum / (to - from));
+  }
+  return out;
+}
+
+/// A waveform of [bars] from per-packet slice levels ([voxSliceLevels]), some
+/// packets not here yet (null): their bars are -1. Scaled as [voxWaveform].
+/// Null while no packet is here.
+List<double>? voxPartialWaveform(
+  List<List<double>?> packets,
+  int slicesPerPacket, {
+  int bars = voxWaveBars,
+}) {
+  final total = packets.length * slicesPerPacket;
+  if (total == 0 || packets.every((p) => p == null)) return null;
+  final out = List<double>.filled(bars, -1);
+  var top = 0.0;
+  for (var b = 0; b < bars; b++) {
+    final from = total * b ~/ bars;
+    final to = max(from + 1, total * (b + 1) ~/ bars);
+    var sum = 0.0;
+    var n = 0;
+    for (var s = from; s < to && s < total; s++) {
+      final p = packets[s ~/ slicesPerPacket];
+      if (p == null) continue;
+      final v = p[s % slicesPerPacket];
+      sum += v * v;
+      n++;
+    }
+    if (n == 0) continue;
+    out[b] = sqrt(sum / n);
+    if (out[b] > top) top = out[b];
+  }
+  for (var b = 0; b < bars; b++) {
+    if (out[b] < 0) continue;
+    out[b] = top < 200 ? 0 : sqrt(out[b] / top).clamp(0.0, 1.0);
+  }
+  return out;
+}
+
 /// [pcm] as [voxWaveBars] loudness bars, 0..1: each bar the RMS of its slice,
 /// scaled to the loudest (square-rooted, so quiet speech still shows).
 List<double> voxWaveform(Int16List pcm, {int bars = voxWaveBars}) {

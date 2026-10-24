@@ -653,14 +653,22 @@ class VoxVoiceService extends ChangeNotifier {
 
   final Map<String, List<double>> _waves = {};
 
-  /// The clip's loudness in [voxWaveBars] bars (0..1), once it's here; null
-  /// before (or for Mimi, or without Codec2 on this platform).
+  /// While a clip is arriving: each packet's loudness in [_kPartialSlices]
+  /// slices (null: not here yet), decoded once per packet.
+  final Map<String, List<List<double>?>> _partialWaves = {};
+  static const int _kPartialSlices = 8;
+
+  /// The clip's loudness in [voxWaveBars] bars (0..1), filling in as its
+  /// packets arrive (heard live or fetched): a bar not heard yet is -1. Null
+  /// before any packet (or for Mimi, or without Codec2 on this platform).
   List<double>? waveformFor(VoxVoiceEnvelope env) {
     final sid = env.sessionId;
     final cached = _waves[sid];
     if (cached != null) return cached;
     final bits = _bits[sid];
-    if (bits == null || env.mode.isMimi || env.isImage) return null;
+    if (env.mode.isMimi || env.isImage) return null;
+    if (bits == null) return _partialWaveform(env);
+    _partialWaves.remove(sid);
     try {
       final dec = VoxCodec2Stream(env.mode);
       final Int16List pcm;
@@ -678,6 +686,39 @@ class VoxVoiceService extends ChangeNotifier {
     }
   }
 
+  List<double>? _partialWaveform(VoxVoiceEnvelope env) {
+    final sid = env.sessionId;
+    final clip = _incoming[sid];
+    final total = env.totalPackets;
+    if (clip == null || clip.packets.isEmpty || total <= 0) return null;
+    if (!voxCodecAvailable) return null;
+    final slices = _partialWaves.putIfAbsent(
+      sid,
+      () => List<List<double>?>.filled(total, null),
+    );
+    if (slices.length != total) return null;
+    if (_partialWaves.length > 16) {
+      _partialWaves.remove(_partialWaves.keys.first);
+    }
+    for (final e in clip.packets.entries) {
+      final i = e.key;
+      if (i < 0 || i >= total || slices[i] != null) continue;
+      try {
+        final dec = VoxCodec2Stream(env.mode);
+        final Int16List pcm;
+        try {
+          pcm = dec.decode(e.value);
+        } finally {
+          dec.dispose();
+        }
+        slices[i] = voxSliceLevels(pcm, _kPartialSlices);
+      } catch (_) {
+        return null;
+      }
+    }
+    return voxPartialWaveform(slices, _kPartialSlices);
+  }
+
   /// One second of a talk heard live: it also fills in the talk's voice
   /// message (the same session id and packet numbers as its VE3 clip).
   void acceptLivePacket(
@@ -689,6 +730,7 @@ class VoxVoiceService extends ChangeNotifier {
   }) {
     if (codec.isEmpty || index >= voxMaxPackets) return;
     _noteTalk(sid);
+    _logArrival(sid, via, hops); // in the voice log: this talk was heard live
     _lastChannelPacket[sid] = DateTime.now();
     _onPacket(
       VoxVoicePacket(sessionId: sid, index: index, codecData: codec),

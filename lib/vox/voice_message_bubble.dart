@@ -404,12 +404,14 @@ class _WavePainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     final mid = size.height / 2;
     for (var i = 0; i < n; i++) {
-      final v = b == null ? 0.08 : b[i];
+      // -1: that part hasn't arrived yet (drawn as the placeholder).
+      final pending = b == null || b[i] < 0;
+      final v = pending ? 0.08 : b[i];
       final h = max(w, v * size.height);
       final x = step * i + step / 2;
       paint.color = (i + 0.5) / n <= played
           ? playedColor
-          : color.withValues(alpha: b == null ? 0.35 : 0.75);
+          : color.withValues(alpha: pending ? 0.35 : 0.75);
       canvas.drawLine(Offset(x, mid - h / 2), Offset(x, mid + h / 2), paint);
     }
   }
