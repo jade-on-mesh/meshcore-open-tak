@@ -39,6 +39,11 @@ class MosaicPhoto {
   final String from;
   final String where; // the channel or chat it came in
   final bool approximate;
+
+  /// Who to ask for it when it isn't here yet: the DM's contact, or the
+  /// channel it was posted on.
+  final Contact? contact;
+  final int? channelIndex;
   const MosaicPhoto({
     required this.envelope,
     required this.lat,
@@ -47,6 +52,8 @@ class MosaicPhoto {
     required this.from,
     required this.where,
     required this.approximate,
+    this.contact,
+    this.channelIndex,
   });
 
   String get sid => envelope.sessionId;
@@ -90,11 +97,14 @@ class MosaicPhoto {
   return best;
 }
 
-/// Every photo this app knows of with a place, newest first.
+/// Every photo this app knows of with a place, newest first. With [voice],
+/// the voice messages instead (placed the same way; the AR view shows them).
 List<MosaicPhoto> collectMosaicPhotos(
   MeshCoreConnector connector,
-  TeamService team,
-) {
+  TeamService team, {
+  bool voice = false,
+}) {
+  bool wanted(VoxVoiceEnvelope env) => voice ? !env.isImage : env.isImage;
   final out = <String, MosaicPhoto>{};
 
   (double, double)? senderAt(String name, DateTime t, bool own) {
@@ -121,8 +131,9 @@ List<MosaicPhoto> collectMosaicPhotos(
     String where,
     bool own, {
     Contact? contact,
+    int? channelIndex,
   }) {
-    if (!env.isImage || out.containsKey(env.sessionId)) return;
+    if (!wanted(env) || out.containsKey(env.sessionId)) return;
     var p = mosaicCaptionPosition(env.caption);
     var approx = false;
     if (p == null) {
@@ -144,6 +155,8 @@ List<MosaicPhoto> collectMosaicPhotos(
       from: from,
       where: where,
       approximate: approx,
+      contact: contact,
+      channelIndex: channelIndex,
     );
   }
 
@@ -151,7 +164,7 @@ List<MosaicPhoto> collectMosaicPhotos(
   VoxVoiceEnvelope? attached(TeamAttachment? a) {
     if (a == null) return null;
     final mode = VoxVoiceMode.fromWireId(a.modeWireId);
-    if (mode == null || !mode.isImage) return null;
+    if (mode == null || mode.isImage == voice) return null;
     return VoxVoiceEnvelope(
       sessionId: a.sessionId,
       mode: mode,
@@ -192,20 +205,21 @@ List<MosaicPhoto> collectMosaicPhotos(
   for (final c in connector.channels) {
     for (final m in connector.getChannelMessages(c)) {
       final env = VoxVoiceEnvelope.tryParse(m.text);
-      if (env == null || !env.isImage) continue;
+      if (env == null || !wanted(env)) continue;
       add(
         env,
         m.timestamp,
         m.isOutgoing ? me : m.senderName,
         c.name,
         m.isOutgoing,
+        channelIndex: c.index,
       );
     }
   }
   for (final c in connector.contacts) {
     for (final m in connector.getMessages(c)) {
       final env = VoxVoiceEnvelope.tryParse(m.text);
-      if (env == null || !env.isImage) continue;
+      if (env == null || !wanted(env)) continue;
       add(
         env,
         m.timestamp,
@@ -244,6 +258,13 @@ List<List<MosaicPhoto>> clusterMosaic(
 }
 
 // ------------------------------------------------------------- thumbnails
+
+/// A photo's decoded picture for an overlay (the map's mosaic, the AR view),
+/// once it's here; null meanwhile, and [mosaicThumbsVersion] moves when one
+/// lands.
+ui.Image? mosaicThumb(VoxVoiceService voice, VoxVoiceEnvelope env) =>
+    _Thumbs.instance.get(voice, env);
+ValueListenable<int> get mosaicThumbsVersion => _Thumbs.instance.version;
 
 /// Decoded photos for the map, small and few.
 class _Thumbs {

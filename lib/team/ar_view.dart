@@ -1,6 +1,8 @@
-// MeshCore Open TAK - AR view: hold the phone up and see teammates, pins and
-// watched reports as floating labels where they are, with their distance
-// (documentation/ar-view.md). Bloodhound's arrow, for everything at once.
+// MeshCore Open TAK - AR view: hold the phone up and see teammates, pins,
+// watched reports, photos and voice messages as floating labels where they
+// are, with their distance, and a chime as a teammate or report comes into
+// the middle of the view (documentation/ar-view.md). Bloodhound's arrow, for
+// everything at once.
 //
 // It is a compass overlay rather than ARCore/ARKit tracking: the camera
 // picture (through the QR scanner's camera, so no new plugin), and where it
@@ -11,18 +13,24 @@
 
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../connector/meshcore_connector.dart';
 import '../l10n/l10n.dart';
+import '../vox/voice_service.dart';
+import 'photo_mosaic.dart';
 import 'team_map.dart' show markerKindColor, markerKindIcon;
 import 'team_service.dart';
 import 'team_wire.dart';
 import 'watch_feed.dart';
+import 'watch_sounds.dart';
 
 /// Where the back camera points: [azimuth] degrees from true north (with
 /// [declination] added), [pitch] degrees above the horizon. [g] is gravity as
@@ -61,19 +69,56 @@ double arAngleDiff(double a, double b) => ((b - a + 540) % 360) - 180;
 
 /// Something to show in the AR view.
 class ArTarget {
+  /// Stable across frames ("m:<key>", "w:<key>", "ph:<sid>"...), for the chime.
+  final String id;
   final String label;
   final double lat, lon;
   final Color color;
   final IconData icon;
   final VoidCallback? onTap;
+
+  /// A picture in the label (a photo's), when there is one.
+  final ui.Image? image;
+
+  /// A tap starts Bloodhound to it (else it opens or plays something).
+  final bool hounds;
+
+  /// Chimes as it comes into the middle of the view (teammates, reports).
+  final bool chime;
   const ArTarget({
     required this.label,
     required this.lat,
     required this.lon,
     required this.color,
     required this.icon,
+    this.id = '',
     this.onTap,
+    this.image,
+    this.hounds = true,
+    this.chime = false,
   });
+}
+
+/// Within this many degrees of the middle of the view, a target "comes into
+/// view" for the chime; it must leave past [arChimeRearmDeg] to chime again.
+const double arChimeDeg = 6, arChimeRearmDeg = 14;
+
+/// Which targets just came into the middle of the view. [offsets] are each
+/// target's degrees off the middle; [inView] holds the ids already there (a
+/// target leaves it past [arChimeRearmDeg]), and is updated. Returns the ids
+/// that came within [arChimeDeg] since the last call.
+List<String> arChimeStep(
+  Map<String, double> offsets,
+  Set<String> inView,
+) {
+  final arrived = <String>[];
+  for (final e in offsets.entries) {
+    final d = e.value.abs();
+    if (d <= arChimeDeg && inView.add(e.key)) arrived.add(e.key);
+    if (d > arChimeRearmDeg) inView.remove(e.key);
+  }
+  inView.removeWhere((id) => !offsets.containsKey(id));
+  return arrived;
 }
 
 /// The orientation stream, smoothed.
@@ -133,6 +178,18 @@ class _ArViewScreenState extends State<ArViewScreen> {
   bool _cameraFailed = false;
   bool _located = false;
 
+  // Photos and voice messages with a place: collected every few seconds,
+  // not every frame.
+  List<MosaicPhoto> _photos = const [], _clips = const [];
+  DateTime _mediaAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  // The chime: on unless turned off (remembered), and who's in the middle.
+  static const _kChime = 'ar_chime';
+  bool _chimeOn = true;
+  final Set<String> _inView = {};
+  final WatchSoundPlayer _sound = WatchSoundPlayer();
+  DateTime _lastChime = DateTime.fromMillisecondsSinceEpoch(0);
+
   // A portrait camera picture shown edge to edge: what it covers, roughly.
   static const double _hFov = 52, _vFov = 70;
 
@@ -150,6 +207,31 @@ class _ArViewScreenState extends State<ArViewScreen> {
       );
     }
     _orientation.start();
+    unawaited(() async {
+      try {
+        final p = await SharedPreferences.getInstance();
+        final on = p.getBool(_kChime) ?? true;
+        if (mounted && on != _chimeOn) setState(() => _chimeOn = on);
+      } catch (_) {}
+    }());
+  }
+
+  Future<void> _setChime(bool on) async {
+    setState(() => _chimeOn = on);
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setBool(_kChime, on);
+    } catch (_) {}
+  }
+
+  /// A teammate or report just came into the middle of the view.
+  void _chimeFor(List<String> arrived) {
+    if (!_chimeOn || arrived.isEmpty) return;
+    final now = DateTime.now();
+    if (now.difference(_lastChime) < const Duration(milliseconds: 700)) return;
+    _lastChime = now;
+    unawaited(HapticFeedback.selectionClick());
+    unawaited(_sound.play(WatchSound.ping));
   }
 
   @override
@@ -157,6 +239,7 @@ class _ArViewScreenState extends State<ArViewScreen> {
     unawaited(SystemChrome.setPreferredOrientations(const []));
     unawaited(_camera?.dispose());
     _orientation.dispose();
+    _sound.dispose();
     super.dispose();
   }
 
@@ -167,6 +250,8 @@ class _ArViewScreenState extends State<ArViewScreen> {
     if (hound != null) {
       out.add(
         ArTarget(
+          id: 'h',
+          chime: true,
           label: hound.label,
           lat: hound.lat,
           lon: hound.lon,
@@ -178,6 +263,8 @@ class _ArViewScreenState extends State<ArViewScreen> {
     for (final m in team.members) {
       out.add(
         ArTarget(
+          id: 'm:${m.key4}',
+          chime: true,
           label: m.callsign,
           lat: m.position.lat,
           lon: m.position.lon,
@@ -191,6 +278,7 @@ class _ArViewScreenState extends State<ArViewScreen> {
       final label = p.label.isEmpty ? p.kind.label : p.label;
       out.add(
         ArTarget(
+          id: 'p:${p.lat},${p.lon}',
           label: label,
           lat: p.lat,
           lon: p.lon,
@@ -204,6 +292,8 @@ class _ArViewScreenState extends State<ArViewScreen> {
       if (!w.hasPosition) continue;
       out.add(
         ArTarget(
+          id: 'w:${w.key}',
+          chime: true,
           label: w.headline,
           lat: w.lat!,
           lon: w.lon!,
@@ -213,7 +303,93 @@ class _ArViewScreenState extends State<ArViewScreen> {
         ),
       );
     }
+    _refreshMedia(context, team);
+    final voice = context.read<VoxVoiceService>();
+    for (final p in _photos) {
+      final from = p.approximate ? '${p.from} (≈)' : p.from;
+      out.add(
+        ArTarget(
+          id: 'ph:${p.sid}',
+          label: p.caption.isEmpty ? from : '$from: ${p.caption}',
+          lat: p.lat,
+          lon: p.lon,
+          color: const Color(0xFF26C6DA),
+          icon: Icons.photo_outlined,
+          image: mosaicThumb(voice, p.envelope),
+          hounds: false,
+          onTap: () => _openPhoto(context, p),
+        ),
+      );
+    }
+    for (final c in _clips) {
+      final from = c.approximate ? '${c.from} (≈)' : c.from;
+      final secs = c.envelope.durationSeconds;
+      out.add(
+        ArTarget(
+          id: 'v:${c.sid}',
+          label: c.envelope.isTalk ? '$from: Talk ${secs}s' : '$from: ${secs}s',
+          lat: c.lat,
+          lon: c.lon,
+          color: const Color(0xFFAB47BC),
+          icon: c.envelope.isTalk ? Icons.campaign_outlined : Icons.mic_none,
+          hounds: false,
+          onTap: () => _playClip(context, c),
+        ),
+      );
+    }
     return out;
+  }
+
+  void _refreshMedia(BuildContext context, TeamService team) {
+    final now = DateTime.now();
+    if (now.difference(_mediaAt) < const Duration(seconds: 5)) return;
+    _mediaAt = now;
+    final connector = context.read<MeshCoreConnector>();
+    // The newest few: enough to find your way, few enough to read.
+    _photos = collectMosaicPhotos(connector, team).take(20).toList();
+    _clips = collectMosaicPhotos(
+      connector,
+      team,
+      voice: true,
+    ).take(20).toList();
+  }
+
+  Future<void> _openPhoto(BuildContext context, MosaicPhoto p) async {
+    final voice = context.read<VoxVoiceService>();
+    if (voice.stateFor(p.envelope).status == VoxClipStatus.complete) {
+      await showMosaicTimeline(context, [p]);
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(context.l10n.ar_downloading(p.from)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    await voice.requestAndPlay(
+      p.envelope,
+      sender: p.contact,
+      channelIndex: p.channelIndex,
+    );
+  }
+
+  Future<void> _playClip(BuildContext context, MosaicPhoto c) async {
+    final voice = context.read<VoxVoiceService>();
+    if (voice.stateFor(c.envelope).status == VoxClipStatus.complete) {
+      await voice.play(c.envelope);
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(context.l10n.ar_downloading(c.from)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    await voice.requestAndPlay(
+      c.envelope,
+      sender: c.contact,
+      channelIndex: c.channelIndex,
+    );
   }
 
   String _distance(double m) => m < 1000
@@ -236,6 +412,13 @@ class _ArViewScreenState extends State<ArViewScreen> {
         backgroundColor: Colors.black54,
         foregroundColor: Colors.white,
         title: Text(l.ar_title),
+        actions: [
+          IconButton(
+            icon: Icon(_chimeOn ? Icons.volume_up : Icons.volume_off),
+            tooltip: l.ar_chime,
+            onPressed: () => _setChime(!_chimeOn),
+          ),
+        ],
       ),
       extendBodyBehindAppBar: true,
       body: Stack(
@@ -314,6 +497,16 @@ class _ArViewScreenState extends State<ArViewScreen> {
           teamBearingDeg(me.$1, me.$2, t.lat, t.lon),
         ),
     ]..sort((a, b) => a.$2.compareTo(b.$2));
+    // The chime: teammates and reports coming into the middle of the view.
+    final offsets = <String, double>{
+      for (final (t, _, bearing) in withDist)
+        if (t.chime && t.id.isNotEmpty)
+          t.id: arAngleDiff(pose.azimuth, bearing),
+    };
+    final arrived = arChimeStep(offsets, _inView);
+    if (arrived.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _chimeFor(arrived));
+    }
     for (final (t, dist, bearing) in withDist) {
       final d = arAngleDiff(pose.azimuth, bearing);
       if (d.abs() > _hFov / 2 + 4) {
@@ -321,7 +514,9 @@ class _ArViewScreenState extends State<ArViewScreen> {
         continue;
       }
       final x = size.width / 2 + d / (_hFov / 2) * size.width / 2;
-      const w = 150.0, h = 44.0;
+      // A photo's label carries its picture: wider and taller.
+      final w = t.image != null ? 190.0 : 150.0;
+      final h = t.image != null ? 64.0 : 44.0;
       var r = Rect.fromLTWH(x - w / 2, horizon - h - 8, w, h);
       while (placed.any((p) => p.overlaps(r)) && r.top > 60) {
         r = r.translate(0, -(h + 4));
@@ -335,6 +530,8 @@ class _ArViewScreenState extends State<ArViewScreen> {
             distance: _distance(dist),
             onTap: t.onTap == null
                 ? null
+                : !t.hounds
+                ? t.onTap
                 : () {
                     t.onTap!();
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -435,8 +632,26 @@ class _ArLabel extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(target.icon, color: target.color, size: 18),
-            const SizedBox(width: 6),
+            if (target.image != null)
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: SizedBox(
+                    width: 52,
+                    height: 52,
+                    child: RawImage(
+                      image: target.image,
+                      fit: BoxFit.cover,
+                      filterQuality: FilterQuality.medium,
+                    ),
+                  ),
+                ),
+              )
+            else ...[
+              Icon(target.icon, color: target.color, size: 18),
+              const SizedBox(width: 6),
+            ],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
