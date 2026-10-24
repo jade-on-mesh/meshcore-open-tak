@@ -136,20 +136,31 @@ class VoxAv1 {
     Pointer<Uint8> rgb = nullptr;
     try {
       data.asTypedList(obus.length).setAll(0, obus);
-      // First call with no buffer just reports the size.
-      final probe = _decode(data, obus.length, nullptr, 0, 0, wOut, hOut);
-      if (probe != -1) return null;
-      final w = wOut.value, h = hOut.value;
-      if (w < 1 || h < 1 || w > maxSide || h > maxSide) return null;
-      rgb = calloc<Uint8>(w * h * 3);
-      final r = _decode(data, obus.length, rgb, w, h, wOut, hOut);
-      if (r != 1) return null;
+      // One decode into a buffer big enough for any photo the app sends. A
+      // bigger picture reports its size (-1) and is decoded again into one
+      // that fits; the old way probed every photo first, decoding it twice.
+      final guess = maxSide < _decodeGuessSide ? maxSide : _decodeGuessSide;
+      rgb = malloc<Uint8>(guess * guess * 3);
+      var r = _decode(data, obus.length, rgb, guess, guess, wOut, hOut);
+      var w = wOut.value, h = hOut.value;
+      if (r == -1) {
+        if (w < 1 || h < 1 || w > maxSide || h > maxSide) return null;
+        malloc.free(rgb);
+        rgb = malloc<Uint8>(w * h * 3);
+        r = _decode(data, obus.length, rgb, w, h, wOut, hOut);
+        w = wOut.value;
+        h = hOut.value;
+      }
+      if (r != 1 || w < 1 || h < 1) return null;
       return VoxRgbImage(w, h, Uint8List.fromList(rgb.asTypedList(w * h * 3)));
     } finally {
       calloc.free(data);
       calloc.free(wOut);
       calloc.free(hOut);
-      if (rgb != nullptr) calloc.free(rgb);
+      if (rgb != nullptr) malloc.free(rgb);
     }
   }
+
+  /// The largest side [decode] tries in one go (the app sends 1024 at most).
+  static const _decodeGuessSide = 1024;
 }

@@ -36,6 +36,24 @@ Duration voxGapRequestDelay({
 Duration voxStallWait(Duration packetGap) =>
     packetGap * 3 + const Duration(milliseconds: 2500);
 
+/// The gap to expect between a transfer's packets: the timing model's
+/// [model] until a few have come in ([samples] gaps measured), then twice the
+/// gap they actually came at ([seen], smoothed) when that's sooner, but never
+/// under [floor] (one zero-hop gap). A transfer sent faster than the model
+/// assumes (over radio2, or from a sender with a faster radio) has its lost
+/// tail asked for again in seconds rather than tens of seconds.
+Duration voxBurstGap({
+  required Duration model,
+  required Duration seen,
+  required int samples,
+  required Duration floor,
+}) {
+  if (samples < 3) return model;
+  var g = seen * 2;
+  if (g < floor) g = floor;
+  return g < model ? g : model;
+}
+
 /// Packets of a photo or clip nobody here asked for (pushed by the sender, or
 /// sent for another listener) stopped arriving with some missing: ask for the
 /// rest when at least half is already here.
