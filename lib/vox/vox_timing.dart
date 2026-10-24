@@ -3,6 +3,8 @@
 // Mirrored in Wadamesh (src/ui-touch/VoxFetch.cpp), which must make the same
 // calls so a T-Deck and a phone behave alike.
 
+import 'dart:math';
+
 /// How long after posting a photo's announcement on a channel the push to the
 /// radios in range starts: long enough for the announcement to have gone out
 /// on the main mesh and been heard by them (one airtime, plus the radio's
@@ -100,3 +102,27 @@ bool voxLbtHold({
     sinceHeardMs != null &&
     sinceHeardMs < quietMs &&
     waitedMs < voxLbtMaxWaitMs;
+
+/// Fetch requests one transfer may make: a photo of hundreds of packets over
+/// many hops loses some on most passes, so the budget grows with its size
+/// (49 for a 234-packet Super Sharp). Mirrored in Wadamesh (VoxFetch.h
+/// attemptBudget / stallBudget / stallBackoff).
+const int voxMaxAttempts = 15;
+const int voxMaxStalls = 3;
+
+int voxAttemptBudget(int total) => max(voxMaxAttempts, 10 + total ~/ 6);
+
+/// Fetch requests in a row that may bring nothing before giving up. With far
+/// fewer than all the packets missing the sender is there and the link
+/// works: keep at it rather than stop a packet or two short.
+int voxStallBudget(int received, int total) {
+  if (received <= 0 || total <= 0) return voxMaxStalls;
+  if (received * 10 >= total * 9 || total - received <= 4) return 8;
+  if (received * 2 >= total) return 5;
+  return voxMaxStalls;
+}
+
+/// Each fetch request in a row that brought nothing waits longer for its
+/// answer, up to 3x: a long or busy route is slow, not gone.
+Duration voxStallBackoff(Duration wait, int stalls) =>
+    wait + wait * min(stalls, 4) ~/ 2;

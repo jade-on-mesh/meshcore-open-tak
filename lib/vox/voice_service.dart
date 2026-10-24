@@ -581,11 +581,6 @@ class VoxVoiceService extends ChangeNotifier {
   /// Longest clip VOX will record. 20 s at 1200 bps is 20 packets.
   static const Duration maxClipLength = Duration(seconds: 20);
 
-  /// Hard cap on fetch attempts for one clip.
-  static const int _maxAttempts = 15;
-
-  /// Give up after this many consecutive attempts that brought no packets.
-  static const int _maxStalls = 3;
   static const int _storeMagic = 0xC2;
 
   final MeshCoreConnector _connector;
@@ -1298,7 +1293,7 @@ class VoxVoiceService extends ChangeNotifier {
         clip.envelope.sessionId,
       );
       if (method != _Method.channel) clip.directFailures++;
-      if (clip.attempts < _maxAttempts) {
+      if (clip.attempts < voxAttemptBudget(clip.envelope.totalPackets)) {
         await _attempt(clip);
       } else {
         _fail(clip, 'Could not send request: $e');
@@ -1335,7 +1330,7 @@ class VoxVoiceService extends ChangeNotifier {
 
   void _armWatchdog(_IncomingClip clip) {
     clip.watchdog?.cancel();
-    final wait = _waitFor(clip);
+    final wait = voxStallBackoff(_waitFor(clip), clip.stalls);
     clip.watchdog = Timer(wait, () => _onWatchdog(clip));
   }
 
@@ -1368,6 +1363,8 @@ class VoxVoiceService extends ChangeNotifier {
   Future<void> _onWatchdog(_IncomingClip clip) async {
     if (clip.isComplete) return;
     final progressed = clip.packets.length > clip.packetsAtLastAttempt;
+    final total = clip.envelope.totalPackets;
+    final stallBudget = voxStallBudget(clip.packets.length, total);
     _logEvent(
       'timeout after ${clip.lastMethod?.name}: '
       '${clip.packets.length}/${clip.envelope.totalPackets} packets',
@@ -1382,13 +1379,19 @@ class VoxVoiceService extends ChangeNotifier {
         // Nothing came back: try the other return route next time.
         clip.askReplyAlongPath = !clip.askReplyAlongPath;
       }
+      // Stuck for a while: let the channel (anyone holding it can answer)
+      // and, once, a fresh flooded route have another go.
+      if (clip.stalls < stallBudget && clip.stalls % 3 == 0) {
+        clip.triedChannel = false;
+      }
+      if (clip.stalls == 4) clip.sentDmRequest = false;
     }
     final channelLeft =
         clip.channelIndex != null &&
         _connector.supportsChannelData &&
         !clip.triedChannel;
-    if ((clip.stalls < _maxStalls || channelLeft) &&
-        clip.attempts < _maxAttempts) {
+    if ((clip.stalls < stallBudget || channelLeft) &&
+        clip.attempts < voxAttemptBudget(total)) {
       await _attempt(clip);
       return;
     }
