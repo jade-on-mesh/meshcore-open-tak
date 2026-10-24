@@ -39,4 +39,17 @@ void main() {
   test('no usable field', () {
     expect(arCameraPose(g, const [0.0, 0.0, 0.0]), isNull);
   });
+
+  test('chime: on coming into the middle, again after leaving', () {
+    final inView = <String>{};
+    expect(arChimeStep({'a': 30, 'b': -20}, inView), isEmpty);
+    expect(arChimeStep({'a': 5, 'b': -20}, inView), ['a']);
+    expect(arChimeStep({'a': 1, 'b': -10}, inView), isEmpty); // still there
+    expect(arChimeStep({'a': 10, 'b': -3}, inView), ['b']); // a not out yet
+    expect(arChimeStep({'a': 4, 'b': -3}, inView), isEmpty);
+    expect(arChimeStep({'a': 20, 'b': -3}, inView), isEmpty); // a left
+    expect(arChimeStep({'a': 2, 'b': -3}, inView), ['a']); // and is back
+    expect(arChimeStep({'a': 2}, inView), isEmpty); // b gone from the list
+    expect(inView, {'a'});
+  });
 }

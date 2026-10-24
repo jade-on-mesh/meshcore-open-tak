@@ -11179,6 +11179,18 @@ abstract class AppLocalizations {
   /// **'Update'**
   String get appUpdate_view;
 
+  /// No description provided for @ar_chime.
+  ///
+  /// In en, this message translates to:
+  /// **'Chime as a teammate or report comes into view'**
+  String get ar_chime;
+
+  /// No description provided for @ar_downloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading from {name}...'**
+  String ar_downloading(String name);
+
   /// No description provided for @ar_title.
   ///
   /// In en, this message translates to:

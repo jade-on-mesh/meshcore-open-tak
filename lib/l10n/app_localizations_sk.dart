@@ -6619,6 +6619,14 @@ class AppLocalizationsSk extends AppLocalizations {
   String get appUpdate_view => 'Update';
 
   @override
+  String get ar_chime => 'Chime as a teammate or report comes into view';
+
+  @override
+  String ar_downloading(String name) {
+    return 'Downloading from $name...';
+  }
+
+  @override
   String get ar_title => 'AR view';
 
   @override
