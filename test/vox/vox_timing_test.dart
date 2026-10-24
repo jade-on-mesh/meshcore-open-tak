@@ -88,4 +88,19 @@ void main() {
       floor,
     );
   });
+
+  test('MediaMesh listen before talk', () {
+    for (var r = 0; r < 200; r++) {
+      final q = voxLbtQuietMs(120, r * 7919);
+      expect(q, inInclusiveRange(170, 230));
+    }
+    expect(voxLbtQuietMs(0, 0), greaterThanOrEqualTo(150));
+    expect(voxLbtHold(sinceHeardMs: null, quietMs: 200, waitedMs: 0), isFalse);
+    expect(voxLbtHold(sinceHeardMs: 50, quietMs: 200, waitedMs: 0), isTrue);
+    expect(voxLbtHold(sinceHeardMs: 200, quietMs: 200, waitedMs: 0), isFalse);
+    expect(
+      voxLbtHold(sinceHeardMs: 10, quietMs: 200, waitedMs: voxLbtMaxWaitMs),
+      isFalse,
+    );
+  });
 }
