@@ -1,0 +1,40 @@
+177833590         74120799  58%                            494 files
+28637280  Defl:N 10573089  63% 1981-01-01 01:01 d8e83566  lib/arm64-v8a/libonnxruntime.so
+27625072  Defl:N 10297780  63% 1981-01-01 01:01 1715e91f  lib/arm64-v8a/libLiteRtLm.so
+22348680  Defl:N  9998957  55% 1981-01-01 01:01 cd2979c4  lib/arm64-v8a/libapp.so
+11747864  Defl:N  5478843  53% 1981-01-01 01:01 54fc140f  lib/arm64-v8a/libflutter.so
+ 5676448  Defl:N  2338150  59% 1981-01-01 01:01 172c7551  lib/arm64-v8a/libwebgpu_dawn.so
+ 5282040  Defl:N  1979245  63% 1981-01-01 01:01 e3240878  lib/arm64-v8a/libLiteRtTopKOpenClSampler.so
+ 5247856  Defl:N  1962051  63% 1981-01-01 01:01 33dc4188  lib/arm64-v8a/libLiteRtTopKWebGpuSampler.so
+ 4946720  Defl:N  2105673  57% 1981-01-01 01:01 13efb47c  lib/arm64-v8a/libbarhopper_v3.so
+ 4811328  Defl:N  1632987  66% 1981-01-01 01:01 fd0dfe82  lib/arm64-v8a/libGemmaModelConstraintProvider.so
+ 4590021  Defl:N   624472  86% 1981-01-01 01:01 e0d10fb3  assets/flutter_assets/assets/firmware/esp32_partition_catalog.json
+ 4574776  Defl:N  1908932  58% 1981-01-01 01:01 49f1bcc6  lib/arm64-v8a/libaeic_codec_exec.so
+ 4511408  Defl:N  1896743  58% 1981-01-01 01:01 daec5e83  classes.dex
+ 3924160  Defl:N  1526633  61% 1981-01-01 01:01 7285eebf  lib/arm64-v8a/libllama-common.so
+ 3615576  Defl:N  1878460  48% 1981-01-01 01:01 52f446af  lib/arm64-v8a/libvox_av1.so
+ 3605512  Defl:N  1339622  63% 1981-01-01 01:01 ff2874ac  lib/arm64-v8a/libllama.so
+ 3335048  Defl:N  1531567  54% 1981-01-01 01:01 425dc10f  lib/arm64-v8a/libLiteRtGpuAccelerator.so
+ 3122056  Defl:N  1430896  54% 1981-01-01 01:01 855a556a  lib/arm64-v8a/libLiteRtWebGpuAccelerator.so
+ 3105664  Defl:N  1426221  54% 1981-01-01 01:01 5d0be06b  lib/arm64-v8a/libLiteRtOpenClAccelerator.so
+ 2432880  Defl:N  2223834   9% 1981-01-01 01:01 1e47a0a4  assets/flutter_assets/assets/vox/text_ppocrv3_det.onnx
+ 1620112  Defl:N   603638  63% 1981-01-01 01:01 bace1cfb  lib/arm64-v8a/libggml-cpu-android_armv9.2_2.so
+ 1620112  Defl:N   603625  63% 1981-01-01 01:01 b6471b85  lib/arm64-v8a/libggml-cpu-android_armv9.2_1.so
+ 1620112  Defl:N   603622  63% 1981-01-01 01:01 b00d89f6  lib/arm64-v8a/libggml-cpu-android_armv9.0_1.so
+ 1607744  Defl:N   598481  63% 1981-01-01 01:01 30d2ae52  lib/arm64-v8a/libggml-cpu-android_armv8.6_1.so
+ 1595256  Defl:N   589615  63% 1981-01-01 01:01 1cd3e3cd  lib/arm64-v8a/libggml-cpu-android_armv8.2_1.so
+ 1595112  Defl:N   589762  63% 1981-01-01 01:01 24ece0e0  lib/arm64-v8a/libggml-cpu-android_armv8.2_2.so
+ 1573072  Defl:N   574498  64% 1981-01-01 01:01 703c5bbb  lib/arm64-v8a/libggml-cpu-android_armv8.0_1.so
+ 1526536  Defl:N   781176  49% 1981-01-01 01:01 dce047ef  lib/arm64-v8a/libsqlite3.so
+ 1374336  Defl:N   454850  67% 1981-01-01 01:01 f70f873b  lib/arm64-v8a/libc++_shared.so
+ 1278600  Defl:N   539878  58% 1981-01-01 01:01 0e45b8cc  lib/arm64-v8a/libmtmd.so
+ 1086128  Defl:N   447521  59% 1981-01-01 01:01 a8c0be69  lib/arm64-v8a/libggml-base.so
+  984672  Defl:N   295999  70% 1981-01-01 01:01 ae41536c  lib/arm64-v8a/libflserial.so
+  906596  Defl:N   500101  45% 1981-01-01 01:01 21f5cfea  assets/flutter_assets/assets/fonts/InterItalic.ttf
+  876576  Defl:N   458971  48% 1981-01-01 01:01 132e8ac8  assets/flutter_assets/assets/fonts/Inter.ttf
+  685411  Stored   685411   0% 1981-01-01 01:01 faadb250  assets/flutter_assets/assets/icons/ic_foreground.png
+  592702  Stored   592702   0% 1981-01-01 01:01 1faeeac2  assets/flutter_assets/assets/images/mesh-icon.png
+  390456  Stored   390456   0% 1981-01-01 01:01 317efcad  assets/mlkit_barcode_models/barcode_ssd_mobilenet_v1_dmp25_quant.tflite
+  353208  Stored   353208   0% 1981-01-01 01:01 28064e62  resources.arsc
+  311496  Defl:N   241441  23% 1981-01-01 01:01 93c97dfc  lib/arm64-v8a/libcodec2.so
+  276552  Stored   276552   0% 1981-01-01 01:01 74dac6b0  assets/mlkit_barcode_models/oned_feature_extractor_mobile.tflite
