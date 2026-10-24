@@ -1,7 +1,7 @@
 // MeshCore Open TAK - live speaker output for push-to-talk.
 //
-// 8 kHz PCM is streamed to the platform's own audio output, with no plugin:
-// Android AudioTrack (PcmStreamChannel.kt), AVAudioEngine on iOS
+// Voice PCM (16 kHz) is streamed to the platform's own audio output, with no
+// plugin: Android AudioTrack (PcmStreamChannel.kt), AVAudioEngine on iOS
 // (AppDelegate.swift) and macOS (MainFlutterWindow.swift). Elsewhere (Windows,
 // Linux) each second is played as a short WAV, one after another, which can
 // leave a tiny gap between seconds.
@@ -20,7 +20,8 @@ class WalkieSpeaker {
   WalkieSpeaker();
 
   static const _channel = MethodChannel('meshcore_open/pcm_stream');
-  static const int sampleRate = 8000;
+  /// Codec2's 8 kHz, upsampled and filtered by VoxPlayOut (voice_dsp.dart).
+  static const int sampleRate = 16000;
 
   bool get _native =>
       !kIsWeb &&

@@ -21,6 +21,7 @@ import '../models/channel.dart';
 import '../services/media_lockdown.dart';
 import 'resample.dart';
 import 'voice_codec.dart';
+import 'voice_dsp.dart';
 import 'voice_service.dart';
 import 'voice_wire.dart';
 import 'walkie_audio.dart';
@@ -42,6 +43,7 @@ class WalkieTalk {
   bool played = false;
   final WalkieJitter jitter = WalkieJitter();
   VoxCodec2Stream? _decoder;
+  VoxPlayOut? _playOut;
 
   /// Still on the air (its end not heard, and heard recently).
   bool activeAt(DateTime now) =>
@@ -63,6 +65,7 @@ class _Tx {
   final WalkieDecimator decimator = WalkieDecimator(
     factor: voxRecordSampleRate ~/ 8000,
   );
+  final VoxMicGate gate = VoxMicGate();
   final List<int> frame = [];
   int? carry;
   int samples8k = 0;
@@ -291,6 +294,7 @@ class WalkieService extends ChangeNotifier {
     t.played = true;
     try {
       t._decoder = VoxCodec2Stream(walkieMode);
+      t._playOut = VoxPlayOut(outRate: WalkieSpeaker.sampleRate);
       _voice.micBusy = true; // nothing else auto-plays meanwhile
       await _speaker.start();
     } catch (_) {
@@ -323,7 +327,9 @@ class WalkieService extends ChangeNotifier {
       if (dec != null) {
         for (final chunk in t.jitter.due(now)) {
           try {
-            unawaited(_speaker.write(dec.decode(chunk)));
+            final pcm = dec.decode(chunk);
+            final out = t._playOut;
+            unawaited(_speaker.write(out == null ? pcm : out.push(pcm)));
             _voice.markHeardLive(t.sessionId);
           } catch (_) {}
         }
@@ -452,7 +458,7 @@ class WalkieService extends ChangeNotifier {
       if (a > peak) peak = a;
     }
     tx.level = min(100, peak * 100 ~/ 32000);
-    final pcm8 = tx.decimator.process(pcm48);
+    final pcm8 = tx.gate.processPcm(tx.decimator.process(pcm48));
     tx.frame.addAll(pcm8);
     tx.samples8k += pcm8.length;
     _encodeFrames(tx, flush: false);

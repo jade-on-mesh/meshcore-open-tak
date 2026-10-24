@@ -41,6 +41,7 @@ import 'mimi.dart';
 import 'resample.dart';
 import 'voice_codec.dart';
 import 'voice_codec_choice.dart';
+import 'voice_dsp.dart';
 import 'voice_wire.dart';
 import 'walkie_wire.dart';
 import 'vox_timing.dart';
@@ -753,11 +754,8 @@ class VoxVoiceService extends ChangeNotifier {
     if (!voxCodecAvailable) {
       throw StateError(voxCodecUnavailableReason ?? 'Codec2 unavailable');
     }
-    final audio8 = await compute(_decimateJob, (clipped, 6));
-    final bits = await compute(
-      _encodeJob,
-      _EncodeJob(voxFloatToPcm16(audio8), mode),
-    );
+    final pcm8 = await compute(_prepJob, clipped);
+    final bits = await compute(_encodeJob, _EncodeJob(pcm8, mode));
     return VoxEncodedClip(mode, bits, seconds);
   }
 
@@ -774,7 +772,7 @@ class VoxVoiceService extends ChangeNotifier {
       );
     }
     final pcm = await compute(_decodeJob, _DecodeJob(bits, mode));
-    return voxPcm16ToWav(pcm);
+    return voxPcm16ToWav(pcm, sampleRate: voxPlayRate);
   }
 
   VoxVoiceEnvelope _register(VoxEncodedClip clip) {
@@ -2536,7 +2534,12 @@ class _DecodeJob {
 
 Uint8List _encodeJob(_EncodeJob j) => voxEncodePcm(j.pcm, j.mode);
 Float32List _decimateJob((Int16List, int) a) => voxDecimate(a.$1, a.$2);
-Int16List _decodeJob(_DecodeJob j) => voxDecodeBits(j.bits, j.mode);
+Int16List _prepJob(Int16List pcm48k) =>
+    voxPrepClip(voxDecimate(pcm48k, voxRecordSampleRate ~/ voxCodecRate));
+
+/// Decoded and made ready to play (levelled, at [voxPlayRate]).
+Int16List _decodeJob(_DecodeJob j) =>
+    voxPlayClip(voxDecodeBits(j.bits, j.mode));
 
 class _ImageEncodeJob {
   final VoxRgbImage ref;
