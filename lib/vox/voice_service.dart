@@ -1489,13 +1489,13 @@ class VoxVoiceService extends ChangeNotifier {
     }();
   }
 
-  /// Thumbnails decoded from photos' first packets (most recent last).
+  /// Thumbnails decoded from photos' first two packets (most recent last).
   final Map<String, VoxRgbImage> _thumbCache = {};
   final Set<String> _thumbDecoding = {};
   final Set<String> _thumbFailed = {};
 
-  /// The small thumbnail a photo carries in its first packet, as soon as that
-  /// packet is here: shown while the rest downloads. Null until then (or for
+  /// The small thumbnail a photo carries in its first two packets, once they
+  /// are here: shown while the rest downloads. Null until then (or for
   /// a photo from a version that sends none); decoding starts on the first
   /// call and [notifyListeners] says when it's ready.
   VoxRgbImage? thumbFor(VoxVoiceEnvelope env) {
@@ -1507,8 +1507,7 @@ class VoxVoiceService extends ChangeNotifier {
         _thumbFailed.contains(sid)) {
       return cached;
     }
-    final first =
-        _incoming[sid]?.packets[0] ?? _orphans[sid]?[0] ?? _bits[sid];
+    final first = _thumbPrefix(sid);
     if (first == null || voxImageThumbObus(first) == null) return null;
     _thumbDecoding.add(sid);
     unawaited(() async {
@@ -1528,6 +1527,20 @@ class VoxVoiceService extends ChangeNotifier {
       }
     }());
     return null;
+  }
+
+  /// The start of a photo's payload, as far as its packets have come in order
+  /// (up to the [voxThumbPackets] the thumbnail is in): where thumbFor looks.
+  Uint8List? _thumbPrefix(String sid) {
+    final whole = _bits[sid];
+    if (whole != null) return whole;
+    final pk = _incoming[sid]?.packets ?? _orphans[sid];
+    if (pk == null || pk[0] == null) return null;
+    final b = BytesBuilder(copy: false);
+    for (var i = 0; i < voxThumbPackets && pk[i] != null; i++) {
+      b.add(pk[i]!);
+    }
+    return b.toBytes();
   }
 
   /// Encodes a picture for sending, off the UI thread.
@@ -1771,7 +1784,7 @@ class VoxVoiceService extends ChangeNotifier {
         : (senderName == null ? null : contactByName(senderName));
     if (!_autoPlay) {
       // Not downloaded by itself: a photo's thumbnail still comes, from its
-      // first packet alone.
+      // first two packets alone.
       _probeThumb(env, sender: sender, channelIndex: channelIndex);
       return;
     }
@@ -1804,11 +1817,12 @@ class VoxVoiceService extends ChangeNotifier {
   /// Photos whose thumbnail has been asked for on its own, so it's asked once.
   final Set<String> _thumbProbed = {};
 
-  /// A photo that isn't being downloaded: ask for its first packet alone, which
-  /// carries the thumbnail (156 bytes), so the bubble shows the picture before
-  /// anyone taps. Not when the packet came anyway: a channel's sender pushes
-  /// its photos to the radios in range, and another listener's ask brings it
-  /// to everyone on the channel, so each waits a little (spread out) first.
+  /// A photo that isn't being downloaded: ask for its first two packets
+  /// alone, which carry the thumbnail (312 bytes), so the bubble shows the
+  /// picture before anyone taps. Not when they came anyway: a channel's
+  /// sender pushes its photos to the radios in range, and another listener's
+  /// ask brings them to everyone on the channel, so each waits a little
+  /// (spread out) first.
   void _probeThumb(
     VoxVoiceEnvelope env, {
     Contact? sender,
@@ -1832,7 +1846,8 @@ class VoxVoiceService extends ChangeNotifier {
     );
   }
 
-  /// Asks for packet 0 ([attempt] of [voxThumbProbeTries]); not here by the
+  /// Asks for the thumbnail's packets ([attempt] of [voxThumbProbeTries],
+  /// only those not here yet); not here by the
   /// next check, asks again. After the last, the bubble just offers the
   /// download, as it does all along: a probe never holds up a tap.
   Future<void> _sendThumbProbe(
@@ -1847,7 +1862,8 @@ class VoxVoiceService extends ChangeNotifier {
     final self = _connector.selfPublicKey;
     if (clip == null ||
         clip.status != VoxClipStatus.remote ||
-        clip.packets.containsKey(0) ||
+        (clip.packets.containsKey(0) &&
+            voxImageThumbObus(_thumbPrefix(sid) ?? Uint8List(0)) != null) ||
         self == null ||
         !_connector.isConnected) {
       return;
@@ -1871,14 +1887,17 @@ class VoxVoiceService extends ChangeNotifier {
     final req = VoxVoiceFetchRequest(
       sessionId: sid,
       requesterKey6: voxKey6Hex(self),
-      missingIndices: const [0],
+      missingIndices: [
+        for (var i = 0; i < voxThumbPackets; i++)
+          if (!clip.packets.containsKey(i)) i,
+      ],
       saltOk: true,
     );
     try {
       final ch = channelIndex;
       if (ch != null && _connector.supportsChannelData) {
         _logEvent(
-          'thumbnail: asking the channel for packet 0 ($attempt)',
+          'thumbnail: asking the channel for its packets ($attempt)',
           sid,
         );
         await _connector.sendChannelDataBlobs(
@@ -1894,11 +1913,11 @@ class VoxVoiceService extends ChangeNotifier {
       // A DM photo with no route: not worth a flooded request for a
       // thumbnail; it comes with the photo on a tap.
       if (s == null || route == null) return;
-      _logEvent('thumbnail: asking ${s.name} for packet 0 ($attempt)', sid);
+      _logEvent('thumbnail: asking ${s.name} for its packets ($attempt)', sid);
       final withPath = VoxVoiceFetchRequest(
         sessionId: sid,
         requesterKey6: req.requesterKey6,
-        missingIndices: const [0],
+        missingIndices: req.missingIndices,
         saltOk: true,
         requesterPath: route,
       );

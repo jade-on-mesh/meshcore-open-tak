@@ -59,7 +59,7 @@ class _VoxImageMessageContentState extends State<VoxImageMessageContent> {
   VoxVoiceService? _service;
   ui.Image? _image;
 
-  /// The thumbnail from the photo's first packet, shown until [_image].
+  /// The thumbnail from the photo's first two packets, shown until [_image].
   ui.Image? _thumb;
   bool _thumbLoading = false;
   bool _loading = false;
@@ -272,7 +272,9 @@ class _VoxImageMessageContentState extends State<VoxImageMessageContent> {
           RawImage(
             image: _thumb,
             fit: BoxFit.cover,
-            filterQuality: FilterQuality.medium,
+            // Bicubic: a 96 px picture scaled up to the bubble stays smooth
+            // rather than blocky.
+            filterQuality: FilterQuality.high,
           ),
           if (busy)
             Center(
