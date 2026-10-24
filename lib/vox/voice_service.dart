@@ -165,6 +165,26 @@ class _IncomingClip {
   /// packets can arrive out of order, so a gap may still fill.
   bool relayed = false;
 
+  /// When the last new packet of the current burst came in (null: the next
+  /// one starts a burst, its gap being the round trip, not the pacing).
+  DateTime? rxLast;
+
+  /// The burst's gap between packets, smoothed, and how many gaps that's from.
+  int rxGapMs = 0;
+  int rxGaps = 0;
+
+  void noteArrival(DateTime now) {
+    final last = rxLast;
+    if (last != null) {
+      final g = now.difference(last).inMilliseconds;
+      if (g >= 0 && g < 60000) {
+        rxGapMs = rxGaps == 0 ? g : (rxGapMs * 3 + g) ~/ 4;
+        rxGaps++;
+      }
+    }
+    rxLast = now;
+  }
+
   _IncomingClip(this.envelope);
 
   bool get isComplete => packets.length >= envelope.totalPackets;
@@ -1170,6 +1190,7 @@ class VoxVoiceService extends ChangeNotifier {
     }
     clip.attempts++;
     clip.lastMethod = method;
+    clip.rxLast = null; // the next packet starts a new burst
     if (method == _Method.channel) clip.triedChannel = true;
     final sc = clip.sender;
     if (sc != null) {
@@ -1293,10 +1314,7 @@ class VoxVoiceService extends ChangeNotifier {
     // One radio transmission of a full voice packet, plus each repeater's
     // retransmit delay and the firmware/BLE turnaround.
     final hopMs = _packetAir().inMilliseconds * 2 + 700;
-    final perPacket = _packetGap(
-      flood: clip.lastMethod == _Method.channel,
-      hops: _clipHops(clip),
-    );
+    final perPacket = _burstGap(clip);
     // Trips before the first voice packet lands: request out + packet back.
     // A DM request also needs path return + reciprocal path first.
     final trips = switch (clip.lastMethod) {
@@ -1898,7 +1916,13 @@ class VoxVoiceService extends ChangeNotifier {
     bool notify = true,
   }) {
     if (clip.isComplete || index >= clip.envelope.totalPackets) return;
+    final fresh = !clip.packets.containsKey(index);
     clip.packets[index] = data;
+    if (fresh &&
+        (clip.status == VoxClipStatus.requesting ||
+            clip.status == VoxClipStatus.receiving)) {
+      clip.noteArrival(DateTime.now());
+    }
     final sid = clip.envelope.sessionId;
     if (clip.isComplete) {
       clip.watchdog?.cancel();
@@ -1916,10 +1940,7 @@ class VoxVoiceService extends ChangeNotifier {
         clip.watchdog?.cancel();
         final wait = voxGapRequestDelay(
           relayed: clip.relayed,
-          packetGap: _packetGap(
-            flood: clip.lastMethod == _Method.channel,
-            hops: _clipHops(clip),
-          ),
+          packetGap: _burstGap(clip),
           zeroHopGap: _zeroHopGap(),
         );
         _logEvent(
@@ -2099,6 +2120,18 @@ class VoxVoiceService extends ChangeNotifier {
 
   /// Between zero-hop packets nobody relays: the packet's own airtime, plus
   /// a little for the radio to turn round and the listeners to read it out.
+  /// The gap to expect between [clip]'s packets: the model's, or the one
+  /// they're actually coming at once a few are in (voxBurstGap).
+  Duration _burstGap(_IncomingClip clip) => voxBurstGap(
+    model: _packetGap(
+      flood: clip.lastMethod == _Method.channel,
+      hops: _clipHops(clip),
+    ),
+    seen: Duration(milliseconds: clip.rxGapMs),
+    samples: clip.rxGaps,
+    floor: _zeroHopGap(),
+  );
+
   Duration _zeroHopGap() =>
       Duration(milliseconds: max(150, _packetAir().inMilliseconds + 60));
 

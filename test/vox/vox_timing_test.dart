@@ -44,4 +44,48 @@ void main() {
     expect(voxShouldFinishPassive(received: 36, total: 36), isFalse);
     expect(voxShouldFinishPassive(received: 0, total: 0), isFalse);
   });
+
+  test('burst gap follows the gaps packets came at, within the model', () {
+    const model = Duration(milliseconds: 2725);
+    const floor = Duration(milliseconds: 160);
+    // Too few gaps measured: the model.
+    expect(
+      voxBurstGap(
+        model: model,
+        seen: const Duration(milliseconds: 350),
+        samples: 2,
+        floor: floor,
+      ),
+      model,
+    );
+    // Coming faster than the model: twice what they came at.
+    expect(
+      voxBurstGap(
+        model: model,
+        seen: const Duration(milliseconds: 350),
+        samples: 5,
+        floor: floor,
+      ),
+      const Duration(milliseconds: 700),
+    );
+    // Never above the model, never under the floor.
+    expect(
+      voxBurstGap(
+        model: model,
+        seen: const Duration(milliseconds: 2000),
+        samples: 5,
+        floor: floor,
+      ),
+      model,
+    );
+    expect(
+      voxBurstGap(
+        model: model,
+        seen: const Duration(milliseconds: 40),
+        samples: 5,
+        floor: floor,
+      ),
+      floor,
+    );
+  });
 }
