@@ -1832,10 +1832,14 @@ class VoxVoiceService extends ChangeNotifier {
     );
   }
 
+  /// Asks for packet 0 ([attempt] of [voxThumbProbeTries]); not here by the
+  /// next check, asks again. After the last, the bubble just offers the
+  /// download, as it does all along: a probe never holds up a tap.
   Future<void> _sendThumbProbe(
     VoxVoiceEnvelope env, {
     Contact? sender,
     int? channelIndex,
+    int attempt = 1,
   }) async {
     final sid = env.sessionId;
     await warmUp(env, sender: sender, channelIndex: channelIndex);
@@ -1848,6 +1852,22 @@ class VoxVoiceService extends ChangeNotifier {
         !_connector.isConnected) {
       return;
     }
+    if (attempt < voxThumbProbeTries) {
+      Timer(
+        Duration(
+          milliseconds:
+              voxThumbProbeRetryMs + _rng.nextInt(voxThumbProbeSpreadMs),
+        ),
+        () => unawaited(
+          _sendThumbProbe(
+            env,
+            sender: sender,
+            channelIndex: channelIndex,
+            attempt: attempt + 1,
+          ),
+        ),
+      );
+    }
     final req = VoxVoiceFetchRequest(
       sessionId: sid,
       requesterKey6: voxKey6Hex(self),
@@ -1857,7 +1877,10 @@ class VoxVoiceService extends ChangeNotifier {
     try {
       final ch = channelIndex;
       if (ch != null && _connector.supportsChannelData) {
-        _logEvent('thumbnail: asking the channel for packet 0', sid);
+        _logEvent(
+          'thumbnail: asking the channel for packet 0 ($attempt)',
+          sid,
+        );
         await _connector.sendChannelDataBlobs(
           [req.encode(salt: _rng.nextInt(256))],
           channelIndex: ch,
@@ -1871,7 +1894,7 @@ class VoxVoiceService extends ChangeNotifier {
       // A DM photo with no route: not worth a flooded request for a
       // thumbnail; it comes with the photo on a tap.
       if (s == null || route == null) return;
-      _logEvent('thumbnail: asking ${s.name} for packet 0', sid);
+      _logEvent('thumbnail: asking ${s.name} for packet 0 ($attempt)', sid);
       final withPath = VoxVoiceFetchRequest(
         sessionId: sid,
         requesterKey6: req.requesterKey6,

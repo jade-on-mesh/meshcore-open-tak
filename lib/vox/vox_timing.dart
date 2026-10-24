@@ -70,3 +70,9 @@ const int voxThumbProbeSpreadMs = 4000;
 
 /// The same for a photo sent in a DM, which nobody pushes.
 const int voxThumbProbeDirectWaitMs = 1500;
+
+/// Asks for the thumbnail at most this many times, [voxThumbProbeRetryMs]
+/// (plus up to [voxThumbProbeSpreadMs]) apart, while it hasn't come. Then the
+/// bubble just offers the download.
+const int voxThumbProbeTries = 3;
+const int voxThumbProbeRetryMs = 8000;
