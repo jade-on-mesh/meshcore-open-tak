@@ -21,7 +21,6 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'av1_ffi.dart';
-import 'voice_wire.dart' show voxMaxCodecBytesPerPacket;
 
 /// Bytes of one full-length voice message (20 s of Mimi: 250 frames x 11 B).
 const int voxImageBaseBudget = 2750;

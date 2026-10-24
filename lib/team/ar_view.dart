@@ -69,7 +69,7 @@ double arAngleDiff(double a, double b) => ((b - a + 540) % 360) - 180;
 
 /// Something to show in the AR view.
 class ArTarget {
-  /// Stable across frames ("m:<key>", "w:<key>", "ph:<sid>"...), for the chime.
+  /// Stable across frames (`m:KEY`, `w:KEY`, `ph:SID`...), for the chime.
   final String id;
   final String label;
   final double lat, lon;
