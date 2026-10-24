@@ -103,4 +103,18 @@ void main() {
       isFalse,
     );
   });
+
+  test('fetch budgets grow with size and with how much is in', () {
+    expect(voxAttemptBudget(17), voxMaxAttempts);
+    expect(voxAttemptBudget(234), 49);
+    expect(voxStallBudget(0, 234), voxMaxStalls);
+    expect(voxStallBudget(60, 234), voxMaxStalls);
+    expect(voxStallBudget(120, 234), 5);
+    expect(voxStallBudget(233, 234), 8);
+    expect(voxStallBudget(14, 17), 8);
+    const w = Duration(seconds: 10);
+    expect(voxStallBackoff(w, 0), w);
+    expect(voxStallBackoff(w, 1), const Duration(seconds: 15));
+    expect(voxStallBackoff(w, 9), const Duration(seconds: 30));
+  });
 }
