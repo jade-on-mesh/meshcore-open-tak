@@ -10,6 +10,9 @@
 //      the budget, then re-encode the winner at a slower, better setting.
 //   4. Decode the result: that exact picture is the preview, so the sender
 //      sees what the receiver will see.
+//   5. Before it, a thumbnail of at most [voxThumbSide] px small enough for
+//      the first packet: a receiver shows it as soon as that packet lands,
+//      long before the rest of the photo is in.
 //
 // Pure Dart except for the encoder/decoder, which is injected so the search
 // can be tested without the native library.
@@ -18,6 +21,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'av1_ffi.dart';
+import 'voice_wire.dart' show voxMaxCodecBytesPerPacket;
 
 /// Bytes of one full-length voice message (20 s of Mimi: 250 frames x 11 B).
 const int voxImageBaseBudget = 2750;
@@ -32,8 +36,19 @@ const int voxImageMaxWorkSide = 1024;
 /// Encoder speed meaning "fast all-intra trial" (see vox_av1.c).
 const int voxAv1TrialSpeed = 10;
 
-/// First payload byte: format version.
-const int voxImagePayloadVersion = 1;
+/// First payload byte: format version. Version 2 (what this build sends):
+/// `[2][thumbnail length][thumbnail OBUs][photo OBUs]`, the thumbnail small
+/// enough that all of it is in the first packet (length 0: none). Version 1:
+/// `[1][photo OBUs]`, still read.
+const int voxImagePayloadVersion = 2;
+const int voxImagePayloadV1 = 1;
+
+/// Longest side of the thumbnail sent first.
+const int voxThumbSide = 64;
+
+/// The most a thumbnail may take: the first packet, less the version and
+/// length bytes.
+const int voxThumbMaxBytes = voxMaxCodecBytesPerPacket - 2;
 
 /// How much airtime to spend, in voice messages.
 enum VoxImageDetail {
@@ -101,7 +116,8 @@ class VoxFocusRegions {
 }
 
 class VoxEncodedImage {
-  /// What goes on air: version byte + AV1 OBUs.
+  /// What goes on air: version, thumbnail and photo (see
+  /// [voxImagePayloadVersion]).
   final Uint8List payload;
 
   /// The picture the receiver will decode (coded size).
@@ -346,8 +362,11 @@ VoxEncodedImage voxEncodeImage({
       useFocus: useFocus,
     );
   }
-  final budget = detail.budget - 1; // minus the version byte
   final w = ref.width, h = ref.height;
+  // The thumbnail first, from the untouched picture; the photo gets what's
+  // left, so a photo costs the same airtime as before.
+  final thumb = voxEncodeThumb(ref, encode) ?? Uint8List(0);
+  final budget = detail.budget - 2 - thumb.length; // version, length, thumb
   final focused = useFocus && !focus.isEmpty;
   final mask = focused
       ? voxFocusMask(w, h, [for (final r in focus.all) r.inflate(3)])
@@ -432,9 +451,12 @@ VoxEncodedImage voxEncodeImage({
   if (textMask != null) {
     textPsnr = voxPsnr(ref, voxResize(preview, w, h), textMask);
   }
-  final payload = Uint8List(data.length + 1)
+  final head = 2 + thumb.length;
+  final payload = Uint8List(head + data.length)
     ..[0] = voxImagePayloadVersion
-    ..setRange(1, data.length + 1, data);
+    ..[1] = thumb.length
+    ..setRange(2, head, thumb)
+    ..setRange(head, head + data.length, data);
   return VoxEncodedImage(
     payload: payload,
     preview: preview,
@@ -445,10 +467,68 @@ VoxEncodedImage voxEncodeImage({
   );
 }
 
+/// The thumbnail sent ahead of a photo: the best-looking encode of [ref] at
+/// most [voxThumbSide] px that fits [voxThumbMaxBytes]. Null if none fits.
+Uint8List? voxEncodeThumb(VoxRgbImage ref, VoxAv1Encode encode) {
+  for (final side in const [voxThumbSide, 48, 32]) {
+    final (w, h) = voxFitSize(ref.width, ref.height, side);
+    final small = voxResize(ref, w, h);
+    // Smallest quantizer that fits, by bisection, at the encoder's good speed
+    // (a 64 px picture encodes in a few milliseconds).
+    var lo = 0, hi = 63;
+    Uint8List? best;
+    var bestQ = 64;
+    while (lo <= hi) {
+      final q = (lo + hi) >> 1;
+      final data = encode(small, q, 4);
+      if (data != null && data.length <= voxThumbMaxBytes) {
+        best = data;
+        bestQ = q;
+        hi = q - 1;
+      } else {
+        lo = q + 1;
+      }
+    }
+    // Coarser than this at this size is mush: a smaller one looks better.
+    if (best != null && (bestQ <= 52 || side == 32)) return best;
+  }
+  return null;
+}
+
+/// The photo's OBUs in a received payload; null if it isn't a format this
+/// build reads.
+Uint8List? voxImagePhotoObus(Uint8List payload) {
+  if (payload.length < 2) return null;
+  switch (payload[0]) {
+    case voxImagePayloadV1:
+      return Uint8List.sublistView(payload, 1);
+    case voxImagePayloadVersion:
+      final head = 2 + payload[1];
+      if (payload.length <= head) return null;
+      return Uint8List.sublistView(payload, head);
+  }
+  return null;
+}
+
+/// The thumbnail's OBUs from the start of a payload (the first packet is
+/// enough); null when there is none, or not all of it is in [prefix] yet.
+Uint8List? voxImageThumbObus(Uint8List prefix) {
+  if (prefix.length < 2 || prefix[0] != voxImagePayloadVersion) return null;
+  final n = prefix[1];
+  if (n == 0 || prefix.length < 2 + n) return null;
+  return Uint8List.sublistView(prefix, 2, 2 + n);
+}
+
 /// Decodes a received payload. Null if it isn't a picture this build reads.
 VoxRgbImage? voxDecodeImagePayload(Uint8List payload, VoxAv1Decode decode) {
-  if (payload.length < 2 || payload[0] != voxImagePayloadVersion) return null;
-  return decode(Uint8List.sublistView(payload, 1));
+  final obus = voxImagePhotoObus(payload);
+  return obus == null ? null : decode(obus);
+}
+
+/// Decodes the thumbnail at the start of a payload (see [voxImageThumbObus]).
+VoxRgbImage? voxDecodeImageThumb(Uint8List prefix, VoxAv1Decode decode) {
+  final obus = voxImageThumbObus(prefix);
+  return obus == null ? null : decode(obus);
 }
 
 /// Aspect ratio as carried in the VI1 envelope (width * 100 / height).

@@ -205,6 +205,50 @@ void main() {
       expect(enc.textPsnr, isNotNull);
     });
 
+    test('a thumbnail rides in the first packet, inside the budget', () {
+      final fake = _FakeAv1();
+      for (final detail in VoxImageDetail.values) {
+        final enc = voxEncodeImage(
+          ref: _gradient(300, 200),
+          detail: detail,
+          encode: fake.encode,
+          decode: fake.decode,
+        );
+        expect(enc.payload.length, lessThanOrEqualTo(detail.budget));
+        expect(enc.payload[0], 2);
+        final n = enc.payload[1];
+        expect(n, greaterThan(0));
+        expect(2 + n, lessThanOrEqualTo(voxMaxCodecBytesPerPacket));
+        // The first packet alone gives the thumbnail, at most 64 px.
+        final first = Uint8List.sublistView(
+          enc.payload,
+          0,
+          voxMaxCodecBytesPerPacket,
+        );
+        final thumb = voxDecodeImageThumb(first, fake.decode);
+        expect(thumb, isNotNull);
+        expect(thumb!.width, lessThanOrEqualTo(voxThumbSide));
+        expect(thumb.height, lessThanOrEqualTo(voxThumbSide));
+        // And the whole payload still gives the photo, not the thumbnail.
+        final photo = voxDecodeImagePayload(enc.payload, fake.decode)!;
+        expect(photo.width, greaterThan(voxThumbSide));
+      }
+    });
+
+    test('reads version 1 payloads, which carry no thumbnail', () {
+      final fake = _FakeAv1();
+      final obus = fake.encode(_gradient(120, 80), 20, 4)!;
+      final v1 = Uint8List.fromList([voxImagePayloadV1, ...obus]);
+      expect(voxDecodeImagePayload(v1, fake.decode)?.width, 120);
+      expect(voxImageThumbObus(v1), isNull);
+    });
+
+    test('no thumbnail until all of it is in', () {
+      final p = Uint8List.fromList([2, 10, 1, 2, 3]);
+      expect(voxImageThumbObus(p), isNull);
+      expect(voxImageThumbObus(Uint8List.fromList([2, 0, 9, 9])), isNull);
+    });
+
     test('rejects payloads from an unknown format version', () {
       final fake = _FakeAv1();
       expect(

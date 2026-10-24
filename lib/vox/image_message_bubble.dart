@@ -58,6 +58,10 @@ class VoxImageMessageContent extends StatefulWidget {
 class _VoxImageMessageContentState extends State<VoxImageMessageContent> {
   VoxVoiceService? _service;
   ui.Image? _image;
+
+  /// The thumbnail from the photo's first packet, shown until [_image].
+  ui.Image? _thumb;
+  bool _thumbLoading = false;
   bool _loading = false;
   bool _failed = false;
   int _loadGen = 0;
@@ -90,6 +94,9 @@ class _VoxImageMessageContentState extends State<VoxImageMessageContent> {
     if (old.envelope.sessionId == widget.envelope.sessionId) return;
     _image?.dispose();
     _image = null;
+    _thumb?.dispose();
+    _thumb = null;
+    _thumbLoading = false;
     _loading = false;
     _failed = false;
     _loadGen++;
@@ -115,7 +122,29 @@ class _VoxImageMessageContentState extends State<VoxImageMessageContent> {
     setState(() {});
   }
 
+  void _maybeLoadThumb() {
+    final s = _service;
+    if (s == null || _image != null || _thumb != null || _thumbLoading) return;
+    final rgb = s.thumbFor(widget.envelope);
+    if (rgb == null) return;
+    _thumbLoading = true;
+    final gen = _loadGen;
+    unawaited(
+      voxRgbToUiImage(rgb).then((img) {
+        if (!mounted || gen != _loadGen || _image != null) {
+          img.dispose();
+          return;
+        }
+        setState(() {
+          _thumb = img;
+          _thumbLoading = false;
+        });
+      }),
+    );
+  }
+
   void _maybeLoad() {
+    _maybeLoadThumb();
     final s = _service;
     if (s == null || _image != null || _loading || _failed) return;
     if (s.stateFor(widget.envelope).status != VoxClipStatus.complete) return;
@@ -134,6 +163,10 @@ class _VoxImageMessageContentState extends State<VoxImageMessageContent> {
         _image = img;
         _failed = img == null;
         _loading = false;
+        if (img != null) {
+          _thumb?.dispose();
+          _thumb = null;
+        }
       });
     }());
   }
@@ -167,6 +200,7 @@ class _VoxImageMessageContentState extends State<VoxImageMessageContent> {
   void dispose() {
     _service?.removeListener(_onServiceChanged);
     _image?.dispose();
+    _thumb?.dispose();
     super.dispose();
   }
 
@@ -228,6 +262,34 @@ class _VoxImageMessageContentState extends State<VoxImageMessageContent> {
         image: _image,
         fit: BoxFit.cover,
         filterQuality: FilterQuality.medium,
+      );
+    } else if (_thumb != null) {
+      // The thumbnail sent first, scaled up (soft, as a preview should be),
+      // with the download's progress over it.
+      picture = Stack(
+        fit: StackFit.expand,
+        children: [
+          RawImage(
+            image: _thumb,
+            fit: BoxFit.cover,
+            filterQuality: FilterQuality.medium,
+          ),
+          if (busy)
+            Center(
+              child: SizedBox(
+                width: 40,
+                height: 40,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: Colors.white,
+                  backgroundColor: Colors.black26,
+                  value: st.status == VoxClipStatus.receiving
+                      ? st.progress
+                      : null,
+                ),
+              ),
+            ),
+        ],
       );
     } else {
       picture = Container(
