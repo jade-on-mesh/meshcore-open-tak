@@ -76,3 +76,27 @@ const int voxThumbProbeDirectWaitMs = 1500;
 /// bubble just offers the download.
 const int voxThumbProbeTries = 3;
 const int voxThumbProbeRetryMs = 8000;
+
+/// Listen before talk on MediaMesh. A photo or voice packet waits while a
+/// radio2 packet from someone else was heard lately: until radio2 has been
+/// quiet for one packet's airtime plus a random part of another (so two that
+/// both waited don't then collide), at most [voxLbtMaxWaitMs] in all, after
+/// which it goes anyway rather than never. Mirrored in Wadamesh
+/// (MediaMeshCore.h lbtQuietMs / lbtHold).
+const int voxLbtMaxWaitMs = 20000;
+
+int voxLbtQuietMs(int packetAirMs, int rnd) {
+  final air = packetAirMs > 0 ? packetAirMs : 100;
+  return air + 50 + rnd % (air ~/ 2 + 1);
+}
+
+/// Whether to hold a packet now: radio2 heard [sinceHeardMs] ago (null:
+/// never), waiting [waitedMs] so far.
+bool voxLbtHold({
+  required int? sinceHeardMs,
+  required int quietMs,
+  required int waitedMs,
+}) =>
+    sinceHeardMs != null &&
+    sinceHeardMs < quietMs &&
+    waitedMs < voxLbtMaxWaitMs;

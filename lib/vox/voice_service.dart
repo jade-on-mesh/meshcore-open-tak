@@ -288,8 +288,11 @@ class VoxVoiceService extends ChangeNotifier {
         _viaHop.remove(_viaHop.keys.first);
       }
     }
-    // Heard on radio2: a MediaMesh is on the air here.
-    if (via == 1) MediaMeshNearby.instance.markHeard();
+    // Heard on radio2: a MediaMesh is on the air here, and busy just now.
+    if (via == 1) {
+      MediaMeshNearby.instance.markHeard();
+      _r2HeardAt = DateTime.now();
+    }
     // Re-inserted, so the most recent clips are the ones kept.
     final old = _viaMask.remove(sid) ?? 0;
     _viaMask[sid] = old | (1 << via);
@@ -2212,6 +2215,45 @@ class VoxVoiceService extends ChangeNotifier {
         .catchError((_) {});
   }
 
+  /// When a photo or voice packet from someone else was last heard on radio2
+  /// (MediaMesh), for listening before talking there.
+  DateTime? _r2HeardAt;
+
+  /// Packets that waited for MediaMesh to go quiet (shown in the log).
+  int _lbtWaits = 0;
+
+  /// Listen before talk on MediaMesh (voxLbtHold): returns once radio2 has
+  /// been quiet a packet's airtime and a random bit, or after 20 s of waiting.
+  Future<void> _radio2Quiet(String sid) async {
+    final start = DateTime.now();
+    final quiet = voxLbtQuietMs(
+      _packetAir().inMilliseconds,
+      _rng.nextInt(1 << 30),
+    );
+    var noted = false;
+    while (true) {
+      final now = DateTime.now();
+      final heard = _r2HeardAt;
+      final since = heard == null ? null : now.difference(heard).inMilliseconds;
+      if (!voxLbtHold(
+        sinceHeardMs: since,
+        quietMs: quiet,
+        waitedMs: now.difference(start).inMilliseconds,
+      )) {
+        return;
+      }
+      if (!noted) {
+        noted = true;
+        _lbtWaits++;
+        _logEvent(
+          'MediaMesh busy: waiting for it to go quiet ($_lbtWaits so far)',
+          sid,
+        );
+      }
+      await Future<void>.delayed(Duration(milliseconds: quiet - since!));
+    }
+  }
+
   Future<void> _runChannelBurst(String key, _ChannelBurst burst) async {
     try {
       await _refreshMediaAir();
@@ -2232,6 +2274,7 @@ class VoxVoiceService extends ChangeNotifier {
         burst.pending.remove(index);
         if (index >= packets.length) continue;
         final zeroHop = burst.maxHops == 0;
+        await _radio2Quiet(burst.sid);
         try {
           await _connector.sendChannelDataPacket(
             channelIndex: burst.channel,
@@ -2436,6 +2479,7 @@ class VoxVoiceService extends ChangeNotifier {
         return;
       }
       if (i > 0) await Future<void>.delayed(gap);
+      await _radio2Quiet(req.sessionId);
       try {
         // Salt each send so a resend is never dropped as a duplicate by a
         // radio that saw an earlier copy; skip it if the frame would not fit.
