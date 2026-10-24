@@ -61,10 +61,10 @@ bool voxShouldFinishPassive({required int received, required int total}) =>
     total > 0 && received < total && received * 2 >= total;
 
 /// How long a listener waits after a channel photo's announcement before
-/// asking for its first packet (its thumbnail) alone: past the sender's push
-/// (voxPushLead, at most 1.5 s, and the packet's airtime), then spread over
-/// [voxThumbProbeSpreadMs] so one listener's ask, answered on the channel,
-/// serves the rest. Mirrored in Wadamesh (VoxFetch::kThumbProbe*).
+/// asking for its first two packets (its thumbnail) alone: past the
+/// sender's push (voxPushLead, at most 1.5 s, and the packets' airtime), then
+/// spread over [voxThumbProbeSpreadMs] so one listener's ask, answered on
+/// the channel, serves the rest. Mirrored in Wadamesh (VoxFetch::kThumbProbe*).
 const int voxThumbProbeChannelWaitMs = 4000;
 const int voxThumbProbeSpreadMs = 4000;
 

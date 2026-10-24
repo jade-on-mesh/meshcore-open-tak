@@ -205,7 +205,7 @@ void main() {
       expect(enc.textPsnr, isNotNull);
     });
 
-    test('a thumbnail rides in the first packet, inside the budget', () {
+    test('a thumbnail rides in the first two packets, inside the budget', () {
       final fake = _FakeAv1();
       for (final detail in VoxImageDetail.values) {
         final enc = voxEncodeImage(
@@ -218,21 +218,34 @@ void main() {
         expect(enc.payload[0], 2);
         final n = enc.payload[1];
         expect(n, greaterThan(0));
-        expect(2 + n, lessThanOrEqualTo(voxMaxCodecBytesPerPacket));
-        // The first packet alone gives the thumbnail, at most 64 px.
-        final first = Uint8List.sublistView(
-          enc.payload,
-          0,
-          voxMaxCodecBytesPerPacket,
-        );
+        final head = voxThumbPackets * voxMaxCodecBytesPerPacket;
+        expect(2 + n, lessThanOrEqualTo(head));
+        // The first two packets alone give the thumbnail, at most 96 px.
+        final first = Uint8List.sublistView(enc.payload, 0, head);
         final thumb = voxDecodeImageThumb(first, fake.decode);
         expect(thumb, isNotNull);
         expect(thumb!.width, lessThanOrEqualTo(voxThumbSide));
         expect(thumb.height, lessThanOrEqualTo(voxThumbSide));
+        // The first packet alone is not enough when it's longer than that.
+        if (2 + n > voxMaxCodecBytesPerPacket) {
+          final one = Uint8List.sublistView(
+            enc.payload,
+            0,
+            voxMaxCodecBytesPerPacket,
+          );
+          expect(voxDecodeImageThumb(one, fake.decode), isNull);
+        }
         // And the whole payload still gives the photo, not the thumbnail.
         final photo = voxDecodeImagePayload(enc.payload, fake.decode)!;
         expect(photo.width, greaterThan(voxThumbSide));
       }
+    });
+
+    test('the thumbnail is 96 px when that fits', () {
+      final fake = _FakeAv1();
+      final t = voxEncodeThumb(_gradient(300, 200), fake.encode)!;
+      expect(fake.decode(t)!.width, voxThumbSide);
+      expect(t.length, lessThanOrEqualTo(voxThumbMaxBytes));
     });
 
     test('reads version 1 payloads, which carry no thumbnail', () {
