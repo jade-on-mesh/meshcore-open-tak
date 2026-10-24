@@ -1759,7 +1759,6 @@ class VoxVoiceService extends ChangeNotifier {
       channelIndex: channelIndex,
       at: timestamp,
     );
-    if (!_autoPlay) return;
     final sid = env.sessionId;
     // Don't auto-play a backlog synced from the radio after a reconnect.
     if (timestamp != null &&
@@ -1770,6 +1769,12 @@ class VoxVoiceService extends ChangeNotifier {
     final sender = senderKeyHex != null
         ? contactByKeyHex(senderKeyHex)
         : (senderName == null ? null : contactByName(senderName));
+    if (!_autoPlay) {
+      // Not downloaded by itself: a photo's thumbnail still comes, from its
+      // first packet alone.
+      _probeThumb(env, sender: sender, channelIndex: channelIndex);
+      return;
+    }
     if (_heardLive.contains(sid)) {
       // A push-to-talk heard as it was spoken: kept, not played again.
       unawaited(warmUp(env, sender: sender, channelIndex: channelIndex));
@@ -1789,10 +1794,101 @@ class VoxVoiceService extends ChangeNotifier {
     if (channelIndex != null && !_autoDownloadChannels) {
       _logEvent('auto-play: watching channel clip (not auto-downloading)', sid);
       unawaited(warmUp(env, sender: sender, channelIndex: channelIndex));
+      _probeThumb(env, sender: sender, channelIndex: channelIndex);
       return;
     }
     _logEvent('auto-play: downloading new clip', sid);
     unawaited(requestClip(env, sender: sender, channelIndex: channelIndex));
+  }
+
+  /// Photos whose thumbnail has been asked for on its own, so it's asked once.
+  final Set<String> _thumbProbed = {};
+
+  /// A photo that isn't being downloaded: ask for its first packet alone, which
+  /// carries the thumbnail (156 bytes), so the bubble shows the picture before
+  /// anyone taps. Not when the packet came anyway: a channel's sender pushes
+  /// its photos to the radios in range, and another listener's ask brings it
+  /// to everyone on the channel, so each waits a little (spread out) first.
+  void _probeThumb(
+    VoxVoiceEnvelope env, {
+    Contact? sender,
+    int? channelIndex,
+  }) {
+    if (!env.isImage || !imagesAvailable) return;
+    final sid = env.sessionId;
+    if (!_thumbProbed.add(sid)) return;
+    if (_thumbProbed.length > 64) _thumbProbed.remove(_thumbProbed.first);
+    final onChannel = channelIndex != null;
+    final wait = Duration(
+      milliseconds: onChannel
+          ? voxThumbProbeChannelWaitMs + _rng.nextInt(voxThumbProbeSpreadMs)
+          : voxThumbProbeDirectWaitMs + _rng.nextInt(1000),
+    );
+    Timer(
+      wait,
+      () => unawaited(
+        _sendThumbProbe(env, sender: sender, channelIndex: channelIndex),
+      ),
+    );
+  }
+
+  Future<void> _sendThumbProbe(
+    VoxVoiceEnvelope env, {
+    Contact? sender,
+    int? channelIndex,
+  }) async {
+    final sid = env.sessionId;
+    await warmUp(env, sender: sender, channelIndex: channelIndex);
+    final clip = _incoming[sid];
+    final self = _connector.selfPublicKey;
+    if (clip == null ||
+        clip.status != VoxClipStatus.remote ||
+        clip.packets.containsKey(0) ||
+        self == null ||
+        !_connector.isConnected) {
+      return;
+    }
+    final req = VoxVoiceFetchRequest(
+      sessionId: sid,
+      requesterKey6: voxKey6Hex(self),
+      missingIndices: const [0],
+      saltOk: true,
+    );
+    try {
+      final ch = channelIndex;
+      if (ch != null && _connector.supportsChannelData) {
+        _logEvent('thumbnail: asking the channel for packet 0', sid);
+        await _connector.sendChannelDataBlobs(
+          [req.encode(salt: _rng.nextInt(256))],
+          channelIndex: ch,
+          dataType: voxChannelDataType,
+          interChunkDelay: Duration.zero,
+        );
+        return;
+      }
+      final s = clip.sender;
+      final route = s == null ? null : _directRoute(s);
+      // A DM photo with no route: not worth a flooded request for a
+      // thumbnail; it comes with the photo on a tap.
+      if (s == null || route == null) return;
+      _logEvent('thumbnail: asking ${s.name} for packet 0', sid);
+      final withPath = VoxVoiceFetchRequest(
+        sessionId: sid,
+        requesterKey6: req.requesterKey6,
+        missingIndices: const [0],
+        saltOk: true,
+        requesterPath: route,
+      );
+      await _connector.sendFrame(
+        buildSendRawDataFrame(
+          path: route,
+          payload: withPath.encode(salt: _rng.nextInt(256)),
+        ),
+        waitForGenericAck: true,
+      );
+    } catch (e) {
+      _logEvent('thumbnail request failed: $e', sid);
+    }
   }
 
   void _onClipComplete(VoxVoiceEnvelope env) {
