@@ -59,3 +59,20 @@ Duration voxBurstGap({
 /// rest when at least half is already here.
 bool voxShouldFinishPassive({required int received, required int total}) =>
     total > 0 && received < total && received * 2 >= total;
+
+/// How long a listener waits after a channel photo's announcement before
+/// asking for its first packet (its thumbnail) alone: past the sender's push
+/// (voxPushLead, at most 1.5 s, and the packet's airtime), then spread over
+/// [voxThumbProbeSpreadMs] so one listener's ask, answered on the channel,
+/// serves the rest. Mirrored in Wadamesh (VoxFetch::kThumbProbe*).
+const int voxThumbProbeChannelWaitMs = 4000;
+const int voxThumbProbeSpreadMs = 4000;
+
+/// The same for a photo sent in a DM, which nobody pushes.
+const int voxThumbProbeDirectWaitMs = 1500;
+
+/// Asks for the thumbnail at most this many times, [voxThumbProbeRetryMs]
+/// (plus up to [voxThumbProbeSpreadMs]) apart, while it hasn't come. Then the
+/// bubble just offers the download.
+const int voxThumbProbeTries = 3;
+const int voxThumbProbeRetryMs = 8000;
