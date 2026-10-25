@@ -67,9 +67,52 @@ void main() {
     }
   });
 
-  test('only small photos are enhanced', () {
-    expect(VoxUpscaler.canEnhance(512, 384), isTrue);
-    expect(VoxUpscaler.canEnhance(513, 100), isFalse);
-    expect(VoxUpscaler.canEnhance(0, 10), isFalse);
+  test('4x up to 512 px, 2x up to 1024 px, none above', () {
+    expect(voxUpscaleScale(512, 384), 4);
+    expect(voxUpscaleScale(513, 100), 2);
+    expect(voxUpscaleScale(1024, 768), 2);
+    expect(voxUpscaleScale(1025, 10), 0);
+    expect(voxUpscaleScale(0, 10), 0);
+    expect(VoxUpscaler.canEnhance(768, 576), isTrue);
+    expect(VoxUpscaler.canEnhance(2000, 10), isFalse);
+  });
+
+  test('Sharp and Super Sharp open enhanced; More detail does not', () {
+    expect(voxPhotoIsSharp(36), isFalse); // More detail
+    expect(voxPhotoIsSharp(71), isTrue); // Sharp
+    expect(voxPhotoIsSharp(247), isTrue); // Super Sharp
+  });
+
+  test('2x write: the stand-in model halves back to nearest 2x', () {
+    const w = 90, h = 70, s = 2;
+    final rgba = Uint8List(w * h * 4);
+    for (var i = 0; i < w * h; i++) {
+      rgba[i * 4] = (i * 5) & 0xFF;
+      rgba[i * 4 + 1] = (i * 11) & 0xFF;
+      rgba[i * 4 + 2] = (i * 17) & 0xFF;
+    }
+    final out = Uint8List(w * s * h * s * 4);
+    for (final t in voxUpscaleTiles(w, h, tile: 32, pad: 8)) {
+      final x = voxUpscaleInput(rgba, w, t);
+      final plane = t.rw * t.rh, ow = t.rw * s, oh = t.rh * s;
+      final y = Float32List(3 * ow * oh);
+      for (var c = 0; c < 3; c++) {
+        for (var yy = 0; yy < oh; yy++) {
+          for (var xx = 0; xx < ow; xx++) {
+            y[c * ow * oh + yy * ow + xx] =
+                x[c * plane + (yy ~/ s) * t.rw + xx ~/ s];
+          }
+        }
+      }
+      voxUpscaleWrite(y, t, out, w, s: s);
+    }
+    for (var yy = 0; yy < h * s; yy++) {
+      for (var xx = 0; xx < w * s; xx++) {
+        final src = ((yy ~/ s) * w + xx ~/ s) * 4;
+        final dst = (yy * w * s + xx) * 4;
+        expect(out.sublist(dst, dst + 3), rgba.sublist(src, src + 3));
+        expect(out[dst + 3], 255);
+      }
+    }
   });
 }

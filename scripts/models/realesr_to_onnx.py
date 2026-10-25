@@ -11,7 +11,8 @@ Usage: python3 realesr_to_onnx.py realesr-general-x4v3.pth realesr-general-x4v3.
 needs numpy, onnx and onnxruntime). The output's SHA-256 must match
 VoxUpscaleModel.sha256Hex.
 
-Graph: input "input" float32 [1,3,H,W] in 0..1 RGB, output "output" [1,3,4H,4W].
+Graph: input "input" float32 [1,3,H,W] in 0..1 RGB, outputs "output" [1,3,4H,4W]
+and "output_x2" [1,3,2H,2W] (the same, each 2x2 block averaged).
 """
 import pickle
 import sys
@@ -85,9 +86,13 @@ def build(sd, opset=13):
     nodes.append(helper.make_node("Resize", ["input", "", "scales"], ["base"], mode="nearest",
                                   coordinate_transformation_mode="asymmetric", nearest_mode="floor"))
     nodes.append(helper.make_node("Add", ["up", "base"], ["output"]))
+    # The same picture at 2x (each 2x2 block averaged), for photos too big to
+    # show at 4x: the app reads this one and moves a quarter of the data.
+    nodes.append(helper.make_node("AveragePool", ["output"], ["output_x2"], kernel_shape=[2, 2], strides=[2, 2]))
     g = helper.make_graph(nodes, "realesr_general_x4v3", [
         helper.make_tensor_value_info("input", TensorProto.FLOAT, [1, 3, "h", "w"])], [
-        helper.make_tensor_value_info("output", TensorProto.FLOAT, [1, 3, "h4", "w4"])], inits)
+        helper.make_tensor_value_info("output", TensorProto.FLOAT, [1, 3, "h4", "w4"]),
+        helper.make_tensor_value_info("output_x2", TensorProto.FLOAT, [1, 3, "h2", "w2"])], inits)
     m = helper.make_model(g, opset_imports=[helper.make_opsetid("", opset)], producer_name="meshcore-open-tak")
     m.ir_version = 8
     m.doc_string = ("Real-ESRGAN realesr-general-x4v3 (SRVGGNetCompact), BSD-3-Clause, "
@@ -126,11 +131,14 @@ def main():
     import onnxruntime as ort
     rng = np.random.default_rng(1)
     x = rng.random((1, 3, 12, 17), dtype=np.float32)
-    got = ort.InferenceSession(dst, providers=["CPUExecutionProvider"]).run(None, {"input": x})[0]
+    got, got2 = ort.InferenceSession(dst, providers=["CPUExecutionProvider"]).run(None, {"input": x})
     want = reference(sd, x)
     err = float(np.abs(got - want).max())
-    print(f"{convs} convs, output {got.shape}, max |onnx - numpy| = {err:.2e}")
+    want2 = want.reshape(1, 3, 24, 2, 34, 2).mean(axis=(3, 5))
+    err2 = float(np.abs(got2 - want2).max())
+    print(f"{convs} convs, output {got.shape} and {got2.shape}, max |onnx - numpy| = {err:.2e}, x2 {err2:.2e}")
     assert got.shape == (1, 3, 48, 68) and err < 1e-3
+    assert got2.shape == (1, 3, 24, 34) and err2 < 1e-3
 
 
 if __name__ == "__main__":

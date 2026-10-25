@@ -3,10 +3,14 @@
 //
 // Model: Real-ESRGAN realesr-general-x4v3 (SRVGGNetCompact), BSD-3-Clause,
 // Copyright (c) 2021 Xintao Wang, https://github.com/xinntao/Real-ESRGAN.
-// Converted to ONNX (input "input" [1,3,H,W] RGB 0..1, output "output"
-// [1,3,4H,4W]) by scripts/models/realesr_to_onnx.py (no PyTorch needed) and
-// published as this repo's `upscale-onnx-v1` release. Downloaded on first use
-// (~5 MB) and checked by SHA-256, like the Mimi voice model.
+// Converted to ONNX by scripts/models/realesr_to_onnx.py (no PyTorch needed):
+// input "input" [1,3,H,W] RGB 0..1, outputs "output" [1,3,4H,4W] and
+// "output_x2" [1,3,2H,2W] (the same, 2x2 averaged). Published as this repo's
+// `upscale-onnx-v2` release, downloaded on first use (~5 MB) and checked by
+// SHA-256, like the Mimi voice model.
+//
+// Sharp and Super Sharp photos open enhanced on their own once the model is
+// here (voxPhotoIsSharp); any photo can be enhanced from the viewer's button.
 //
 // Display only: the stored photo, the chat bubble and anything forwarded stay
 // the photo as received. The viewer says the enhanced view may invent detail.
@@ -27,17 +31,33 @@ import 'package:path_provider/path_provider.dart';
 class VoxUpscaleModel {
   static const name = 'realesr-general-x4v3.onnx';
   static const sha256Hex =
-      '7d20565e99128ff6ae24878c76c5fed8ff9641afb10ac508ce7ec5e41234f21d';
-  static const bytes = 4860483;
+      'a42df91ba5418c2b2b51eb70b7b0eef8ced79251eee586ccf36fb0494a8831fe';
+  static const bytes = 4860599;
   static const url =
       'https://github.com/jade-on-mesh/meshcore-open-tak/releases/download/'
-      'upscale-onnx-v1/$name';
+      'upscale-onnx-v2/$name';
   static const scale = 4;
 }
 
-/// Photos up to this many pixels a side can be enhanced (4x: up to 2048 px).
-/// Larger ones are already sent at full detail.
-const voxUpscaleMaxSide = 512;
+/// Photos up to this many pixels a side are enhanced 4x (up to 2048 px).
+const voxUpscaleMaxSide4x = 512;
+
+/// Photos up to this many pixels a side can be enhanced: those over
+/// [voxUpscaleMaxSide4x] (Sharp is up to 768, Super Sharp 1024) 2x, from the
+/// model's averaged output, so the result stays within 2048 px.
+const voxUpscaleMaxSide = 1024;
+
+/// How much a photo of this size is enlarged: 4, 2, or 0 (not at all).
+int voxUpscaleScale(int width, int height) {
+  final side = max(width, height);
+  if (width <= 0 || height <= 0 || side > voxUpscaleMaxSide) return 0;
+  return side <= voxUpscaleMaxSide4x ? 4 : 2;
+}
+
+/// A Sharp or Super Sharp photo (71 or up to 247 packets; More detail is 36):
+/// the viewer opens these enhanced when the model is on the device.
+const voxSharpMinPackets = 50;
+bool voxPhotoIsSharp(int totalPackets) => totalPackets >= voxSharpMinPackets;
 
 /// Square tiles the image is enhanced in, so memory stays small. Each gets
 /// [voxUpscaleTilePad] pixels of context on every side, cropped away again: the
@@ -143,10 +163,7 @@ class VoxUpscaler extends ChangeNotifier {
 
   /// Whether a photo of this size can be enhanced.
   static bool canEnhance(int width, int height) =>
-      supported &&
-      width > 0 &&
-      height > 0 &&
-      max(width, height) <= voxUpscaleMaxSide;
+      supported && voxUpscaleScale(width, height) > 0;
 
   static int get downloadMb => (VoxUpscaleModel.bytes / 1e6).round();
 
@@ -174,9 +191,15 @@ class VoxUpscaler extends ChangeNotifier {
     if (!supported || _state == VoxUpscaleState.downloading) return;
     try {
       final f = await _file();
-      _state = await f.exists() && await f.length() == VoxUpscaleModel.bytes
+      final there = await f.exists();
+      _state = there && await f.length() == VoxUpscaleModel.bytes
           ? VoxUpscaleState.ready
           : VoxUpscaleState.missing;
+      // An older model is here: it was downloaded on purpose, so fetch the
+      // current one in the background (it replaces the file when checked).
+      if (there && _state == VoxUpscaleState.missing) {
+        unawaited(Future(download));
+      }
     } catch (_) {
       _state = VoxUpscaleState.missing;
     }
@@ -217,6 +240,7 @@ class VoxUpscaler extends ChangeNotifier {
         await part.delete();
         throw StateError('the download failed its checksum');
       }
+      if (await dest.exists()) await dest.delete(); // an older model
       await part.rename(dest.path);
       _state = VoxUpscaleState.ready;
     } catch (e) {
@@ -249,7 +273,8 @@ class VoxUpscaler extends ChangeNotifier {
     } catch (_) {}
   }
 
-  /// [image] enhanced 4x. [onProgress] gets 0..1 as tiles finish.
+  /// [image] enhanced, 4x or 2x ([voxUpscaleScale]). [onProgress] gets 0..1
+  /// as tiles finish.
   Future<ui.Image> enhance(
     ui.Image image, {
     void Function(double)? onProgress,
@@ -279,7 +304,8 @@ class VoxUpscaler extends ChangeNotifier {
     final session = _session ??= await _runtime.createSession(
       (await _file()).path,
     );
-    const s = VoxUpscaleModel.scale;
+    final s = voxUpscaleScale(w, h);
+    final outName = s == 4 ? 'output' : 'output_x2';
     final out = Uint8List(w * s * h * s * 4);
     final tiles = voxUpscaleTiles(w, h);
     for (var i = 0; i < tiles.length; i++) {
@@ -294,9 +320,8 @@ class VoxUpscaler extends ChangeNotifier {
       try {
         final result = await session.run({'input': input});
         outputs.addAll(result.values);
-        final y = await (result['output'] ?? result.values.first)
-            .asFlattenedList();
-        voxUpscaleWrite(y.cast<num>(), t, out, w);
+        final y = await result[outName]!.asFlattenedList();
+        voxUpscaleWrite(y.cast<num>(), t, out, w, s: s);
       } finally {
         await input.dispose();
         for (final o in outputs) {

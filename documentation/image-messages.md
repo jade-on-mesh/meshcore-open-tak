@@ -71,6 +71,34 @@ The source is `third_party/vox_av1/vox_av1.c`.
 
 Voice uses Codec2, which the Windows, macOS and Linux builds include.
 
+## Enhance (MeshCore Open TAK)
+
+In the full-screen viewer of a Mesh photo, the sparkle button shows the photo
+**enhanced** by an AI super-resolution model on the phone or computer: 4x up to
+512 pixels on the long side, 2x up to 1024 (every level up to Super Sharp).
+Tap it again for the photo as sent.
+
+**Sharp and Super Sharp photos open enhanced** on their own (a photo of 50 or
+more packets) once the model is on the device: the photo shows as sent with
+"Enhancing… N%" while it works, then the enhanced view. Without the model they
+open as sent; nothing is downloaded without asking.
+
+- **Model.** Real-ESRGAN `realesr-general-x4v3` (BSD-3-Clause, Xintao Wang),
+  about 5 MB, downloaded the first time from this repo's `upscale-onnx-v2`
+  release after a prompt, and checked by SHA-256. A device that has v1 (no 2x
+  output) fetches v2 on its own. `scripts/models/realesr_to_onnx.py` rebuilds
+  the file from the authors' weights without PyTorch, and the **Photo enhancer
+  model** workflow publishes it.
+- **What it changes.** Only what the viewer shows. The stored photo, the chat
+  bubble and a forwarded photo stay as received. The enhanced view is labelled
+  "AI-enhanced view: details may be invented": the model sharpens edges and
+  textures, and small text, faces and numbers can come out wrong.
+- **How.** ONNX Runtime on the CPU, in 160-pixel tiles with 32 pixels of
+  overlap, so memory stays small and the tiles join without seams. Over 512
+  pixels the model's output is averaged down 2x (`output_x2`), keeping the
+  result within 2048 pixels; a Super Sharp photo takes some seconds.
+- **Where.** Android, Windows, macOS and Linux. Not on the web build.
+
 ## AI sketch HD (MeshCore Open TAK)
 
 MeshCore Open TAK adds a third photo option beside Mesh photos and the ~150-byte AI sketch: **AI sketch HD**, AEIC-SE at the `ft2` rate point. A 512×512 photo becomes about 1–2 KB (8–15 packets with parity), far closer to the original than an AI sketch, at roughly half a Mesh photo's airtime.
