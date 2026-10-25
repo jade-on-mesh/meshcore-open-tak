@@ -169,7 +169,9 @@ def load_net(models):
     return bb, hd
 
 
-def build(models):
+def build(models, merge=True):
+    """The graph. merge=False takes the whole spectrum from the network (for a
+    restorer trained to rebuild the received band too, tools/voice-training)."""
     bb, hd = load_net(models)
     g = G()
     # ---- 8 kHz -> 48 kHz
@@ -205,9 +207,12 @@ def build(models):
     yr = g.op("Transpose", ["hd/real"], perm=[0, 2, 1])                # [1,T,1025]
     yi = g.op("Transpose", ["hd/imag"], perm=[0, 2, 1])
     # ---- keep what was received, add the upper band
-    mask = g.const(merge_mask(), "mask")
-    zr = g.op("Add", [xr, g.op("Mul", [g.op("Sub", [yr, xr]), mask])])
-    zi = g.op("Add", [xi, g.op("Mul", [g.op("Sub", [yi, xi]), mask])])
+    if merge:
+        mask = g.const(merge_mask(), "mask")
+        zr = g.op("Add", [xr, g.op("Mul", [g.op("Sub", [yr, xr]), mask])])
+        zi = g.op("Add", [xi, g.op("Mul", [g.op("Sub", [yi, xi]), mask])])
+    else:
+        zr, zi = yr, yi
     # ---- inverse STFT: mirror to the full spectrum, inverse DFT, overlap-add
     half = N_FFT // 2
     fr = g.op("Concat", [zr, g.slice(zr, half - 1, 0, 2, -1)], axis=2)

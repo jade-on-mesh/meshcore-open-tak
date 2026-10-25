@@ -1,0 +1,6 @@
+data/
+output/
+.venv/
+bin/
+kit-settings.txt
+__pycache__/

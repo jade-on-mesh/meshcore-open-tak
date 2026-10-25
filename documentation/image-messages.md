@@ -99,6 +99,10 @@ enhancer** downloaded, Codec2 clips play with that upper band filled in, at
   cores, so a 20-second clip takes a second or so before it plays; the result
   is kept with the clip's decoded audio.
 - **Where.** Android, Windows, macOS and Linux. Not on the web build.
+- **Training your own.** `tools/voice-training` is a kit for a gaming PC (on
+  Windows, unzip it and double-click START.bat). It fine-tunes this model into
+  a restorer that also cleans up Codec2's sound below 4 kHz, and trains the
+  tiny net Wadamesh TAK standalones can use for Brighter voice.
 
 ## Enhance (MeshCore Open TAK)
 
