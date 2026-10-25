@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -438,6 +439,38 @@ void main() {
       final seen = {for (var s = 0; s < 256; s++) _toHex(req.encode(salt: s))};
       expect(seen.length, greaterThanOrEqualTo(8));
       expect(seen, isNot(contains(_toHex(req.encode()))));
+    });
+
+    test('consecutive salts: 16 distinct retries for one missing packet', () {
+      final c = VoxSaltCounter(Random(3));
+      final seen = {
+        for (var i = 0; i < 16; i++) _toHex(req.encode(salt: c.next())),
+      };
+      expect(seen.length, 16);
+      const two = VoxVoiceFetchRequest(
+        sessionId: 'deadbeef',
+        requesterKey6: 'a1b2c3d4e5f6',
+        missingIndices: [213, 214],
+        saltOk: true,
+      );
+      final c2 = VoxSaltCounter(Random(9));
+      final seen2 = {
+        for (var i = 0; i < 32; i++) _toHex(two.encode(salt: c2.next())),
+      };
+      expect(seen2.length, 32);
+    });
+
+    test('same bytes as Wadamesh for the same salt', () {
+      // test/test_vox_wire.cpp: {1,2,3,35} with salt 0x13 repeats 2 four times.
+      const r = VoxVoiceFetchRequest(
+        sessionId: '1a2b3c4d',
+        requesterKey6: 'a1b2c3d4e5f6',
+        missingIndices: [35, 2, 1, 3, 2],
+        saltOk: true,
+        requesterPath: [0xAB, 0xCD],
+      );
+      final got = r.encode(salt: 0x13).sublist(12);
+      expect(got, [8, 1, 2, 3, 35, 2, 2, 2, 2, 2, 0xAB, 0xCD]);
     });
 
     test('salted requests still ask for the same packets', () {
