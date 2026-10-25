@@ -1,0 +1,81 @@
+name: Photo enhancer model
+
+# Builds the model behind the photo viewer's Enhance button
+# (lib/vox/vox_upscale.dart) and publishes it as the `upscale-onnx-v1` release,
+# where the app downloads it from.
+#
+# Real-ESRGAN realesr-general-x4v3 (BSD-3-Clause, Xintao Wang), from the
+# authors' release, converted to ONNX by scripts/models/realesr_to_onnx.py with
+# numpy and onnx (no PyTorch). Both the download and the result are checked
+# against pinned SHA-256s; the result's must equal VoxUpscaleModel.sha256Hex.
+#
+# On a branch that changes this file or the script: builds and checks only.
+# Once merged: run it by hand (Actions > Photo enhancer model > Run workflow) to
+# publish. Publishing again replaces the asset with the identical file.
+
+on:
+  push:
+    paths:
+      - .github/workflows/upscale-model.yml
+      - scripts/models/realesr_to_onnx.py
+    branches-ignore:
+      - main
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the release (otherwise only build and check)
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+env:
+  TAG: upscale-onnx-v1
+  PTH_URL: https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
+  PTH_SHA256: 8dc7edb9ac80ccdc30c3a5dca6616509367f05fbc184ad95b731f05bece96292
+  ONNX_SHA256: 7d20565e99128ff6ae24878c76c5fed8ff9641afb10ac508ce7ec5e41234f21d
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build and check
+        run: |
+          set -euo pipefail
+          pip install numpy onnx onnxruntime
+          mkdir -p out
+          curl -sSfL --retry 3 -o realesr-general-x4v3.pth "$PTH_URL"
+          echo "$PTH_SHA256  realesr-general-x4v3.pth" | sha256sum -c
+          python3 scripts/models/realesr_to_onnx.py realesr-general-x4v3.pth out/realesr-general-x4v3.onnx
+          echo "$ONNX_SHA256  out/realesr-general-x4v3.onnx" | sha256sum -c
+          grep -q "$ONNX_SHA256" lib/vox/vox_upscale.dart || { echo "::error::lib/vox/vox_upscale.dart expects another SHA-256"; exit 1; }
+          ls -l out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: realesr-general-x4v3-onnx
+          path: out/realesr-general-x4v3.onnx
+      - name: Publish
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cat > notes.md <<EOF
+          Model for the photo viewer's Enhance button (lib/vox/vox_upscale.dart). Not an app release.
+
+          realesr-general-x4v3.onnx: Real-ESRGAN realesr-general-x4v3 (SRVGGNetCompact), BSD-3-Clause, Copyright (c) 2021 Xintao Wang, https://github.com/xinntao/Real-ESRGAN. Converted from the authors' v0.2.5.0 weights by scripts/models/realesr_to_onnx.py. Input "input" float32 [1,3,H,W] RGB 0..1, output "output" [1,3,4H,4W].
+
+          SHA-256: $ONNX_SHA256
+          EOF
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" out/realesr-general-x4v3.onnx --clobber
+          else
+            gh release create "$TAG" out/realesr-general-x4v3.onnx --target "$GITHUB_SHA" \
+              --title "Photo enhancer model (Real-ESRGAN x4v3 ONNX)" --notes-file notes.md \
+              --prerelease --latest=false
+          fi

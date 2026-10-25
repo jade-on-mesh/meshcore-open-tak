@@ -13,6 +13,7 @@ import 'voice_message_bubble.dart'
     show showVoxVoiceLog, VoxCaption, VoxReceivedViaLabel;
 import 'voice_service.dart';
 import 'voice_wire.dart';
+import 'vox_upscale.dart';
 
 /// RGB888 picture -> ui.Image for display.
 Future<ui.Image> voxRgbToUiImage(VoxRgbImage img) {
@@ -371,31 +372,194 @@ class _VoxImageMessageContentState extends State<VoxImageMessageContent> {
   }
 }
 
-class _VoxImageViewer extends StatelessWidget {
+class _VoxImageViewer extends StatefulWidget {
   final ui.Image image;
   const _VoxImageViewer({required this.image});
 
   @override
+  State<_VoxImageViewer> createState() => _VoxImageViewerState();
+}
+
+/// The photo as sent, and on request an AI-enhanced 4x view ([VoxUpscaler]).
+/// The enhanced view is display only and says it may invent detail.
+class _VoxImageViewerState extends State<_VoxImageViewer> {
+  final VoxUpscaler _up = VoxUpscaler.instance;
+  ui.Image? _enhanced;
+  bool _showEnhanced = false;
+  bool _working = false;
+  double _progress = 0;
+
+  bool get _canEnhance =>
+      VoxUpscaler.canEnhance(widget.image.width, widget.image.height);
+
+  @override
+  void dispose() {
+    _enhanced?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _toggle() async {
+    if (_working) return;
+    if (_enhanced != null) {
+      setState(() => _showEnhanced = !_showEnhanced);
+      return;
+    }
+    if (!_up.isReady) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Enhance photos'),
+          content: Text(
+            'Sharpens a photo 4x on this device with an AI model '
+            '(Real-ESRGAN, about ${VoxUpscaler.downloadMb} MB, downloaded '
+            'once). The photo itself is not changed. The enhanced view can '
+            'invent detail, so don\'t rely on it for small text, faces or '
+            'numbers.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Download'),
+            ),
+          ],
+        ),
+      );
+      if (ok != true || !mounted) return;
+      setState(() {
+        _working = true;
+        _progress = 0;
+      });
+      void tick() {
+        if (mounted) setState(() => _progress = _up.progress * 0.3);
+      }
+
+      _up.addListener(tick);
+      await _up.download();
+      _up.removeListener(tick);
+      if (!mounted) return;
+      if (!_up.isReady) {
+        setState(() => _working = false);
+        _say(
+          'Couldn\'t download the enhancer: ${_up.error ?? 'unknown error'}',
+        );
+        return;
+      }
+    }
+    setState(() {
+      _working = true;
+      _progress = _up.isReady && _progress > 0 ? _progress : 0;
+    });
+    final base = _progress;
+    try {
+      final img = await _up.enhance(
+        widget.image,
+        onProgress: (p) {
+          if (mounted) setState(() => _progress = base + (1 - base) * p);
+        },
+      );
+      if (!mounted) {
+        img.dispose();
+        return;
+      }
+      setState(() {
+        _enhanced = img;
+        _showEnhanced = true;
+        _working = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _working = false);
+      _say('Couldn\'t enhance the photo: $e');
+    }
+  }
+
+  void _say(String text) {
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(content: Text(text)),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final shown = _showEnhanced && _enhanced != null
+        ? _enhanced!
+        : widget.image;
+    final enhanced = identical(shown, _enhanced);
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        title: Text('${image.width} × ${image.height} as sent'),
+        title: Text(
+          enhanced
+              ? '${shown.width} × ${shown.height} enhanced'
+              : '${shown.width} × ${shown.height} as sent',
+        ),
+        actions: [
+          if (_canEnhance)
+            IconButton(
+              tooltip: enhanced ? 'Show as sent' : 'Enhance (AI, 4x)',
+              onPressed: _working ? null : _toggle,
+              icon: Icon(
+                enhanced ? Icons.auto_awesome : Icons.auto_awesome_outlined,
+                color: enhanced ? Colors.amberAccent : Colors.white,
+              ),
+            ),
+        ],
+        bottom: _working
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(3),
+                child: LinearProgressIndicator(
+                  value: _progress > 0 ? _progress : null,
+                  minHeight: 3,
+                ),
+              )
+            : null,
       ),
-      body: InteractiveViewer(
-        maxScale: 8,
-        child: Center(
-          child: AspectRatio(
-            aspectRatio: image.width / image.height,
-            child: RawImage(
-              image: image,
-              fit: BoxFit.contain,
-              filterQuality: FilterQuality.medium,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: InteractiveViewer(
+              maxScale: 8,
+              child: Center(
+                child: AspectRatio(
+                  aspectRatio: shown.width / shown.height,
+                  child: RawImage(
+                    image: shown,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.medium,
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
+          if (enhanced)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 24,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Text(
+                    'AI-enhanced view: details may be invented',
+                    style: TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
