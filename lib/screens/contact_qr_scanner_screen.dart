@@ -50,7 +50,8 @@ class _ContactQrScannerScreenState extends State<ContactQrScannerScreen> {
                         context,
                         accept: (d) => parseContactQr(d) != null,
                       );
-                      if (heard != null && mounted) await _handleScannedData(heard);
+                      if (heard != null && mounted)
+                        await _handleScannedData(heard);
                     },
             ),
           IconButton(

@@ -1411,7 +1411,11 @@ Future<void> showTeamReportSheet(
               entries: teamReplyEntries(
                 context,
                 team.repliesFor(
-                  teamReplyRefKey(TeamReplyRef.report, r.authorKey4, r.reportId),
+                  teamReplyRefKey(
+                    TeamReplyRef.report,
+                    r.authorKey4,
+                    r.reportId,
+                  ),
                 ),
               ),
               codes: teamReportReplies,
@@ -1592,7 +1596,8 @@ class TeamMapOverlay extends StatelessWidget {
     final team = context.watch<TeamService>();
     // Bloodhound works without a team (a repeater, a watched report): then
     // only its cards show.
-    if (!team.enabled && team.bloodhound == null) return const SizedBox.shrink();
+    if (!team.enabled && team.bloodhound == null)
+      return const SizedBox.shrink();
     final own = team.enabled ? team.activeOwnAlert : null;
     final hound = team.bloodhound;
     final fix = team.fix;
@@ -2103,9 +2108,7 @@ class _StatusPill extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: () => Navigator.of(
-          context,
-        ).push(
+        onTap: () => Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (_) => const TeamScreen(fromMap: true),
           ),

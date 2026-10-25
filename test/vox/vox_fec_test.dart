@@ -110,10 +110,7 @@ void main() {
     final present = {
       for (var i = 4; i < c.n; i++) i: pk[i],
     }; // 4 lost, 3 parity
-    expect(
-      voxFecRebuild(total: c.n, present: present, parity: pmap),
-      isEmpty,
-    );
+    expect(voxFecRebuild(total: c.n, present: present, parity: pmap), isEmpty);
   });
 
   test('parity packets look like voice packets of another clip', () {

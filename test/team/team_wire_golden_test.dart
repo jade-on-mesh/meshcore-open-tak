@@ -46,7 +46,11 @@ void main() {
       time: DateTime.fromMillisecondsSinceEpoch(1760000000 * 1000),
       label: 'To Alpha-1',
       routeMethod: RouteMethod.driving,
-      points: const [(47.6, -122.33), (47.6, -122.31523), (47.60905, -122.31523)],
+      points: const [
+        (47.6, -122.33),
+        (47.6, -122.31523),
+        (47.60905, -122.31523),
+      ],
     );
     expect(_hex(s1.encode()), kS1);
     final s3 = TeamShape(

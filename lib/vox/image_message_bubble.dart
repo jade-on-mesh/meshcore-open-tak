@@ -498,9 +498,9 @@ class _VoxImageViewerState extends State<_VoxImageViewer> {
   }
 
   void _say(String text) {
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      SnackBar(content: Text(text)),
-    );
+    ScaffoldMessenger.maybeOf(
+      context,
+    )?.showSnackBar(SnackBar(content: Text(text)));
   }
 
   @override

@@ -210,11 +210,13 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
 
     final gapsNote = partial ? ' · tap to play with gaps' : '';
     final String subtitle = switch (st.status) {
-      _ when st.status != VoxClipStatus.complete &&
-          playback == VoxPlayback.playing =>
+      _
+          when st.status != VoxClipStatus.complete &&
+              playback == VoxPlayback.playing =>
         'Playing with gaps · tap to stop',
-      _ when st.status != VoxClipStatus.complete &&
-          playback == VoxPlayback.preparing =>
+      _
+          when st.status != VoxClipStatus.complete &&
+              playback == VoxPlayback.preparing =>
         'Preparing audio…',
       VoxClipStatus.complete when !s.canPlay(env) =>
         'Mimi voice · tap to get the voice model '
@@ -235,7 +237,8 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
             : '${env.durationSeconds}s · tap to download'
                   '${airHint == null ? '' : ' ($airHint)'}',
       VoxClipStatus.requesting => '${st.message ?? 'Requesting…'}$gapsNote',
-      VoxClipStatus.receiving => 'Receiving ${st.received}/${st.total}$gapsNote',
+      VoxClipStatus.receiving =>
+        'Receiving ${st.received}/${st.total}$gapsNote',
       VoxClipStatus.unavailable =>
         '${st.message ?? 'Voice unavailable right now'}$gapsNote',
     };
@@ -1022,7 +1025,10 @@ class VoxCaption extends StatelessWidget {
     );
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 260),
-      child: Text(text, style: TextStyle(color: color, fontSize: 14 * scale)),
+      child: Text(
+        text,
+        style: TextStyle(color: color, fontSize: 14 * scale),
+      ),
     );
   }
 }
@@ -1059,7 +1065,9 @@ class VoxReceivedViaLabel extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            via == VoxReceivedVia.mainMesh ? Icons.hub_outlined : Icons.perm_media_outlined,
+            via == VoxReceivedVia.mainMesh
+                ? Icons.hub_outlined
+                : Icons.perm_media_outlined,
             size: 12,
             color: color,
           ),

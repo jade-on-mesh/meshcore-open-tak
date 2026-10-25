@@ -285,7 +285,10 @@ class _WalkieSheetState extends State<WalkieSheet> {
                   ),
                 ),
               const SizedBox(height: 18),
-              Text(l.walkie_reach, style: Theme.of(context).textTheme.labelLarge),
+              Text(
+                l.walkie_reach,
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
               const SizedBox(height: 6),
               SegmentedButton<bool>(
                 segments: [

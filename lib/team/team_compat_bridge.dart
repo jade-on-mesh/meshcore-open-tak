@@ -221,7 +221,9 @@ class TeamCompatBridge {
           kind: ShapeKind.route,
           time: now,
           points: pts,
-          color: w.color == null ? TeamColor.purple : nearestTeamColor(w.color!),
+          color: w.color == null
+              ? TeamColor.purple
+              : nearestTeamColor(w.color!),
           label: w.name,
         ),
       );

@@ -72,7 +72,12 @@ void main() {
 
   test('version.json from before desktop builds', () {
     final info = AppUpdateInfo.fromVersionJson(
-      {'version': '9.5.0-tak', 'build': 1300, 'sha256': 'd' * 64, 'signed': false},
+      {
+        'version': '9.5.0-tak',
+        'build': 1300,
+        'sha256': 'd' * 64,
+        'signed': false,
+      },
       assetUrls: urls,
       platform: 'android',
     )!;
@@ -89,7 +94,11 @@ void main() {
 
   test('bad fields', () {
     expect(
-      AppUpdateInfo.fromVersionJson('nope', assetUrls: urls, platform: 'android'),
+      AppUpdateInfo.fromVersionJson(
+        'nope',
+        assetUrls: urls,
+        platform: 'android',
+      ),
       isNull,
     );
     expect(
@@ -119,12 +128,19 @@ void main() {
     expect(info.downloadUrl, 'https://example.invalid/w.exe');
     expect(info.sha256, isNull);
     expect(
-      AppUpdateInfo.fromTitle('Something else', assetUrls: urls, platform: 'android'),
+      AppUpdateInfo.fromTitle(
+        'Something else',
+        assetUrls: urls,
+        platform: 'android',
+      ),
       isNull,
     );
   });
 
   test('every platform has a release file name', () {
-    expect(appUpdateAssetNames.keys, containsAll(['android', 'windows', 'macos', 'linux']));
+    expect(
+      appUpdateAssetNames.keys,
+      containsAll(['android', 'windows', 'macos', 'linux']),
+    );
   });
 }

@@ -1181,9 +1181,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       else ...[
         SelectableText(fw.label),
         if (c.firmwareBuildDate != null)
-          Text(l10n.settings_aboutRadioBuild(c.firmwareBuildDate!), style: small),
+          Text(
+            l10n.settings_aboutRadioBuild(c.firmwareBuildDate!),
+            style: small,
+          ),
         if (c.manufacturerName != null)
-          Text(l10n.settings_aboutRadioBoard(c.manufacturerName!), style: small),
+          Text(
+            l10n.settings_aboutRadioBoard(c.manufacturerName!),
+            style: small,
+          ),
         if (c.firmwareVerCode != null)
           Text(
             l10n.settings_aboutRadioProtocol(c.firmwareVerCode!),

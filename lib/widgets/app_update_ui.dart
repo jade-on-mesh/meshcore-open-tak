@@ -96,13 +96,15 @@ class _BannerCard extends StatelessWidget {
                     children: [
                       Text(
                         l10n.appUpdate_bannerTitle,
-                        style: Theme.of(context).textTheme.titleSmall
-                            ?.copyWith(color: scheme.onPrimaryContainer),
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: scheme.onPrimaryContainer,
+                        ),
                       ),
                       Text(
                         l10n.appUpdate_bannerSubtitle(version, buildNumber),
-                        style: Theme.of(context).textTheme.bodySmall
-                            ?.copyWith(color: scheme.onPrimaryContainer),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: scheme.onPrimaryContainer,
+                        ),
                       ),
                     ],
                   ),
@@ -230,7 +232,10 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
                 ],
                 if (newer != null && newer.changes.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  Text(l10n.appUpdate_changes, style: theme.textTheme.titleSmall),
+                  Text(
+                    l10n.appUpdate_changes,
+                    style: theme.textTheme.titleSmall,
+                  ),
                   const SizedBox(height: 4),
                   for (final change in newer.changes.take(8))
                     Padding(

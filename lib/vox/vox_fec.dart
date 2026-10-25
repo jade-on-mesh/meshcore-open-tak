@@ -30,9 +30,8 @@ const int voxFecBlock = 20;
 const int voxFecSidXor = 0xFEC0FEC0;
 
 /// The session id parity packets for clip [sid] carry, and back.
-String voxFecParitySid(String sid) => voxSessionIdFromInt(
-  int.parse(sid, radix: 16) ^ voxFecSidXor,
-);
+String voxFecParitySid(String sid) =>
+    voxSessionIdFromInt(int.parse(sid, radix: 16) ^ voxFecSidXor);
 String voxFecDataSid(String paritySid) => voxFecParitySid(paritySid);
 
 /// Parity packets for a block of [k] data packets: voice gets more (a clip

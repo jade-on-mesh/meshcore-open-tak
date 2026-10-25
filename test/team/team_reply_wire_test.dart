@@ -33,10 +33,7 @@ void main() {
   });
 
   test('watched-channel replies', () {
-    expect(
-      watchReplyText(TeamReplyCode.onMyWay, '3fa1'),
-      'On my way ↩3fa1',
-    );
+    expect(watchReplyText(TeamReplyCode.onMyWay, '3fa1'), 'On my way ↩3fa1');
     expect(
       watchReplyText(TeamReplyCode.eta, '3fa1', arg: 10),
       'ETA 10 min ↩3fa1',

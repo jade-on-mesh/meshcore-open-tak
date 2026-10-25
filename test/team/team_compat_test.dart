@@ -92,10 +92,7 @@ void main() {
       expect(r.radioName, 'Hill Top');
       expect(r.keyPrefix, 'a1b2c3d4e5f6');
       expect(TeamCompatCap.parse('#CAP:R:-:Hill Top'), isNull);
-      expect(
-        const TeamCompatCapRequest(radioName: 'X').encode(),
-        '#CAP:R:-:X',
-      );
+      expect(const TeamCompatCapRequest(radioName: 'X').encode(), '#CAP:R:-:X');
     });
   });
 

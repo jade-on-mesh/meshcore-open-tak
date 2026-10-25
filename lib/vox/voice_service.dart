@@ -294,7 +294,8 @@ class VoxVoiceService extends ChangeNotifier {
       _ => 'untagged (radio does not say which)',
     };
     // The last relay's path hash says which repeater it came through.
-    final last = hops != null && hops > 0 && lastHop != null && lastHop.isNotEmpty
+    final last =
+        hops != null && hops > 0 && lastHop != null && lastHop.isNotEmpty
         ? ', last hop ${_hex(lastHop)}'
         : '';
     final key = '$radio, ${hops == null ? 'direct/raw' : '$hops hops'}$last';
@@ -1818,6 +1819,7 @@ class VoxVoiceService extends ChangeNotifier {
       await prefs.setBool(_kPushChannel, v);
     } catch (_) {}
   }
+
   bool _autoPlay = true;
   bool _autoDownloadChannels = false;
 
@@ -2048,11 +2050,7 @@ class VoxVoiceService extends ChangeNotifier {
   /// sender pushes its photos to the radios in range, and another listener's
   /// ask brings them to everyone on the channel, so each waits a little
   /// (spread out) first.
-  void _probeThumb(
-    VoxVoiceEnvelope env, {
-    Contact? sender,
-    int? channelIndex,
-  }) {
+  void _probeThumb(VoxVoiceEnvelope env, {Contact? sender, int? channelIndex}) {
     if (!env.isImage || !imagesAvailable) return;
     final sid = env.sessionId;
     if (!_thumbProbed.add(sid)) return;
@@ -2162,7 +2160,10 @@ class VoxVoiceService extends ChangeNotifier {
     final sid = env.sessionId;
     final clip = _incoming[sid];
     if (clip != null && clip.rebuilt > 0) {
-      _logEvent('complete, ${clip.rebuilt} of its packets rebuilt from parity', sid);
+      _logEvent(
+        'complete, ${clip.rebuilt} of its packets rebuilt from parity',
+        sid,
+      );
     }
     if (!env.isImage && _partialPlayed.contains(sid)) {
       // Heard already with gaps: ready to play whole, not played again.
@@ -2345,7 +2346,11 @@ class VoxVoiceService extends ChangeNotifier {
         !clip.packets.containsKey(pkt.index) &&
         clip.envelope.totalPackets - clip.packetsAtLastAttempt <= 24) {
       _logEvent(
-        'got #${pkt.index} ${hops == null ? 'by raw data' : hops == 0 ? 'zero-hop on the channel' : '$hops hops on the channel'}'
+        'got #${pkt.index} ${hops == null
+            ? 'by raw data'
+            : hops == 0
+            ? 'zero-hop on the channel'
+            : '$hops hops on the channel'}'
         '${lastHop != null && lastHop.isNotEmpty && (hops ?? 0) > 0 ? ' via ${_hex(lastHop)}' : ''}',
         sid,
       );
@@ -2572,7 +2577,8 @@ class VoxVoiceService extends ChangeNotifier {
       return;
     }
     final key = '${req.sessionId}/ch$channel';
-    final sig = '$key/${req.requesterKey6}|${req.missingIndices?.join(',') ?? 'all'}';
+    final sig =
+        '$key/${req.requesterKey6}|${req.missingIndices?.join(',') ?? 'all'}';
     final now = DateTime.now();
     final last = _recentServes[sig];
     if (last != null && now.difference(last) < const Duration(seconds: 6)) {
@@ -2687,11 +2693,9 @@ class VoxVoiceService extends ChangeNotifier {
         Uint8List payload;
         if (index >= _ChannelBurst.parityBase) {
           if (!held.whole) continue;
-          parity ??= voxFecEncode(
-            burst.sid,
-            [for (var i = 0; i < held.total; i++) held.packets[i]!],
-            image: held.image,
-          );
+          parity ??= voxFecEncode(burst.sid, [
+            for (var i = 0; i < held.total; i++) held.packets[i]!,
+          ], image: held.image);
           final k = index - _ChannelBurst.parityBase;
           if (k >= parity.length) continue;
           payload = parity[k];
@@ -2822,7 +2826,10 @@ class VoxVoiceService extends ChangeNotifier {
     if (_serveGen[key] != gen) return; // superseded while queued
     await _refreshMediaAir();
     if (!_mediaAllowed) {
-      _logEvent('not answering: it would go out on the main mesh', req.sessionId);
+      _logEvent(
+        'not answering: it would go out on the main mesh',
+        req.sessionId,
+      );
       return;
     }
     final whole = await _loadFromStore(req.sessionId);
@@ -2869,11 +2876,9 @@ class VoxVoiceService extends ChangeNotifier {
     }
     // The whole clip asked for: its parity follows.
     final parity = wanted == null && held.whole
-        ? voxFecEncode(
-            req.sessionId,
-            [for (var i = 0; i < held.total; i++) held.packets[i]!],
-            image: held.image,
-          )
+        ? voxFecEncode(req.sessionId, [
+            for (var i = 0; i < held.total; i++) held.packets[i]!,
+          ], image: held.image)
         : const <Uint8List>[];
 
     if (viaChannel != null) {

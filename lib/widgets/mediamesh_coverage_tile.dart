@@ -37,7 +37,10 @@ class MediaMeshCoverageTile extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(l10n.coverage_title, style: Theme.of(context).textTheme.titleSmall),
+        Text(
+          l10n.coverage_title,
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           secondary: Icon(

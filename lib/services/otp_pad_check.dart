@@ -63,5 +63,8 @@ PadCheck? parsePadCheck(String text) {
   if (path != 'otp/check') return null;
   final fp = uri.queryParameters['fp'] ?? '';
   if (!_fp.hasMatch(fp)) return null;
-  return PadCheck(fp.toLowerCase(), int.tryParse(uri.queryParameters['n'] ?? '') ?? 0);
+  return PadCheck(
+    fp.toLowerCase(),
+    int.tryParse(uri.queryParameters['n'] ?? '') ?? 0,
+  );
 }

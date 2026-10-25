@@ -20,7 +20,10 @@ void main() {
         if (v > peak) peak = v;
       }
       expect(peak, greaterThan(8000), reason: '${s.label} is audible');
-      expect(seen.add(w.length.toString() + w.sublist(44, 2044).join()), isTrue);
+      expect(
+        seen.add(w.length.toString() + w.sublist(44, 2044).join()),
+        isTrue,
+      );
     }
   });
 

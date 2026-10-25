@@ -54,9 +54,7 @@ class _Tool {
 
 void _openTactical(BuildContext context, int tab) => Navigator.push(
   context,
-  MaterialPageRoute(
-    builder: (_) => TeamScreen(initialTab: tab, fromMap: true),
-  ),
+  MaterialPageRoute(builder: (_) => TeamScreen(initialTab: tab, fromMap: true)),
 );
 
 /// Opens the Tools grid. [onChat] toggles the chat pane; [onDraw] starts a
@@ -127,9 +125,9 @@ Future<void> showMapTools(
     _Tool(
       Icons.view_in_ar,
       'AR View',
-      (c) => Navigator.of(c).push(
-        MaterialPageRoute<void>(builder: (_) => const ArViewScreen()),
-      ),
+      (c) => Navigator.of(
+        c,
+      ).push(MaterialPageRoute<void>(builder: (_) => const ArViewScreen())),
     ),
     _Tool(Icons.my_location, 'Go To', (c) => _showGoTo(c, team, onGoTo)),
     _Tool(Icons.timeline, 'Track History', (c) => _showTrackHistory(c)),
@@ -529,11 +527,7 @@ Future<void> _showHoundPicker(
                       '${w.channel.name} · ${l10n.hound_away(roadDistance(d))}',
                     ),
                     onTap: () {
-                      team.houndPoint(
-                        w.lat!,
-                        w.lon!,
-                        w.place ?? w.headline,
-                      );
+                      team.houndPoint(w.lat!, w.lon!, w.place ?? w.headline);
                       Navigator.pop(c);
                     },
                   ),

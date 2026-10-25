@@ -71,8 +71,10 @@ class RemoteIdObservation {
   bool get hasPosition => lat != null && lon != null;
 }
 
-int _i32(Uint8List b, int o) => ByteData.sublistView(b).getInt32(o, Endian.little);
-int _u16(Uint8List b, int o) => ByteData.sublistView(b).getUint16(o, Endian.little);
+int _i32(Uint8List b, int o) =>
+    ByteData.sublistView(b).getInt32(o, Endian.little);
+int _u16(Uint8List b, int o) =>
+    ByteData.sublistView(b).getUint16(o, Endian.little);
 
 /// A fixed-width text field: printable ASCII up to the first NUL, trimmed.
 String _text(Uint8List b, int o, int n) {
@@ -174,7 +176,11 @@ class RemoteIdTrack {
   int idType = 0;
   int uaType = 0;
   double? lat, lon;
-  int heightAglM = 0, altGeoM = 0, speedCms = 0, headingDeg = 0, vertSpeedCms = 0;
+  int heightAglM = 0,
+      altGeoM = 0,
+      speedCms = 0,
+      headingDeg = 0,
+      vertSpeedCms = 0;
   double? opLat, opLon;
   String? operatorId;
   String? description;
@@ -219,7 +225,8 @@ class RemoteIdTrack {
     if (!hasPosition) return false;
     if (postedAt == null) return true;
     if (now.difference(postedAt!) < remoteIdPostInterval) return false;
-    return remoteIdDistanceM(postedLat!, postedLon!, lat!, lon!) >= remoteIdPostMoveM;
+    return remoteIdDistanceM(postedLat!, postedLon!, lat!, lon!) >=
+        remoteIdPostMoveM;
   }
 
   void markPosted(DateTime now) {
@@ -233,8 +240,12 @@ double remoteIdDistanceM(double lat1, double lon1, double lat2, double lon2) {
   const r = 6371000.0;
   double rad(double d) => d * math.pi / 180;
   final dLat = rad(lat2 - lat1), dLon = rad(lon2 - lon1);
-  final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
-      math.cos(rad(lat1)) * math.cos(rad(lat2)) * math.sin(dLon / 2) * math.sin(dLon / 2);
+  final a =
+      math.sin(dLat / 2) * math.sin(dLat / 2) +
+      math.cos(rad(lat1)) *
+          math.cos(rad(lat2)) *
+          math.sin(dLon / 2) *
+          math.sin(dLon / 2);
   return r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
 }
 
@@ -265,13 +276,16 @@ class RemoteIdTracker {
       _idByAddress[address] = (id, now);
     } else {
       final known = _idByAddress[address];
-      if (known == null || now.difference(known.$2) > forgetAddress) return null;
+      if (known == null || now.difference(known.$2) > forgetAddress)
+        return null;
       id = known.$1;
     }
     var t = _tracks[id];
     if (t == null) {
       if (_tracks.length >= maxTracks) {
-        final oldest = _tracks.values.reduce((a, b) => a.lastSeen.isBefore(b.lastSeen) ? a : b);
+        final oldest = _tracks.values.reduce(
+          (a, b) => a.lastSeen.isBefore(b.lastSeen) ? a : b,
+        );
         _tracks.remove(oldest.uasId);
       }
       t = _tracks[id] = RemoteIdTrack(id, now);

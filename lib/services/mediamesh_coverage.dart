@@ -116,9 +116,8 @@ class CoverageSample {
   });
 
   /// The best repeater's margin; null when none answered.
-  double? get best => repeaters.isEmpty
-      ? null
-      : repeaters.map((r) => r.margin).reduce(max);
+  double? get best =>
+      repeaters.isEmpty ? null : repeaters.map((r) => r.margin).reduce(max);
 
   MediaMeshReach get reach => mediaMeshReachFor(best);
 

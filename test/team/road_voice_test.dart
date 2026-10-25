@@ -53,35 +53,44 @@ void main() {
     expect(spokenDistanceEnglish(23400), '23 kilometers');
   });
 
-  test('a drive: start, early call, at the turn, the stretch after, arrival', () {
-    final r = _route(RoadMode.drive);
-    final g = RoadGuide(r);
-    final a = RoadAnnouncer();
-    final said = <String>[];
-    // Driving east 50 m at a time, then north.
-    for (var m = 0.0; m <= 2000; m += 25) {
-      final (lat, lon) = m <= 1000
-          ? (_lat0, _lon0 + _dLon * m / 1000)
-          : (_lat0 + _dLat * (m - 1000) / 1000, _lon0 + _dLon);
-      final s = a.road(r, g.update(lat, lon), w);
-      if (s != null) said.add(s);
-    }
-    expect(said, [
-      'Drive east on Pine Street.',
-      'In 500 meters, Turn left onto 5th Avenue.',
-      'Turn left onto 5th Avenue.',
-      'Continue for 1 kilometer.',
-      'In 500 meters, You will arrive at your destination.',
-      'You have arrived.',
-    ]);
-  });
+  test(
+    'a drive: start, early call, at the turn, the stretch after, arrival',
+    () {
+      final r = _route(RoadMode.drive);
+      final g = RoadGuide(r);
+      final a = RoadAnnouncer();
+      final said = <String>[];
+      // Driving east 50 m at a time, then north.
+      for (var m = 0.0; m <= 2000; m += 25) {
+        final (lat, lon) = m <= 1000
+            ? (_lat0, _lon0 + _dLon * m / 1000)
+            : (_lat0 + _dLat * (m - 1000) / 1000, _lon0 + _dLon);
+        final s = a.road(r, g.update(lat, lon), w);
+        if (s != null) said.add(s);
+      }
+      expect(said, [
+        'Drive east on Pine Street.',
+        'In 500 meters, Turn left onto 5th Avenue.',
+        'Turn left onto 5th Avenue.',
+        'Continue for 1 kilometer.',
+        'In 500 meters, You will arrive at your destination.',
+        'You have arrived.',
+      ]);
+    },
+  );
 
   test('a new route after leaving the old one says so', () {
     final a = RoadAnnouncer();
     final r1 = _route(RoadMode.walk);
     final r2 = _route(RoadMode.walk);
-    expect(a.road(r1, RoadGuide(r1).update(_lat0, _lon0), w), 'Drive east on Pine Street.');
-    expect(a.road(r2, RoadGuide(r2).update(_lat0, _lon0 + _dLon * 0.2), w), 'Rerouting.');
+    expect(
+      a.road(r1, RoadGuide(r1).update(_lat0, _lon0), w),
+      'Drive east on Pine Street.',
+    );
+    expect(
+      a.road(r2, RoadGuide(r2).update(_lat0, _lon0 + _dLon * 0.2), w),
+      'Rerouting.',
+    );
   });
 
   test('walking calls come later than driving ones', () {
@@ -89,19 +98,29 @@ void main() {
     final g = RoadGuide(r);
     final a = RoadAnnouncer();
     a.road(r, g.update(_lat0, _lon0), w); // the start
-    expect(a.road(r, g.update(_lat0, _lon0 + _dLon * 0.6), w), isNull); // 400 m to go
+    expect(
+      a.road(r, g.update(_lat0, _lon0 + _dLon * 0.6), w),
+      isNull,
+    ); // 400 m to go
     expect(
       a.road(r, g.update(_lat0, _lon0 + _dLon * 0.92), w),
       'In 80 meters, Turn left onto 5th Avenue.',
     );
-    expect(a.road(r, g.update(_lat0, _lon0 + _dLon * 0.99), w), 'Turn left onto 5th Avenue.');
+    expect(
+      a.road(r, g.update(_lat0, _lon0 + _dLon * 0.99), w),
+      'Turn left onto 5th Avenue.',
+    );
   });
 
   test('a shared route: its turns from its shape', () {
     const pts = [(47.6, -122.33), (47.6, -122.31523), (47.60905, -122.31523)];
     final a = RoadAnnouncer();
-    String? at(double lat, double lon, int next) =>
-        a.sharedRoute('r>', routeNextTurn(pts, next, lat, lon), RoadMode.walk, w);
+    String? at(double lat, double lon, int next) => a.sharedRoute(
+      'r>',
+      routeNextTurn(pts, next, lat, lon),
+      RoadMode.walk,
+      w,
+    );
     expect(at(47.6, -122.325, 1), isNull); // 730 m from the corner
     expect(at(47.6, -122.3165, 1), 'In 100 meters, Turn left');
     expect(at(47.6, -122.3153, 1), 'Turn left');

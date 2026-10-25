@@ -756,7 +756,8 @@ class NotificationService {
           android: AndroidNotificationDetails(
             'vox_team_replies',
             'Team replies',
-            channelDescription: 'Teammates answering your alerts, reports and pins',
+            channelDescription:
+                'Teammates answering your alerts, reports and pins',
             importance: Importance.high,
             priority: Priority.high,
             icon: '@mipmap/ic_launcher',
