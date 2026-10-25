@@ -42,6 +42,7 @@ import 'resample.dart';
 import 'voice_codec.dart';
 import 'voice_codec_choice.dart';
 import 'voice_dsp.dart';
+import 'vox_voice_enhance.dart';
 import 'voice_wire.dart';
 import 'walkie_wire.dart';
 import 'vox_timing.dart';
@@ -216,6 +217,7 @@ class VoxVoiceService extends ChangeNotifier {
     unawaited(_loadTestSettings());
     unawaited(_loadReceivedVia());
     mimi.addListener(notifyListeners);
+    enhancer.addListener(_onEnhancerChanged);
   }
 
   // ------------------------------- which radio profile clips came over
@@ -522,6 +524,8 @@ class VoxVoiceService extends ChangeNotifier {
       _forceRepeaterRoute = prefs.getBool(_kForceRoute) ?? false;
       _forcedRepeaterKeys = prefs.getStringList(_kForceRouteKeys) ?? const [];
       _preferMimi = prefs.getBool(_kPreferMimi) ?? true;
+      _enhanceVoice = prefs.getBool(_kEnhanceVoice) ?? true;
+      _onEnhancerChanged();
       final c2 = VoxVoiceMode.fromWireId(
         prefs.getInt(_kCodec2Mode) ?? voxDefaultVoiceMode.wireId,
       );
@@ -822,11 +826,16 @@ class VoxVoiceService extends ChangeNotifier {
     return VoxEncodedClip(mode, bits, seconds);
   }
 
-  /// What the listener will hear, as a WAV file.
+  /// What the listener will hear, as a WAV file (as decoded, not enhanced:
+  /// radios and apps without the enhancer play it like this).
   Future<Uint8List> previewWav(VoxEncodedClip clip) =>
-      _decodeToWav(clip.mode, clip.bits);
+      _decodeToWav(clip.mode, clip.bits, enhance: false);
 
-  Future<Uint8List> _decodeToWav(VoxVoiceMode mode, Uint8List bits) async {
+  Future<Uint8List> _decodeToWav(
+    VoxVoiceMode mode,
+    Uint8List bits, {
+    bool enhance = true,
+  }) async {
     if (mode.isMimi) {
       final audio = await mimi.decode(bits);
       return voxPcm16ToWav(
@@ -834,8 +843,60 @@ class VoxVoiceService extends ChangeNotifier {
         sampleRate: VoxMimiSpec.sampleRate,
       );
     }
+    if (enhance && enhancesVoice) {
+      final raw = await compute(_decodeRawJob, _DecodeJob(bits, mode));
+      try {
+        final sw = Stopwatch()..start();
+        final pcm = await enhancer.enhance(raw);
+        _logEvent(
+          'enhanced ${(raw.length / voxCodecRate).toStringAsFixed(1)} s '
+          'in ${sw.elapsedMilliseconds}ms',
+        );
+        return voxPcm16ToWav(pcm, sampleRate: VoxVoiceEnhanceModel.outRate);
+      } catch (e) {
+        _logEvent('enhance failed, playing as decoded: $e');
+      }
+      return voxPcm16ToWav(
+        await compute(voxPlayClip, raw),
+        sampleRate: voxPlayRate,
+      );
+    }
     final pcm = await compute(_decodeJob, _DecodeJob(bits, mode));
     return voxPcm16ToWav(pcm, sampleRate: voxPlayRate);
+  }
+
+  // ------------------------------------------------ AI voice enhancement
+
+  /// Fills in the upper band of received Codec2 clips when they play.
+  final VoxVoiceEnhancer enhancer = VoxVoiceEnhancer.instance;
+
+  static const _kEnhanceVoice = 'vox_enhance_voice';
+  bool _enhanceVoice = true;
+
+  /// Whether Codec2 clips are enhanced when the model is downloaded.
+  bool get enhanceVoice => _enhanceVoice;
+
+  /// Whether Codec2 clips play enhanced right now.
+  bool get enhancesVoice => _enhanceVoice && enhancer.isReady;
+
+  bool _enhancedBefore = false;
+  void _onEnhancerChanged() {
+    // Decoded clips are cached as WAVs: drop them when what they'd sound like
+    // changes, so the next play is decoded again.
+    if (enhancesVoice != _enhancedBefore) {
+      _enhancedBefore = enhancesVoice;
+      _wavCache.clear();
+    }
+    notifyListeners();
+  }
+
+  Future<void> setEnhanceVoice(bool v) async {
+    _enhanceVoice = v;
+    _onEnhancerChanged();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kEnhanceVoice, v);
+    } catch (_) {}
   }
 
   VoxVoiceEnvelope _register(VoxEncodedClip clip) {
@@ -2822,6 +2883,7 @@ class VoxVoiceService extends ChangeNotifier {
   void dispose() {
     mimi.removeListener(notifyListeners);
     mimi.dispose();
+    enhancer.removeListener(_onEnhancerChanged);
     _sub.cancel();
     if (_connector.voxControlTextInterceptor == _onControlText) {
       _connector.voxControlTextInterceptor = null;
@@ -2858,6 +2920,8 @@ Int16List _prepJob(Int16List pcm48k) =>
 /// Decoded and made ready to play (levelled, at [voxPlayRate]).
 Int16List _decodeJob(_DecodeJob j) =>
     voxPlayClip(voxDecodeBits(j.bits, j.mode));
+
+Int16List _decodeRawJob(_DecodeJob j) => voxDecodeBits(j.bits, j.mode);
 
 class _ImageEncodeJob {
   final VoxRgbImage ref;

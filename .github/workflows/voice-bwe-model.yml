@@ -1,0 +1,93 @@
+name: Voice enhancer model
+
+# Builds the model behind "Enhance Codec2 voice (AI)"
+# (lib/vox/vox_voice_enhance.dart) and publishes it as the `voice-bwe-onnx-v1`
+# release, where the app downloads it from.
+#
+# LavaSR's bandwidth-extension enhancer (Apache-2.0, Yatharth Sharma,
+# https://github.com/ysharma3501/LavaSR) as exported to ONNX by
+# https://github.com/Topping1/LavaSR-ONNX (Apache-2.0), wrapped with its signal
+# processing by scripts/models/voice_bwe_to_onnx.py. The downloads and the
+# result are checked against pinned SHA-256s; the result's must equal
+# VoxVoiceEnhanceModel.sha256Hex.
+#
+# On a branch that changes this file or the script: builds and checks only.
+# Once merged: run it by hand (Actions > Voice enhancer model > Run workflow) to
+# publish. Publishing again replaces the asset with the identical file.
+
+on:
+  push:
+    paths:
+      - .github/workflows/voice-bwe-model.yml
+      - scripts/models/voice_bwe_to_onnx.py
+    branches-ignore:
+      - main
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the release (otherwise only build and check)
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+env:
+  TAG: voice-bwe-onnx-v1
+  NAME: lavasr-bwe-8k-48k.onnx
+  SRC: https://github.com/Topping1/LavaSR-ONNX/releases/download/Alpha-v0.1
+  ONNX_SHA256: 23a73ebdec18e122d60d5c5de563b74f9f2559d2564d8e8b5a00c16c1f769df4
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Build and check
+        run: |
+          set -euo pipefail
+          # Pinned: the output's hash depends on how they write the file.
+          pip install numpy==2.5.3 onnx==1.23.2 onnxruntime==1.29.0
+          mkdir -p src out
+          for f in enhancer_backbone.onnx enhancer_backbone.onnx.data \
+                   enhancer_spec_head.onnx enhancer_spec_head.onnx.data; do
+            curl -sSfL --retry 3 -o "src/$f" "$SRC/$f"
+          done
+          (cd src && sha256sum -c) <<'SUMS'
+          841e96d261dffdf1dc974f3d29e2cfcf1b16fd0b358749c1ace0bbfa1d4c8ddd  enhancer_backbone.onnx
+          a125a4ede7cfdd1073d906a3cadf2171a30be6a40f296ad28772e0ba258de8c5  enhancer_backbone.onnx.data
+          f66fd164c55fd1b07e5cea5e687c71522b192f452691128fd7ae4e6b26dbc683  enhancer_spec_head.onnx
+          b855e309b027af9aa75285b97b345571b6bd695a30fde434d06c979d83885fd6  enhancer_spec_head.onnx.data
+          SUMS
+          python3 scripts/models/voice_bwe_to_onnx.py src "out/$NAME" --check
+          sha256sum "out/$NAME"
+          echo "$ONNX_SHA256  out/$NAME" | sha256sum -c
+          grep -q "$ONNX_SHA256" lib/vox/vox_voice_enhance.dart || { echo "::error::lib/vox/vox_voice_enhance.dart expects another SHA-256"; exit 1; }
+          ls -l out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: voice-bwe-onnx
+          path: out/${{ env.NAME }}
+      - name: Publish
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cat > notes.md <<EOF
+          Model for "Enhance Codec2 voice (AI)" (lib/vox/vox_voice_enhance.dart). Not an app release.
+
+          $NAME: LavaSR's bandwidth-extension enhancer (Vocos backbone and spectrogram head), Apache-2.0, Yatharth Sharma, https://github.com/ysharma3501/LavaSR, from the ONNX export at https://github.com/Topping1/LavaSR-ONNX (Apache-2.0). Wrapped with its signal processing by scripts/models/voice_bwe_to_onnx.py: input "pcm" float32 [N] at 8 kHz (N >= 256), output "audio" float32 [6N] at 48 kHz. Large weights stored as float16.
+
+          SHA-256: $ONNX_SHA256
+          EOF
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "out/$NAME" --clobber
+          else
+            gh release create "$TAG" "out/$NAME" --target "$GITHUB_SHA" \
+              --title "Voice enhancer model (LavaSR ONNX)" --notes-file notes.md \
+              --prerelease --latest=false
+          fi

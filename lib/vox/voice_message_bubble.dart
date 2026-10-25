@@ -16,6 +16,7 @@ import 'image_message_bubble.dart';
 import 'mimi.dart';
 import 'voice_service.dart';
 import 'voice_wire.dart';
+import 'vox_voice_enhance.dart';
 import 'walkie_wire.dart' show voxWaveBars;
 
 class VoxVoiceMessageContent extends StatefulWidget {
@@ -484,6 +485,7 @@ void showVoxVoiceLog(BuildContext context, VoxVoiceService service) {
                   ),
                   const Divider(height: 1),
                   VoxMimiTile(service: service),
+                  VoxEnhanceVoiceTile(service: service),
                   VoxCodec2QualityTile(service: service),
                   VoxAutoPlayTile(service: service),
                   VoxForcedRouteTile(service: service),
@@ -887,6 +889,90 @@ class VoxMimiTile extends StatelessWidget {
               ),
               trailing: FilledButton(
                 onPressed: mimi.download,
+                child: const Text('Get'),
+              ),
+            );
+        }
+      },
+    );
+  }
+}
+
+/// AI voice enhancement: download / progress / on-off.
+class VoxEnhanceVoiceTile extends StatelessWidget {
+  final VoxVoiceService service;
+  const VoxEnhanceVoiceTile({super.key, required this.service});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!VoxVoiceEnhancer.supported) return const SizedBox.shrink();
+    return ListenableBuilder(
+      listenable: service,
+      builder: (context, _) {
+        final e = service.enhancer;
+        final size = '${VoxVoiceEnhancer.downloadMb} MB';
+        switch (e.state) {
+          case VoxVoiceEnhanceState.ready:
+            return GestureDetector(
+              onLongPress: () async {
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (c) => AlertDialog(
+                    title: const Text('Delete voice enhancer?'),
+                    content: Text(
+                      'Frees $size. Codec2 clips will play as decoded.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(c, false),
+                        child: const Text('Cancel'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(c, true),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
+                if (ok == true) await e.deleteModel();
+              },
+              child: SwitchListTile(
+                secondary: const Icon(Icons.auto_awesome),
+                title: const Text('Enhance Codec2 voice (AI)'),
+                subtitle: const Text(
+                  'Fills in the treble Codec2 leaves out, so voices sound '
+                  'less muffled. What was received plays as it is; the added '
+                  'band is generated. Long-press to delete the model.',
+                ),
+                value: service.enhanceVoice,
+                onChanged: service.setEnhanceVoice,
+              ),
+            );
+          case VoxVoiceEnhanceState.downloading:
+            return ListTile(
+              leading: const Icon(Icons.downloading),
+              title: Text(
+                'Downloading voice enhancer ${(e.progress * 100).round()}%',
+              ),
+              subtitle: LinearProgressIndicator(value: e.progress),
+              trailing: TextButton(
+                onPressed: e.cancelDownload,
+                child: const Text('Cancel'),
+              ),
+            );
+          case VoxVoiceEnhanceState.missing:
+          case VoxVoiceEnhanceState.failed:
+            return ListTile(
+              leading: const Icon(Icons.auto_awesome),
+              title: const Text('AI voice enhancer'),
+              subtitle: Text(
+                e.state == VoxVoiceEnhanceState.failed
+                    ? 'Download failed: ${e.error}. Tap Get to retry.'
+                    : 'Makes Codec2 clips sound less muffled on this phone. '
+                          'One-time $size download (Wi-Fi recommended).',
+              ),
+              trailing: FilledButton(
+                onPressed: e.download,
                 child: const Text('Get'),
               ),
             );
