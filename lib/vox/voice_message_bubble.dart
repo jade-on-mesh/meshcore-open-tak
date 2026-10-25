@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../connector/meshcore_connector.dart';
 import '../l10n/l10n.dart';
@@ -443,20 +444,42 @@ void showVoxVoiceLog(BuildContext context, VoxVoiceService service) {
               final text = lines.join('\n');
               return Column(
                 children: [
-                  ListTile(
-                    title: const Text('Voice diagnostics'),
-                    subtitle: const Text(
-                      'Newest first. Copy and share when reporting a problem.',
+                  const ListTile(
+                    title: Text('Voice diagnostics'),
+                    subtitle: Text(
+                      'Newest first. Copy or share the whole log when '
+                      'reporting a problem.',
                     ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.copy),
-                      tooltip: 'Copy',
-                      onPressed: () {
-                        Clipboard.setData(ClipboardData(text: text));
-                        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-                          const SnackBar(content: Text('Copied')),
-                        );
-                      },
+                  ),
+                  // Buttons, not an icon at the edge: on a phone the icon
+                  // was off screen and the log can't be selected in one go.
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        FilledButton.tonalIcon(
+                          icon: const Icon(Icons.copy),
+                          label: const Text('Copy log'),
+                          onPressed: () {
+                            Clipboard.setData(ClipboardData(text: text));
+                            ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                              const SnackBar(content: Text('Copied')),
+                            );
+                          },
+                        ),
+                        FilledButton.tonalIcon(
+                          icon: const Icon(Icons.share),
+                          label: const Text('Share log'),
+                          onPressed: () => SharePlus.instance.share(
+                            ShareParams(
+                              text: text,
+                              subject: 'MeshCore Open TAK voice diagnostics',
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const Divider(height: 1),
