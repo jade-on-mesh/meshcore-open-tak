@@ -178,7 +178,10 @@ class _VoxImageMessageContentState extends State<VoxImageMessageContent> {
     if (_image != null) {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => _VoxImageViewer(image: _image!),
+          builder: (_) => _VoxImageViewer(
+            image: _image!,
+            autoEnhance: voxPhotoIsSharp(widget.envelope.totalPackets),
+          ),
           fullscreenDialog: true,
         ),
       );
@@ -374,7 +377,11 @@ class _VoxImageMessageContentState extends State<VoxImageMessageContent> {
 
 class _VoxImageViewer extends StatefulWidget {
   final ui.Image image;
-  const _VoxImageViewer({required this.image});
+
+  /// Show it enhanced straight away (a Sharp or Super Sharp photo), when the
+  /// model is already on the device. Otherwise it opens as sent.
+  final bool autoEnhance;
+  const _VoxImageViewer({required this.image, this.autoEnhance = false});
 
   @override
   State<_VoxImageViewer> createState() => _VoxImageViewerState();
@@ -391,6 +398,19 @@ class _VoxImageViewerState extends State<_VoxImageViewer> {
 
   bool get _canEnhance =>
       VoxUpscaler.canEnhance(widget.image.width, widget.image.height);
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.autoEnhance && _canEnhance) unawaited(_autoEnhance());
+  }
+
+  // Never downloads: without the model the photo just opens as sent.
+  Future<void> _autoEnhance() async {
+    await _up.refresh();
+    if (!mounted || !_up.isReady || _enhanced != null || _working) return;
+    await _toggle();
+  }
 
   @override
   void dispose() {
@@ -410,7 +430,7 @@ class _VoxImageViewerState extends State<_VoxImageViewer> {
         builder: (ctx) => AlertDialog(
           title: const Text('Enhance photos'),
           content: Text(
-            'Sharpens a photo 4x on this device with an AI model '
+            'Sharpens a photo (up to 4x) on this device with an AI model '
             '(Real-ESRGAN, about ${VoxUpscaler.downloadMb} MB, downloaded '
             'once). The photo itself is not changed. The enhanced view can '
             'invent detail, so don\'t rely on it for small text, faces or '
@@ -502,7 +522,7 @@ class _VoxImageViewerState extends State<_VoxImageViewer> {
         actions: [
           if (_canEnhance)
             IconButton(
-              tooltip: enhanced ? 'Show as sent' : 'Enhance (AI, 4x)',
+              tooltip: enhanced ? 'Show as sent' : 'Enhance (AI)',
               onPressed: _working ? null : _toggle,
               icon: Icon(
                 enhanced ? Icons.auto_awesome : Icons.auto_awesome_outlined,
@@ -537,7 +557,7 @@ class _VoxImageViewerState extends State<_VoxImageViewer> {
               ),
             ),
           ),
-          if (enhanced)
+          if (enhanced || _working)
             Positioned(
               left: 0,
               right: 0,
@@ -552,9 +572,11 @@ class _VoxImageViewerState extends State<_VoxImageViewer> {
                     color: Colors.black.withValues(alpha: 0.6),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Text(
-                    'AI-enhanced view: details may be invented',
-                    style: TextStyle(color: Colors.white, fontSize: 12),
+                  child: Text(
+                    _working
+                        ? 'Enhancing… ${(_progress * 100).round()}%'
+                        : 'AI-enhanced view: details may be invented',
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ),
               ),
