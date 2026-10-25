@@ -145,6 +145,9 @@ class _IncomingClip {
   int attempts = 0;
   int directFailures = 0;
 
+  /// Every request's salt, so retries for the same packets differ.
+  final VoxSaltCounter salts = VoxSaltCounter();
+
   /// The channel fallback has been tried since the last manual retry.
   bool triedChannel = false;
 
@@ -1204,10 +1207,24 @@ class VoxVoiceService extends ChangeNotifier {
     clip.expectedLast = missingNow.isEmpty
         ? clip.envelope.totalPackets - 1
         : missingNow.last;
+    // A retry before any packet came in lists the packets rather than asking
+    // for "all", so it can be salted (an unsalted repeat is dropped as already
+    // seen). It names the first voxSaltedFetchIndices; the next asks for the
+    // rest.
+    final listAll =
+        clip.packets.isEmpty &&
+        clip.attempts > 1 &&
+        clip.envelope.totalPackets > 0;
+    List<int>? want = clip.packets.isEmpty ? null : clip.missing;
+    if (listAll) {
+      want = List.generate(clip.envelope.totalPackets, (i) => i);
+      clip.expectedLast =
+          min(clip.envelope.totalPackets, voxSaltedFetchIndices) - 1;
+    }
     final req = VoxVoiceFetchRequest(
       sessionId: clip.envelope.sessionId,
       requesterKey6: voxKey6Hex(self),
-      missingIndices: clip.packets.isEmpty ? null : clip.missing,
+      missingIndices: want,
       saltOk: true,
     );
     clip.status = VoxClipStatus.requesting;
@@ -1248,7 +1265,7 @@ class VoxVoiceService extends ChangeNotifier {
           await _connector.sendFrame(
             buildSendRawDataFrame(
               path: route,
-              payload: withPath.encode(salt: _rng.nextInt(256)),
+              payload: withPath.encode(salt: clip.salts.next()),
             ),
             waitForGenericAck: true,
           );
@@ -1280,7 +1297,7 @@ class VoxVoiceService extends ChangeNotifier {
             clip.envelope.sessionId,
           );
           final ok = await _connector.sendChannelDataBlobs(
-            [req.encode(salt: _rng.nextInt(256))],
+            [req.encode(salt: clip.salts.next())],
             channelIndex: clip.channelIndex!,
             dataType: voxChannelDataType,
             interChunkDelay: Duration.zero,
@@ -1907,7 +1924,7 @@ class VoxVoiceService extends ChangeNotifier {
           sid,
         );
         await _connector.sendChannelDataBlobs(
-          [req.encode(salt: _rng.nextInt(256))],
+          [req.encode(salt: clip.salts.next())],
           channelIndex: ch,
           dataType: voxChannelDataType,
           interChunkDelay: Duration.zero,
@@ -1930,7 +1947,7 @@ class VoxVoiceService extends ChangeNotifier {
       await _connector.sendFrame(
         buildSendRawDataFrame(
           path: route,
-          payload: withPath.encode(salt: _rng.nextInt(256)),
+          payload: withPath.encode(salt: clip.salts.next()),
         ),
         waitForGenericAck: true,
       );

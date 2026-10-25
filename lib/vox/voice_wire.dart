@@ -395,6 +395,22 @@ class VoxVoicePacket {
 
 /// Binary fetch request: `[0x72][sid:4][flags][key6:6][count][indices...]`,
 /// then `[len][path]` with [voxFetchFlagHasPath].
+/// Indices listed in a salted fetch request (room for up to 16 repeats).
+const voxSaltedFetchIndices = 124;
+
+/// One download's request salts: from a random start, counting up, so no two
+/// of its requests for the same packets are alike (a random draw repeats one
+/// within a few tries when only a packet or two is missing).
+class VoxSaltCounter {
+  VoxSaltCounter([Random? rng]) : _next = (rng ?? Random()).nextInt(256);
+  int _next;
+  int next() {
+    final s = _next;
+    _next = (_next + 1) & 0xFF;
+    return s;
+  }
+}
+
 class VoxVoiceFetchRequest {
   static const int minLength = 13;
 
@@ -453,11 +469,13 @@ class VoxVoiceFetchRequest {
     );
   }
 
-  /// With [salt], appends it so this request differs from any earlier one.
-  /// With [salt], a missing-only request repeats one of its indices 1-8
-  /// times. Radios drop any packet whose payload they have already seen, so
-  /// without this a retry for the same packets is byte-identical to the last
-  /// one and never reaches the sender (its own radio heard the first). Every
+  /// With [salt], a missing-only request repeats listed index
+  /// `(salt >> 4) % n` `(salt & 15) + 1` times, as Wadamesh does. Radios drop
+  /// any packet whose payload they have already seen, so without this a retry
+  /// for the same packets is byte-identical to the last one and never reaches
+  /// the sender (its own radio heard the first). Consecutive salts give
+  /// distinct requests for 16 × n tries, so callers count up from a random
+  /// start ([VoxSaltCounter]) rather than draw at random. Every
   /// parser reads the indices as a set, and the layout stays exactly VE3's:
   /// firmware that routes photo traffic by shape (mikecarper/MeshCore checks
   /// the flags and the exact length) still sees a photo request.
@@ -470,12 +488,12 @@ class VoxVoiceFetchRequest {
               .toList()
             ..sort());
     // Keep the request inside one raw packet.
-    final room = salt == null ? 140 : 132;
+    final room = salt == null ? 140 : voxSaltedFetchIndices;
     final capped = [
       ...(missing.length > room ? missing.sublist(0, room) : missing),
       if (salt != null && missing.isNotEmpty)
-        for (var i = 0; i <= (salt & 7); i++)
-          missing[(salt >> 3) % min(missing.length, room)],
+        for (var i = 0; i <= (salt & 15); i++)
+          missing[((salt & 0xFF) >> 4) % min(missing.length, room)],
     ];
     final path = requesterPath;
     final pathBytes = path == null ? 0 : 1 + path.length;
