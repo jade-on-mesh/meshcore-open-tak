@@ -1,0 +1,90 @@
+name: Voice training kit
+
+# Packs tools/voice-training as a ready-to-run Windows zip: download it from a
+# run's Artifacts ("voice-training-kit"), unzip, double-click START.bat.
+#
+# Adds what the kit can't carry in the repo:
+#   bin/c2round.exe   Codec2 round trip, cross-built with MinGW from Wadamesh
+#                     TAK's lib/codec2 (the Codec2 the app and standalones use)
+#   bin/uv.exe        astral-sh/uv, which sets up the kit's own Python
+#   kit/voice_bwe_to_onnx.py   the app's model graph builder, for exporting
+# and checks the kit's signal path on Linux with the same Codec2 first.
+
+on:
+  push:
+    paths:
+      - .github/workflows/voice-training-kit.yml
+      - tools/voice-training/**
+      - scripts/models/voice_bwe_to_onnx.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  UV_VERSION: "0.9.5"
+  UV_SHA256: 515dc53d7553f1357d0abc1f70acd921fbb9e30230b1d9a08737236daa6ee920
+
+jobs:
+  kit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jade-on-mesh/wadamesh-tak
+          path: wadamesh
+          sparse-checkout: lib/codec2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build c2round (Linux, for the check, and Windows)
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y -qq gcc-mingw-w64-x86-64 >/dev/null
+          C=wadamesh/lib/codec2
+          FLAGS="-O2 -w -DCODEC2_MODE_700C_EN=0 -DGIT_HASH=\"kit\" -I $C/include -I $C/src"
+          gcc $FLAGS tools/voice-training/c2round.c $C/src/*.c -lm -o c2round
+          x86_64-w64-mingw32-gcc $FLAGS -static tools/voice-training/c2round.c $C/src/*.c -lm -o c2round.exe
+          ls -l c2round c2round.exe
+      - name: Check the signal path (Codec2, playback, Brighter voice features)
+        run: |
+          set -euo pipefail
+          pip install -q numpy scipy soundfile
+          cd tools/voice-training
+          C2ROUND=$GITHUB_WORKSPACE/c2round python - <<'PY'
+          import numpy as np
+          from kit import dsp
+          t = np.arange(16000) / 8000
+          x = 0.4 * np.sin(2 * np.pi * 300 * t) * (1 + np.sin(2 * np.pi * 2 * t))
+          c8 = dsp.codec2(x, "1200")
+          assert c8.size == 16000 - 16000 % 320, c8.size
+          y = dsp.play_out(c8)
+          a = dsp.analyse(y)
+          f = dsp.net_inputs(a)
+          assert f.shape == (a["m"].size, 40), f.shape
+          lag = dsp.lag_of(c8, x * 32767, 8000, 400)
+          print("codec2 ok:", c8.size, "samples; lag", lag, "; features", f.shape)
+          PY
+      - name: Assemble
+        run: |
+          set -euo pipefail
+          K=voice-training-kit
+          mkdir -p $K/bin $K/kit $K/scripts
+          cp tools/voice-training/START.bat tools/voice-training/requirements.txt tools/voice-training/c2round.c $K/
+          cp tools/voice-training/README.md $K/README.md
+          cp tools/voice-training/scripts/kit.ps1 $K/scripts/
+          cp tools/voice-training/kit/*.py $K/kit/
+          cp scripts/models/voice_bwe_to_onnx.py $K/kit/
+          cp c2round.exe $K/bin/
+          curl -sSfL -o uv.zip "https://github.com/astral-sh/uv/releases/download/$UV_VERSION/uv-x86_64-pc-windows-msvc.zip"
+          echo "$UV_SHA256  uv.zip" | sha256sum -c
+          unzip -q -j uv.zip uv.exe -d $K/bin/
+          # Windows line endings for the files people open or run there.
+          sed -i 's/$/\r/' $K/START.bat $K/scripts/kit.ps1 $K/README.md $K/requirements.txt
+          find $K -type f | sort
+      - uses: actions/upload-artifact@v4
+        with:
+          name: voice-training-kit
+          path: voice-training-kit
+          retention-days: 90

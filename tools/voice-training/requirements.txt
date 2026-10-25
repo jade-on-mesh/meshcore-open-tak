@@ -1,0 +1,6 @@
+# PyTorch is installed separately, for CUDA 12.8 (RTX 50 series): see scripts/kit.ps1.
+numpy>=2.1
+scipy>=1.14
+soundfile>=0.13
+onnx>=1.17
+onnxruntime>=1.20
