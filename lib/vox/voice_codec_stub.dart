@@ -18,7 +18,8 @@ class VoxCodec2Stream {
   }
   int get samplesPerFrame => 320;
   int get bytesPerFrame => 6;
-  Uint8List encode(Int16List pcm) => throw UnsupportedError('Codec2 unavailable');
+  Uint8List encode(Int16List pcm) =>
+      throw UnsupportedError('Codec2 unavailable');
   Int16List decode(Uint8List bits) =>
       throw UnsupportedError('Codec2 unavailable');
   void dispose() {}

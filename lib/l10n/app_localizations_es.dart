@@ -144,7 +144,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mosaic_tag => 'Tag my photos with where I am';
 
   @override
-  String get mosaic_tagHelp => 'Adds 📍 and your position to the caption of photos you send. Everyone who can see the photo sees it.';
+  String get mosaic_tagHelp =>
+      'Adds 📍 and your position to the caption of photos you send. Everyone who can see the photo sees it.';
 
   @override
   String get mosaic_all => 'All photos as a timeline';
@@ -6374,16 +6375,19 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mediaMesh_title => 'MediaMesh Settings';
 
   @override
-  String get mediaMesh_settingsSubtitle => 'Photos and voice on a second frequency';
+  String get mediaMesh_settingsSubtitle =>
+      'Photos and voice on a second frequency';
 
   @override
-  String get mediaMesh_noFirmware => 'This radio\'s firmware has no MediaMesh (radio2). Use Wadamesh, or MeshCore firmware with radio2 and media routing.';
+  String get mediaMesh_noFirmware =>
+      'This radio\'s firmware has no MediaMesh (radio2). Use Wadamesh, or MeshCore firmware with radio2 and media routing.';
 
   @override
   String get mediaMesh_cantRun => 'This radio can\'t run MediaMesh.';
 
   @override
-  String get mediaMesh_noMediaRouting => 'This firmware has radio2 but cannot route media to it yet. Saving with radio2 on will fail until the radio is updated.';
+  String get mediaMesh_noMediaRouting =>
+      'This firmware has radio2 but cannot route media to it yet. Saving with radio2 on will fail until the radio is updated.';
 
   @override
   String get mediaMesh_mode => 'radio2';
@@ -6398,7 +6402,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mediaMesh_modeListenSend => 'Listen + send';
 
   @override
-  String get mediaMesh_modeHelp => 'Listen hears photos and voice sent on radio2 but never sends there. Listen + send also sends. The main mesh is always heard.';
+  String get mediaMesh_modeHelp =>
+      'Listen hears photos and voice sent on radio2 but never sends there. Listen + send also sends. The main mesh is always heard.';
 
   @override
   String get mediaMesh_sentOn => 'Sent on radio2';
@@ -6413,25 +6418,30 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mediaMesh_custom => 'Custom';
 
   @override
-  String get mediaMesh_photosVoiceHelp => 'Photos and voice clips go on radio2. Text, adverts and ACKs stay on the main mesh.';
+  String get mediaMesh_photosVoiceHelp =>
+      'Photos and voice clips go on radio2. Text, adverts and ACKs stay on the main mesh.';
 
   @override
-  String get mediaMesh_everythingHelp => 'Messages go on both radios and media follows each contact or channel, so radio2-only nodes hear everything.';
+  String get mediaMesh_everythingHelp =>
+      'Messages go on both radios and media follows each contact or channel, so radio2-only nodes hear everything.';
 
   @override
-  String get mediaMesh_customHelp => 'Set from the radio console. Saving leaves it as it is.';
+  String get mediaMesh_customHelp =>
+      'Set from the radio console. Saving leaves it as it is.';
 
   @override
   String get mediaMesh_frequency => 'radio2 frequency (MHz)';
 
   @override
-  String get mediaMesh_frequencyRange => 'Enter a frequency between 150 and 960 MHz';
+  String get mediaMesh_frequencyRange =>
+      'Enter a frequency between 150 and 960 MHz';
 
   @override
   String get mediaMesh_frequencyMain => 'Must differ from the main radio';
 
   @override
-  String get mediaMesh_footer => 'Everyone sharing photos must use the same radio2 settings. The radio switches between both frequencies, so heavy media traffic costs some main-mesh reception.';
+  String get mediaMesh_footer =>
+      'Everyone sharing photos must use the same radio2 settings. The radio switches between both frequencies, so heavy media traffic costs some main-mesh reception.';
 
   @override
   String get mediaMesh_saved => 'radio2 settings saved';
@@ -6464,7 +6474,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mediaMesh_temporary => 'Temporary radio2';
 
   @override
-  String get mediaMesh_temporaryHelp => 'Try the profile above for a while without saving it. The saved radio2 comes back afterwards, or on a reboot.';
+  String get mediaMesh_temporaryHelp =>
+      'Try the profile above for a while without saving it. The saved radio2 comes back afterwards, or on a reboot.';
 
   @override
   String get mediaMesh_temp15 => '15 min';
@@ -6493,7 +6504,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mediaMesh_openConsole => 'Radio console';
 
   @override
-  String get mediaMesh_openConsoleSubtitle => 'Schedules, tempradio, diagnostics';
+  String get mediaMesh_openConsoleSubtitle =>
+      'Schedules, tempradio, diagnostics';
 
   @override
   String get txRoute_menu => 'Send on…';
@@ -6519,16 +6531,20 @@ class AppLocalizationsEs extends AppLocalizations {
   String get txRoute_off => 'Don\'t send';
 
   @override
-  String get txRoute_help => 'Auto follows the MediaMesh settings. Only sending changes; this radio still hears both.';
+  String get txRoute_help =>
+      'Auto follows the MediaMesh settings. Only sending changes; this radio still hears both.';
 
   @override
-  String get txRoute_boundByName => 'This #r2- channel always uses radio2. Rename it to change that.';
+  String get txRoute_boundByName =>
+      'This #r2- channel always uses radio2. Rename it to change that.';
 
   @override
-  String get txRoute_unsupported => 'This radio\'s firmware can\'t choose a radio per contact or channel.';
+  String get txRoute_unsupported =>
+      'This radio\'s firmware can\'t choose a radio per contact or channel.';
 
   @override
-  String get txRoute_radio2Unavailable => 'radio2 can\'t send right now (off or listen only).';
+  String get txRoute_radio2Unavailable =>
+      'radio2 can\'t send right now (off or listen only).';
 
   @override
   String txRoute_active(String where) {
@@ -6548,7 +6564,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get radioConsole_send => 'Send';
 
   @override
-  String get radioConsole_intro => 'Commands run on the connected radio. Try: get mediamesh, get radio2.status, get radio2.timing, set tempradio2 off, tempradio, normalradio, get radioat2, get tx.media.';
+  String get radioConsole_intro =>
+      'Commands run on the connected radio. Try: get mediamesh, get radio2.status, get radio2.timing, set tempradio2 off, tempradio, normalradio, get radioat2, get tx.media.';
 
   @override
   String get radioConsole_noReply => '(no reply)';
@@ -6557,7 +6574,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get radioConsole_failed => 'No answer from the radio';
 
   @override
-  String get channels_scannedPrivateChannel => 'That code is for a private channel, so it is filled in under Join a Private Channel.';
+  String get channels_scannedPrivateChannel =>
+      'That code is for a private channel, so it is filled in under Join a Private Channel.';
 
   @override
   String get appUpdate_title => 'App update';
@@ -6585,7 +6603,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get appUpdate_notChecked => 'Not checked yet';
 
   @override
-  String get appUpdate_localBuild => 'This is a local build, so updates are only checked when you ask. Installing a published build may need the app uninstalled first.';
+  String get appUpdate_localBuild =>
+      'This is a local build, so updates are only checked when you ask. Installing a published build may need the app uninstalled first.';
 
   @override
   String get appUpdate_checkNow => 'Check now';
@@ -6605,16 +6624,19 @@ class AppLocalizationsEs extends AppLocalizations {
   String get appUpdate_installing => 'Opening the installer…';
 
   @override
-  String get appUpdate_installerHint => 'Android asks you to confirm the install. Your messages and settings stay.';
+  String get appUpdate_installerHint =>
+      'Android asks you to confirm the install. Your messages and settings stay.';
 
   @override
-  String get appUpdate_permissionNeeded => 'Android needs your permission for MeshCore Open TAK to install updates. Turn on "Allow from this source", then come back and tap Download and install again.';
+  String get appUpdate_permissionNeeded =>
+      'Android needs your permission for MeshCore Open TAK to install updates. Turn on \"Allow from this source\", then come back and tap Download and install again.';
 
   @override
   String get appUpdate_openPermission => 'Open settings';
 
   @override
-  String get appUpdate_debugSigned => 'This build is signed with a debug key, so Android will refuse to install it over the app you have. Uninstall first, or wait for a release-signed build.';
+  String get appUpdate_debugSigned =>
+      'This build is signed with a debug key, so Android will refuse to install it over the app you have. Uninstall first, or wait for a release-signed build.';
 
   @override
   String get appUpdate_changes => 'Recent changes';
@@ -6623,7 +6645,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get appUpdate_autoCheck => 'Check automatically';
 
   @override
-  String get appUpdate_autoCheckHint => 'Every few hours, from the Latest build on GitHub';
+  String get appUpdate_autoCheckHint =>
+      'Every few hours, from the Latest build on GitHub';
 
   @override
   String appUpdate_checkFailed(String reason) {
@@ -6653,7 +6676,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get ar_title => 'AR view';
 
   @override
-  String get ar_noPosition => 'Waiting for your position: labels appear once the phone has a GPS fix.';
+  String get ar_noPosition =>
+      'Waiting for your position: labels appear once the phone has a GPS fix.';
 
   @override
   String ar_noCompass(String reason) {
@@ -6666,7 +6690,8 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get appUpdate_bannerTitle => 'A new version of MeshCore Open TAK is ready';
+  String get appUpdate_bannerTitle =>
+      'A new version of MeshCore Open TAK is ready';
 
   @override
   String appUpdate_bannerSubtitle(String version, int build) {
@@ -6683,19 +6708,24 @@ class AppLocalizationsEs extends AppLocalizations {
   String get vox_receivedViaBoth => 'Received via MediaMesh and main mesh';
 
   @override
-  String get appUpdate_installerHintWindows => 'The installer runs by itself: MeshCore Open TAK closes, updates and opens again. Your messages and settings stay.';
+  String get appUpdate_installerHintWindows =>
+      'The installer runs by itself: MeshCore Open TAK closes, updates and opens again. Your messages and settings stay.';
 
   @override
-  String get appUpdate_installerHintMacos => 'The disk image opens. Drag MeshCore Open TAK to Applications, replace the old one, then open it again. Your messages and settings stay.';
+  String get appUpdate_installerHintMacos =>
+      'The disk image opens. Drag MeshCore Open TAK to Applications, replace the old one, then open it again. Your messages and settings stay.';
 
   @override
-  String get appUpdate_installerHintLinux => 'The AppImage replaces itself and MeshCore Open TAK restarts. Your messages and settings stay.';
+  String get appUpdate_installerHintLinux =>
+      'The AppImage replaces itself and MeshCore Open TAK restarts. Your messages and settings stay.';
 
   @override
-  String get appUpdate_manualDownload => 'Updates install themselves only when you run the AppImage. Download the new build from GitHub.';
+  String get appUpdate_manualDownload =>
+      'Updates install themselves only when you run the AppImage. Download the new build from GitHub.';
 
   @override
-  String get appUpdate_noFileForPlatform => 'This build has no download for this computer yet. Check again later, or open the download page.';
+  String get appUpdate_noFileForPlatform =>
+      'This build has no download for this computer yet. Check again later, or open the download page.';
 
   @override
   String get appUpdate_openDownloadPage => 'Open download page';
@@ -6716,7 +6746,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get rr2_asking => 'Asking the repeater…';
 
   @override
-  String get rr2_loadFailed => 'The repeater didn\'t answer. Check that you\'re still logged in and in range.';
+  String get rr2_loadFailed =>
+      'The repeater didn\'t answer. Check that you\'re still logged in and in range.';
 
   @override
   String get rr2_noAnswer => 'No answer from the repeater';
@@ -6741,13 +6772,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get rr2_tempStarted => 'Temporary radio2 started';
 
   @override
-  String get rr2_tempStopped => 'Temporary radio2 stopped; the saved radio2 is back';
+  String get rr2_tempStopped =>
+      'Temporary radio2 stopped; the saved radio2 is back';
 
   @override
   String get rr2_usbOnlyTitle => 'Needs USB';
 
   @override
-  String get rr2_usbOnly => 'This repeater\'s firmware only takes radio2 changes over a USB cable. Bridging and replies can still be changed from here.';
+  String get rr2_usbOnly =>
+      'This repeater\'s firmware only takes radio2 changes over a USB cable. Bridging and replies can still be changed from here.';
 
   @override
   String get rr2_now => 'NOW';
@@ -6762,10 +6795,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get rr2_confirmOffTitle => 'Turn radio2 off?';
 
   @override
-  String get rr2_confirmBody => 'The repeater answers first, then switches. If you reach it over radio2, you may lose contact until your radio uses the same settings.';
+  String get rr2_confirmBody =>
+      'The repeater answers first, then switches. If you reach it over radio2, you may lose contact until your radio uses the same settings.';
 
   @override
-  String get rr2_confirmShared => 'Every node on this MediaMesh must use the same radio2 settings.';
+  String get rr2_confirmShared =>
+      'Every node on this MediaMesh must use the same radio2 settings.';
 
   @override
   String get rr2_apply => 'Apply';
@@ -6777,10 +6812,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get rr2_unsupportedTitle => 'No radio2 on this repeater';
 
   @override
-  String get rr2_unsupported => 'Its firmware doesn\'t know the radio2 commands. MediaMesh on a repeater needs MeshCore firmware with radio profiles (mikecarper/MeshCore).';
+  String get rr2_unsupported =>
+      'Its firmware doesn\'t know the radio2 commands. MediaMesh on a repeater needs MeshCore firmware with radio profiles (mikecarper/MeshCore).';
 
   @override
-  String get rr2_unsupportedStock => 'It still forwards photos and voice heard on the main mesh, just never on radio2.';
+  String get rr2_unsupportedStock =>
+      'It still forwards photos and voice heard on the main mesh, just never on radio2.';
 
   @override
   String get rr2_main => 'MAIN';
@@ -6834,7 +6871,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get rr2_liveOff => 'radio2 is off, so there\'s nothing to count.';
 
   @override
-  String get rr2_pending => 'A radio2 change is waiting for the repeater\'s reply to go out. It still uses the previous channel.';
+  String get rr2_pending =>
+      'A radio2 change is waiting for the repeater\'s reply to go out. It still uses the previous channel.';
 
   @override
   String get rr2_heardMain => 'Heard main';
@@ -6877,10 +6915,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get rr2_modeOffHelp => 'The repeater uses its main radio only.';
 
   @override
-  String get rr2_modeRxHelp => 'The repeater also listens on radio2 but never sends there, unless replies are forced below.';
+  String get rr2_modeRxHelp =>
+      'The repeater also listens on radio2 but never sends there, unless replies are forced below.';
 
   @override
-  String get rr2_modeRxtxHelp => 'The repeater listens and sends on radio2. Bridging below decides what crosses between the two.';
+  String get rr2_modeRxtxHelp =>
+      'The repeater listens and sends on radio2. Bridging below decides what crosses between the two.';
 
   @override
   String get rr2_frequency => 'Frequency';
@@ -6911,7 +6951,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get rr2_preambleAuto => 'Automatic preamble';
 
   @override
-  String get rr2_preambleAutoHelp => 'Recommended. The repeater measures its switch time and picks the preamble.';
+  String get rr2_preambleAutoHelp =>
+      'Recommended. The repeater measures its switch time and picks the preamble.';
 
   @override
   String get rr2_preamble => 'Preamble';
@@ -6923,7 +6964,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get rr2_preambleRange => '8 to 512 symbols';
 
   @override
-  String get rr2_sharedNote => 'The radio switches between both frequencies, so heavy radio2 traffic costs some main-mesh reception.';
+  String get rr2_sharedNote =>
+      'The radio switches between both frequencies, so heavy radio2 traffic costs some main-mesh reception.';
 
   @override
   String get rr2_reset => 'Reset';
@@ -6938,13 +6980,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get rr2_crossOn => 'Bridge both ways';
 
   @override
-  String get rr2_crossOnHelp => 'Forward what it hears on either radio onto the other.';
+  String get rr2_crossOnHelp =>
+      'Forward what it hears on either radio onto the other.';
 
   @override
   String get rr2_crossAuto => 'Automatic';
 
   @override
-  String get rr2_crossAutoHelp => 'Bridge the saved radio2; keep a temporary radio2 separate. The default.';
+  String get rr2_crossAutoHelp =>
+      'Bridge the saved radio2; keep a temporary radio2 separate. The default.';
 
   @override
   String get rr2_crossOff => 'Keep separate';
@@ -6962,7 +7006,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get rr2_replyBoth => 'Both radios';
 
   @override
-  String get rr2_replyBothHelp => 'Logins, CLI answers and ACKs go out on the main radio and radio2. The default.';
+  String get rr2_replyBothHelp =>
+      'Logins, CLI answers and ACKs go out on the main radio and radio2. The default.';
 
   @override
   String get rr2_replyMain => 'Main radio only';
@@ -6974,7 +7019,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get rr2_replyRadio2 => 'radio2 only';
 
   @override
-  String get rr2_replyRadio2Help => 'No copy on the main radio. Only if you always admin it over radio2.';
+  String get rr2_replyRadio2Help =>
+      'No copy on the main radio. Only if you always admin it over radio2.';
 
   @override
   String get rr2_replyAuto => 'Follow bridging';
@@ -6989,16 +7035,19 @@ class AppLocalizationsEs extends AppLocalizations {
   String get rr2_force => 'Also on a listen-only radio2';
 
   @override
-  String get rr2_forceHelp => 'Lets replies go out on radio2 while it is set to Listen.';
+  String get rr2_forceHelp =>
+      'Lets replies go out on radio2 while it is set to Listen.';
 
   @override
-  String get rr2_replyUnavailable => 'radio2 can\'t send right now, so these replies only go out on the main radio.';
+  String get rr2_replyUnavailable =>
+      'radio2 can\'t send right now, so these replies only go out on the main radio.';
 
   @override
   String get rr2_tempSection => 'Temporary radio2';
 
   @override
-  String get rr2_tempHelp => 'Run the profile above for a while without saving it, for example to meet another group. The saved radio2 comes back afterwards, or on a reboot.';
+  String get rr2_tempHelp =>
+      'Run the profile above for a while without saving it, for example to meet another group. The saved radio2 comes back afterwards, or on a reboot.';
 
   @override
   String get rr2_tempUses => 'USES';
@@ -7041,13 +7090,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get rr2_cliSection => 'MediaMesh (radio2)';
 
   @override
-  String get rr2_cliNote => 'Needs repeater firmware with radio profiles. A remote radio2 change takes effect after the reply goes out.';
+  String get rr2_cliNote =>
+      'Needs repeater firmware with radio profiles. A remote radio2 change takes effect after the reply goes out.';
 
   @override
   String get rr2_cliGetRadio2 => 'Show the second radio profile';
 
   @override
-  String get rr2_cliSetRadio2 => 'Set radio2: MHz, kHz, SF, CR, listen or listen+send';
+  String get rr2_cliSetRadio2 =>
+      'Set radio2: MHz, kHz, SF, CR, listen or listen+send';
 
   @override
   String get rr2_cliRadio2Off => 'Turn radio2 off';
@@ -7059,13 +7110,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get rr2_cliGetCross => 'Show bridging between the two radios';
 
   @override
-  String get rr2_cliSetCross => 'Bridging: auto, on (both ways) or off (separate)';
+  String get rr2_cliSetCross =>
+      'Bridging: auto, on (both ways) or off (separate)';
 
   @override
   String get rr2_cliGetReply => 'Show where the repeater\'s replies go';
 
   @override
-  String get rr2_cliSetReply => 'Where replies go; force allows a listen-only radio2';
+  String get rr2_cliSetReply =>
+      'Where replies go; force allows a listen-only radio2';
 
   @override
   String get rr2_cliGetTemp => 'Show a running temporary radio2';
@@ -7114,10 +7167,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mediaMesh_shareMain => 'Share with main-mesh nodes';
 
   @override
-  String get mediaMesh_shareMainOff => 'Off: photo and voice requests and answers stay on radio2, so nodes without it can\'t swap them with you.';
+  String get mediaMesh_shareMainOff =>
+      'Off: photo and voice requests and answers stay on radio2, so nodes without it can\'t swap them with you.';
 
   @override
-  String get mediaMesh_shareMainOn => 'On: requests go out on both radios, and a photo or clip asked for on the main mesh is answered there.';
+  String get mediaMesh_shareMainOn =>
+      'On: requests go out on both radios, and a photo or clip asked for on the main mesh is answered there.';
 
   @override
   String get mediaMesh_preset => 'Preset';
@@ -7129,7 +7184,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mediaMesh_presetRange => '125 kHz · range';
 
   @override
-  String get mediaMesh_presetHelp => '250 kHz sends photos and voice about twice as fast; 125 kHz reaches about 40% farther. Every radio on MediaMesh must use the same settings.';
+  String get mediaMesh_presetHelp =>
+      '250 kHz sends photos and voice about twice as fast; 125 kHz reaches about 40% farther. Every radio on MediaMesh must use the same settings.';
 
   @override
   String mediaMesh_conflictsWith(String name) {
@@ -7145,16 +7201,19 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get mediaMeshNearby_listening => 'Listening for a MediaMesh: none heard in the last 2 hours';
+  String get mediaMeshNearby_listening =>
+      'Listening for a MediaMesh: none heard in the last 2 hours';
 
   @override
-  String get mediaMeshNearby_off => 'MediaMesh is off on this radio. Tap to set it up.';
+  String get mediaMeshNearby_off =>
+      'MediaMesh is off on this radio. Tap to set it up.';
 
   @override
   String get mapHighlight_title => 'Highlight new map points';
 
   @override
-  String get mapHighlight_help => 'A teammate, pin, report or watched-channel point that appears on the map flashes with a ring for this long.';
+  String get mapHighlight_help =>
+      'A teammate, pin, report or watched-channel point that appears on the map flashes with a ring for this long.';
 
   @override
   String get mapHighlight_off => 'Off';
@@ -7168,22 +7227,26 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mediaMesh_modeOn => 'On';
 
   @override
-  String get mediaMesh_modeOnHelp => 'On listens and sends on radio2 (MediaMesh). The main mesh is always heard.';
+  String get mediaMesh_modeOnHelp =>
+      'On listens and sends on radio2 (MediaMesh). The main mesh is always heard.';
 
   @override
-  String get mediaMesh_listenOnlyNote => 'Set to listen only (from the console): it hears radio2 but never sends there. Tap On to send too.';
+  String get mediaMesh_listenOnlyNote =>
+      'Set to listen only (from the console): it hears radio2 but never sends there. Tap On to send too.';
 
   @override
   String get sound_title => 'Sound link';
 
   @override
-  String get sound_settingsSubtitle => 'Messages and share links over sound, Wavest-compatible';
+  String get sound_settingsSubtitle =>
+      'Messages and share links over sound, Wavest-compatible';
 
   @override
   String get sound_unavailable => 'This build has no sound link.';
 
   @override
-  String get sound_intro => 'Sends short messages as tones from the speaker and hears them on the microphone (ggwave), in the same format as Wavest (bennjordan.github.io/Wavest), so a T-Deck, another phone or a Wavest page in a browser can join in. A message is a few seconds of sound, up to about 120 characters.';
+  String get sound_intro =>
+      'Sends short messages as tones from the speaker and hears them on the microphone (ggwave), in the same format as Wavest (bennjordan.github.io/Wavest), so a T-Deck, another phone or a Wavest page in a browser can join in. A message is a few seconds of sound, up to about 120 characters.';
 
   @override
   String get sound_settings => 'Callsign, passkey and sound';
@@ -7195,7 +7258,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sound_passkey => 'Passkey (optional)';
 
   @override
-  String get sound_passkeyHelp => 'Encrypts what you send and opens what others send with the same passkey, as Wavest does (AES-GCM). It keeps a chat from bystanders; it is not the mesh\'s own encryption.';
+  String get sound_passkeyHelp =>
+      'Encrypts what you send and opens what others send with the same passkey, as Wavest does (AES-GCM). It keeps a chat from bystanders; it is not the mesh\'s own encryption.';
 
   @override
   String get sound_mode => 'Sound';
@@ -7234,7 +7298,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sound_bridgePlay => 'Play this channel\'s new messages as sound';
 
   @override
-  String get sound_bridgeHelp => 'What is heard is posted to the channel as "[Wavest] callsign: text". With this on, the channel\'s new messages are played too, so people nearby without a radio can follow and reply.';
+  String get sound_bridgeHelp =>
+      'What is heard is posted to the channel as \"[Wavest] callsign: text\". With this on, the channel\'s new messages are played too, so people nearby without a radio can follow and reply.';
 
   @override
   String get sound_shareContact => 'Play my contact';
@@ -7249,7 +7314,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sound_send => 'Play';
 
   @override
-  String get sound_tooLong => 'Too long for one sound message. Shorten it (a passkey makes it longer).';
+  String get sound_tooLong =>
+      'Too long for one sound message. Shorten it (a passkey makes it longer).';
 
   @override
   String get sound_listen => 'Listen for it by sound';
@@ -7258,10 +7324,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sound_listening => 'Listening…';
 
   @override
-  String get sound_listeningHelp => 'Hold this phone near the other device and play the contact or channel there (Play by sound).';
+  String get sound_listeningHelp =>
+      'Hold this phone near the other device and play the contact or channel there (Play by sound).';
 
   @override
-  String get sound_notListening => 'Turn on listening (top right) to hear messages.';
+  String get sound_notListening =>
+      'Turn on listening (top right) to hear messages.';
 
   @override
   String sound_heardOther(String text) {
@@ -7275,7 +7343,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sound_locked => 'Encrypted: set the same passkey to read it';
 
   @override
-  String get sound_linkHint => 'A share link. Add it from Contacts or Channels: Scan, then Listen.';
+  String get sound_linkHint =>
+      'A share link. Add it from Contacts or Channels: Scan, then Listen.';
 
   @override
   String get sound_playByShare => 'Play by sound';
@@ -7284,7 +7353,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sound_playing => 'Playing…';
 
   @override
-  String get sound_playByShareHelp => 'For a T-Deck or another phone: they listen (Scan, then Listen) while this plays.';
+  String get sound_playByShareHelp =>
+      'For a T-Deck or another phone: they listen (Scan, then Listen) while this plays.';
 
   @override
   String sound_playFailed(String error) {
@@ -7295,7 +7365,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get otpCheck_title => 'Check code';
 
   @override
-  String get otpCheck_subtitle => 'The same code on both devices means the same pad. Read it out, or play it by sound; it reveals nothing about the pad.';
+  String get otpCheck_subtitle =>
+      'The same code on both devices means the same pad. Read it out, or play it by sound; it reveals nothing about the pad.';
 
   @override
   String get otpCheck_play => 'Play the check code';
@@ -7307,7 +7378,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get otpCheck_same => 'Same pad on both devices.';
 
   @override
-  String get otpCheck_different => 'Different pad bytes. Share the pad again before using it.';
+  String get otpCheck_different =>
+      'Different pad bytes. Share the pad again before using it.';
 
   @override
   String otpCheck_differentLength(int theirs, int mine) {
@@ -7346,13 +7418,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get road_bike => 'Bike';
 
   @override
-  String get road_help => 'Turn-by-turn along roads and paths, from OpenStreetMap. Needs the internet; Bloodhound keeps range and bearing without it. It finds a new route if you leave this one or your teammate moves.';
+  String get road_help =>
+      'Turn-by-turn along roads and paths, from OpenStreetMap. Needs the internet; Bloodhound keeps range and bearing without it. It finds a new route if you leave this one or your teammate moves.';
 
   @override
   String get road_server => 'Routing server (Valhalla)';
 
   @override
-  String get road_serverHelp => 'Empty: the public FOSSGIS server, for light use. Put your own Valhalla server here for a team.';
+  String get road_serverHelp =>
+      'Empty: the public FOSSGIS server, for light use. Put your own Valhalla server here for a team.';
 
   @override
   String get road_finding => 'Finding a route...';
@@ -7374,7 +7448,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get road_share => 'Share with team';
 
   @override
-  String get road_shared => 'Route shared with the team: phones and standalone radios can follow it';
+  String get road_shared =>
+      'Route shared with the team: phones and standalone radios can follow it';
 
   @override
   String get road_stop => 'Stop directions';
@@ -7417,7 +7492,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get hound_title => 'Bloodhound';
 
   @override
-  String get hound_help => 'Live range and bearing to a target, and directions to it.';
+  String get hound_help =>
+      'Live range and bearing to a target, and directions to it.';
 
   @override
   String get hound_teammates => 'Teammates';
@@ -7494,7 +7570,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mediaMesh_find => 'Find MediaMesh';
 
   @override
-  String get mediaMesh_findHelp => 'Asks the repeaters in range which radio2 profile they run, like Discover Repeaters. If none can say, radio2 listens on each preset for about 10 seconds instead.';
+  String get mediaMesh_findHelp =>
+      'Asks the repeaters in range which radio2 profile they run, like Discover Repeaters. If none can say, radio2 listens on each preset for about 10 seconds instead.';
 
   @override
   String mediaMesh_findListening(String preset, int step) {
@@ -7512,13 +7589,17 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get mediaMesh_findNoneOnRadio2 => 'Repeaters nearby answered on the main mesh, but none on radio2.';
+  String get mediaMesh_findNoneOnRadio2 =>
+      'Repeaters nearby answered on the main mesh, but none on radio2.';
 
   @override
-  String get mediaMesh_findNoRepeaters => 'No repeaters answered at all: out of range, or asked too often. Repeaters answer at most four times in two minutes, so try again shortly.';
+  String get mediaMesh_findNoRepeaters =>
+      'No repeaters answered at all: out of range, or asked too often. Repeaters answer at most four times in two minutes, so try again shortly.';
 
   @override
   String get mediaMesh_findUse => 'Use it';
+
+  @override
   String get walkie_title => 'Walkie-talkie';
 
   @override
@@ -7565,16 +7646,19 @@ class AppLocalizationsEs extends AppLocalizations {
   String get walkie_direct => 'Direct';
 
   @override
-  String get walkie_repeatersHelp => 'Through repeaters: reaches the whole MediaMesh, with about 2–3 seconds of delay.';
+  String get walkie_repeatersHelp =>
+      'Through repeaters: reaches the whole MediaMesh, with about 2–3 seconds of delay.';
 
   @override
-  String get walkie_directHelp => 'Radio to radio: only radios in range hear it. A little faster, and no repeater traffic.';
+  String get walkie_directHelp =>
+      'Radio to radio: only radios in range hear it. A little faster, and no repeater traffic.';
 
   @override
   String get walkie_listenLive => 'Play this channel\'s talks live';
 
   @override
-  String get walkie_listenLiveHelp => 'Off mutes this channel: its talks wait in the chat as voice messages.';
+  String get walkie_listenLiveHelp =>
+      'Off mutes this channel: its talks wait in the chat as voice messages.';
 
   @override
   String walkie_footer(int seconds) {
@@ -7591,7 +7675,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get drones_listen => 'Listen for drones';
 
   @override
-  String get drones_listenHelp => 'Hears drones that broadcast Remote ID over Bluetooth: their ID, position, height, speed and where the operator is. Drones without Remote ID aren\'t detected.';
+  String get drones_listenHelp =>
+      'Hears drones that broadcast Remote ID over Bluetooth: their ID, position, height, speed and where the operator is. Drones without Remote ID aren\'t detected.';
 
   @override
   String get drones_scanning => 'Listening';
@@ -7657,7 +7742,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get drones_share => 'Post drones there';
 
   @override
-  String get drones_shareHelp => 'Each drone at most once a minute, and again after it moves 200 m. Never on Public. Others watching the channel see them on their map, with the operator.';
+  String get drones_shareHelp =>
+      'Each drone at most once a minute, and again after it moves 200 m. Never on Public. Others watching the channel see them on their map, with the operator.';
 
   @override
   String get drones_sound => 'Sound when a new drone appears';
@@ -7689,7 +7775,8 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get mediaMesh_findReportedNone => 'Repeaters nearby answered, but none has radio2 on.';
+  String get mediaMesh_findReportedNone =>
+      'Repeaters nearby answered, but none has radio2 on.';
 
   @override
   String get mediaMesh_findRadio2Off => 'radio2 off';
@@ -7717,7 +7804,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get walkie_liveAll => 'Play talks live';
 
   @override
-  String get walkie_liveAllHelp => 'Talks on any channel play as they arrive, while the app is running, walkie-talkie open or not.';
+  String get walkie_liveAllHelp =>
+      'Talks on any channel play as they arrive, while the app is running, walkie-talkie open or not.';
 
   @override
   String get coverage_title => 'Coverage map';
@@ -7726,7 +7814,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get coverage_record => 'Map MediaMesh coverage';
 
   @override
-  String get coverage_recordHelp => 'As you move, asks the MediaMesh repeaters in range every 150 m and marks the map with how well MediaMesh reaches there.';
+  String get coverage_recordHelp =>
+      'As you move, asks the MediaMesh repeaters in range every 150 m and marks the map with how well MediaMesh reaches there.';
 
   @override
   String get coverage_asking => 'Asking the MediaMesh repeaters…';
@@ -7752,7 +7841,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get coverage_none => 'None';
 
   @override
-  String get coverage_help => 'Only repeaters with MediaMesh (radio2 on) count. Good: 5 dB or more to spare on radio2; Marginal: 0–5 dB; Out: heard, but radio2 wouldn\'t reach; None: no MediaMesh repeater answered.';
+  String get coverage_help =>
+      'Only repeaters with MediaMesh (radio2 on) count. Good: 5 dB or more to spare on radio2; Marginal: 0–5 dB; Out: heard, but radio2 wouldn\'t reach; None: no MediaMesh repeater answered.';
 
   @override
   String get coverage_export => 'Export (GeoJSON)';
@@ -7780,7 +7870,8 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get teamSetup_shareWarning => 'Anyone who scans or hears this can join your team channel and see your positions.';
+  String get teamSetup_shareWarning =>
+      'Anyone who scans or hears this can join your team channel and see your positions.';
 
   @override
   String teamSetup_teamChannel(String name) {
@@ -7788,7 +7879,8 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get teamSetup_teamChannelHelp => 'Added if this radio hasn\'t it, and team mode turned on with it.';
+  String get teamSetup_teamChannelHelp =>
+      'Added if this radio hasn\'t it, and team mode turned on with it.';
 
   @override
   String teamSetup_watch(String names) {
@@ -7796,7 +7888,8 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get teamSetup_watchHelp => 'Added if needed, and their reports shown on the map.';
+  String get teamSetup_watchHelp =>
+      'Added if needed, and their reports shown on the map.';
 
   @override
   String teamSetup_mediaMesh(String profile) {
@@ -7804,7 +7897,8 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get teamSetup_mediaMeshHelp => 'This radio\'s radio2 set to the team\'s MediaMesh, for photos, voice and push-to-talk.';
+  String get teamSetup_mediaMeshHelp =>
+      'This radio\'s radio2 set to the team\'s MediaMesh, for photos, voice and push-to-talk.';
 
   @override
   String get teamSetup_joinTitle => 'Join a team';
@@ -7816,7 +7910,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get teamSetup_notATeam => 'That isn\'t a team setup code';
 
   @override
-  String get teamSetup_scanHelp => 'Scan the team code on a teammate\'s phone or standalone';
+  String get teamSetup_scanHelp =>
+      'Scan the team code on a teammate\'s phone or standalone';
 
   @override
   String get teamSetup_listenHelp => 'Waiting for the team setup to be played…';
@@ -7846,7 +7941,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get appSettings_redLight => 'Red light (night vision)';
 
   @override
-  String get appSettings_redLightHelp => 'Everything in dim red, the map and photos too, to keep your eyes used to the dark.';
+  String get appSettings_redLightHelp =>
+      'Everything in dim red, the map and photos too, to keep your eyes used to the dark.';
 
   @override
   String get quickReply_copy => 'Copy';
@@ -7901,7 +7997,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get reach_action => 'Who got it (map)';
 
   @override
-  String get reach_noPosition => 'This radio has no position, so there\'s nothing to draw from. The lists below still show who got it.';
+  String get reach_noPosition =>
+      'This radio has no position, so there\'s nothing to draw from. The lists below still show who got it.';
 
   @override
   String reach_summary(int repeaters, int teammates) {
@@ -7909,7 +8006,8 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get reach_noRepeats => 'No repeater has been heard re-sending it yet. Echoes show up here as they come in.';
+  String get reach_noRepeats =>
+      'No repeater has been heard re-sending it yet. Echoes show up here as they come in.';
 
   @override
   String get reach_direct => 'Heard you directly';
@@ -7934,9 +8032,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get reach_notYet => 'Not heard yet';
 
   @override
-  String get reach_teamHelp => 'Teammates say what they heard in their next position beacon, usually within a minute. Older app and firmware versions don\'t, so they stay "Not heard yet".';
+  String get reach_teamHelp =>
+      'Teammates say what they heard in their next position beacon, usually within a minute. Older app and firmware versions don\'t, so they stay \"Not heard yet\".';
 
   @override
   String get reach_now => 'just now';
-
 }

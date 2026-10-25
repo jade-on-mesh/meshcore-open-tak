@@ -65,7 +65,11 @@ class Codec2Ffi {
     // Windows next to the exe, Linux in the bundle's lib/.
     final exeDir = File(Platform.resolvedExecutable).parent.path;
     if (Platform.isWindows) {
-      for (final name in ['$exeDir\\libcodec2.dll', 'libcodec2.dll', 'codec2.dll']) {
+      for (final name in [
+        '$exeDir\\libcodec2.dll',
+        'libcodec2.dll',
+        'codec2.dll',
+      ]) {
         try {
           return DynamicLibrary.open(name);
         } catch (_) {}

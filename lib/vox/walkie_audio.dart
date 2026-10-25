@@ -20,6 +20,7 @@ class WalkieSpeaker {
   WalkieSpeaker();
 
   static const _channel = MethodChannel('meshcore_open/pcm_stream');
+
   /// Codec2's 8 kHz, upsampled and filtered by VoxPlayOut (voice_dsp.dart).
   static const int sampleRate = 16000;
 

@@ -120,7 +120,8 @@ class TeamSetup {
         final c = item.indexOf(':');
         if (c < 0) {
           final n = _dec(item).trim();
-          if (n.startsWith('#') && n.length > 1) watched.add(TeamSetupChannel(n));
+          if (n.startsWith('#') && n.length > 1)
+            watched.add(TeamSetupChannel(n));
         } else {
           final n = _dec(item.substring(0, c)).trim();
           final k = item.substring(c + 1).toLowerCase();

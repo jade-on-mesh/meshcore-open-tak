@@ -238,7 +238,8 @@ String _profileTuple(MediaMeshSettings s, Radio2Mode mode) =>
     '${s.spreadingFactor.value},${s.codingRate.value},${mode.cli}';
 
 /// `set radio2 ...`; an off mode still writes the profile as `rxtx`.
-String buildSetRadio2Command(MediaMeshSettings s) => 'set radio2 '
+String buildSetRadio2Command(MediaMeshSettings s) =>
+    'set radio2 '
     '${_profileTuple(s, s.mode == Radio2Mode.off ? Radio2Mode.rxtx : s.mode)}';
 
 /// `set tempradio2 f,bw,sf,cr,rxtx,minutes`: [s] replaces radio2 for
@@ -651,7 +652,8 @@ class MediaMeshController {
 
   Future<void> _ok(String command, String fallback) async {
     final r = await _cli(command);
-    if (r == null || !isCliOk(r)) throw MediaMeshException(_reason(r, fallback));
+    if (r == null || !isCliOk(r))
+      throw MediaMeshException(_reason(r, fallback));
   }
 
   static String _reason(String? reply, String fallback) {

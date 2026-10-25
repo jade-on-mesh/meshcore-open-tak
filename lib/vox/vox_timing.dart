@@ -123,6 +123,16 @@ int voxStallBudget(int received, int total) {
 }
 
 /// Each fetch request in a row that brought nothing waits longer for its
-/// answer, up to 3x: a long or busy route is slow, not gone.
-Duration voxStallBackoff(Duration wait, int stalls) =>
-    wait + wait * min(stalls, 4) ~/ 2;
+/// answer: up to 3x over the first four (a long or busy route is slow, not
+/// gone), then half as long again each time, at most 4 minutes. Requests
+/// repeated at the same pace kept failing the same way (attempts 4-11 of one
+/// clip came every 25-60 s), and each one is airtime on a busy channel.
+Duration voxStallBackoff(Duration wait, int stalls) {
+  var d = wait + wait * min(stalls, 4) ~/ 2;
+  for (var i = 4; i < stalls && d < voxStallBackoffCap; i++) {
+    d = d * 3 ~/ 2;
+  }
+  return d < voxStallBackoffCap || stalls <= 4 ? d : voxStallBackoffCap;
+}
+
+const Duration voxStallBackoffCap = Duration(minutes: 4);

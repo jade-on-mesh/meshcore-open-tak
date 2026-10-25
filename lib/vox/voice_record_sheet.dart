@@ -11,8 +11,7 @@ import 'package:record/record.dart';
 import 'caption_field.dart';
 import 'mimi.dart';
 import 'resample.dart';
-import 'voice_message_bubble.dart'
-    show VoxCodec2QualityPicker, showVoxVoiceLog;
+import 'voice_message_bubble.dart' show VoxCodec2QualityPicker, showVoxVoiceLog;
 import 'voice_service.dart';
 
 /// Mic button for a chat composer. Hidden when no voice codec is available.

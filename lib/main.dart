@@ -79,7 +79,10 @@ void main() async {
   }
 
   // Initialize SharedPreferences cache
-  await _startupStep('PrefsManager.initialize', () => PrefsManager.initialize());
+  await _startupStep(
+    'PrefsManager.initialize',
+    () => PrefsManager.initialize(),
+  );
 
   // Android: look for a newer build on the GitHub "Latest build" release.
   unawaited(AppUpdateService.instance.start());
@@ -105,10 +108,19 @@ void main() async {
   // model registry and its "process automatically" default straight off
   // `appSettingsService.settings`, so this cannot stay where it used to be
   // (after the constructions) without those two starting out wrong.
-  await _startupStep('appSettingsService.loadSettings', () => appSettingsService.loadSettings());
+  await _startupStep(
+    'appSettingsService.loadSettings',
+    () => appSettingsService.loadSettings(),
+  );
   // Undo a review-mode session the app was killed in before it could exit.
-  await _startupStep('endReviewModeSession', () => endReviewModeSession(appSettingsService));
-  await _startupStep('mediaMeshNearby.load', () => MediaMeshNearby.instance.load());
+  await _startupStep(
+    'endReviewModeSession',
+    () => endReviewModeSession(appSettingsService),
+  );
+  await _startupStep(
+    'mediaMeshNearby.load',
+    () => MediaMeshNearby.instance.load(),
+  );
   await _startupStep('mapHighlights.load', () => MapHighlights.instance.load());
   MediaMeshNearby.instance.attach(connector);
 
@@ -163,20 +175,44 @@ void main() async {
 
   // Initialize notification service
   final notificationService = NotificationService();
-  await _startupStep('notificationService.initialize', () => notificationService.initialize());
-  await _startupStep('backgroundService.initialize', () => backgroundService.initialize());
+  await _startupStep(
+    'notificationService.initialize',
+    () => notificationService.initialize(),
+  );
+  await _startupStep(
+    'backgroundService.initialize',
+    () => backgroundService.initialize(),
+  );
   backgroundService.setLanguageOverrideProvider(
     () => appSettingsService.settings.languageOverride,
   );
   _registerThirdPartyLicenses();
 
-  await _startupStep('chatTextScaleService.initialize', () => chatTextScaleService.initialize());
-  await _startupStep('translationService.refreshDownloadedModels', () => translationService.refreshDownloadedModels());
-  await _startupStep('imageCodecService.refreshDownloadedModels', () => imageCodecService.refreshDownloadedModels());
-  await _startupStep('receivedImageStore.load', () => receivedImageStore.load());
+  await _startupStep(
+    'chatTextScaleService.initialize',
+    () => chatTextScaleService.initialize(),
+  );
+  await _startupStep(
+    'translationService.refreshDownloadedModels',
+    () => translationService.refreshDownloadedModels(),
+  );
+  await _startupStep(
+    'imageCodecService.refreshDownloadedModels',
+    () => imageCodecService.refreshDownloadedModels(),
+  );
+  await _startupStep(
+    'receivedImageStore.load',
+    () => receivedImageStore.load(),
+  );
   await _startupStep('mediaLockdown.load', MediaLockdown.load);
-  await _startupStep('uiViewStateService.initialize', () => uiViewStateService.initialize());
-  await _startupStep('timeoutPredictionService.initialize', () => timeoutPredictionService.initialize());
+  await _startupStep(
+    'uiViewStateService.initialize',
+    () => uiViewStateService.initialize(),
+  );
+  await _startupStep(
+    'timeoutPredictionService.initialize',
+    () => timeoutPredictionService.initialize(),
+  );
 
   // Wire up connector with services
   connector.initialize(
@@ -205,9 +241,18 @@ void main() async {
     settings: appSettingsService,
   );
 
-  await _startupStep('connector.loadContactCache', () => connector.loadContactCache());
-  await _startupStep('connector.loadCachedChannels', () => connector.loadCachedChannels());
-  await _startupStep('connector.loadUnreadState', () => connector.loadUnreadState());
+  await _startupStep(
+    'connector.loadContactCache',
+    () => connector.loadContactCache(),
+  );
+  await _startupStep(
+    'connector.loadCachedChannels',
+    () => connector.loadCachedChannels(),
+  );
+  await _startupStep(
+    'connector.loadUnreadState',
+    () => connector.loadUnreadState(),
+  );
 
   runApp(
     MeshCoreApp(

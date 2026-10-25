@@ -50,8 +50,14 @@ void main() {
 
     test('rejects what is not a talk', () {
       expect(WalkieAudio.tryParse(unhex('541a2b3c4d00')), isNull); // short
-      expect(WalkieAudio.tryParse(unhex('541a2b3c4d00010001')), isNull); // half frame
-      expect(WalkieAudio.tryParse(unhex('541a2b3c4d0020000102030405')), isNull); // Mimi
+      expect(
+        WalkieAudio.tryParse(unhex('541a2b3c4d00010001')),
+        isNull,
+      ); // half frame
+      expect(
+        WalkieAudio.tryParse(unhex('541a2b3c4d0020000102030405')),
+        isNull,
+      ); // Mimi
       expect(WalkieStart.tryParse(unhex('531a2b3c4d28')), isNull); // AV1 image
       expect(walkieIsLivePayload(unhex('561a2b3c4d00')), isFalse);
     });
@@ -208,7 +214,9 @@ void main() {
       final d = WalkieDecimator();
       final out = <int>[];
       for (var i = 0; i < x.length; i += 1234) {
-        out.addAll(d.process(Int16List.sublistView(x, i, min(i + 1234, x.length))));
+        out.addAll(
+          d.process(Int16List.sublistView(x, i, min(i + 1234, x.length))),
+        );
       }
       return Int16List.fromList(out);
     }

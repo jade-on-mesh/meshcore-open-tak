@@ -77,7 +77,10 @@ void main() {
     expect(o.opLon, closeTo(-122.34016, 1e-7));
     // Truncated, a wrong message size, too many: nothing.
     expect(parseRemoteIdPayload(pack.sublist(0, 40)), isNull);
-    expect(parseRemoteIdPayload(Uint8List.fromList([0xF0, 24, 1, ..._basicId(_id)])), isNull);
+    expect(
+      parseRemoteIdPayload(Uint8List.fromList([0xF0, 24, 1, ..._basicId(_id)])),
+      isNull,
+    );
     expect(parseRemoteIdPayload(Uint8List.fromList([0xF0, 25, 11])), isNull);
     expect(parseRemoteIdPayload(Uint8List(10)), isNull);
   });
@@ -99,21 +102,46 @@ void main() {
   test('Bluetooth: one message per advert, matched by address', () {
     final tr = RemoteIdTracker();
     final t0 = DateTime(2026, 10, 21, 12);
-    RemoteIdObservation o(Uint8List m) => parseRemoteIdServiceData(_serviceData(m, 1))!;
+    RemoteIdObservation o(Uint8List m) =>
+        parseRemoteIdServiceData(_serviceData(m, 1))!;
     // Position before the ID: nothing yet.
-    expect(tr.ingest(o(_location(47.6, -122.3, 20, 10, 50)), 'AA', -70, t0), isNull);
+    expect(
+      tr.ingest(o(_location(47.6, -122.3, 20, 10, 50)), 'AA', -70, t0),
+      isNull,
+    );
     var created = 0;
-    final t = tr.ingest(o(_basicId(_id)), 'AA', -70, t0, isNew: (_) => created++)!;
+    final t = tr.ingest(
+      o(_basicId(_id)),
+      'AA',
+      -70,
+      t0,
+      isNew: (_) => created++,
+    )!;
     expect(created, 1);
-    tr.ingest(o(_location(47.60378, -122.34052, 28, 45, 120)), 'AA', -68, t0.add(const Duration(seconds: 1)));
-    tr.ingest(o(_system(47.60531, -122.34016)), 'AA', -68, t0.add(const Duration(seconds: 2)));
+    tr.ingest(
+      o(_location(47.60378, -122.34052, 28, 45, 120)),
+      'AA',
+      -68,
+      t0.add(const Duration(seconds: 1)),
+    );
+    tr.ingest(
+      o(_system(47.60531, -122.34016)),
+      'AA',
+      -68,
+      t0.add(const Duration(seconds: 2)),
+    );
     expect(t.hasPosition && t.hasOperator, isTrue);
     expect(t.headingDeg, 45);
     expect(tr.length, 1);
     // Another address knows nothing; a forgotten one lends nothing.
     expect(tr.ingest(o(_location(1, 1, 0, 0, 0)), 'BB', -80, t0), isNull);
     expect(
-      tr.ingest(o(_location(1, 1, 0, 0, 0)), 'AA', -80, t0.add(const Duration(minutes: 3))),
+      tr.ingest(
+        o(_location(1, 1, 0, 0, 0)),
+        'AA',
+        -80,
+        t0.add(const Duration(minutes: 3)),
+      ),
       isNull,
     );
     // Not Remote ID service data.
@@ -172,9 +200,20 @@ void main() {
     );
     expect(_parse(remoteIdPost(t)!).bearing, isNull);
 
-    expect(remoteIdPost(RemoteIdTrack('ABC', DateTime(2026))..lat = 1..lon = 1), isNull);
     expect(
-      remoteIdPost(RemoteIdTrack('FIN.87astr dge12k8', DateTime(2026))..lat = 1..lon = 1),
+      remoteIdPost(
+        RemoteIdTrack('ABC', DateTime(2026))
+          ..lat = 1
+          ..lon = 1,
+      ),
+      isNull,
+    );
+    expect(
+      remoteIdPost(
+        RemoteIdTrack('FIN.87astr dge12k8', DateTime(2026))
+          ..lat = 1
+          ..lon = 1,
+      ),
       startsWith('DRONE FIN87astrdge12k8 '),
     );
     expect(remoteIdSpeed(95), '1.0m/s');
@@ -190,7 +229,10 @@ void main() {
     expect(t.postDue(t0), isTrue);
     t.markPosted(t0);
     expect(t.postDue(t0.add(const Duration(seconds: 30))), isFalse);
-    expect(t.postDue(t0.add(const Duration(minutes: 2))), isFalse); // hasn't moved
+    expect(
+      t.postDue(t0.add(const Duration(minutes: 2))),
+      isFalse,
+    ); // hasn't moved
     t.lat = 47.603; // ~330 m north
     expect(t.postDue(t0.add(const Duration(seconds: 59))), isFalse);
     expect(t.postDue(t0.add(const Duration(minutes: 2))), isTrue);

@@ -500,9 +500,7 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
                 label: Text(l10n.mediaMesh_modeOn),
               ),
             ],
-            selected: {
-              if (_settings.mode != Radio2Mode.rx) _settings.mode,
-            },
+            selected: {if (_settings.mode != Radio2Mode.rx) _settings.mode},
             onSelectionChanged: (picked) {
               if (picked.isEmpty) return;
               setState(

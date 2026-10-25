@@ -78,7 +78,8 @@ void main() {
   test('controller: errors and missing firmware', () async {
     final replies = {
       'get radio2': 'Unknown command',
-      'set radio2 off': 'Error: this role requires local USB for radio2 changes',
+      'set radio2 off':
+          'Error: this role requires local USB for radio2 changes',
       'set radio2.cross on': 'OK',
     };
     final c = RepeaterRadio2Controller((cmd) async => replies[cmd]!);

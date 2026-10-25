@@ -115,6 +115,9 @@ void main() {
     const w = Duration(seconds: 10);
     expect(voxStallBackoff(w, 0), w);
     expect(voxStallBackoff(w, 1), const Duration(seconds: 15));
-    expect(voxStallBackoff(w, 9), const Duration(seconds: 30));
+    expect(voxStallBackoff(w, 4), const Duration(seconds: 30));
+    expect(voxStallBackoff(w, 5), const Duration(seconds: 45));
+    expect(voxStallBackoff(w, 9), const Duration(microseconds: 227812500));
+    expect(voxStallBackoff(w, 12), voxStallBackoffCap);
   });
 }

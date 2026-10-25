@@ -59,7 +59,10 @@ class SoundLink {
     _playing = true;
     try {
       await p.play(BytesSource(voxPcm16ToWav(pcm, sampleRate: _rate)));
-      await done.future.timeout(Duration(milliseconds: ms + 3000), onTimeout: () {});
+      await done.future.timeout(
+        Duration(milliseconds: ms + 3000),
+        onTimeout: () {},
+      );
     } finally {
       _playing = false;
       await sub.cancel();
@@ -94,7 +97,9 @@ class SoundLink {
     var carry = <int>[];
     _sub = stream.listen((bytes) {
       // PCM16 little-endian; a chunk can end mid-sample.
-      final all = carry.isEmpty ? bytes : Uint8List.fromList([...carry, ...bytes]);
+      final all = carry.isEmpty
+          ? bytes
+          : Uint8List.fromList([...carry, ...bytes]);
       final whole = all.length & ~1;
       carry = whole < all.length ? [all[whole]] : <int>[];
       final pcm = Int16List(whole ~/ 2);
@@ -103,7 +108,7 @@ class SoundLink {
         pcm[i] = bd.getInt16(i * 2, Endian.little);
       }
       for (final p in rx.add(pcm)) {
-        if (DateTime.now().isBefore(_deafUntil)) continue;   // our own tones
+        if (DateTime.now().isBefore(_deafUntil)) continue; // our own tones
         out.add(utf8.decode(p, allowMalformed: true));
       }
     });

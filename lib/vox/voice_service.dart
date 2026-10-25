@@ -42,6 +42,8 @@ import 'resample.dart';
 import 'voice_codec.dart';
 import 'voice_codec_choice.dart';
 import 'voice_dsp.dart';
+import 'vox_fec.dart';
+import 'vox_gaps.dart';
 import 'vox_voice_enhance.dart';
 import 'voice_wire.dart';
 import 'walkie_wire.dart';
@@ -110,7 +112,16 @@ class VoxClipState {
   double get progress => total == 0 ? 0 : received / total;
 }
 
-enum _Method { direct, dmRequest, channel }
+enum _Method {
+  direct,
+  dmRequest,
+  channel,
+
+  /// A raw request with an empty path: every radio in range hears it, and
+  /// any that holds the clip (or part of it) answers zero-hop. For a clip
+  /// whose packets were heard at 0 hops, when no route is known.
+  zeroHop,
+}
 
 /// A recording encoded and ready to send (and to preview).
 @immutable
@@ -139,6 +150,18 @@ class VoxLogEntry {
 class _IncomingClip {
   final VoxVoiceEnvelope envelope;
   final Map<int, Uint8List> packets = {};
+
+  /// Parity packets heard (vox_fec.dart): info byte -> `[lastLen][parity]`.
+  final Map<int, Uint8List> parity = {};
+
+  /// Packets rebuilt from parity rather than received.
+  int rebuilt = 0;
+
+  /// Fewest hops any of its channel packets came over (99: none seen).
+  int minHops = 99;
+
+  /// The zero-hop raw request has been tried since the last reset.
+  bool triedZeroHop = false;
   VoxClipStatus status = VoxClipStatus.remote;
   String? message;
   Contact? sender;
@@ -264,13 +287,18 @@ class VoxVoiceService extends ChangeNotifier {
   /// whenever that changes, so the info log shows which radio carried it.
   final Map<String, String> _arrivalLogged = {};
 
-  void _logArrival(String sid, int? via, int? hops) {
+  void _logArrival(String sid, int? via, int? hops, [Uint8List? lastHop]) {
     final radio = switch (via) {
       0 => 'main mesh (radio tagged it)',
       1 => 'MediaMesh / radio2',
       _ => 'untagged (radio does not say which)',
     };
-    final key = '$radio, ${hops == null ? 'direct/raw' : '$hops hops'}';
+    // The last relay's path hash says which repeater it came through.
+    final last =
+        hops != null && hops > 0 && lastHop != null && lastHop.isNotEmpty
+        ? ', last hop ${_hex(lastHop)}'
+        : '';
+    final key = '$radio, ${hops == null ? 'direct/raw' : '$hops hops'}$last';
     if (_arrivalLogged[sid] == key) return;
     _arrivalLogged[sid] = key;
     if (_arrivalLogged.length > 64) {
@@ -640,8 +668,12 @@ class VoxVoiceService extends ChangeNotifier {
     final bw = _connector.currentBwHz;
     final cr = _connector.currentCr;
     final self = _connector.selfPublicKey;
+    final m = _mediaAir;
+    // Photos and voice may go out on radio2 with its own settings: then the
+    // airtime is radio2's, not the main radio's shown first.
     return 'self=${self == null ? '?' : voxKey6Hex(self)} '
-        'SF=${sf ?? '?'} BW=${bw == null ? '?' : bw / 1000}kHz CR=4/${cr ?? '?'} '
+        'main radio SF${sf ?? '?'}/${bw == null ? '?' : bw / 1000}kHz/CR4/${cr ?? '?'}; '
+        '${m == null ? 'photos and voice on the main radio' : 'photos and voice on radio2 SF${m.spreadingFactor}/${m.bandwidthKhz}kHz/CR4/${m.codingRate}'}, '
         'packetAir≈${_packetAir().inMilliseconds}ms';
   }
 
@@ -844,7 +876,16 @@ class VoxVoiceService extends ChangeNotifier {
       );
     }
     if (enhance && enhancesVoice) {
-      final raw = await compute(_decodeRawJob, _DecodeJob(bits, mode));
+      return _wavFromRaw(await compute(_decodeRawJob, _DecodeJob(bits, mode)));
+    }
+    final pcm = await compute(_decodeJob, _DecodeJob(bits, mode));
+    return voxPcm16ToWav(pcm, sampleRate: voxPlayRate);
+  }
+
+  /// Decoded 8 kHz Codec2 as a WAV to play: enhanced when that's on, else
+  /// levelled and upsampled (voxPlayClip).
+  Future<Uint8List> _wavFromRaw(Int16List raw) async {
+    if (enhancesVoice) {
       try {
         final sw = Stopwatch()..start();
         final pcm = await enhancer.enhance(raw);
@@ -856,13 +897,54 @@ class VoxVoiceService extends ChangeNotifier {
       } catch (e) {
         _logEvent('enhance failed, playing as decoded: $e');
       }
-      return voxPcm16ToWav(
-        await compute(voxPlayClip, raw),
-        sampleRate: voxPlayRate,
-      );
     }
-    final pcm = await compute(_decodeJob, _DecodeJob(bits, mode));
-    return voxPcm16ToWav(pcm, sampleRate: voxPlayRate);
+    return voxPcm16ToWav(
+      await compute(voxPlayClip, raw),
+      sampleRate: voxPlayRate,
+    );
+  }
+
+  // ------------------------------------------------- playing with gaps
+
+  /// Clips played with gaps while incomplete: the rest arriving doesn't
+  /// play them again on its own.
+  final Set<String> _partialPlayed = {};
+
+  /// Whether [env] can play now with silence for missing packets
+  /// (voxCanPlayPartial: Codec2, most of it here).
+  bool canPlayPartial(VoxVoiceEnvelope env) {
+    if (_bits.containsKey(env.sessionId) || !voxCodecAvailable) return false;
+    final clip = _incoming[env.sessionId];
+    return clip != null &&
+        voxCanPlayPartial(env.mode, clip.packets.length, env.totalPackets);
+  }
+
+  /// Plays [env] as far as it has come, silence where packets are missing.
+  Future<void> playPartial(VoxVoiceEnvelope env) async {
+    final clip = _incoming[env.sessionId];
+    if (clip == null || !canPlayPartial(env)) return;
+    _partialPlayed.add(env.sessionId);
+    if (_partialPlayed.length > 64) _partialPlayed.remove(_partialPlayed.first);
+    _logEvent(
+      'playing with gaps: ${clip.packets.length}/${env.totalPackets} here, '
+      'missing ${_indexList(clip.missing)}; still fetching the rest',
+      env.sessionId,
+    );
+    await _playWith(env, () => _partialWav(clip));
+  }
+
+  Future<Uint8List?> _partialWav(_IncomingClip clip) async {
+    final env = clip.envelope;
+    final plan = voxGapPlan(Map.of(clip.packets), env.totalPackets, env.mode);
+    final raw = await compute(
+      _decodeGapsJob,
+      _GapsJob(
+        [for (final g in plan) g.bits],
+        [for (final g in plan) g.silenceSamples],
+        env.mode,
+      ),
+    );
+    return _wavFromRaw(raw);
   }
 
   // ------------------------------------------------ AI voice enhancement
@@ -1033,6 +1115,7 @@ class VoxVoiceService extends ChangeNotifier {
       () => _ChannelBurst(sid, channel),
     );
     burst.pending.addAll(List<int>.generate(total, (i) => i));
+    burst.addParity(total, image: _modes[sid]!.isImage);
     burst.pushing = true;
     _pushedAt[sid] = DateTime.now();
     _pushedAt.removeWhere(
@@ -1139,6 +1222,9 @@ class VoxVoiceService extends ChangeNotifier {
     final clip = _incoming.putIfAbsent(sid, () => _IncomingClip(env));
     clip.sender ??= sender;
     clip.channelIndex ??= channelIndex;
+    final parityOrphan = _orphans.remove(voxFecParitySid(sid));
+    _orphansRelayed.remove(voxFecParitySid(sid));
+    if (parityOrphan != null) clip.parity.addAll(parityOrphan);
     final orphan = _orphans.remove(sid);
     if (_orphansRelayed.remove(sid)) clip.relayed = true;
     if (orphan != null) {
@@ -1205,6 +1291,12 @@ class VoxVoiceService extends ChangeNotifier {
     if (forcedRoute != null) return _Method.direct;
     final sender = clip.sender;
     final route = sender == null ? null : _directRoute(sender);
+    // Its packets came 0 hops: whoever sent them is in range, and so may be
+    // others holding it. One zero-hop request reaches them all, with no
+    // route needed (there often is none: "route to X: none (flood)").
+    if (clip.minHops == 0 && !clip.triedZeroHop && clip.packets.isNotEmpty) {
+      return _Method.zeroHop;
+    }
     final canChannel =
         clip.channelIndex != null && _connector.supportsChannelData;
     // Two requests in a row got nothing back: the direct path isn't working
@@ -1254,6 +1346,7 @@ class VoxVoiceService extends ChangeNotifier {
     clip.lastMethod = method;
     clip.rxLast = null; // the next packet starts a new burst
     if (method == _Method.channel) clip.triedChannel = true;
+    if (method == _Method.zeroHop) clip.triedZeroHop = true;
     final sc = clip.sender;
     if (sc != null) {
       final fresh = contactByKeyHex(sc.publicKeyHex) ?? sc;
@@ -1296,6 +1389,7 @@ class VoxVoiceService extends ChangeNotifier {
             : 'Requesting from ${clip.sender?.name ?? 'sender'}…',
       _Method.dmRequest => 'Finding a route to ${clip.sender?.name}…',
       _Method.channel => 'Requesting on the channel…',
+      _Method.zeroHop => 'Asking radios in range…',
     };
     notifyListeners();
     try {
@@ -1352,9 +1446,30 @@ class VoxVoiceService extends ChangeNotifier {
             ),
             waitForGenericAck: true,
           );
+        case _Method.zeroHop:
+          _logEvent(
+            'attempt ${clip.attempts}: zero-hop request to radios in range '
+            '(packets came 0 hops) for ${_indexList(clip.missing)}',
+            clip.envelope.sessionId,
+          );
+          final zr = VoxVoiceFetchRequest(
+            sessionId: req.sessionId,
+            requesterKey6: req.requesterKey6,
+            missingIndices: req.missingIndices,
+            saltOk: true,
+            requesterPath: const [], // answer zero-hop
+          );
+          await _connector.sendFrame(
+            buildSendRawDataFrame(
+              path: Uint8List(0),
+              payload: zr.encode(salt: clip.salts.next()),
+            ),
+            waitForGenericAck: true,
+          );
         case _Method.channel:
           _logEvent(
-            'attempt ${clip.attempts}: request on channel ${clip.channelIndex}',
+            'attempt ${clip.attempts}: request on channel ${clip.channelIndex} '
+            'for ${clip.packets.isEmpty ? 'all' : _indexList(clip.missing)}',
             clip.envelope.sessionId,
           );
           final ok = await _connector.sendChannelDataBlobs(
@@ -1370,7 +1485,9 @@ class VoxVoiceService extends ChangeNotifier {
         'attempt ${clip.attempts} send failed: $e',
         clip.envelope.sessionId,
       );
-      if (method != _Method.channel) clip.directFailures++;
+      if (method != _Method.channel && method != _Method.zeroHop) {
+        clip.directFailures++;
+      }
       if (clip.attempts < voxAttemptBudget(clip.envelope.totalPackets)) {
         await _attempt(clip);
       } else {
@@ -1398,7 +1515,10 @@ class VoxVoiceService extends ChangeNotifier {
       _Method.channel => 3,
       _ => 2,
     };
-    final wait = Duration(milliseconds: trips * hops * hopMs + 8000);
+    final wait = clip.lastMethod == _Method.zeroHop
+        // In range: the answer is a packet away (holders wait up to 4.5 s).
+        ? Duration(milliseconds: 2 * hopMs + 6000)
+        : Duration(milliseconds: trips * hops * hopMs + 8000);
     // Once packets flow, the stream is live: silence for a few packet gaps
     // means its tail was lost, not that the request is still on its way.
     return clip.status == VoxClipStatus.receiving
@@ -1445,14 +1565,30 @@ class VoxVoiceService extends ChangeNotifier {
     final stallBudget = voxStallBudget(clip.packets.length, total);
     _logEvent(
       'timeout after ${clip.lastMethod?.name}: '
-      '${clip.packets.length}/${clip.envelope.totalPackets} packets',
+      '${clip.packets.length}/${clip.envelope.totalPackets} packets'
+      '${clip.isComplete ? '' : ', missing ${_indexList(clip.missing)}'}',
       clip.envelope.sessionId,
     );
+    final sid = clip.envelope.sessionId;
+    if (!progressed &&
+        !_partialPlayed.contains(sid) &&
+        (_tapSids.contains(sid) || (_autoSids.contains(sid) && _autoPlay)) &&
+        !_micBusy &&
+        _phase == VoxPlayback.idle &&
+        canPlayPartial(clip.envelope) &&
+        clip.packets.length >= (total * voxPartialAutoShare).ceil()) {
+      // Waiting for the last packet or two can take minutes: play what's
+      // here now, and the whole clip is a tap away once it's in.
+      unawaited(playPartial(clip.envelope));
+    }
     if (progressed) {
       clip.stalls = 0;
     } else {
       clip.stalls++;
-      if (clip.lastMethod != _Method.channel) clip.directFailures++;
+      if (clip.lastMethod != _Method.channel &&
+          clip.lastMethod != _Method.zeroHop) {
+        clip.directFailures++;
+      }
       if (clip.lastMethod == _Method.direct) {
         // Nothing came back: try the other return route next time.
         clip.askReplyAlongPath = !clip.askReplyAlongPath;
@@ -1461,6 +1597,7 @@ class VoxVoiceService extends ChangeNotifier {
       // and, once, a fresh flooded route have another go.
       if (clip.stalls < stallBudget && clip.stalls % 3 == 0) {
         clip.triedChannel = false;
+        clip.triedZeroHop = false;
       }
       if (clip.stalls == 4) clip.sentDmRequest = false;
     }
@@ -1682,6 +1819,7 @@ class VoxVoiceService extends ChangeNotifier {
       await prefs.setBool(_kPushChannel, v);
     } catch (_) {}
   }
+
   bool _autoPlay = true;
   bool _autoDownloadChannels = false;
 
@@ -1751,7 +1889,12 @@ class VoxVoiceService extends ChangeNotifier {
   }
 
   /// Plays [env] now, replacing whatever is playing.
-  Future<void> play(VoxVoiceEnvelope env) async {
+  Future<void> play(VoxVoiceEnvelope env) => _playWith(env, () => wavFor(env));
+
+  Future<void> _playWith(
+    VoxVoiceEnvelope env,
+    Future<Uint8List?> Function() load,
+  ) async {
     final sid = env.sessionId;
     final gen = ++_playGen;
     await _player?.stop();
@@ -1760,7 +1903,7 @@ class VoxVoiceService extends ChangeNotifier {
     playbackFraction.value = 0;
     notifyListeners();
     final sw = Stopwatch()..start();
-    final wav = await wavFor(env);
+    final wav = await load();
     if (gen != _playGen) return; // stopped or replaced while decoding
     if (wav == null) {
       _endPlayback();
@@ -1907,11 +2050,7 @@ class VoxVoiceService extends ChangeNotifier {
   /// sender pushes its photos to the radios in range, and another listener's
   /// ask brings them to everyone on the channel, so each waits a little
   /// (spread out) first.
-  void _probeThumb(
-    VoxVoiceEnvelope env, {
-    Contact? sender,
-    int? channelIndex,
-  }) {
+  void _probeThumb(VoxVoiceEnvelope env, {Contact? sender, int? channelIndex}) {
     if (!env.isImage || !imagesAvailable) return;
     final sid = env.sessionId;
     if (!_thumbProbed.add(sid)) return;
@@ -2019,6 +2158,21 @@ class VoxVoiceService extends ChangeNotifier {
 
   void _onClipComplete(VoxVoiceEnvelope env) {
     final sid = env.sessionId;
+    final clip = _incoming[sid];
+    if (clip != null && clip.rebuilt > 0) {
+      _logEvent(
+        'complete, ${clip.rebuilt} of its packets rebuilt from parity',
+        sid,
+      );
+    }
+    if (!env.isImage && _partialPlayed.contains(sid)) {
+      // Heard already with gaps: ready to play whole, not played again.
+      _tapSids.remove(sid);
+      _autoSids.remove(sid);
+      _logEvent('complete now: tap to hear it without gaps', sid);
+      if (canPlay(env)) unawaited(wavFor(env));
+      return;
+    }
     if (env.isImage) {
       _tapSids.remove(sid);
       _autoSids.remove(sid);
@@ -2105,7 +2259,12 @@ class VoxVoiceService extends ChangeNotifier {
         if (channelIndex != null) {
           _lastChannelPacket[pkt.sessionId] = DateTime.now();
         }
-        _logArrival(pkt.sessionId, via, channelIndex == null ? null : hops);
+        _logArrival(
+          pkt.sessionId,
+          via,
+          channelIndex == null ? null : hops,
+          lastHop,
+        );
         _onPacket(
           pkt,
           via: via,
@@ -2153,11 +2312,23 @@ class VoxVoiceService extends ChangeNotifier {
     Uint8List? lastHop,
   }) {
     final sid = pkt.sessionId;
+    _noteHeard(sid, pkt.index, onChannel: hops != null);
     if (_bits.containsKey(sid)) return;
+    // A parity packet (vox_fec.dart): its session id is its clip's, XORed.
+    final dataSid = voxFecDataSid(sid);
+    if (_bits.containsKey(dataSid)) return;
+    final forClip = _incoming[dataSid];
+    if (forClip != null) {
+      _acceptParity(forClip, pkt.index, pkt.codecData);
+      return;
+    }
     _noteVia(sid, via, lastHop);
     // Raw data doesn't say how far it came: treat it as relayed.
     final relayed = hops == null || hops > 0;
     final clip = _incoming[sid];
+    if (clip != null && hops != null && hops < clip.minHops) {
+      clip.minHops = hops;
+    }
     if (clip == null) {
       final o = _orphans.putIfAbsent(sid, () => {});
       o[pkt.index] = pkt.codecData;
@@ -2169,6 +2340,21 @@ class VoxVoiceService extends ChangeNotifier {
       return;
     }
     if (relayed) clip.relayed = true;
+    // During a repair, say where each missing packet came from.
+    if (clip.attempts > 0 &&
+        clip.packetsAtLastAttempt > 0 &&
+        !clip.packets.containsKey(pkt.index) &&
+        clip.envelope.totalPackets - clip.packetsAtLastAttempt <= 24) {
+      _logEvent(
+        'got #${pkt.index} ${hops == null
+            ? 'by raw data'
+            : hops == 0
+            ? 'zero-hop on the channel'
+            : '$hops hops on the channel'}'
+        '${lastHop != null && lastHop.isNotEmpty && (hops ?? 0) > 0 ? ' via ${_hex(lastHop)}' : ''}',
+        sid,
+      );
+    }
     _acceptPacket(clip, pkt.index, pkt.codecData);
   }
 
@@ -2181,6 +2367,7 @@ class VoxVoiceService extends ChangeNotifier {
     if (clip.isComplete || index >= clip.envelope.totalPackets) return;
     final fresh = !clip.packets.containsKey(index);
     clip.packets[index] = data;
+    if (fresh && clip.parity.isNotEmpty && !clip.isComplete) _rebuild(clip);
     if (fresh &&
         (clip.status == VoxClipStatus.requesting ||
             clip.status == VoxClipStatus.receiving)) {
@@ -2222,6 +2409,113 @@ class VoxVoiceService extends ChangeNotifier {
     if (notify) notifyListeners();
   }
 
+  /// Packets of [sid] heard from other nodes lately (index -> when), for not
+  /// sending what someone else just sent (NACK suppression).
+  final Map<String, Map<int, DateTime>> _heardIdx = {};
+
+  /// Another node sent packet [index] of [sid]: note it, and if one of our
+  /// channel bursts for that clip still has it to send, leave it out.
+  void _noteHeard(String sid, int index, {required bool onChannel}) {
+    final now = DateTime.now();
+    (_heardIdx[sid] ??= {})[index] = now;
+    if (_heardIdx.length > 48) _heardIdx.remove(_heardIdx.keys.first);
+    if (!onChannel) return;
+    for (final b in _channelBursts.values) {
+      if (b.sid == sid && !b.pushing && b.pending.remove(index)) {
+        b.suppressed++;
+      }
+    }
+  }
+
+  /// Indices of [sid] heard from another node since [t].
+  Set<int> _heardSince(String sid, DateTime t) => {
+    for (final e in (_heardIdx[sid] ?? const <int, DateTime>{}).entries)
+      if (e.value.isAfter(t)) e.key,
+  };
+
+  /// What we can send of [sid]: the whole clip, or the packets of one
+  /// arriving here (null: nothing).
+  _Held? _heldPackets(String sid) {
+    final bits = _bits[sid];
+    final mode = _modes[sid];
+    if (bits != null && mode != null) {
+      final pk = voxPacketize(sid, bits, mode);
+      return _Held(
+        {for (final p in pk) p.index: p.codecData},
+        pk.length,
+        whole: true,
+        image: mode.isImage,
+      );
+    }
+    final clip = _incoming[sid];
+    if (clip == null || clip.packets.isEmpty) return null;
+    return _Held(
+      Map.of(clip.packets),
+      clip.envelope.totalPackets,
+      whole: false,
+      image: clip.envelope.isImage,
+    );
+  }
+
+  /// The part of an incomplete clip [req] asks for that we hold, or null.
+  _Held? _partialFor(VoxVoiceFetchRequest req) {
+    final held = _heldPackets(req.sessionId);
+    if (held == null || held.whole) return held;
+    final want = req.missingIndices;
+    if (want == null) return held;
+    return want.any(held.packets.containsKey) ? held : null;
+  }
+
+  /// A parity packet for [clip]: kept, and any block it completes rebuilt.
+  void _acceptParity(_IncomingClip clip, int info, Uint8List data) {
+    if (clip.isComplete || clip.parity.containsKey(info)) return;
+    clip.parity[info] = data;
+    if (clip.packets.isEmpty) return;
+    final before = clip.packets.length;
+    _rebuild(clip);
+    if (clip.packets.length == before) return;
+    // Run the arrival bookkeeping (completion, watchdogs) once.
+    final i = clip.packets.keys.last;
+    final d = clip.packets.remove(i)!;
+    _acceptPacket(clip, i, d);
+  }
+
+  /// Packets of [clip] that its parity can bring back, put in place.
+  void _rebuild(_IncomingClip clip) {
+    final got = voxFecRebuild(
+      total: clip.envelope.totalPackets,
+      present: clip.packets,
+      parity: clip.parity,
+    );
+    if (got.isEmpty) return;
+    clip.packets.addAll(got);
+    clip.rebuilt += got.length;
+    _logEvent(
+      'rebuilt ${_indexList(got.keys)} from parity (no request needed)',
+      clip.envelope.sessionId,
+    );
+  }
+
+  /// Packet indices as a short list: "#3-5, #10".
+  static String _indexList(Iterable<int> indices) {
+    final v = indices.toSet().toList()..sort();
+    if (v.isEmpty) return 'none';
+    final parts = <String>[];
+    var a = v.first, b = v.first;
+    for (final i in v.skip(1)) {
+      if (i == b + 1) {
+        b = i;
+        continue;
+      }
+      parts.add(a == b ? '#$a' : '#$a-$b');
+      a = b = i;
+    }
+    parts.add(a == b ? '#$a' : '#$a-$b');
+    return parts.length > 8
+        ? '${parts.take(8).join(', ')} and ${parts.length - 8} more'
+        : parts.join(', ');
+  }
+
   // ---------------------------------------------------------------- serving
 
   void _onChannelRequest(
@@ -2232,13 +2526,19 @@ class VoxVoiceService extends ChangeNotifier {
     final self = _connector.selfPublicKey;
     if (self != null && req.requesterKey6 == voxKey6Hex(self)) return;
     unawaited(() async {
-      if (!await _loadFromStore(req.sessionId)) return;
+      final whole = await _loadFromStore(req.sessionId);
+      // Part of it is worth sending too: another listener often lacks
+      // exactly the packets we got.
+      if (!whole && _partialFor(req) == null) return;
       final own = _ownClips.contains(req.sessionId);
       // The original sender answers right away. Anyone else holding the clip
-      // only steps in if nobody has started sending it a few seconds later.
+      // only steps in if nobody has started sending it a few seconds later;
+      // a partial copy waits longer still, for a whole one.
       final delay = own
           ? const Duration(milliseconds: 300)
-          : Duration(milliseconds: 5000 + Random().nextInt(3000));
+          : Duration(
+              milliseconds: (whole ? 5000 : 8000) + Random().nextInt(3000),
+            );
       final asked = DateTime.now();
       await Future<void>.delayed(delay);
       final heard = _lastChannelPacket[req.sessionId];
@@ -2277,7 +2577,8 @@ class VoxVoiceService extends ChangeNotifier {
       return;
     }
     final key = '${req.sessionId}/ch$channel';
-    final sig = '$key/${req.requesterKey6}|${req.missingIndices?.join(',') ?? 'all'}';
+    final sig =
+        '$key/${req.requesterKey6}|${req.missingIndices?.join(',') ?? 'all'}';
     final now = DateTime.now();
     final last = _recentServes[sig];
     if (last != null && now.difference(last) < const Duration(seconds: 6)) {
@@ -2288,23 +2589,28 @@ class VoxVoiceService extends ChangeNotifier {
     _recentServes.removeWhere(
       (_, t) => now.difference(t) > const Duration(minutes: 10),
     );
-    final total = voxPacketize(
-      req.sessionId,
-      _bits[req.sessionId]!,
-      _modes[req.sessionId]!,
-    ).length;
+    final held = _heldPackets(req.sessionId);
+    if (held == null) return;
+    final total = held.total;
     final burst = _channelBursts.putIfAbsent(
       key,
       () => _ChannelBurst(req.sessionId, channel),
     );
     final wanted = req.missingIndices ?? List<int>.generate(total, (i) => i);
     final before = burst.pending.length;
-    burst.pending.addAll(wanted.where((i) => i >= 0 && i < total));
+    burst.pending.addAll(
+      wanted.where((i) => i >= 0 && i < total && held.packets.containsKey(i)),
+    );
+    // Everything asked for: the parity goes too, so whatever it misses of
+    // this pass mends itself.
+    if (req.missingIndices == null && held.whole) {
+      burst.addParity(total, image: held.image);
+    }
     burst.saltOk = burst.saltOk && req.saltOk;
     burst.maxHops = max(burst.maxHops, hops ?? 3);
     _logEvent(
-      '${req.requesterKey6} asks for ${req.missingIndices == null ? 'all' : wanted.length} '
-      'packets (${hops ?? '?'} hops): '
+      '${req.requesterKey6} asks for ${req.missingIndices == null ? 'all' : _indexList(wanted)} '
+      '(${hops ?? '?'} hops)${held.whole ? '' : ', we hold ${held.packets.length}/$total'}: '
       '${burst.pending.length - before} added, ${burst.pending.length} pending',
       req.sessionId,
     );
@@ -2361,27 +2667,55 @@ class VoxVoiceService extends ChangeNotifier {
         _logEvent('not sending: it would go out on the main mesh', burst.sid);
         return;
       }
-      if (!await _loadFromStore(burst.sid)) return;
-      final packets = voxPacketize(burst.sid, _bits[burst.sid]!, _modes[burst.sid]!);
+      // Gather a moment first: several listeners' requests for the same
+      // clip usually come within a few seconds of each other, and one burst
+      // answers them all (each adds what it lacks). Meanwhile, packets heard
+      // from another holder come off the list (_noteHeard). A push answers
+      // no request and goes at once.
+      if (!burst.pushing) {
+        await Future<void>.delayed(
+          Duration(milliseconds: 2000 + _rng.nextInt(1000)),
+        );
+      }
+      final held = _heldPackets(burst.sid);
+      if (held == null) return;
+      List<Uint8List>? parity;
       // Listen before the burst, briefly: the request that started it may
       // still be relayed. Within the burst the gaps do this. A push answers
       // no request, and its lead after the announcement already went by.
       if (!burst.pushing) await _waitBriefQuiet();
       var sent = 0;
       var zeroHopSent = 0;
+      var paritySent = 0;
       while (burst.pending.isNotEmpty && _connector.isConnected) {
         final index = burst.pending.first;
         burst.pending.remove(index);
-        if (index >= packets.length) continue;
+        Uint8List payload;
+        if (index >= _ChannelBurst.parityBase) {
+          if (!held.whole) continue;
+          parity ??= voxFecEncode(burst.sid, [
+            for (var i = 0; i < held.total; i++) held.packets[i]!,
+          ], image: held.image);
+          final k = index - _ChannelBurst.parityBase;
+          if (k >= parity.length) continue;
+          payload = parity[k];
+          paritySent++;
+        } else {
+          final data = held.packets[index];
+          if (data == null) continue;
+          payload = VoxVoicePacket(
+            sessionId: burst.sid,
+            index: index,
+            codecData: data,
+          ).encode(salt: burst.saltOk ? _rng.nextInt(256) : null);
+        }
         final zeroHop = burst.maxHops == 0;
         await _radio2Quiet(burst.sid);
         try {
           await _connector.sendChannelDataPacket(
             channelIndex: burst.channel,
             dataType: voxChannelDataType,
-            payload: packets[index].encode(
-              salt: burst.saltOk ? _rng.nextInt(256) : null,
-            ),
+            payload: payload,
             zeroHop: zeroHop,
           );
         } catch (e) {
@@ -2399,7 +2733,9 @@ class VoxVoiceService extends ChangeNotifier {
       }
       _logEvent(
         'sent $sent packets on channel ${burst.channel}'
-        '${zeroHopSent > 0 ? ' ($zeroHopSent zero-hop)' : ''}',
+        '${paritySent > 0 ? ', $paritySent of them parity' : ''}'
+        '${zeroHopSent > 0 ? ' ($zeroHopSent zero-hop)' : ''}'
+        '${burst.suppressed > 0 ? '; ${burst.suppressed} left out, heard from another node' : ''}',
         burst.sid,
       );
     } finally {
@@ -2490,21 +2826,60 @@ class VoxVoiceService extends ChangeNotifier {
     if (_serveGen[key] != gen) return; // superseded while queued
     await _refreshMediaAir();
     if (!_mediaAllowed) {
-      _logEvent('not answering: it would go out on the main mesh', req.sessionId);
+      _logEvent(
+        'not answering: it would go out on the main mesh',
+        req.sessionId,
+      );
       return;
     }
-    if (!await _loadFromStore(req.sessionId)) {
+    final whole = await _loadFromStore(req.sessionId);
+    final held = whole ? _heldPackets(req.sessionId) : _partialFor(req);
+    if (held == null) {
       _logEvent('asked for a clip we do not have', req.sessionId);
       return;
     }
-    final bits = _bits[req.sessionId]!;
-    final mode = _modes[req.sessionId]!;
+    // A zero-hop request (an empty path) reached every radio in range: let
+    // the sender go first, and anyone else wait a moment and leave out what
+    // they hear someone else send meanwhile.
+    final own = _ownClips.contains(req.sessionId);
+    final asked = DateTime.now();
+    if (!own && req.requesterPath != null && req.requesterPath!.isEmpty) {
+      await Future<void>.delayed(
+        Duration(milliseconds: (whole ? 1000 : 2500) + _rng.nextInt(2000)),
+      );
+    }
+    final heard = _heardSince(req.sessionId, asked);
     final wanted = req.missingIndices?.toSet();
     final packets = [
-      for (final p in voxPacketize(req.sessionId, bits, mode))
-        if (wanted == null || wanted.contains(p.index)) p,
+      for (var i = 0; i < held.total; i++)
+        if ((wanted == null || wanted.contains(i)) &&
+            held.packets.containsKey(i) &&
+            !heard.contains(i))
+          VoxVoicePacket(
+            sessionId: req.sessionId,
+            index: i,
+            codecData: held.packets[i]!,
+          ),
     ];
-    if (packets.isEmpty) return;
+    if (packets.isEmpty) {
+      if (heard.isNotEmpty) {
+        _logEvent('another node is answering: not sending', req.sessionId);
+      }
+      return;
+    }
+    if (!held.whole) {
+      _logEvent(
+        'we hold ${held.packets.length}/${held.total}: serving the '
+        '${packets.length} asked for that we have',
+        req.sessionId,
+      );
+    }
+    // The whole clip asked for: its parity follows.
+    final parity = wanted == null && held.whole
+        ? voxFecEncode(req.sessionId, [
+            for (var i = 0; i < held.total; i++) held.packets[i]!,
+          ], image: held.image)
+        : const <Uint8List>[];
 
     if (viaChannel != null) {
       _logEvent(
@@ -2515,6 +2890,7 @@ class VoxVoiceService extends ChangeNotifier {
         [
           for (final p in packets)
             p.encode(salt: req.saltOk ? _rng.nextInt(256) : null),
+          ...parity,
         ],
         channelIndex: viaChannel,
         dataType: voxChannelDataType,
@@ -2600,7 +2976,27 @@ class VoxVoiceService extends ChangeNotifier {
         return;
       }
     }
-    _logEvent('served all ${packets.length} packets', req.sessionId);
+    var paritySent = 0;
+    for (final p in parity) {
+      if (!_connector.isConnected || _serveGen[key] != gen) break;
+      if (2 + route.length + p.length > _maxCompanionFrame) break;
+      await Future<void>.delayed(gap);
+      await _radio2Quiet(req.sessionId);
+      try {
+        await _connector.sendFrame(
+          buildSendRawDataFrame(path: route, payload: p),
+          waitForGenericAck: true,
+        );
+        paritySent++;
+      } catch (_) {
+        break;
+      }
+    }
+    _logEvent(
+      'served all ${packets.length} packets'
+      '${paritySent > 0 ? ' and $paritySent parity' : ''}',
+      req.sessionId,
+    );
   }
 
   // ---------------------------------------------------------------- routing
@@ -2923,6 +3319,30 @@ Int16List _decodeJob(_DecodeJob j) =>
 
 Int16List _decodeRawJob(_DecodeJob j) => voxDecodeBits(j.bits, j.mode);
 
+class _GapsJob {
+  final List<Uint8List?> bits;
+  final List<int> silence;
+  final VoxVoiceMode mode;
+  _GapsJob(this.bits, this.silence, this.mode);
+}
+
+/// voxGapPlan's segments decoded and joined: 8 kHz PCM with silences.
+Int16List _decodeGapsJob(_GapsJob j) {
+  final parts = <Int16List>[
+    for (var i = 0; i < j.bits.length; i++)
+      j.bits[i] != null
+          ? voxDecodeBits(j.bits[i]!, j.mode)
+          : Int16List(j.silence[i]),
+  ];
+  final out = Int16List(parts.fold(0, (n, p) => n + p.length));
+  var o = 0;
+  for (final p in parts) {
+    out.setRange(o, o + p.length, p);
+    o += p.length;
+  }
+  return out;
+}
+
 class _ImageEncodeJob {
   final VoxRgbImage ref;
   final VoxImageDetail detail;
@@ -2972,4 +3392,28 @@ class _ChannelBurst {
 
   /// Started by the sender itself (VoiceService._pushToChannel).
   bool pushing = false;
+
+  /// Packets taken off [pending] because another node sent them.
+  int suppressed = 0;
+
+  /// [pending] holds data packet indices, and parity packet k as
+  /// parityBase + k (vox_fec.dart), sent after all the data.
+  static const int parityBase = 1000;
+
+  void addParity(int total, {required bool image}) {
+    final n = voxFecTotalParity(total, image: image);
+    for (var k = 0; k < n; k++) {
+      pending.add(parityBase + k);
+    }
+  }
+}
+
+/// The packets of a clip this phone can send: all of them, or some of an
+/// incomplete one (served to listeners missing exactly those).
+class _Held {
+  _Held(this.packets, this.total, {required this.whole, required this.image});
+  final Map<int, Uint8List> packets;
+  final int total;
+  final bool whole;
+  final bool image;
 }

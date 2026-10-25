@@ -29,7 +29,10 @@ class DroneDetectorScreen extends StatelessWidget {
     final tracks = d.tracks;
     final usable = [
       for (final c in connector.channels)
-        if (c.name.isNotEmpty && !c.isPublicChannel && c.name.toLowerCase() != 'public') c,
+        if (c.name.isNotEmpty &&
+            !c.isPublicChannel &&
+            c.name.toLowerCase() != 'public')
+          c,
     ];
     String status;
     if (!d.listening) {
@@ -80,7 +83,10 @@ class DroneDetectorScreen extends StatelessWidget {
             initialValue: d.channelName,
             decoration: InputDecoration(labelText: l10n.drones_alertChannel),
             items: [
-              DropdownMenuItem<String?>(value: null, child: Text(l10n.drones_noChannel)),
+              DropdownMenuItem<String?>(
+                value: null,
+                child: Text(l10n.drones_noChannel),
+              ),
               for (final c in usable)
                 DropdownMenuItem<String?>(value: c.name, child: Text(c.name)),
               // The saved channel, when this radio doesn't have it (the
@@ -153,7 +159,9 @@ class _TrackCard extends StatelessWidget {
   String _ago(BuildContext context, DateTime t) {
     final l10n = context.l10n;
     final s = now.difference(t).inSeconds;
-    return s < 60 ? l10n.drones_secondsAgo(s < 0 ? 0 : s) : l10n.drones_minutesAgo(s ~/ 60);
+    return s < 60
+        ? l10n.drones_secondsAgo(s < 0 ? 0 : s)
+        : l10n.drones_minutesAgo(s ~/ 60);
   }
 
   @override
@@ -178,12 +186,15 @@ class _TrackCard extends StatelessWidget {
           color: stale ? Theme.of(context).disabledColor : Colors.orange,
         ),
         title: Text(t.uasId, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text(stale ? '$facts · ${l10n.drones_stale}' : '$where\n$facts'),
+        subtitle: Text(
+          stale ? '$facts · ${l10n.drones_stale}' : '$where\n$facts',
+        ),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         expandedCrossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _row(l10n.drones_type, remoteIdUaTypeName(t.uaType)),
-          if (t.description != null) _row(l10n.drones_description, t.description!),
+          if (t.description != null)
+            _row(l10n.drones_description, t.description!),
           if (t.heightAglM != 0) _row(l10n.drones_height, '${t.heightAglM} m'),
           if (t.altGeoM != 0) _row(l10n.drones_altitude, '${t.altGeoM} m'),
           _row(l10n.drones_speed, remoteIdSpeed(t.speedCms)),
@@ -211,9 +222,14 @@ class _TrackCard extends StatelessWidget {
                   icon: const Icon(Icons.campaign_outlined),
                   label: Text(l10n.drones_post),
                   onPressed: () async {
-                    final why = await context.read<DroneDetectorService>().post(t);
+                    final why = await context.read<DroneDetectorService>().post(
+                      t,
+                    );
                     if (!context.mounted) return;
-                    showDismissibleSnackBar(context, content: Text(why ?? l10n.drones_posted));
+                    showDismissibleSnackBar(
+                      context,
+                      content: Text(why ?? l10n.drones_posted),
+                    );
                   },
                 ),
             ],

@@ -56,7 +56,15 @@ typedef _InitD = int Function(_Params);
 typedef _FreeC = Void Function(Int32);
 typedef _FreeD = void Function(int);
 typedef _EncodeC =
-    Int32 Function(Int32, Pointer<Uint8>, Int32, Int32, Int32, Pointer<Void>, Int32);
+    Int32 Function(
+      Int32,
+      Pointer<Uint8>,
+      Int32,
+      Int32,
+      Int32,
+      Pointer<Void>,
+      Int32,
+    );
 typedef _EncodeD =
     int Function(int, Pointer<Uint8>, int, int, int, Pointer<Void>, int);
 typedef _DecodeC =
@@ -140,11 +148,27 @@ class Ggwave {
     final data = calloc<Uint8>(payload.length);
     try {
       data.asTypedList(payload.length).setAll(0, payload);
-      final bytes = _encode(id, data, payload.length, protocol.id, volume, nullptr, 1);
+      final bytes = _encode(
+        id,
+        data,
+        payload.length,
+        protocol.id,
+        volume,
+        nullptr,
+        1,
+      );
       if (bytes <= 0) throw StateError('ggwave_encode failed');
       final out = calloc<Uint8>(bytes);
       try {
-        final n = _encode(id, data, payload.length, protocol.id, volume, out.cast(), 0);
+        final n = _encode(
+          id,
+          data,
+          payload.length,
+          protocol.id,
+          volume,
+          out.cast(),
+          0,
+        );
         if (n <= 0) throw StateError('ggwave_encode failed');
         return Int16List.fromList(out.cast<Int16>().asTypedList(n ~/ 2));
       } finally {

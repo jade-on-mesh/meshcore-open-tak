@@ -116,7 +116,9 @@ class MessageReachScreen extends StatelessWidget {
       self,
       (m.pathHashWidth ?? connector.pathHashByteWidth).clamp(1, 3).toInt(),
     );
-    final heard = team.enabled ? team.heardBy(m) : const <(TeamMember, DateTime)>[];
+    final heard = team.enabled
+        ? team.heardBy(m)
+        : const <(TeamMember, DateTime)>[];
     final heardKeys = {for (final h in heard) h.$1.key4};
     final notYet = team.enabled
         ? team.members.where((x) => !heardKeys.contains(x.key4)).toList()
@@ -224,12 +226,17 @@ class MessageReachScreen extends StatelessWidget {
                 ? Center(
                     child: Padding(
                       padding: const EdgeInsets.all(24),
-                      child: Text(l.reach_noPosition, textAlign: TextAlign.center),
+                      child: Text(
+                        l.reach_noPosition,
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   )
                 : FlutterMap(
                     options: MapOptions(
-                      initialCenter: pts.isNotEmpty ? pts.first : const LatLng(20, 0),
+                      initialCenter: pts.isNotEmpty
+                          ? pts.first
+                          : const LatLng(20, 0),
                       initialZoom: pts.isNotEmpty ? 13 : 2,
                       initialCameraFit: fit,
                       interactionOptions: const InteractionOptions(

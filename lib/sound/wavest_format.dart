@@ -58,18 +58,27 @@ Future<String> wavestBuild(
 }) async {
   final cs = wavestCallsign(callsign);
   if (passkey == null || passkey.isEmpty) return 'U:$cs|$text';
-  final nonce = iv ?? List<int>.generate(12, (_) => Random.secure().nextInt(256));
+  final nonce =
+      iv ?? List<int>.generate(12, (_) => Random.secure().nextInt(256));
   final box = await _aes.encrypt(
     utf8.encode(text),
     secretKey: await _key(passkey),
     nonce: nonce,
   );
-  final all = Uint8List.fromList([...nonce, ...box.cipherText, ...box.mac.bytes]);
+  final all = Uint8List.fromList([
+    ...nonce,
+    ...box.cipherText,
+    ...box.mac.bytes,
+  ]);
   return 'E:$cs|AES:${base64.encode(all)}';
 }
 
 /// Whether [text] from [callsign] fits one ggwave message.
-Future<bool> wavestFits(String callsign, String text, {String? passkey}) async =>
+Future<bool> wavestFits(
+  String callsign,
+  String text, {
+  String? passkey,
+}) async =>
     utf8.encode(await wavestBuild(callsign, text, passkey: passkey)).length <=
     wavestMaxBytes;
 
@@ -101,13 +110,18 @@ Future<WavestMessage> wavestParse(String heard, {String? passkey}) async {
 Future<String?> _open(String body, String passkey) async {
   try {
     if (body.startsWith('XOR:')) {
-      final t = utf8.decode(base64.decode(body.substring(4)), allowMalformed: true);
+      final t = utf8.decode(
+        base64.decode(body.substring(4)),
+        allowMalformed: true,
+      );
       return String.fromCharCodes([
         for (var i = 0; i < t.length; i++)
           t.codeUnitAt(i) ^ passkey.codeUnitAt(i % passkey.length),
       ]);
     }
-    final all = base64.decode(body.startsWith('AES:') ? body.substring(4) : body);
+    final all = base64.decode(
+      body.startsWith('AES:') ? body.substring(4) : body,
+    );
     if (all.length <= 12 + 16) return null;
     final box = SecretBox(
       all.sublist(12, all.length - 16),

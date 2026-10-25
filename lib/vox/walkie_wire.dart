@@ -130,8 +130,9 @@ class WalkieAudio {
   /// Packets in the talk once this, its last, has arrived.
   int get totalIfLast => codecData.isEmpty ? index : index + 1;
 
-  Duration get duration =>
-      Duration(milliseconds: codecData.length ~/ mode.bytesPerFrame * mode.frameMs);
+  Duration get duration => Duration(
+    milliseconds: codecData.length ~/ mode.bytesPerFrame * mode.frameMs,
+  );
 }
 
 Uint8List _fitUtf8(String s, int maxBytes) {
@@ -271,7 +272,9 @@ class WalkieJitter {
       if (t != null && _next >= t) break;
       final p = _packets.remove(_next);
       if (p != null) {
-        final from = _playEnd != null && _playEnd!.isAfter(now) ? _playEnd! : now;
+        final from = _playEnd != null && _playEnd!.isAfter(now)
+            ? _playEnd!
+            : now;
         _playEnd = from.add(
           Duration(milliseconds: p.length ~/ mode.bytesPerFrame * mode.frameMs),
         );
