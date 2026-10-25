@@ -98,6 +98,21 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
       }
       return s.play(env);
     }
+    // Most of it is here: play it now with silence for what's missing (the
+    // rest keeps coming; a gave-up fetch starts again).
+    if (s.canPlayPartial(env)) {
+      if (st.status == VoxClipStatus.unavailable ||
+          st.status == VoxClipStatus.remote) {
+        unawaited(
+          s.requestClip(
+            env,
+            sender: widget.sender,
+            channelIndex: widget.channelIndex,
+          ),
+        );
+      }
+      return s.playPartial(env);
+    }
     if (st.status == VoxClipStatus.requesting ||
         st.status == VoxClipStatus.receiving) {
       return;
@@ -162,9 +177,12 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
     }
     final st = s.stateFor(env);
     final playback = s.playbackFor(env);
+    final partial = s.canPlayPartial(env);
     final busy =
-        st.status == VoxClipStatus.requesting ||
-        st.status == VoxClipStatus.receiving;
+        (st.status == VoxClipStatus.requesting ||
+            st.status == VoxClipStatus.receiving) &&
+        !partial &&
+        playback == VoxPlayback.idle;
     final accent = Theme.of(context).colorScheme.primary;
     final talk = s.isTalk(env);
 
@@ -190,7 +208,14 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
         ? Icons.refresh
         : Icons.download_for_offline_outlined;
 
+    final gapsNote = partial ? ' · tap to play with gaps' : '';
     final String subtitle = switch (st.status) {
+      _ when st.status != VoxClipStatus.complete &&
+          playback == VoxPlayback.playing =>
+        'Playing with gaps · tap to stop',
+      _ when st.status != VoxClipStatus.complete &&
+          playback == VoxPlayback.preparing =>
+        'Preparing audio…',
       VoxClipStatus.complete when !s.canPlay(env) =>
         'Mimi voice · tap to get the voice model '
             '(${VoxMimi.downloadMb} MB) to play',
@@ -203,15 +228,16 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
             '${env.mode.isMimi ? 'Mimi' : 'Codec2 ${env.mode.label}'}',
       // Pushed (or sent for someone else) and arriving unasked.
       VoxClipStatus.remote when !widget.isOutgoing && st.received > 0 =>
-        'Receiving ${st.received}/${st.total}',
+        'Receiving ${st.received}/${st.total}$gapsNote',
       VoxClipStatus.remote =>
         widget.isOutgoing
             ? '${env.durationSeconds}s · waiting for listeners'
             : '${env.durationSeconds}s · tap to download'
                   '${airHint == null ? '' : ' ($airHint)'}',
-      VoxClipStatus.requesting => st.message ?? 'Requesting…',
-      VoxClipStatus.receiving => 'Receiving ${st.received}/${st.total}',
-      VoxClipStatus.unavailable => st.message ?? 'Voice unavailable right now',
+      VoxClipStatus.requesting => '${st.message ?? 'Requesting…'}$gapsNote',
+      VoxClipStatus.receiving => 'Receiving ${st.received}/${st.total}$gapsNote',
+      VoxClipStatus.unavailable =>
+        '${st.message ?? 'Voice unavailable right now'}$gapsNote',
     };
 
     return InkWell(

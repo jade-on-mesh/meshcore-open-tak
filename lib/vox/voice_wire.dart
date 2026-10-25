@@ -447,10 +447,11 @@ class VoxVoiceFetchRequest {
     List<int>? missing;
     if ((flags & voxFetchFlagMissingOnly) != 0) {
       if (payload.length < minLength + count) return null;
-      missing = [
+      // A set: salted requests repeat one index to differ from the last.
+      missing = {
         for (var i = 0; i < count; i++)
           if (payload[minLength + i] < voxMaxPackets) payload[minLength + i],
-      ];
+      }.toList()..sort();
     }
     List<int>? path;
     final pathAt = minLength + count;

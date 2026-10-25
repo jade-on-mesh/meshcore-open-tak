@@ -195,6 +195,15 @@ void main() {
       expect(back.requesterKey6, 'a1b2c3d4e5f6');
     });
 
+    test('a salted request\'s repeats are read as one index each', () {
+      // [2, 2, 2, 4, 1]: the salt repeats one index so retries differ; a
+      // reader counting them saw "asks for 16 packets" on a 15-packet clip.
+      final req = VoxVoiceFetchRequest.tryParse(
+        _hex('72deadbeef03a1b2c3d4e5f6050202020401'),
+      )!;
+      expect(req.missingIndices, [1, 2, 4]);
+    });
+
     test('parses a request', () {
       final req = VoxVoiceFetchRequest.tryParse(
         _hex('72deadbeef01a1b2c3d4e5f6020104'),
