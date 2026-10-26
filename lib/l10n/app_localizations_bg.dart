@@ -331,13 +331,15 @@ class AppLocalizationsBg extends AppLocalizations {
   String get voiceMute_everyChannel => 'Play talks on every channel';
 
   @override
-  String get voiceMute_everyChannelHelp => 'Off: talks play live only in the channel you have open. On: talks on any channel play as they arrive, like a scanner.';
+  String get voiceMute_everyChannelHelp =>
+      'Off: talks play live only in the channel you have open. On: talks on any channel play as they arrive, like a scanner.';
 
   @override
   String get voiceMute_channel => 'Mute voice in this channel';
 
   @override
-  String get voiceMute_channelHelp => 'Its talks don\'t play live and its voice messages don\'t play by themselves. They wait in the chat for a tap.';
+  String get voiceMute_channelHelp =>
+      'Its talks don\'t play live and its voice messages don\'t play by themselves. They wait in the chat for a tap.';
 
   @override
   String get voiceMute_menuMute => 'Mute voice';

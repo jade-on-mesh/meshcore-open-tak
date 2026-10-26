@@ -779,9 +779,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                   value: 'voiceMute',
                   child: Builder(
                     builder: (context) {
-                      final muted = context
-                          .read<WalkieService>()
-                          .isVoiceMuted(widget.channel);
+                      final muted = context.read<WalkieService>().isVoiceMuted(
+                        widget.channel,
+                      );
                       return Row(
                         children: [
                           Icon(
