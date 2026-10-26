@@ -141,24 +141,100 @@ const Duration voxStallBackoffCap = Duration(minutes: 4);
 /// airtimes, maybe at a slower coding rate: the 1.15) and the airtime itself.
 int voxRelayMs(int airMs) => (airMs + 2.5 * airMs * 1.15).round();
 
-/// The gap between flooded channel packets answering a listener [hops]
-/// repeaters away. Each packet floods out through every repeater on the way,
-/// so the next waits for the last one's relays near us to clear: three
-/// relays' worth at most (farther ones reuse the channel), and never more
-/// than twice the 1-hop gap. A 4-hop MediaMesh photo sent 800 ms apart lost
-/// all but one packet of each answer. Mirrored in Wadamesh
-/// (VoxServe::packetGap, VoxFetch::packetGap).
-int voxFloodGapMs(int airMs, int hops) {
-  final base = max(800, airMs * 4 + 150);
-  if (hops < 2) return base;
-  final g = min(airMs + min(hops, 3) * voxRelayMs(airMs), 2 * base);
-  return max(g, base);
+/// The gap between flooded channel packets that was always used: four
+/// airtimes and a little, at least 800 ms.
+int voxFloodBaseGapMs(int airMs) => max(800, airMs * 4 + 150);
+
+/// The slowest an answer's flooded packets go (twice the base gap), and what
+/// a listener expects at first: it never calls a transfer stalled that is
+/// only being sent slowly. Packets that come faster shorten its wait.
+int voxFloodSlowGapMs(int airMs) => 2 * voxFloodBaseGapMs(airMs);
+
+/// How an answer on a channel is paced, learnt from what the requests that
+/// follow it still lack, so it is fast where the mesh is clear and slows
+/// where it isn't, for a listener 0 hops away or 20. Mirrored in Wadamesh
+/// (VoxServe's FloodPace).
+///
+/// - The gap between packets starts at the base gap (for a listener two or
+///   more hops away, at least the average time for our packet to clear the
+///   next two repeaters), grows by half when an answer lost a third or more,
+///   and shrinks by a fifth when it lost almost none, between the base gap
+///   and [voxFloodSlowGapMs].
+/// - Before answering, a relay's time per hop the request came, up to two:
+///   the request's own flood is still being relayed around us, by repeaters
+///   we may not hear but our next hop does, and packets sent into it die.
+///   An answer whose first packet was lost while later ones came adds a
+///   relay, up to four; one whose first packet came takes one off.
+///
+/// Many listeners may ask about the same answer. Losses on one listener's
+/// own poor link are its own; a pace that's too fast loses packets for
+/// everyone. So one listener who got nearly all of an answer counts for
+/// more than any number who didn't: it speeds the pace up (undoing a slowing
+/// that answer caused), and after it no report slows it. Each answer moves
+/// the pace at most once each way.
+class VoxFloodPace {
+  VoxFloodPace(this.airMs) : _gapMs = voxFloodBaseGapMs(airMs);
+
+  int airMs;
+  int _gapMs;
+  int _extraRelays = 0;
+
+  /// The base gap, or for a listener 2+ hops away the average time for our
+  /// packet to clear the next two repeaters (three airtimes and two relay
+  /// waits of 1.25 airtimes at 1.15), whichever is longer.
+  int fastGapMs(int hops) => hops < 2
+      ? voxFloodBaseGapMs(airMs)
+      : max(voxFloodBaseGapMs(airMs), (airMs * (3 + 2 * 1.25 * 1.15)).round());
+
+  /// The gap now, for a listener [hops] away.
+  int gapMs(int hops) =>
+      _gapMs.clamp(fastGapMs(hops), voxFloodSlowGapMs(airMs));
+
+  /// The wait before answering a request that came [hops] repeaters.
+  int settleMs(int hops) => hops <= 0
+      ? 0
+      : (min(hops, 2) + _extraRelays).clamp(0, 4) * voxRelayMs(airMs);
+
+  /// A listener's request that followed [answer]: [missing] is what it still
+  /// lacks.
+  void feedback(VoxFloodAnswer answer, Set<int> missing) {
+    final sent = answer.sent;
+    if (sent.isEmpty) return;
+    final lost = sent.where(missing.contains).length;
+    if (lost * 10 < sent.length) {
+      if (!answer._clean) {
+        answer._clean = true;
+        if (answer._slowed) _gapMs = _gapMs * 2 ~/ 3;
+        _gapMs = max(_gapMs * 4 ~/ 5, voxFloodBaseGapMs(airMs));
+      }
+    } else if (lost * 3 >= sent.length && !answer._clean && !answer._slowed) {
+      answer._slowed = true;
+      _gapMs = min(_gapMs * 3 ~/ 2, voxFloodSlowGapMs(airMs));
+    }
+    if (sent.length < 2) return;
+    final firstLost = missing.contains(sent.first);
+    if (!firstLost) {
+      if (!answer._firstCame) {
+        answer._firstCame = true;
+        if (answer._settleUp) _extraRelays--;
+        _extraRelays = max(_extraRelays - 1, 0);
+      }
+    } else if (!answer._firstCame &&
+        !answer._settleUp &&
+        sent.skip(1).any((i) => !missing.contains(i))) {
+      answer._settleUp = true;
+      _extraRelays = min(_extraRelays + 1, 2);
+    }
+  }
 }
 
-/// How long a flooded request keeps being relayed around the one answering
-/// after it's heard [hops] repeaters from its sender: a relay per hop, up to
-/// four. Answer packets sent into that are lost, at repeaters that hear both
-/// (the first packets of every answer to a 4-hop listener were). Mirrored in
-/// Wadamesh (VoxServe::floodSettleMs).
-int voxFloodSettleMs(int airMs, int hops) =>
-    hops.clamp(0, 4) * voxRelayMs(airMs);
+/// One answer on a channel: the data packets it sent, in order, and what
+/// listeners' requests after it have done to the pace (VoxFloodPace).
+class VoxFloodAnswer {
+  VoxFloodAnswer(this.sent);
+  final List<int> sent;
+  bool _clean = false;
+  bool _slowed = false;
+  bool _firstCame = false;
+  bool _settleUp = false;
+}

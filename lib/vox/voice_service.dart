@@ -2664,6 +2664,11 @@ class VoxVoiceService extends ChangeNotifier {
     _recentServes.removeWhere(
       (_, t) => now.difference(t) > const Duration(minutes: 10),
     );
+    final answer = _floodAnswers[key];
+    final missing = req.missingIndices;
+    if (answer != null && missing != null) {
+      _paceFor(channel).feedback(answer, missing.toSet());
+    }
     final held = _heldPackets(req.sessionId);
     if (held == null) return;
     final total = held.total;
@@ -2752,10 +2757,13 @@ class VoxVoiceService extends ChangeNotifier {
       // may not hear but our next hop does, and a packet sent into that is
       // lost. A 4-hop MediaMesh photo lost the first packets of every answer
       // (#1 never arrived in 14 asks) with only the 0.5-1 s gather.
+      final pace = _paceFor(burst.channel);
       if (!burst.pushing) {
         await Future<void>.delayed(
-          Duration(milliseconds: 500 + _rng.nextInt(500)) +
-              _floodSettle(burst.maxHops),
+          Duration(
+            milliseconds:
+                500 + _rng.nextInt(500) + pace.settleMs(burst.maxHops),
+          ),
         );
       }
       final held = _heldPackets(burst.sid);
@@ -2766,6 +2774,7 @@ class VoxVoiceService extends ChangeNotifier {
       // no request, and its lead after the announcement already went by.
       if (!burst.pushing) await _waitBriefQuiet();
       var sent = 0;
+      final sentData = <int>[];
       var zeroHopSent = 0;
       var paritySent = 0;
       while (burst.pending.isNotEmpty && _connector.isConnected) {
@@ -2804,13 +2813,14 @@ class VoxVoiceService extends ChangeNotifier {
           return;
         }
         sent++;
+        if (index < _ChannelBurst.parityBase) sentData.add(index);
         if (zeroHop) zeroHopSent++;
         _lastChannelPacket[burst.sid] = DateTime.now();
         if (burst.pending.isNotEmpty) {
           await Future<void>.delayed(
             zeroHop
                 ? _zeroHopGap()
-                : _packetGap(flood: true, hops: burst.maxHops),
+                : Duration(milliseconds: pace.gapMs(burst.maxHops)),
           );
         }
       }
@@ -2818,9 +2828,14 @@ class VoxVoiceService extends ChangeNotifier {
         'sent $sent packets on channel ${burst.channel}'
         '${paritySent > 0 ? ', $paritySent of them parity' : ''}'
         '${zeroHopSent > 0 ? ' ($zeroHopSent zero-hop)' : ''}'
-        '${burst.suppressed > 0 ? '; ${burst.suppressed} left out, heard from another node' : ''}',
+        '${burst.suppressed > 0 ? '; ${burst.suppressed} left out, heard from another node' : ''}'
+        '${zeroHopSent < sent ? ', ${pace.gapMs(burst.maxHops)} ms apart after ${burst.pushing ? 0 : pace.settleMs(burst.maxHops)} ms' : ''}',
         burst.sid,
       );
+      // What listeners still lack after this tells the pace how it did.
+      if (sentData.isNotEmpty && zeroHopSent < sent) {
+        _floodAnswers[key] = VoxFloodAnswer(sentData);
+      }
     } finally {
       burst.running = false;
       if (burst.pushing) _pushedAt[burst.sid] = DateTime.now(); // its end
@@ -2845,19 +2860,26 @@ class VoxVoiceService extends ChangeNotifier {
   /// The gap to expect between [clip]'s packets: the model's, or the one
   /// they're actually coming at once a few are in (voxBurstGap).
   Duration _burstGap(_IncomingClip clip) => voxBurstGap(
-    model: _packetGap(
-      flood: clip.lastMethod == _Method.channel,
-      hops: _clipHops(clip),
-    ),
+    // An answer on the channel may be paced as slow as voxFloodSlowGapMs.
+    model: clip.lastMethod == _Method.channel
+        ? Duration(milliseconds: voxFloodSlowGapMs(_packetAir().inMilliseconds))
+        : _packetGap(flood: false, hops: _clipHops(clip)),
     seen: Duration(milliseconds: clip.rxGapMs),
     samples: clip.rxGaps,
     floor: _zeroHopGap(),
   );
 
-  /// See [voxFloodSettleMs].
-  Duration _floodSettle(int hops) => Duration(
-    milliseconds: voxFloodSettleMs(_packetAir().inMilliseconds, hops),
-  );
+  /// Each channel's answer pace (VoxFloodPace), learnt from the requests
+  /// after its answers; and the last answer for each clip on a channel.
+  final Map<int, VoxFloodPace> _floodPace = {};
+  final Map<String, VoxFloodAnswer> _floodAnswers = {};
+
+  VoxFloodPace _paceFor(int channel) {
+    final air = _packetAir().inMilliseconds;
+    final p = _floodPace.putIfAbsent(channel, () => VoxFloodPace(air));
+    p.airMs = air;
+    return p;
+  }
 
   Duration _zeroHopGap() =>
       Duration(milliseconds: max(150, _packetAir().inMilliseconds + 60));
@@ -3255,7 +3277,7 @@ class VoxVoiceService extends ChangeNotifier {
   /// answer. Mirrored in Wadamesh (VoxServe::packetGap), which sends them.
   Duration _packetGap({required bool flood, int hops = 0}) {
     final air = _packetAir().inMilliseconds;
-    if (flood) return Duration(milliseconds: voxFloodGapMs(air, hops));
+    if (flood) return Duration(milliseconds: voxFloodBaseGapMs(air));
     if (hops <= 0) return Duration(milliseconds: max(400, air * 2 + 150));
     final relayAir = air * 1.15;
     final h = min(hops, 2);

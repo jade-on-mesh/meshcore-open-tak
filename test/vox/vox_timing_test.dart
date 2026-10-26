@@ -121,18 +121,56 @@ void main() {
     expect(voxStallBackoff(w, 12), voxStallBackoffCap);
   });
 
-  test('flooded channel answers wait and pace by the hops to the listener', () {
+  test('flooded answers start fast and learn from the requests after them', () {
     // MediaMesh 250 kHz: 157 ms a packet; a relay is 157 + 2.5 * 180.55.
     expect(voxRelayMs(157), 608);
-    expect(voxFloodGapMs(157, 0), 800);
-    expect(voxFloodGapMs(157, 1), 800);
-    expect(voxFloodGapMs(157, 4), 1600); // capped at twice
-    expect(voxFloodSettleMs(157, 0), 0);
-    expect(voxFloodSettleMs(157, 4), 4 * 608);
-    expect(voxFloodSettleMs(157, 9), 4 * 608);
-    // The main mesh's slower packets: the same as Wadamesh's host test.
-    expect(voxFloodGapMs(500, 1), 2150);
-    expect(voxFloodGapMs(500, 4), 4300);
-    expect(voxFloodSettleMs(500, 1), 1938);
+    final p = VoxFloodPace(157);
+    expect(p.gapMs(0), 800);
+    expect(p.gapMs(1), 800);
+    expect(p.gapMs(20), 922); // two relays' clearing time, on average
+    expect(p.settleMs(0), 0); // heard direct: answer at once
+    expect(p.settleMs(1), 608);
+    expect(p.settleMs(20), 2 * 608); // relays far from us don't matter
+
+    // An answer that lost most, its first packet among them: slower, and
+    // one more relay of waiting.
+    final a = VoxFloodAnswer([1, 4, 5, 7, 8, 9]);
+    p.feedback(a, {1, 4, 5, 8, 9});
+    expect(p.gapMs(4), 1200);
+    expect(p.settleMs(4), 3 * 608);
+    // Another listener saying the same about that answer moves nothing more.
+    p.feedback(a, {1, 4, 5, 8, 9});
+    expect(p.gapMs(4), 1200);
+    expect(p.settleMs(4), 3 * 608);
+    // One who got nearly all of it: the pace was fine, its loss was the
+    // others' links. The slowing is undone and the pace speeds up.
+    p.feedback(a, {});
+    expect(p.gapMs(4), 922);
+    expect(p.gapMs(0), 800);
+    expect(p.settleMs(4), 2 * 608);
+    // ...and after that, no report on that answer slows it.
+    p.feedback(a, {1, 4, 5, 7, 8, 9});
+    expect(p.gapMs(4), 922);
+
+    // A congested mesh: answer after answer loses half. The gap grows to at
+    // most twice the base, the wait to four relays.
+    for (var k = 0; k < 6; k++) {
+      p.feedback(VoxFloodAnswer([0, 1, 2, 3]), {0, 2, 3});
+    }
+    expect(p.gapMs(4), 1600);
+    expect(p.settleMs(4), 4 * 608);
+    // Then it clears: back to fast within a few answers.
+    for (var k = 0; k < 6; k++) {
+      p.feedback(VoxFloodAnswer([0, 1, 2, 3]), {});
+    }
+    expect(p.gapMs(4), 922);
+    expect(p.settleMs(4), 2 * 608);
+
+    // The main mesh's slower packets: the same numbers as Wadamesh's test.
+    final m = VoxFloodPace(500);
+    expect(m.gapMs(1), 2150);
+    expect(m.gapMs(4), 2938);
+    expect(m.settleMs(1), 1938);
+    expect(voxFloodSlowGapMs(500), 4300);
   });
 }
