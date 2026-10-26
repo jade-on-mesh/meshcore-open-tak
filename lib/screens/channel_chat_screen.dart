@@ -37,6 +37,7 @@ import '../services/translation_service.dart';
 import '../utils/image_save.dart';
 import 'otp_pad_screen.dart';
 import '../utils/lora_airtime.dart';
+import '../widgets/channel_search.dart';
 import '../widgets/marker_label_dialog.dart';
 import '../widgets/received_image_message.dart';
 import '../widgets/chat_day_separator.dart';
@@ -130,6 +131,18 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   // than only whenever some unrelated event happens to call
   // notifyListeners() next. No network activity, no pad bytes touched.
   Timer? _participantStripPruneTimer;
+
+  // Search (⋮ > Search, widgets/channel_search.dart): the query, its results
+  // (null while the first search runs), and the message a result jumped to,
+  // tinted for a moment.
+  bool _searching = false;
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _searchDebounce;
+  List<ChannelMessage>? _searchResults;
+  bool _searchBusy = false;
+  int _searchGen = 0;
+  String? _highlightMessageId;
+  Timer? _highlightTimer;
 
   @override
   void initState() {
@@ -256,6 +269,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   @override
   void dispose() {
     _participantStripPruneTimer?.cancel();
+    _searchDebounce?.cancel();
+    _highlightTimer?.cancel();
+    _searchController.dispose();
     _route?.secondaryAnimation?.removeStatusListener(_onCoveringRouteStatus);
     _watchedImageStore?.removeListener(_onImageStoreChanged);
     _connector?.setActiveChannel(null);
@@ -280,6 +296,95 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     setState(() {
       _replyingToMessage = null;
       _useReplyRegion = false;
+    });
+  }
+
+  void _openSearch() {
+    setState(() {
+      _searching = true;
+      _searchResults = null;
+    });
+    _searchController.clear();
+  }
+
+  void _closeSearch() {
+    _searchDebounce?.cancel();
+    _searchGen++;
+    setState(() {
+      _searching = false;
+      _searchResults = null;
+      _searchBusy = false;
+    });
+    _searchController.clear();
+  }
+
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    if (value.trim().isEmpty) {
+      _searchGen++;
+      setState(() {
+        _searchResults = null;
+        _searchBusy = false;
+      });
+      return;
+    }
+    _searchDebounce = Timer(const Duration(milliseconds: 250), _runSearch);
+  }
+
+  Future<void> _runSearch() async {
+    final gen = ++_searchGen;
+    final query = _searchController.text;
+    setState(() => _searchBusy = true);
+    final results = await context
+        .read<MeshCoreConnector>()
+        .searchChannelMessages(widget.channel, query);
+    if (!mounted || gen != _searchGen) return;
+    setState(() {
+      _searchResults = results;
+      _searchBusy = false;
+    });
+  }
+
+  /// Closes the search and scrolls the transcript to [message], loading older
+  /// history first when it is not on screen yet.
+  Future<void> _openSearchResult(ChannelMessage message) async {
+    final id = message.messageId;
+    _closeSearch();
+    final connector = context.read<MeshCoreConnector>();
+    final found = await connector.ensureChannelMessageLoaded(
+      widget.channel.index,
+      id,
+    );
+    if (!mounted) return;
+    if (!found) {
+      showDismissibleSnackBar(
+        context,
+        content: Text(context.l10n.channelSearch_notFound),
+        duration: const Duration(seconds: 2),
+      );
+      return;
+    }
+    _highlightTimer?.cancel();
+    setState(() => _highlightMessageId = id);
+    _highlightTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _highlightMessageId = null);
+    });
+    final messages = connector.getChannelMessages(widget.channel);
+    final at = messages.indexWhere((m) => m.messageId == id);
+    final newer = at < 0 ? 0 : messages.length - at;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_messageKeys[id]?.currentContext != null) {
+        _scrollToMessage(id);
+        return;
+      }
+      _scrollController.jumpToEstimatedOffset(
+        unreadCount: newer,
+        totalMessages: messages.length,
+        onJumped: () {
+          if (mounted) _scrollToMessage(id);
+        },
+      );
     });
   }
 
@@ -436,8 +541,20 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: !_searching,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _searching) _closeSearch();
+      },
+      child: Scaffold(
       appBar: AppBar(
+        bottom: _searching
+            ? ChannelSearchField(
+                controller: _searchController,
+                onChanged: _onSearchChanged,
+                onClose: _closeSearch,
+              )
+            : null,
         title: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () => openRegionSelectDialog(widget.channel),
@@ -608,11 +725,23 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: (value) {
-              if (value == 'clearChat') {
+              if (value == 'search') {
+                _openSearch();
+              } else if (value == 'clearChat') {
                 _confirmClearChat();
               }
             },
             itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'search',
+                child: Row(
+                  children: [
+                    const Icon(Icons.search, size: 20),
+                    const SizedBox(width: 12),
+                    Text(context.l10n.channelSearch_menu),
+                  ],
+                ),
+              ),
               PopupMenuItem(
                 value: 'clearChat',
                 child: Row(
@@ -644,6 +773,16 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
               builder: (context, connector, _) =>
                   _buildParticipantStrip(connector),
             ),
+            if (_searching && _searchController.text.trim().isNotEmpty)
+              Expanded(
+                child: ChannelSearchResults(
+                  query: _searchController.text,
+                  results: _searchResults,
+                  busy: _searchBusy,
+                  onOpen: _openSearchResult,
+                ),
+              )
+            else
             Expanded(
               child: Consumer<MeshCoreConnector>(
                 builder: (context, connector, child) {
@@ -719,8 +858,19 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                             final isUnreadAnchor =
                                 _unreadDividerMessageId != null &&
                                 row.id == _unreadDividerMessageId;
-                            return Container(
+                            final highlighted =
+                                _highlightMessageId != null &&
+                                row.id == _highlightMessageId;
+                            return AnimatedContainer(
                               key: messageKey,
+                              duration: const Duration(milliseconds: 300),
+                              decoration: BoxDecoration(
+                                color: highlighted
+                                    ? Theme.of(context).colorScheme.primaryContainer
+                                          .withValues(alpha: 0.5)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                               child: Builder(
                                 builder: (context) {
                                   final textScale = context
@@ -775,6 +925,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             _buildInputBar(),
           ],
         ),
+      ),
       ),
     );
   }

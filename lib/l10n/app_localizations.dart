@@ -7154,6 +7154,42 @@ abstract class AppLocalizations {
   /// **'View map'**
   String get channelPath_viewMap;
 
+  /// No description provided for @channelSearch_menu.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get channelSearch_menu;
+
+  /// No description provided for @channelSearch_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search this channel'**
+  String get channelSearch_hint;
+
+  /// No description provided for @channelSearch_close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close search'**
+  String get channelSearch_close;
+
+  /// No description provided for @channelSearch_noResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No messages match'**
+  String get channelSearch_noResults;
+
+  /// No description provided for @channelSearch_count.
+  ///
+  /// In en, this message translates to:
+  /// **'Messages found: {count}'**
+  String channelSearch_count(int count);
+
+  /// No description provided for @channelSearch_notFound.
+  ///
+  /// In en, this message translates to:
+  /// **'That message is no longer stored'**
+  String get channelSearch_notFound;
+
   /// No description provided for @channelPath_otherObservedPaths.
   ///
   /// In en, this message translates to:

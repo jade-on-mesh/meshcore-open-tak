@@ -3849,6 +3849,26 @@ class AppLocalizationsZh extends AppLocalizations {
   String get channelPath_viewMap => '查看地图';
 
   @override
+  String get channelSearch_menu => 'Search';
+
+  @override
+  String get channelSearch_hint => 'Search this channel';
+
+  @override
+  String get channelSearch_close => 'Close search';
+
+  @override
+  String get channelSearch_noResults => 'No messages match';
+
+  @override
+  String channelSearch_count(int count) {
+    return 'Messages found: $count';
+  }
+
+  @override
+  String get channelSearch_notFound => 'That message is no longer stored';
+
+  @override
   String get channelPath_otherObservedPaths => '其他观察到的路径';
 
   @override

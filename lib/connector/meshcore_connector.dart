@@ -4150,6 +4150,57 @@ class MeshCoreConnector extends ChangeNotifier {
     return olderMessages;
   }
 
+  /// Every message of [channel] whose text, translation or sender contains
+  /// [query] (ignoring case), newest first: the whole stored history, not only
+  /// the window on screen. Matching is plain text; at most [limit] results.
+  Future<List<ChannelMessage>> searchChannelMessages(
+    Channel channel,
+    String query, {
+    int limit = 500,
+  }) async {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return const [];
+    final slot = _canonicalSlot(channel.index);
+    final channelId = _channelIdForSlot(slot);
+    final stored = channelId == null
+        ? const <ChannelMessage>[]
+        : await _channelMessageStore.loadChannelMessages(channelId);
+    final current = _channelMessages[slot] ?? const <ChannelMessage>[];
+    final seen = <String>{};
+    final out = <ChannelMessage>[];
+    bool matches(ChannelMessage m) =>
+        m.displayText.toLowerCase().contains(q) ||
+        (m.translatedText?.toLowerCase().contains(q) ?? false) ||
+        m.senderName.toLowerCase().contains(q);
+    // In memory first (newest, maybe not saved yet), then the stored history.
+    for (final list in [current, stored]) {
+      for (final m in list.reversed) {
+        if (!seen.add(m.messageId)) continue;
+        if (matches(m)) out.add(m);
+      }
+    }
+    out.sort((a, b) => b.receivedAt.compareTo(a.receivedAt));
+    return out.length > limit ? out.sublist(0, limit) : out;
+  }
+
+  /// Loads older messages of channel [channelIndex] until [messageId] is in
+  /// memory (for jumping to a search result). False when it isn't stored.
+  Future<bool> ensureChannelMessageLoaded(
+    int channelIndex,
+    String messageId,
+  ) async {
+    final slot = _canonicalSlot(channelIndex);
+    bool present() =>
+        (_channelMessages[slot] ?? const <ChannelMessage>[]).any(
+          (m) => m.messageId == messageId,
+        );
+    while (!present()) {
+      final older = await loadOlderChannelMessages(channelIndex, count: 200);
+      if (older.isEmpty) return present();
+    }
+    return true;
+  }
+
   /// Loads the persisted messages of every channel in the slot map. Slots
   /// that hold no channel, or alias a lower slot with the same PSK, are
   /// emptied.
