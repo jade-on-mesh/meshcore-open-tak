@@ -32,30 +32,33 @@ void main() {
       ) ??
       [];
 
-  test('on Wi-Fi: downloads what is missing, in order, and records it', () async {
-    final order = <String>[];
-    final a = _Model('a');
-    final b = _Model('b', ready: true);
-    final c = _Model('c');
-    final d = ModelAutoDownloader(
-      [
-        for (final m in [a, b, c])
-          AutoDownloadModel(
-            id: m.id,
-            isReady: m.spec.isReady,
-            download: () {
-              order.add(m.id);
-              return m.spec.download();
-            },
-          ),
-      ],
-      onWifi: () async => true,
-      wifiChanges: const Stream.empty(),
-    );
-    await d.runOnce();
-    expect(order, ['a', 'c']);
-    expect(await done(), ['a', 'b', 'c']);
-  });
+  test(
+    'on Wi-Fi: downloads what is missing, in order, and records it',
+    () async {
+      final order = <String>[];
+      final a = _Model('a');
+      final b = _Model('b', ready: true);
+      final c = _Model('c');
+      final d = ModelAutoDownloader(
+        [
+          for (final m in [a, b, c])
+            AutoDownloadModel(
+              id: m.id,
+              isReady: m.spec.isReady,
+              download: () {
+                order.add(m.id);
+                return m.spec.download();
+              },
+            ),
+        ],
+        onWifi: () async => true,
+        wifiChanges: const Stream.empty(),
+      );
+      await d.runOnce();
+      expect(order, ['a', 'c']);
+      expect(await done(), ['a', 'b', 'c']);
+    },
+  );
 
   test('on mobile data: nothing downloads; joining Wi-Fi starts it', () async {
     var wifi = false;
@@ -94,21 +97,24 @@ void main() {
     expect(a.downloads, 0);
   });
 
-  test('a failed download is retried next time; the others still run', () async {
-    final a = _Model('a', fails: true);
-    final b = _Model('b');
-    final d = ModelAutoDownloader(
-      [a.spec, b.spec],
-      onWifi: () async => true,
-      wifiChanges: const Stream.empty(),
-    );
-    await d.runOnce();
-    expect(await done(), ['b']);
-    a.fails = false;
-    await d.runOnce();
-    expect(a.downloads, 2);
-    expect(await done(), ['a', 'b']);
-  });
+  test(
+    'a failed download is retried next time; the others still run',
+    () async {
+      final a = _Model('a', fails: true);
+      final b = _Model('b');
+      final d = ModelAutoDownloader(
+        [a.spec, b.spec],
+        onWifi: () async => true,
+        wifiChanges: const Stream.empty(),
+      );
+      await d.runOnce();
+      expect(await done(), ['b']);
+      a.fails = false;
+      await d.runOnce();
+      expect(a.downloads, 2);
+      expect(await done(), ['a', 'b']);
+    },
+  );
 
   test('Wi-Fi and Ethernet count; mobile data does not', () {
     expect(connectivityAllowsModelDownload([ConnectivityResult.wifi]), isTrue);

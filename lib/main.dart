@@ -552,7 +552,9 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
           id: 'aeic-image-codec',
           isReady: () async {
             final m = codec.selectedModel;
-            return m != null && m.localPath.isNotEmpty && !codec.needsModelUpgrade;
+            return m != null &&
+                m.localPath.isNotEmpty &&
+                !codec.needsModelUpgrade;
           },
           download: () => codec.downloadPresetModel(aeic),
         ),

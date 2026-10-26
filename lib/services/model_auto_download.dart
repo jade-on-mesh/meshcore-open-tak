@@ -58,13 +58,10 @@ class ModelAutoDownloader {
   Future<void>? _running;
 
   static Future<bool> _connectivityOnWifi() async =>
-      connectivityAllowsModelDownload(
-        await Connectivity().checkConnectivity(),
-      );
+      connectivityAllowsModelDownload(await Connectivity().checkConnectivity());
 
-  static Stream<bool> _connectivityChanges() => Connectivity()
-      .onConnectivityChanged
-      .map(connectivityAllowsModelDownload);
+  static Stream<bool> _connectivityChanges() =>
+      Connectivity().onConnectivityChanged.map(connectivityAllowsModelDownload);
 
   /// Runs now, and again each time the phone joins Wi-Fi, until every model
   /// is done.

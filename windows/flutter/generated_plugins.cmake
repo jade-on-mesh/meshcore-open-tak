@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   audioplayers_windows
+  connectivity_plus
   file_selector_windows
   flutter_blue_plus_winrt
   flutter_onnxruntime
