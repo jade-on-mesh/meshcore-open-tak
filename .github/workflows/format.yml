@@ -2,7 +2,9 @@ name: Format
 
 # Applies `dart format` and commits the result to the branch, for sessions
 # without a local Flutter SDK: push a commit whose message contains [format]
-# (or run it by hand once this file is on the default branch).
+# (or run it by hand once this file is on the default branch). With [lock] in
+# the message it also brings pubspec.lock up to date with pubspec.yaml (a new
+# dependency), which the other workflows then enforce.
 on:
   push:
     branches-ignore:
@@ -14,7 +16,7 @@ permissions:
 
 jobs:
   format:
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[format]')
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[format]') || contains(github.event.head_commit.message, '[lock]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,12 +28,16 @@ jobs:
           flutter-version: ${{ steps.fv.outputs.v }}
           channel: "stable"
           cache: true
-      - run: flutter pub get --enforce-lockfile
+      - name: Dependencies
+        env:
+          MSG: ${{ github.event.head_commit.message }}
+        run: |
+          if [[ "$MSG" == *"[lock]"* ]]; then flutter pub get; else flutter pub get --enforce-lockfile; fi
       - name: Format and commit
         run: |
           dart format lib test
-          if git diff --quiet; then echo "Already formatted"; exit 0; fi
+          if git diff --quiet; then echo "Already formatted, lockfile current"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -qam "dart format"
+          if git diff --quiet -- pubspec.lock; then git commit -qam "dart format"; else git commit -qam "dart format, pubspec.lock"; fi
           git push

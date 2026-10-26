@@ -38,6 +38,8 @@ import 'services/background_service.dart';
 import 'services/map_tile_cache_service.dart';
 import 'services/chat_text_scale_service.dart';
 import 'services/translation_service.dart';
+import 'services/model_auto_download.dart';
+import 'models/translation_support.dart';
 import 'services/ui_view_state_service.dart';
 import 'services/timeout_prediction_service.dart';
 import 'storage/prefs_manager.dart';
@@ -52,6 +54,8 @@ import 'widgets/app_update_ui.dart';
 import 'team/team_service.dart';
 import 'team/watch_feed.dart';
 import 'vox/aeic_hd_service.dart';
+import 'vox/vox_upscale.dart';
+import 'vox/vox_voice_enhance.dart';
 import 'vox/voice_service.dart';
 import 'vox/walkie_service.dart';
 
@@ -484,6 +488,7 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
     _watchFeed,
   );
   late final AtakPluginBridge _atakBridge;
+  ModelAutoDownloader? _modelDownloader;
   late final MediaMeshCoverageService _coverage = MediaMeshCoverageService(
     widget.connector,
   );
@@ -498,14 +503,78 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
     );
     MapHighlights.instance.attach(_teamService, _watchFeed);
     WidgetsBinding.instance.addObserver(this);
+    _startModelDownloads();
     _imageSweepTimer = Timer.periodic(
       _kImageSweepInterval,
       (_) => widget.imageReassembler.evictExpired(),
     );
   }
 
+  /// The on-device models, fetched on Wi-Fi the first time the app opens
+  /// (model_auto_download.dart), smallest first. Not on web: none of them run
+  /// there.
+  void _startModelDownloads() {
+    if (kIsWeb) return;
+    final codec = widget.imageCodecService;
+    final translation = widget.translationService;
+    final settings = widget.appSettingsService;
+    final aeic = imageCodecPresetModels
+        .where((s) => !s.urlsArePlaceholders && s.isComplete)
+        .firstOrNull;
+    final translationModel = translationPresetModels.firstOrNull;
+    _modelDownloader = ModelAutoDownloader([
+      AutoDownloadModel(
+        id: 'vox-upscale',
+        isReady: () async {
+          await VoxUpscaler.instance.refresh();
+          return VoxUpscaler.instance.isReady;
+        },
+        download: VoxUpscaler.instance.download,
+      ),
+      AutoDownloadModel(
+        id: 'vox-voice-enhance',
+        isReady: () async {
+          await VoxVoiceEnhancer.instance.refresh();
+          return VoxVoiceEnhancer.instance.isReady;
+        },
+        download: VoxVoiceEnhancer.instance.download,
+      ),
+      AutoDownloadModel(
+        id: 'vox-mimi',
+        isReady: () async {
+          await _voxVoiceService.mimi.refresh();
+          return _voxVoiceService.mimi.isReady;
+        },
+        download: _voxVoiceService.mimi.download,
+      ),
+      if (aeic != null)
+        AutoDownloadModel(
+          id: 'aeic-image-codec',
+          isReady: () async {
+            final m = codec.selectedModel;
+            return m != null &&
+                m.localPath.isNotEmpty &&
+                !codec.needsModelUpgrade;
+          },
+          download: () => codec.downloadPresetModel(aeic),
+        ),
+      if (translationModel != null)
+        AutoDownloadModel(
+          id: 'translation',
+          isReady: () async =>
+              settings.settings.translationDownloadedModels.isNotEmpty,
+          download: () => translation.downloadModel(
+            sourceUrl: translationModel.sourceUrl,
+            fileName: translationModel.name,
+            id: translationModel.id,
+          ),
+        ),
+    ])..start();
+  }
+
   @override
   void dispose() {
+    _modelDownloader?.dispose();
     _atakBridge.dispose();
     _imageSweepTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
