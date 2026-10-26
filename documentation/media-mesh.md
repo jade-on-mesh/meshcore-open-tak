@@ -149,6 +149,16 @@ A listener missing packets asks for them, and the photo's sender answers with ju
   - on a timeout, how long ago it asked and how far apart packets came;
   - on the sender, how long after the request it started, how long a busy MediaMesh held it back, and how long the whole answer took.
 
+## Transfer test
+
+The voice diagnostics sheet (ⓘ) has **Transfer test**: pick a contact or a channel and 3, 5 or 10 photos. The app sends a small test photo (Standard detail), waits for it to arrive, then sends the next, and shows:
+
+- how many downloads completed, out of all the receivers' reports;
+- the median, best and worst time from the announcement to the whole photo;
+- the requests it took (each request after the first is a retry).
+
+Receivers running this app fetch a test photo at once, whatever their auto-download settings, and answer with a hidden `VT1:` text (a DM for a contact test, on the channel for a channel test), which this app never shows in the chat. Older apps and other clients show the test photo as an ordinary photo, and the report as text. Each photo waits up to 3 minutes for its report; on a channel, until 30 seconds pass with no new report. The results are also written to the log.
+
 ## MediaMesh nearby
 
 A small tower icon next to the radio-stats dot in the app bar and chat screens shows whether a MediaMesh is on the air where you are:

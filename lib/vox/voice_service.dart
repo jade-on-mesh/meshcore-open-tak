@@ -48,6 +48,7 @@ import 'vox_voice_enhance.dart';
 import 'voice_wire.dart';
 import 'walkie_wire.dart';
 import 'vox_timing.dart';
+import 'transfer_test.dart';
 import '../utils/lora_airtime.dart';
 import 'wav.dart';
 import '../team/photo_mosaic_prefs.dart';
@@ -241,6 +242,7 @@ class VoxVoiceService extends ChangeNotifier {
     : _store = store ?? VoxClipStore() {
     _sub = _connector.receivedFrames.listen(_onFrame);
     _connector.voxControlTextInterceptor = _onControlText;
+    _connector.voxChannelControlInterceptor = _onChannelControlText;
     _connector.voxIncomingTextObserver = _onIncomingText;
     unawaited(_loadTestSettings());
     unawaited(_loadReceivedVia());
@@ -597,6 +599,12 @@ class VoxVoiceService extends ChangeNotifier {
   }
 
   /// Chat contacts, for picking a link-test target.
+  /// The radio's channels that have a name (set up), for the transfer test.
+  List<Channel> get namedChannels => [
+    for (final c in _connector.channels)
+      if (c.name.trim().isNotEmpty) c,
+  ];
+
   List<Contact> get chatContacts {
     final list = [
       for (final c in _connector.contacts)
@@ -1686,6 +1694,7 @@ class VoxVoiceService extends ChangeNotifier {
     clip.watchdog?.cancel();
     clip.status = VoxClipStatus.unavailable;
     clip.message = message;
+    _reportTransfer(clip);
     notifyListeners();
   }
 
@@ -2076,6 +2085,19 @@ class VoxVoiceService extends ChangeNotifier {
     final sender = senderKeyHex != null
         ? contactByKeyHex(senderKeyHex)
         : (senderName == null ? null : contactByName(senderName));
+    if (env.isImage && voxIsTransferTestCaption(env.caption)) {
+      // Someone's transfer test: fetched now, whatever the settings, and
+      // reported back when done.
+      if (_testWatch.length > 16) _testWatch.remove(_testWatch.keys.first);
+      _testWatch[sid] = _TestWatch(
+        DateTime.now(),
+        senderKeyHex: senderKeyHex,
+        channelIndex: channelIndex,
+      );
+      _logEvent('transfer test photo: downloading it now', sid);
+      unawaited(requestClip(env, sender: sender, channelIndex: channelIndex));
+      return;
+    }
     if (!_autoPlay) {
       // Not downloaded by itself: a photo's thumbnail still comes, from its
       // first two packets alone.
@@ -2382,6 +2404,11 @@ class VoxVoiceService extends ChangeNotifier {
   }
 
   bool _onControlText(String senderKeyHex, String text) {
+    if (VoxTransferReport.looksLikeReport(text)) {
+      final c = contactByKeyHex(senderKeyHex);
+      _onTransferReport(text, c?.name ?? senderKeyHex.substring(0, 8));
+      return true;
+    }
     if (!VoxVoiceTextRequest.looksLikeRequest(text)) return false;
     final req = VoxVoiceTextRequest.tryParse(text);
     _logEvent(
@@ -2478,6 +2505,7 @@ class VoxVoiceService extends ChangeNotifier {
       _remember(sid, clip.envelope.mode, clip.joined());
       if (_viaMask.containsKey(sid)) unawaited(_saveReceivedVia());
       _onClipComplete(clip.envelope);
+      _reportTransfer(clip);
     } else if (clip.status == VoxClipStatus.requesting ||
         clip.status == VoxClipStatus.receiving) {
       clip.status = VoxClipStatus.receiving;
@@ -2998,6 +3026,7 @@ class VoxVoiceService extends ChangeNotifier {
     required int? viaChannel,
     bool waitForRoute = false,
   }) {
+    _transferRuns[req.sessionId]?.requestsServed++;
     final path = req.requesterPath;
     if (_coveredByPush(
       req.sessionId,
@@ -3521,6 +3550,179 @@ class VoxVoiceService extends ChangeNotifier {
     );
   }
 
+  // ----------------------------------------------------------- transfer test
+
+  /// Receiver side: test photos being fetched, to report on when done.
+  final Map<String, _TestWatch> _testWatch = {};
+
+  /// Sender side: the running test's photos, by session id.
+  final Map<String, VoxTransferRun> _transferRuns = {};
+  bool _transferStop = false;
+
+  /// What the running transfer test is doing (null: none running).
+  final ValueNotifier<String?> transferTestStatus = ValueNotifier(null);
+
+  bool get transferTestRunning => transferTestStatus.value != null;
+
+  /// How long a test photo waits for its report(s).
+  static const _transferRunTimeout = Duration(minutes: 3);
+
+  /// On a channel, after the latest report: how long to wait for more.
+  static const _transferChannelSettle = Duration(seconds: 30);
+
+  /// Sends a small test photo [count] times to [contact] or [channel], one
+  /// at a time, each once its report(s) came back or after 3 minutes, and
+  /// returns the results as lines (also written to the log).
+  Future<List<String>> runTransferTest({
+    Contact? contact,
+    Channel? channel,
+    int count = 3,
+  }) async {
+    assert((contact == null) != (channel == null));
+    if (transferTestRunning) return ['A transfer test is already running.'];
+    if (!_connector.isConnected) return ['Not connected.'];
+    if (!imagesAvailable) {
+      return ['Photos are not available on this device.'];
+    }
+    final target = contact?.name ?? '#${channel!.name}';
+    _transferStop = false;
+    transferTestStatus.value = 'Encoding the test photo…';
+    final runs = <VoxTransferRun>[];
+    String? stopped;
+    try {
+      final image = await encodeImage(
+        voxTransferTestImage(),
+        VoxImageDetail.standard,
+        useFocus: false,
+      );
+      for (var i = 1; i <= count && !_transferStop; i++) {
+        transferTestStatus.value = 'Sending photo $i of $count to $target…';
+        final caption = voxTransferTestCaption(i, count);
+        final clip = _imageClip(image);
+        final env = contact != null
+            ? await sendClipToContact(contact, clip, caption: caption)
+            : await sendClipToChannel(channel!, clip, caption: caption);
+        final run = VoxTransferRun(
+          index: i,
+          sessionId: env.sessionId,
+          totalPackets: env.totalPackets,
+          sentAt: DateTime.now(),
+        );
+        _transferRuns[env.sessionId] = run;
+        runs.add(run);
+        _logEvent('transfer test $i/$count to $target', env.sessionId);
+        transferTestStatus.value =
+            'Photo $i of $count: waiting for '
+            '${contact != null ? 'the report' : 'reports'}…';
+        await _waitForTransferReports(run, onChannel: channel != null);
+      }
+      if (_transferStop) stopped = 'Stopped by you.';
+    } catch (e) {
+      stopped = 'Stopped: $e';
+    } finally {
+      for (final r in runs) {
+        _transferRuns.remove(r.sessionId);
+      }
+      transferTestStatus.value = null;
+    }
+    final lines = voxTransferSummary(runs, target: target);
+    if (stopped != null) lines.add(stopped);
+    for (final l in lines) {
+      _logEvent('transfer test: $l');
+    }
+    return lines;
+  }
+
+  /// Ends the running transfer test after the photo in flight.
+  void stopTransferTest() => _transferStop = true;
+
+  Future<void> _waitForTransferReports(
+    VoxTransferRun run, {
+    required bool onChannel,
+  }) async {
+    final end = run.sentAt.add(_transferRunTimeout);
+    while (!_transferStop && DateTime.now().isBefore(end)) {
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      final last = run.lastReportAt;
+      if (last == null) continue;
+      if (!onChannel) return;
+      if (DateTime.now().difference(last) >= _transferChannelSettle) return;
+    }
+  }
+
+  bool _onChannelControlText(int channelIndex, String senderName, String text) {
+    if (!VoxTransferReport.looksLikeReport(text)) return false;
+    _onTransferReport(text, senderName);
+    return true; // never shown in the chat
+  }
+
+  void _onTransferReport(String text, String from) {
+    final r = VoxTransferReport.tryParse(text);
+    if (r == null) {
+      _logEvent('transfer report from $from could not be parsed');
+      return;
+    }
+    _logEvent(
+      'transfer report from $from: '
+      '${r.complete ? 'complete' : 'got ${r.got}/${r.total}'} in '
+      '${_secs(Duration(milliseconds: r.ms))}, ${r.requests} requests',
+      r.sessionId,
+    );
+    final run = _transferRuns[r.sessionId];
+    if (run == null) return;
+    run.reports[from] = r;
+    run.lastReportAt = DateTime.now();
+    transferTestStatus.value =
+        'Photo ${run.index}: ${run.reports.length} '
+        '${run.reports.length == 1 ? 'report' : 'reports'} in…';
+  }
+
+  /// A test photo we were fetching is done (or given up on): tell its sender.
+  void _reportTransfer(_IncomingClip clip) {
+    final sid = clip.envelope.sessionId;
+    final w = _testWatch.remove(sid);
+    if (w == null) return;
+    final report = VoxTransferReport(
+      sessionId: sid,
+      ms: DateTime.now().difference(w.heardAt).inMilliseconds,
+      requests: clip.attempts,
+      got: clip.packets.length,
+      total: clip.envelope.totalPackets,
+    );
+    unawaited(_sendTransferReport(w, report.encode(), sid));
+  }
+
+  Future<void> _sendTransferReport(_TestWatch w, String text, String sid) async {
+    final ci = w.channelIndex;
+    // After the answer's last packets have cleared, and on a channel spread
+    // out, so many receivers' reports don't collide.
+    await Future<void>.delayed(
+      Duration(milliseconds: 1500 + _rng.nextInt(ci != null ? 6000 : 1000)),
+    );
+    try {
+      if (ci != null) {
+        await _connector.sendFrame(
+          buildSendChannelTextMsgFrame(ci, text),
+          waitForGenericAck: true,
+        );
+      } else {
+        final key = w.senderKeyHex;
+        final c = key == null ? null : contactByKeyHex(key);
+        if (c == null) {
+          _logEvent('transfer test: sender not in contacts, no report', sid);
+          return;
+        }
+        await _connector.sendFrame(
+          buildSendTextMsgFrame(c.publicKey, text),
+          waitForGenericAck: true,
+        );
+      }
+      _logEvent('transfer test report sent: $text', sid);
+    } catch (e) {
+      _logEvent('transfer test report could not be sent: $e', sid);
+    }
+  }
+
   @override
   void dispose() {
     mimi.removeListener(notifyListeners);
@@ -3530,6 +3732,10 @@ class VoxVoiceService extends ChangeNotifier {
     if (_connector.voxControlTextInterceptor == _onControlText) {
       _connector.voxControlTextInterceptor = null;
     }
+    if (_connector.voxChannelControlInterceptor == _onChannelControlText) {
+      _connector.voxChannelControlInterceptor = null;
+    }
+    transferTestStatus.dispose();
     if (_connector.voxIncomingTextObserver == _onIncomingText) {
       _connector.voxIncomingTextObserver = null;
     }
@@ -3668,4 +3874,12 @@ class _Held {
   final int total;
   final bool whole;
   final bool image;
+}
+
+/// A transfer-test photo being fetched, and where to report on it.
+class _TestWatch {
+  final DateTime heardAt;
+  final String? senderKeyHex;
+  final int? channelIndex;
+  _TestWatch(this.heardAt, {this.senderKeyHex, this.channelIndex});
 }
