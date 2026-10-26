@@ -504,6 +504,8 @@
   "appSettings_last6Hours": "Last 6 hours",
   "appSettings_last24Hours": "Last 24 hours",
   "appSettings_lastWeek": "Last week",
+  "appSettings_linkedImages": "Download linked images on Wi-Fi",
+  "appSettings_linkedImagesSubtitle": "A link to a picture (.jpg, .png, .gif, .webp, .bmp) in any chat shows the picture while the phone is on Wi-Fi. The picture's server sees your address. Chats with URL images turned on show them on mobile data too.",
   "appSettings_rasterTileSource": "Raster Tile Source",
   "appSettings_stadiaEndpoint": "Stadia Endpoint",
   "appSettings_stadiaApiKey": "Stadia API Key",

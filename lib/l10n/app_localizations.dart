@@ -2164,6 +2164,18 @@ abstract class AppLocalizations {
   /// **'Last week'**
   String get appSettings_lastWeek;
 
+  /// No description provided for @appSettings_linkedImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Download linked images on Wi-Fi'**
+  String get appSettings_linkedImages;
+
+  /// No description provided for @appSettings_linkedImagesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A link to a picture (.jpg, .png, .gif, .webp, .bmp) in any chat shows the picture while the phone is on Wi-Fi. The picture\'s server sees your address. Chats with URL images turned on show them on mobile data too.'**
+  String get appSettings_linkedImagesSubtitle;
+
   /// No description provided for @appSettings_rasterTileSource.
   ///
   /// In en, this message translates to:

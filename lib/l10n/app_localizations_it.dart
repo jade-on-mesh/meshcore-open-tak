@@ -1193,6 +1193,13 @@ class AppLocalizationsIt extends AppLocalizations {
   String get appSettings_lastWeek => 'La settimana scorsa';
 
   @override
+  String get appSettings_linkedImages => 'Download linked images on Wi-Fi';
+
+  @override
+  String get appSettings_linkedImagesSubtitle =>
+      'A link to a picture (.jpg, .png, .gif, .webp, .bmp) in any chat shows the picture while the phone is on Wi-Fi. The picture\'s server sees your address. Chats with URL images turned on show them on mobile data too.';
+
+  @override
   String get appSettings_rasterTileSource => 'Sorgente tile raster';
 
   @override

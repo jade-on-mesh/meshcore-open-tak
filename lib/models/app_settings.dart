@@ -142,6 +142,12 @@ class AppSettings {
   final String tcpServerAddress;
   final int tcpServerPort;
   final bool jumpToOldestUnread;
+
+  /// Pictures linked in messages (a .jpg/.png/.gif/.webp/.bmp URL) load in
+  /// every chat while the phone is on Wi-Fi, not only in the chats where
+  /// URL images are turned on. Off by default: loading a link tells that
+  /// server the phone's address.
+  final bool linkedImagesOnWifi;
   final bool imageMessagesEnabled;
 
   /// Whether the channel chat screen's participant sync strip (patch 0010 —
@@ -270,6 +276,7 @@ class AppSettings {
     this.tcpServerAddress = '',
     this.tcpServerPort = 0,
     this.jumpToOldestUnread = false,
+    this.linkedImagesOnWifi = false,
     this.channelParticipantStripEnabled = false,
     this.imageMessagesEnabled = false,
     this.networkMapUploadEnabled = false,
@@ -361,6 +368,7 @@ class AppSettings {
       'tcp_server_address': tcpServerAddress,
       'tcp_server_port': tcpServerPort,
       'jump_to_oldest_unread': jumpToOldestUnread,
+      'linked_images_on_wifi': linkedImagesOnWifi,
       'channel_participant_strip_enabled': channelParticipantStripEnabled,
       'image_messages_enabled': imageMessagesEnabled,
       'network_map_upload_enabled': networkMapUploadEnabled,
@@ -495,6 +503,7 @@ class AppSettings {
       tcpServerAddress: json['tcp_server_address'] as String? ?? '',
       tcpServerPort: json['tcp_server_port'] as int? ?? 0,
       jumpToOldestUnread: json['jump_to_oldest_unread'] as bool? ?? false,
+      linkedImagesOnWifi: json['linked_images_on_wifi'] as bool? ?? false,
       channelParticipantStripEnabled:
           json['channel_participant_strip_enabled'] as bool? ?? false,
       imageMessagesEnabled: json['image_messages_enabled'] as bool? ?? false,
@@ -625,6 +634,7 @@ class AppSettings {
     String? tcpServerAddress,
     int? tcpServerPort,
     bool? jumpToOldestUnread,
+    bool? linkedImagesOnWifi,
     bool? channelParticipantStripEnabled,
     bool? imageMessagesEnabled,
     bool? networkMapUploadEnabled,
@@ -718,6 +728,7 @@ class AppSettings {
       tcpServerAddress: tcpServerAddress ?? this.tcpServerAddress,
       tcpServerPort: tcpServerPort ?? this.tcpServerPort,
       jumpToOldestUnread: jumpToOldestUnread ?? this.jumpToOldestUnread,
+      linkedImagesOnWifi: linkedImagesOnWifi ?? this.linkedImagesOnWifi,
       channelParticipantStripEnabled:
           channelParticipantStripEnabled ?? this.channelParticipantStripEnabled,
       imageMessagesEnabled: imageMessagesEnabled ?? this.imageMessagesEnabled,

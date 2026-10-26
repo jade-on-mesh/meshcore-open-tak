@@ -24,6 +24,7 @@ import '../helpers/cyr2lat.dart';
 import '../helpers/smaz.dart';
 import '../storage/otp_pad_store.dart';
 import '../storage/passphrase_lock_store.dart';
+import '../services/wifi_state.dart';
 import '../services/app_debug_log_service.dart';
 import '../services/ble_mota_catalog.dart';
 import '../services/otp_service.dart';
@@ -1341,6 +1342,27 @@ class MeshCoreConnector extends ChangeNotifier {
   bool isContactUrlImagesEnabled(String contactKeyHex) {
     _ensureContactUrlImagesSettingLoaded(contactKeyHex);
     return _contactUrlImagesEnabled[contactKeyHex] ?? false;
+  }
+
+  /// Whether linked pictures show in this channel: turned on for it, or
+  /// Settings > Linked images while the phone is on Wi-Fi.
+  bool showChannelUrlImages(int channelIndex) =>
+      isChannelUrlImagesEnabled(channelIndex) || linkedImagesAuto;
+
+  /// Same for a contact's chat.
+  bool showContactUrlImages(String contactKeyHex) =>
+      isContactUrlImagesEnabled(contactKeyHex) || linkedImagesAuto;
+
+  /// Settings > Linked images is on and the phone is on Wi-Fi.
+  bool get linkedImagesAuto =>
+      (_appSettingsService?.settings.linkedImagesOnWifi ?? false) &&
+      WifiState.onWifi.value;
+  bool _linkedImagesAutoWas = false;
+  void _onLinkedImagesInputs() {
+    final now = linkedImagesAuto;
+    if (now == _linkedImagesAutoWas) return;
+    _linkedImagesAutoWas = now;
+    notifyListeners();
   }
 
   /// True when the channel has its own (real) region assigned.
@@ -4242,7 +4264,13 @@ class MeshCoreConnector extends ChangeNotifier {
   }) {
     _retryService = retryService;
     _pathHistoryService = pathHistoryService;
+    _appSettingsService?.removeListener(_onLinkedImagesInputs);
     _appSettingsService = appSettingsService;
+    _appSettingsService?.addListener(_onLinkedImagesInputs);
+    WifiState.onWifi.removeListener(_onLinkedImagesInputs);
+    WifiState.onWifi.addListener(_onLinkedImagesInputs);
+    WifiState.start();
+    _linkedImagesAutoWas = linkedImagesAuto;
     _translationService = translationService;
     _imageCodecService = imageCodecService;
     _imageTransport = imageTransport;
@@ -10496,7 +10524,7 @@ class MeshCoreConnector extends ChangeNotifier {
                 contactName: c?.name ?? 'Unknown',
                 message: VoxVoiceEnvelope.previewText(msg.text) ?? resolvedText,
                 urlImagesEnabled:
-                    c != null && isContactUrlImagesEnabled(c.publicKeyHex),
+                    c != null && showContactUrlImages(c.publicKeyHex),
                 contactId: msg.senderKeyHex,
                 badgeCount: getTotalUnreadCount(),
               );
@@ -10512,7 +10540,7 @@ class MeshCoreConnector extends ChangeNotifier {
                 contactName: c?.name ?? 'Unknown Room',
                 message: VoxVoiceEnvelope.previewText(msg.text) ?? resolvedText,
                 urlImagesEnabled:
-                    c != null && isContactUrlImagesEnabled(c.publicKeyHex),
+                    c != null && showContactUrlImages(c.publicKeyHex),
                 contactId: msg.senderKeyHex,
                 badgeCount: getTotalUnreadCount(),
               );
@@ -10877,7 +10905,7 @@ class MeshCoreConnector extends ChangeNotifier {
         channelName: label,
         senderName: message.senderName,
         message: VoxVoiceEnvelope.previewText(message.text) ?? resolvedText,
-        urlImagesEnabled: isChannelUrlImagesEnabled(channelIndex),
+        urlImagesEnabled: showChannelUrlImages(channelIndex),
         channelIndex: message.channelIndex,
         badgeCount: getTotalUnreadCount(),
       );
@@ -12394,6 +12422,8 @@ class MeshCoreConnector extends ChangeNotifier {
 
   @override
   void dispose() {
+    _appSettingsService?.removeListener(_onLinkedImagesInputs);
+    WifiState.onWifi.removeListener(_onLinkedImagesInputs);
     _disposed = true;
     _scanSubscription?.cancel();
     _isScanningSubscription?.cancel();

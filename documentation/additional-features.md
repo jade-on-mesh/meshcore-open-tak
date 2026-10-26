@@ -264,9 +264,11 @@ On Android, a foreground service (`background_service.dart`) keeps the BLE conne
 
 ## URL Image Previews
 
-Enable URL images per contact in Chat → overflow → Contact Settings, or per channel in Channels → long-press (right-click on desktop) → Edit. Supported references include direct PNG/JPEG/WebP URLs, pyx.li links, ibb.co sharing pages, and IPFS references/gateway URLs.
+Enable URL images per contact in Chat → overflow → Contact Settings, or per channel in Channels → long-press (right-click on desktop) → Edit. Supported references include direct PNG/JPEG/GIF/WebP/BMP URLs, pyx.li links, ibb.co sharing pages, and IPFS references/gateway URLs.
 
 The message sends a reference; image retrieval needs internet access and makes requests to the relevant host or gateway. This differs from [image packets transmitted over the mesh](image-messages.md). With previews disabled, the chat may indicate that a message contains a possible image URL.
+
+**App Settings → Download linked images on Wi-Fi** shows linked pictures in every chat while the phone is on Wi-Fi (or Ethernet), without turning URL images on chat by chat. On mobile data only the chats with URL images on show them. It's off by default, since loading a link tells the picture's server your address. Wadamesh TAK has the same option on standalones (Settings → General → Linked images).
 
 ## Regions, Mesh Images, and Radio Statistics
 
