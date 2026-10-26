@@ -240,8 +240,8 @@ class VoxVoiceService extends ChangeNotifier {
     unawaited(_loadTestSettings());
     unawaited(_loadReceivedVia());
     mimi.addListener(notifyListeners);
-    enhancer.addListener(_onEnhancerChanged);
     restorer.addListener(_onEnhancerChanged);
+    unawaited(VoxVoiceEnhancer.deleteOldEnhancer());
   }
 
   // ------------------------------- which radio profile clips came over
@@ -553,7 +553,6 @@ class VoxVoiceService extends ChangeNotifier {
       _forceRepeaterRoute = prefs.getBool(_kForceRoute) ?? false;
       _forcedRepeaterKeys = prefs.getStringList(_kForceRouteKeys) ?? const [];
       _preferMimi = prefs.getBool(_kPreferMimi) ?? true;
-      _enhanceVoice = prefs.getBool(_kEnhanceVoice) ?? true;
       _restoreVoice = prefs.getBool(_kRestoreVoice) ?? true;
       _onEnhancerChanged();
       final c2 = VoxVoiceMode.fromWireId(
@@ -907,8 +906,8 @@ class VoxVoiceService extends ChangeNotifier {
     return VoxEncodedClip(mode, bits, seconds);
   }
 
-  /// What the listener will hear, as a WAV file (as decoded, not enhanced:
-  /// radios and apps without the enhancer play it like this).
+  /// What the listener will hear, as a WAV file (as decoded, not restored:
+  /// radios and apps without the restorer play it like this).
   Future<Uint8List> previewWav(VoxEncodedClip clip) =>
       _decodeToWav(clip.mode, clip.bits, enhance: false);
 
@@ -931,17 +930,15 @@ class VoxVoiceService extends ChangeNotifier {
     return voxPcm16ToWav(pcm, sampleRate: voxPlayRate);
   }
 
-  /// Decoded 8 kHz Codec2 as a WAV to play: enhanced when that's on, else
+  /// Decoded 8 kHz Codec2 as a WAV to play: restored when that's on, else
   /// levelled and upsampled (voxPlayClip).
   Future<Uint8List> _wavFromRaw(Int16List raw) async {
     if (enhancesVoice) {
       try {
         final sw = Stopwatch()..start();
-        final model = voiceModel!;
-        final pcm = await model.enhance(raw);
+        final pcm = await voiceModel!.enhance(raw);
         _logEvent(
-          '${model == restorer ? 'restored' : 'enhanced'} '
-          '${(raw.length / voxCodecRate).toStringAsFixed(1)} s '
+          'restored ${(raw.length / voxCodecRate).toStringAsFixed(1)} s '
           'in ${sw.elapsedMilliseconds}ms',
         );
         return voxPcm16ToWav(pcm, sampleRate: VoxVoiceEnhanceModel.outRate);
@@ -1000,30 +997,19 @@ class VoxVoiceService extends ChangeNotifier {
 
   // ------------------------------------------------ AI voice enhancement
 
-  /// Fills in the upper band of received Codec2 clips when they play.
-  final VoxVoiceEnhancer enhancer = VoxVoiceEnhancer.instance;
-
   /// Rebuilds the whole voice of received Codec2 clips when they play.
   final VoxVoiceEnhancer restorer = VoxVoiceEnhancer.restorer;
 
-  static const _kEnhanceVoice = 'vox_enhance_voice';
   static const _kRestoreVoice = 'vox_restore_voice';
-  bool _enhanceVoice = true;
   bool _restoreVoice = true;
-
-  /// Whether Codec2 clips are enhanced when the model is downloaded.
-  bool get enhanceVoice => _enhanceVoice;
 
   /// Whether Codec2 clips are restored when the model is downloaded.
   bool get restoreVoice => _restoreVoice;
 
   /// The model Codec2 clips play through right now: the restorer when it's
-  /// on and downloaded, else the enhancer when it is; null for neither.
-  VoxVoiceEnhancer? get voiceModel {
-    if (_restoreVoice && restorer.isReady) return restorer;
-    if (_enhanceVoice && enhancer.isReady) return enhancer;
-    return null;
-  }
+  /// on and downloaded; null otherwise.
+  VoxVoiceEnhancer? get voiceModel =>
+      _restoreVoice && restorer.isReady ? restorer : null;
 
   /// Whether Codec2 clips play through a model right now.
   bool get enhancesVoice => voiceModel != null;
@@ -1046,15 +1032,6 @@ class VoxVoiceService extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_kRestoreVoice, v);
-    } catch (_) {}
-  }
-
-  Future<void> setEnhanceVoice(bool v) async {
-    _enhanceVoice = v;
-    _onEnhancerChanged();
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_kEnhanceVoice, v);
     } catch (_) {}
   }
 
@@ -3377,7 +3354,6 @@ class VoxVoiceService extends ChangeNotifier {
   void dispose() {
     mimi.removeListener(notifyListeners);
     mimi.dispose();
-    enhancer.removeListener(_onEnhancerChanged);
     restorer.removeListener(_onEnhancerChanged);
     _sub.cancel();
     if (_connector.voxControlTextInterceptor == _onControlText) {

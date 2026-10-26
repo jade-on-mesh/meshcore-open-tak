@@ -532,14 +532,6 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
         download: VoxUpscaler.instance.download,
       ),
       AutoDownloadModel(
-        id: 'vox-voice-enhance',
-        isReady: () async {
-          await VoxVoiceEnhancer.instance.refresh();
-          return VoxVoiceEnhancer.instance.isReady;
-        },
-        download: VoxVoiceEnhancer.instance.download,
-      ),
-      AutoDownloadModel(
         id: 'vox-voice-restorer',
         isReady: () async {
           await VoxVoiceEnhancer.restorer.refresh();

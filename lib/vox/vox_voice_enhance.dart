@@ -1,24 +1,19 @@
-// MeshCore Open TAK - AI voice enhancement for received Codec2 clips.
+// MeshCore Open TAK - the AI voice restorer for received Codec2 clips.
 //
-// Codec2 sends 8 kHz speech, so everything above 4 kHz (the "s", "f" and "t"
-// sounds and the air in a voice) is missing and it sounds muffled. The enhancer
-// fills that band back in and plays the clip at 48 kHz. What was received
-// (below 4 kHz) is played as decoded; only the band above it is generated.
+// Codec2 sends 8 kHz speech that sounds buzzy and robotic, with nothing above
+// 4 kHz (the "s", "f" and "t" sounds and the air in a voice). The restorer
+// rebuilds the whole voice from it and plays the clip at 48 kHz.
 //
 // Model: LavaSR's bandwidth-extension enhancer (Vocos backbone and spectrogram
-// head), Apache-2.0, Yatharth Sharma, https://github.com/ysharma3501/LavaSR,
-// via the ONNX export at https://github.com/Topping1/LavaSR-ONNX. Wrapped by
-// scripts/models/voice_bwe_to_onnx.py with its signal processing (upsampling,
-// STFT, mel features, the low/high merge and the inverse STFT) into one graph:
+// head; Apache-2.0, Yatharth Sharma, https://github.com/ysharma3501/LavaSR, via
+// https://github.com/Topping1/LavaSR-ONNX), fine-tuned on Codec2 itself (VCTK,
+// CC-BY-4.0) with tools/voice-training and exported through
+// scripts/models/voice_bwe_to_onnx.py with its 4 kHz merge off: one graph,
 // input "pcm" float32 [N] at 8 kHz, output "audio" float32 [6N] at 48 kHz.
-// Published as this repo's `voice-bwe-onnx-v1` release, downloaded on first
-// use (~28 MB) and checked by SHA-256, like the Mimi voice and photo models.
-//
-// The voice restorer is the same graph fine-tuned on Codec2 itself (VCTK,
-// CC-BY-4.0; tools/voice-training) with the 4 kHz merge off, so it rebuilds
-// the whole voice, also fixing Codec2's buzzy, robotic sound below 4 kHz.
-// Published as the `voice-restorer-onnx-v1` release. It sits beside the
-// enhancer in Settings; with both on, the restorer plays.
+// Published as this repo's `voice-restorer-onnx-v1` release, downloaded once
+// (~28 MB, on Wi-Fi on first open) and checked by SHA-256, like the Mimi voice
+// and photo models. It replaced the plain enhancer (`voice-bwe-onnx-v1`,
+// treble only); that model's file is deleted from phones that had it.
 //
 // Playback only: the clip as received is what's stored, forwarded and served.
 // Mimi clips are already wideband and are played as they are.
@@ -60,16 +55,10 @@ class VoxVoiceModelSpec {
       '$tag/$name';
 }
 
-/// The enhancer (the band above 4 kHz) and what both models share.
+/// The voice model and its shape.
 class VoxVoiceEnhanceModel {
-  static const spec = VoxVoiceModelSpec(
-    name: 'lavasr-bwe-8k-48k.onnx',
-    sha256Hex:
-        '23a73ebdec18e122d60d5c5de563b74f9f2559d2564d8e8b5a00c16c1f769df4',
-    bytes: 28459238,
-    tag: 'voice-bwe-onnx-v1',
-    dir: 'vox_voice_bwe',
-  );
+  /// The folder the old treble-only enhancer was kept in (deleted).
+  static const oldEnhancerDir = 'vox_voice_bwe';
 
   /// The voice restorer (the whole voice), trained with tools/voice-training.
   static const restorer = VoxVoiceModelSpec(
@@ -126,17 +115,26 @@ class VoxVoiceEnhancer extends ChangeNotifier {
     unawaited(refresh());
   }
 
-  /// The enhancer: fills in the band above 4 kHz.
-  static final VoxVoiceEnhancer instance = VoxVoiceEnhancer._(
-    VoxVoiceEnhanceModel.spec,
-  );
-
   /// The voice restorer: rebuilds the whole voice.
   static final VoxVoiceEnhancer restorer = VoxVoiceEnhancer._(
     VoxVoiceEnhanceModel.restorer,
   );
 
   final VoxVoiceModelSpec spec;
+
+  /// Deletes the old treble-only enhancer's model (~28 MB) from phones that
+  /// downloaded it; the restorer replaced it.
+  static Future<void> deleteOldEnhancer() async {
+    if (!supported) return;
+    try {
+      final base = await getApplicationSupportDirectory();
+      final d = Directory(
+        '${base.path}${Platform.pathSeparator}'
+        '${VoxVoiceEnhanceModel.oldEnhancerDir}',
+      );
+      if (await d.exists()) await d.delete(recursive: true);
+    } catch (_) {}
+  }
 
   /// Whether this build can run the model at all (no ONNX Runtime on web).
   static bool get supported => !kIsWeb;
