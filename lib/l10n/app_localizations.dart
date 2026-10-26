@@ -8594,6 +8594,18 @@ abstract class AppLocalizations {
   /// **'Search discovered contacts'**
   String get discoveredContacts_searchHint;
 
+  /// No description provided for @dmWalkie_routed.
+  ///
+  /// In en, this message translates to:
+  /// **'Goes to {name} alone, along the route to them. They hear it as you speak; it\'s also sent as a voice message.'**
+  String dmWalkie_routed(String name);
+
+  /// No description provided for @dmWalkie_noRoute.
+  ///
+  /// In en, this message translates to:
+  /// **'No route to {name} yet: they hear it live only if they\'re in range of your radio. It\'s sent as a voice message either way.'**
+  String dmWalkie_noRoute(String name);
+
   /// No description provided for @discoveredContacts_contactAdded.
   ///
   /// In en, this message translates to:

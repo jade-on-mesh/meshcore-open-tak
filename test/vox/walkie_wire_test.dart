@@ -292,4 +292,46 @@ void main() {
       expect(w.last, -1);
     });
   });
+
+  // The same bytes are checked by Wadamesh TAK's test/test_walkie.cpp.
+  group('DM talk (golden bytes shared with Wadamesh TAK)', () {
+    final to = unhex('0102030405060708');
+    final from = unhex('a0a1a2a3a4a5');
+    final codec = unhex('c0ffee112233');
+
+    test('encodes', () {
+      final p = WalkieDmAudio(
+        sessionId: '1a2b3c4d',
+        index: 2,
+        to: to,
+        from: from,
+        codecData: codec,
+        last: true,
+      );
+      expect(hex(p.encode()), '56cd8afc93028101020304a0a1a2a3c0ffee112233');
+    });
+
+    test('parses only when addressed to us', () {
+      final bytes = unhex('56cd8afc93028101020304a0a1a2a3c0ffee112233');
+      final p = WalkieDmAudio.tryParse(bytes, to)!;
+      expect(p.sessionId, '1a2b3c4d');
+      expect(p.index, 2);
+      expect(p.last, isTrue);
+      expect(hex(p.from), 'a0a1a2a3');
+      expect(hex(p.codecData), 'c0ffee112233');
+      expect(p.audio.sessionId, '1a2b3c4d');
+      expect(WalkieDmAudio.tryParse(bytes, unhex('01020305')), isNull);
+    });
+
+    test('a VE3 data packet is not a DM talk', () {
+      // [0x56][sid][index][codec]: its bytes 7-10 are codec, not our key.
+      final ve3 = unhex('561a2b3c4d00c0ffee11223344556677');
+      expect(WalkieDmAudio.tryParse(ve3, to), isNull);
+    });
+
+    test('partial frames are refused', () {
+      final bytes = unhex('56cd8afc93028101020304a0a1a2a3c0ffee1122');
+      expect(WalkieDmAudio.tryParse(bytes, to), isNull);
+    });
+  });
 }

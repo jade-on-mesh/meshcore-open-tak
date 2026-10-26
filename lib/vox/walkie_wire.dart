@@ -135,6 +135,103 @@ class WalkieAudio {
   );
 }
 
+// ---------------------------------------------------------------- DMs
+//
+// Push-to-talk in a DM goes to the one contact, as raw data along the route to
+// them (zero-hop when there is none), like the packets of a DM voice message.
+// Each packet is a VE3-framed packet, so companions send it on radio2:
+//
+//   [0x56][sid ^ 0xD7A1C0DE : 4 BE][index][flags][to: 4][from: 4][Codec2 frames]
+//
+// flags as a channel talk's (bit 7 the last packet, bits 0-4 the mode id);
+// `to` and `from` are the first 4 bytes of the receiver's and the sender's
+// public keys. A radio passes it to the app only when it ends there, and the
+// app takes it only when `to` is its own key and `from` one of its contacts.
+// Apps and standalones without DM talks see a VE3 packet of a clip nobody
+// announced (the sid is scrambled) and drop it. Shared with Wadamesh TAK
+// (src/ui-touch/WalkieWire.h).
+
+const int walkieDmSidXor = 0xD7A1C0DE;
+const int walkieDmHeaderLength = 15;
+const int walkieDmKeyBytes = 4;
+
+/// One second of a DM talk.
+class WalkieDmAudio {
+  final String sessionId;
+  final int index;
+  final VoxVoiceMode mode;
+  final bool last;
+  final Uint8List to;
+  final Uint8List from;
+  final Uint8List codecData;
+
+  WalkieDmAudio({
+    required this.sessionId,
+    required this.index,
+    required this.to,
+    required this.from,
+    required this.codecData,
+    this.mode = walkieMode,
+    this.last = false,
+  });
+
+  /// The same second as a channel talk's packet ([WalkieAudio]).
+  WalkieAudio get audio => WalkieAudio(
+    sessionId: sessionId,
+    index: index,
+    codecData: codecData,
+    mode: mode,
+    last: last,
+  );
+
+  static int _scramble(String sid) =>
+      (int.parse(sid, radix: 16) ^ walkieDmSidXor) & 0xFFFFFFFF;
+
+  Uint8List encode() {
+    final out = Uint8List(walkieDmHeaderLength + codecData.length);
+    out[0] = voxVoicePacketMagic;
+    final x = _scramble(sessionId);
+    out[1] = (x >> 24) & 0xFF;
+    out[2] = (x >> 16) & 0xFF;
+    out[3] = (x >> 8) & 0xFF;
+    out[4] = x & 0xFF;
+    out[5] = index;
+    out[6] = (mode.wireId & walkieModeMask) | (last ? walkieLastFlag : 0);
+    out.setRange(7, 11, to.sublist(0, walkieDmKeyBytes));
+    out.setRange(11, 15, from.sublist(0, walkieDmKeyBytes));
+    out.setRange(walkieDmHeaderLength, out.length, codecData);
+    return out;
+  }
+
+  /// A DM talk packet addressed to [self] (its public key), or null.
+  static WalkieDmAudio? tryParse(List<int> p, List<int> self) {
+    if (p.length < walkieDmHeaderLength || p[0] != voxVoicePacketMagic) {
+      return null;
+    }
+    if (self.length < walkieDmKeyBytes) return null;
+    for (var i = 0; i < walkieDmKeyBytes; i++) {
+      if (p[7 + i] != self[i]) return null;
+    }
+    final mode = VoxVoiceMode.fromWireId(p[6] & walkieModeMask);
+    if (mode == null || !mode.isCodec2) return null;
+    if (p[5] >= voxMaxPackets) return null;
+    final data = Uint8List.fromList(p.sublist(walkieDmHeaderLength));
+    if (data.length % mode.bytesPerFrame != 0) return null;
+    if (data.length > mode.bytesPerPacket) return null;
+    final x = (p[1] << 24) | (p[2] << 16) | (p[3] << 8) | p[4];
+    final sid = (x ^ walkieDmSidXor) & 0xFFFFFFFF;
+    return WalkieDmAudio(
+      sessionId: sid.toRadixString(16).padLeft(8, '0'),
+      index: p[5],
+      mode: mode,
+      last: (p[6] & walkieLastFlag) != 0,
+      to: Uint8List.fromList(p.sublist(7, 11)),
+      from: Uint8List.fromList(p.sublist(11, 15)),
+      codecData: data,
+    );
+  }
+}
+
 Uint8List _fitUtf8(String s, int maxBytes) {
   final out = <int>[];
   for (final r in s.trim().runes) {
