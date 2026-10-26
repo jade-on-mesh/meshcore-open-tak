@@ -185,7 +185,9 @@ class _WalkieSheetState extends State<WalkieSheet> {
         }
     }
     final last = talk == null && tx == WalkieTx.idle
-        ? (dm != null ? walkie.lastTalkWith(dmKey!) : walkie.lastTalkOn(ch!.index))
+        ? (dm != null
+              ? walkie.lastTalkWith(dmKey!)
+              : walkie.lastTalkOn(ch!.index))
         : null;
     final note = _message ?? (mine ? null : walkie.error);
 
@@ -336,50 +338,50 @@ class _WalkieSheetState extends State<WalkieSheet> {
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ] else if (ch != null) ...[
-              const SizedBox(height: 18),
-              Text(
-                l.walkie_reach,
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-              const SizedBox(height: 6),
-              SegmentedButton<bool>(
-                segments: [
-                  ButtonSegment(
-                    value: false,
-                    icon: const Icon(Icons.cell_tower),
-                    label: Text(l.walkie_viaRepeaters),
-                  ),
-                  ButtonSegment(
-                    value: true,
-                    icon: const Icon(Icons.swap_horiz),
-                    label: Text(l.walkie_direct),
-                  ),
-                ],
-                selected: {direct},
-                onSelectionChanged: tx == WalkieTx.idle
-                    ? (v) => walkie.setDirect(ch, v.first)
-                    : null,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                direct ? l.walkie_directHelp : l.walkie_repeatersHelp,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 8),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(l.voiceMute_everyChannel),
-                subtitle: Text(l.voiceMute_everyChannelHelp),
-                value: walkie.liveAll,
-                onChanged: walkie.setLiveAll,
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(l.voiceMute_channel),
-                subtitle: Text(l.voiceMute_channelHelp),
-                value: walkie.isVoiceMuted(ch),
-                onChanged: (v) => walkie.setVoiceMuted(ch, v),
-              ),
+                const SizedBox(height: 18),
+                Text(
+                  l.walkie_reach,
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                const SizedBox(height: 6),
+                SegmentedButton<bool>(
+                  segments: [
+                    ButtonSegment(
+                      value: false,
+                      icon: const Icon(Icons.cell_tower),
+                      label: Text(l.walkie_viaRepeaters),
+                    ),
+                    ButtonSegment(
+                      value: true,
+                      icon: const Icon(Icons.swap_horiz),
+                      label: Text(l.walkie_direct),
+                    ),
+                  ],
+                  selected: {direct},
+                  onSelectionChanged: tx == WalkieTx.idle
+                      ? (v) => walkie.setDirect(ch, v.first)
+                      : null,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  direct ? l.walkie_directHelp : l.walkie_repeatersHelp,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l.voiceMute_everyChannel),
+                  subtitle: Text(l.voiceMute_everyChannelHelp),
+                  value: walkie.liveAll,
+                  onChanged: walkie.setLiveAll,
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l.voiceMute_channel),
+                  subtitle: Text(l.voiceMute_channelHelp),
+                  value: walkie.isVoiceMuted(ch),
+                  onChanged: (v) => walkie.setVoiceMuted(ch, v),
+                ),
               ],
               const SizedBox(height: 4),
               Text(
