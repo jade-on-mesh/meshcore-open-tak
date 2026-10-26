@@ -16,7 +16,24 @@ talk back.
    A talk can be up to 20 seconds.
 
 A talk goes only to the channel it's on: only people with that channel hear
-it. Push-to-talk is in channel chats only, not in DMs.
+it.
+
+## In a DM
+
+The walkie-talkie button is in DMs too. A talk there goes to that contact
+alone: each second is sent straight to them along the route your radio knows,
+on MediaMesh, as you speak, and they hear it as it arrives. When you let go it
+is also sent to them as a voice message, so it's in the chat for both of you,
+and they can fetch any second they missed.
+
+- With no route to them yet, each second goes only to radios in range of
+  yours, so they hear it live only if they're nearby. The voice message gets
+  there either way. Send them a message first to learn a route.
+- A DM talk plays as it arrives when voice DMs auto-play (Settings), or while
+  that DM or its walkie-talkie is open.
+- Like the packets of a voice message, a talk's audio isn't encrypted on the
+  air: radios along the way could listen. The voice message itself is a DM.
+- Apps and radios without DM talks just get the voice message.
 
 Talks play by themselves as they arrive in the channel whose chat or
 walkie-talkie you have open. **Play talks on every channel** (off by default)

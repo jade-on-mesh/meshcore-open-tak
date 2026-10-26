@@ -3727,6 +3727,9 @@ class MeshCoreConnector extends ChangeNotifier {
     _recalculateCachedChannelsUnreadTotal();
   }
 
+  /// The contact whose DM chat is open (public key hex), if any.
+  String? get activeContactKeyHex => _activeContactKey;
+
   void setActiveContact(String? contactKeyHex) {
     if (contactKeyHex != null &&
         !_shouldTrackUnreadForContactKey(contactKeyHex)) {

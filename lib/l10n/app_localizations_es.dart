@@ -5039,6 +5039,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get discoveredContacts_searchHint => 'Buscar contactos descubiertos';
 
   @override
+  String dmWalkie_routed(String name) {
+    return 'Goes to $name alone, along the route to them. They hear it as you speak; it\'s also sent as a voice message.';
+  }
+
+  @override
+  String dmWalkie_noRoute(String name) {
+    return 'No route to $name yet: they hear it live only if they\'re in range of your radio. It\'s sent as a voice message either way.';
+  }
+
+  @override
   String get discoveredContacts_contactAdded => 'Contacto agregado';
 
   @override

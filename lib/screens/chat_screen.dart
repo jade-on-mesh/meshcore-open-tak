@@ -71,6 +71,7 @@ import '../vox/caption_field.dart';
 import '../vox/image_send_sheet.dart';
 import '../vox/voice_message_bubble.dart';
 import '../vox/voice_record_sheet.dart';
+import '../vox/walkie_sheet.dart';
 import '../vox/voice_service.dart';
 import '../vox/voice_wire.dart';
 
@@ -766,6 +767,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 caption: text,
               ),
         ),
+        WalkieButton.dm(contact: _resolveContact(connector)),
       ],
       onSend: () => _sendMessage(connector),
       sendTooltip: context.l10n.chat_sendMessageTo(

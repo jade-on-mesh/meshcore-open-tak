@@ -686,6 +686,53 @@ class VoxVoiceService extends ChangeNotifier {
   void Function(Uint8List payload, int channelIndex, int? via, int? hops)?
   liveTalkHandler;
 
+  /// DM push-to-talk packets addressed to this radio, for WalkieService.
+  void Function(WalkieDmAudio packet, int? via)? dmTalkHandler;
+
+  /// The raw-data route to [c] (1-byte hashes only), or null when there's
+  /// none: a DM talk then goes zero-hop.
+  Uint8List? directRouteTo(Contact c) => _directRoute(c);
+
+  /// Pause between a DM talk's packets along a [hops]-hop route (0: zero-hop).
+  Duration walkieDmGap(int hops) =>
+      hops <= 0 ? _zeroHopGap() : _packetGap(flood: false, hops: hops);
+
+  /// Sends one DM talk packet along [route] (empty: zero-hop).
+  Future<void> sendWalkieDmPacket(Uint8List route, Uint8List payload) =>
+      _connector.sendFrame(
+        buildSendRawDataFrame(path: route, payload: payload),
+        waitForGenericAck: true,
+      );
+
+  /// Announces a finished DM talk to [contact] as an ordinary voice message
+  /// with the session id its packets went out under, and keeps it to serve.
+  Future<VoxVoiceEnvelope> announceTalkToContact(
+    Contact contact,
+    String sid,
+    Uint8List bits, {
+    required int durationSeconds,
+  }) async {
+    final packets = voxPacketize(sid, bits, walkieMode);
+    if (packets.isEmpty) throw StateError('Talk is empty');
+    _remember(sid, walkieMode, bits, own: true);
+    final env = VoxVoiceEnvelope(
+      sessionId: sid,
+      mode: walkieMode,
+      totalPackets: packets.length,
+      durationSeconds: durationSeconds,
+      caption: walkieTalkCaption,
+    );
+    _noteTalk(sid);
+    _logEvent(
+      'DM talk: ${packets.length} packets sent live to ${contact.name}; '
+      'announcing it as a voice message',
+      sid,
+    );
+    await _connector.sendMessage(contact, env.encode());
+    notifyListeners();
+    return env;
+  }
+
   /// Talks played live: their voice messages don't auto-play again.
   final Set<String> _heardLive = {};
 
@@ -2254,6 +2301,16 @@ class VoxVoiceService extends ChangeNotifier {
     // An untagged frame: find out whether this radio has radio2, for the
     // "Received via" label (cached for minutes, so not asked per packet).
     if (via == null) unawaited(_refreshMediaAir());
+    if (channelIndex == null && payload[0] == voxVoicePacketMagic) {
+      // Push-to-talk in a DM (walkie_wire.dart), addressed to this radio.
+      final self = _connector.selfPublicKey;
+      final dm = self == null ? null : WalkieDmAudio.tryParse(payload, self);
+      if (dm != null) {
+        _noteVia(dm.sessionId, via);
+        dmTalkHandler?.call(dm, via);
+        return;
+      }
+    }
     if (walkieIsLivePayload(payload)) {
       // Push-to-talk (walkie_service.dart): only ever sent on a channel.
       if (channelIndex != null) {

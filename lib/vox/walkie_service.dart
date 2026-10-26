@@ -18,6 +18,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../connector/meshcore_connector.dart';
 import '../models/channel.dart';
+import '../models/contact.dart';
 import '../services/media_lockdown.dart';
 import 'resample.dart';
 import 'voice_codec.dart';
@@ -27,14 +28,20 @@ import 'voice_wire.dart';
 import 'walkie_audio.dart';
 import 'walkie_wire.dart';
 
-/// A talk heard on a channel.
+/// A talk heard on a channel, or in a DM ([contactKeyHex] set, and
+/// [channelIndex] -1).
 class WalkieTalk {
-  WalkieTalk(this.sessionId, this.channelIndex, DateTime now)
-    : firstHeard = now,
-      lastHeard = now;
+  WalkieTalk(
+    this.sessionId,
+    this.channelIndex,
+    DateTime now, {
+    this.contactKeyHex,
+  }) : firstHeard = now,
+       lastHeard = now;
 
   final String sessionId;
   final int channelIndex;
+  final String? contactKeyHex;
   final DateTime firstHeard;
   DateTime lastHeard;
   String name = '';
@@ -54,8 +61,17 @@ class WalkieTalk {
 enum WalkieTx { idle, starting, onAir, finishing }
 
 class _Tx {
-  _Tx(this.channel, this.sessionId, this.direct);
-  final Channel channel;
+  _Tx(this.channel, this.sessionId, this.direct) : contact = null, route = null;
+  _Tx.dm(Contact this.contact, Uint8List this.route, this.sessionId)
+    : channel = null,
+      direct = route.isEmpty;
+
+  /// A channel talk's channel, or null in a DM.
+  final Channel? channel;
+
+  /// A DM talk's contact and the route to them (empty: zero-hop).
+  final Contact? contact;
+  final Uint8List? route;
   final String sessionId;
   final bool direct;
   final AudioRecorder recorder = AudioRecorder();
@@ -86,6 +102,7 @@ class _Tx {
 class WalkieService extends ChangeNotifier {
   WalkieService(this._connector, this._voice) {
     _voice.liveTalkHandler = _onLive;
+    _voice.dmTalkHandler = _onDmLive;
     _voice.channelVoiceMuted = isVoiceMutedAt;
     unawaited(_load());
   }
@@ -103,6 +120,7 @@ class WalkieService extends ChangeNotifier {
   Set<String> _mutedKeys = {};
   Set<String> _directKeys = {};
   final Map<int, int> _openPanels = {};
+  final Map<String, int> _openDmPanels = {};
 
   final Map<String, WalkieTalk> _talks = {};
   final Set<String> _ownSids = {};
@@ -124,7 +142,10 @@ class WalkieService extends ChangeNotifier {
       : WalkieTx.onAir;
 
   /// The channel being talked on, if any.
-  int? get talkingOn => _tx?.channel.index;
+  int? get talkingOn => _tx?.channel?.index;
+
+  /// The contact being talked to in a DM (public key hex), if any.
+  String? get talkingWith => _tx?.contact?.publicKeyHex;
 
   /// How long the current talk has run.
   Duration get talkElapsed =>
@@ -215,6 +236,31 @@ class WalkieService extends ChangeNotifier {
     }
   }
 
+  /// A DM talk to [c] has a route to follow (else it goes zero-hop: heard
+  /// live only if they're in range; the voice message gets there anyway).
+  bool dmRouteKnown(Contact c) => _voice.directRouteTo(c) != null;
+
+  /// The walkie for the DM with [contactKeyHex] is on screen.
+  void dmPanelOpened(String contactKeyHex) {
+    _openDmPanels[contactKeyHex] = (_openDmPanels[contactKeyHex] ?? 0) + 1;
+  }
+
+  void dmPanelClosed(String contactKeyHex) {
+    final n = (_openDmPanels[contactKeyHex] ?? 1) - 1;
+    if (n <= 0) {
+      _openDmPanels.remove(contactKeyHex);
+    } else {
+      _openDmPanels[contactKeyHex] = n;
+    }
+  }
+
+  /// A DM talk plays live: it's addressed to you, so as voice DMs do (with
+  /// auto-play on), or while that DM's chat or walkie is open.
+  bool _listensToDm(String contactKeyHex) =>
+      _openDmPanels.containsKey(contactKeyHex) ||
+      _voice.autoPlay ||
+      _connector.activeContactKeyHex == contactKeyHex;
+
   /// A talk on [channelIndex] plays live: its walkie is open; or voice
   /// isn't muted there and its chat is open, or [liveAll] is on.
   bool _listensTo(int channelIndex) {
@@ -250,6 +296,27 @@ class WalkieService extends ChangeNotifier {
     WalkieTalk? best;
     for (final t in _talks.values) {
       if (t.channelIndex != channelIndex || !t.activeAt(now)) continue;
+      if (best == null || t.lastHeard.isAfter(best.lastHeard)) best = t;
+    }
+    return best;
+  }
+
+  /// The DM talk on the air from [contactKeyHex], if they're talking.
+  WalkieTalk? activeTalkWith(String contactKeyHex) {
+    final now = DateTime.now();
+    WalkieTalk? best;
+    for (final t in _talks.values) {
+      if (t.contactKeyHex != contactKeyHex || !t.activeAt(now)) continue;
+      if (best == null || t.lastHeard.isAfter(best.lastHeard)) best = t;
+    }
+    return best;
+  }
+
+  /// The most recent DM talk heard from [contactKeyHex].
+  WalkieTalk? lastTalkWith(String contactKeyHex) {
+    WalkieTalk? best;
+    for (final t in _talks.values) {
+      if (t.contactKeyHex != contactKeyHex) continue;
       if (best == null || t.lastHeard.isAfter(best.lastHeard)) best = t;
     }
     return best;
@@ -303,6 +370,35 @@ class WalkieService extends ChangeNotifier {
     final t = _talks.putIfAbsent(sid, () => WalkieTalk(sid, channelIndex, now));
     return t;
   }
+
+  /// A DM talk packet addressed to us (VoxVoiceService checked `to`).
+  void _onDmLive(WalkieDmAudio a, int? via) {
+    final now = DateTime.now();
+    final sid = a.sessionId;
+    if (_ownSids.contains(sid)) return;
+    final c = _voice.contactByKeyPrefix(_hex(a.from));
+    if (c == null) return; // not one of our contacts
+    final key = c.publicKeyHex;
+    final t = _talks.putIfAbsent(
+      sid,
+      () => WalkieTalk(sid, -1, now, contactKeyHex: key),
+    );
+    if (t.contactKeyHex != key) return;
+    t.name = c.name;
+    t.lastHeard = now;
+    final audio = a.audio;
+    if (audio.last) t.endHeard = true;
+    _voice.acceptLivePacket(sid, audio.index, audio.codecData, via: via);
+    t.jitter.add(audio, now);
+    if (_playing == null && _tx == null && !t.played && _listensToDm(key)) {
+      unawaited(_startPlaying(t));
+    }
+    _tick();
+    notifyListeners();
+  }
+
+  static String _hex(List<int> b) =>
+      b.map((v) => v.toRadixString(16).padLeft(2, '0')).join();
 
   Future<void> _startPlaying(WalkieTalk t) async {
     if (!voxCodecAvailable) return;
@@ -394,8 +490,31 @@ class WalkieService extends ChangeNotifier {
           ? 'Someone is talking'
           : '${busy.name} is talking';
     }
-    final sid = voxNewSessionId(_rng);
-    final tx = _Tx(ch, sid, isDirect(ch));
+    return _begin(_Tx(ch, voxNewSessionId(_rng), isDirect(ch)));
+  }
+
+  /// Starts talking to [contact] in a DM: each second goes to them alone, as
+  /// raw data along the route to them (zero-hop with none), and the talk is
+  /// sent to them as a voice message at the end. Returns why it can't, or
+  /// null once started (or starting).
+  Future<String?> startTalkTo(Contact contact) async {
+    if (_tx != null) return null;
+    _error = null;
+    if (!voxCodecAvailable) {
+      return voxCodecUnavailableReason ?? 'Voice is not available here';
+    }
+    if (!_connector.isConnected) return 'Not connected to a radio';
+    if ((_connector.selfPublicKey?.length ?? 0) < walkieDmKeyBytes) {
+      return 'Not connected to a radio';
+    }
+    final busy = activeTalkWith(contact.publicKeyHex);
+    if (busy != null) return '${contact.name} is talking';
+    final route = _voice.directRouteTo(contact) ?? Uint8List(0);
+    return _begin(_Tx.dm(contact, route, voxNewSessionId(_rng)));
+  }
+
+  Future<String?> _begin(_Tx tx) async {
+    final sid = tx.sessionId;
     _tx = tx;
     _ownSids.add(sid);
     if (_ownSids.length > 64) _ownSids.remove(_ownSids.first);
@@ -425,10 +544,13 @@ class WalkieService extends ChangeNotifier {
     _voice.micBusy = true;
     try {
       tx.encoder = VoxCodec2Stream(walkieMode);
-      _send(
-        tx,
-        WalkieStart(sessionId: sid, name: _connector.selfName ?? '').encode(),
-      );
+      if (tx.channel != null) {
+        // A DM talk has no start packet: its first second says who it's from.
+        _send(
+          tx,
+          WalkieStart(sessionId: sid, name: _connector.selfName ?? '').encode(),
+        );
+      }
       final stream = await tx.recorder.startStream(
         const RecordConfig(
           encoder: AudioEncoder.pcm16bits,
@@ -494,26 +616,49 @@ class WalkieService extends ChangeNotifier {
     final bits = enc.encode(Int16List.fromList(tx.frame.sublist(0, whole)));
     tx.frame.removeRange(0, whole);
     for (final pkt in tx.packets.add(bits)) {
-      _send(tx, pkt.encode());
+      _send(tx, _encode(tx, pkt));
     }
+  }
+
+  /// A second of [tx] as it goes on the air: a channel talk's packet, or a
+  /// DM talk's (addressed to the contact).
+  Uint8List _encode(_Tx tx, WalkieAudio a) {
+    final c = tx.contact;
+    if (c == null) return a.encode();
+    return WalkieDmAudio(
+      sessionId: a.sessionId,
+      index: a.index,
+      mode: a.mode,
+      last: a.last,
+      to: c.publicKey,
+      from: _connector.selfPublicKey!,
+      codecData: a.codecData,
+    ).encode();
   }
 
   void _send(_Tx tx, Uint8List payload) {
     tx.chain = tx.chain.then((_) async {
       if (tx.failed) return;
-      final gap = _voice.walkieGap(direct: tx.direct);
+      final route = tx.route;
+      final gap = route != null
+          ? _voice.walkieDmGap(route.length)
+          : _voice.walkieGap(direct: tx.direct);
       final last = tx.lastSent;
       if (last != null) {
         final wait = gap - DateTime.now().difference(last);
         if (wait > Duration.zero) await Future<void>.delayed(wait);
       }
       try {
-        await _connector.sendChannelDataPacket(
-          channelIndex: tx.channel.index,
-          dataType: voxChannelDataType,
-          payload: payload,
-          zeroHop: tx.direct,
-        );
+        if (route != null) {
+          await _voice.sendWalkieDmPacket(route, payload);
+        } else {
+          await _connector.sendChannelDataPacket(
+            channelIndex: tx.channel!.index,
+            dataType: voxChannelDataType,
+            payload: payload,
+            zeroHop: tx.direct,
+          );
+        }
         tx.lastSent = DateTime.now();
       } catch (e) {
         tx.failed = true;
@@ -543,18 +688,29 @@ class WalkieService extends ChangeNotifier {
     await tx.sub?.cancel();
     tx.recording = false;
     _encodeFrames(tx, flush: true);
-    _send(tx, tx.packets.finish().encode());
+    _send(tx, _encode(tx, tx.packets.finish()));
     await tx.chain;
     final bits = tx.packets.bits;
     final ms = bits.length ~/ walkieMode.bytesPerFrame * walkieMode.frameMs;
     if (!cancel && !tx.failed && ms >= walkieMinTalk.inMilliseconds) {
       try {
-        await _voice.announceTalk(
-          tx.channel,
-          tx.sessionId,
-          bits,
-          durationSeconds: max(1, (ms / 1000).ceil()),
-        );
+        final secs = max(1, (ms / 1000).ceil());
+        final c = tx.contact;
+        if (c != null) {
+          await _voice.announceTalkToContact(
+            c,
+            tx.sessionId,
+            bits,
+            durationSeconds: secs,
+          );
+        } else {
+          await _voice.announceTalk(
+            tx.channel!,
+            tx.sessionId,
+            bits,
+            durationSeconds: secs,
+          );
+        }
       } catch (e) {
         _error = 'Sent live, but the voice message failed: $e';
       }
@@ -580,6 +736,7 @@ class WalkieService extends ChangeNotifier {
   void dispose() {
     _ticker?.cancel();
     _voice.liveTalkHandler = null;
+    _voice.dmTalkHandler = null;
     final tx = _tx;
     if (tx != null) unawaited(_endTx(tx));
     unawaited(_speaker.dispose());

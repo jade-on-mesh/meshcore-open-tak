@@ -7,26 +7,37 @@ import 'package:provider/provider.dart';
 
 import '../l10n/l10n.dart';
 import '../models/channel.dart';
+import '../models/contact.dart';
 import 'walkie_service.dart';
 import 'walkie_wire.dart';
 
-/// Opens the walkie for [channel] from the chat composer.
+/// Opens the walkie for [channel], or the DM with [contact], from the chat
+/// composer.
 class WalkieButton extends StatelessWidget {
-  final Channel channel;
-  const WalkieButton({super.key, required this.channel});
+  final Channel? channel;
+  final Contact? contact;
+  const WalkieButton({super.key, required Channel this.channel})
+    : contact = null;
+  const WalkieButton.dm({super.key, required Contact this.contact})
+    : channel = null;
 
   @override
   Widget build(BuildContext context) {
     final walkie = context.watch<WalkieService>();
     if (!walkie.available) return const SizedBox.shrink();
-    final live = walkie.activeTalkOn(channel.index) != null;
+    final c = contact;
+    final live = c != null
+        ? walkie.activeTalkWith(c.publicKeyHex) != null
+        : walkie.activeTalkOn(channel!.index) != null;
     return IconButton(
       icon: Icon(
         Icons.record_voice_over_outlined,
         color: live ? Theme.of(context).colorScheme.primary : null,
       ),
       tooltip: context.l10n.walkie_tooltip,
-      onPressed: () => showWalkieSheet(context, channel),
+      onPressed: () => c != null
+          ? showDmWalkieSheet(context, c)
+          : showWalkieSheet(context, channel!),
     );
   }
 }
@@ -38,9 +49,21 @@ Future<void> showWalkieSheet(BuildContext context, Channel channel) =>
       builder: (_) => WalkieSheet(channel: channel),
     );
 
+/// The walkie for a DM: talks go to [contact] alone.
+Future<void> showDmWalkieSheet(BuildContext context, Contact contact) =>
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => WalkieSheet.dm(contact: contact),
+    );
+
 class WalkieSheet extends StatefulWidget {
-  final Channel channel;
-  const WalkieSheet({super.key, required this.channel});
+  final Channel? channel;
+  final Contact? contact;
+  const WalkieSheet({super.key, required Channel this.channel})
+    : contact = null;
+  const WalkieSheet.dm({super.key, required Contact this.contact})
+    : channel = null;
 
   @override
   State<WalkieSheet> createState() => _WalkieSheetState();
@@ -54,15 +77,25 @@ class _WalkieSheetState extends State<WalkieSheet> {
   @override
   void initState() {
     super.initState();
-    _walkie = context.read<WalkieService>()
-      ..clearError()
-      ..panelOpened(widget.channel.index);
+    _walkie = context.read<WalkieService>()..clearError();
+    final c = widget.contact;
+    if (c != null) {
+      _walkie.dmPanelOpened(c.publicKeyHex);
+    } else {
+      _walkie.panelOpened(widget.channel!.index);
+    }
   }
 
   @override
   void dispose() {
-    _walkie.panelClosed(widget.channel.index);
-    if (_walkie.talkingOn == widget.channel.index) _walkie.stopTalk();
+    final c = widget.contact;
+    if (c != null) {
+      _walkie.dmPanelClosed(c.publicKeyHex);
+      if (_walkie.talkingWith == c.publicKeyHex) _walkie.stopTalk();
+    } else {
+      _walkie.panelClosed(widget.channel!.index);
+      if (_walkie.talkingOn == widget.channel!.index) _walkie.stopTalk();
+    }
     super.dispose();
   }
 
@@ -70,7 +103,10 @@ class _WalkieSheetState extends State<WalkieSheet> {
     if (_holding) return;
     _holding = true;
     setState(() => _message = null);
-    final err = await _walkie.startTalk(widget.channel);
+    final c = widget.contact;
+    final err = c != null
+        ? await _walkie.startTalkTo(c)
+        : await _walkie.startTalk(widget.channel!);
     if (!mounted) return;
     if (err != null) {
       HapticFeedback.heavyImpact();
@@ -103,12 +139,19 @@ class _WalkieSheetState extends State<WalkieSheet> {
     final scheme = Theme.of(context).colorScheme;
     final walkie = context.watch<WalkieService>();
     final ch = widget.channel;
-    final mine = walkie.talkingOn == ch.index;
+    final dm = widget.contact;
+    final dmKey = dm?.publicKeyHex;
+    final mine = dm != null
+        ? walkie.talkingWith == dmKey
+        : walkie.talkingOn == ch!.index;
     final tx = mine ? walkie.tx : WalkieTx.idle;
-    final talk = walkie.activeTalkOn(ch.index);
+    final talk = dm != null
+        ? walkie.activeTalkWith(dmKey!)
+        : walkie.activeTalkOn(ch!.index);
     final busy = talk != null && !mine;
-    final otherChannel = walkie.talkingOn != null && !mine;
-    final direct = walkie.isDirect(ch);
+    final otherChannel =
+        (walkie.talkingOn != null || walkie.talkingWith != null) && !mine;
+    final direct = ch != null && walkie.isDirect(ch);
 
     final String status;
     final Color statusColor;
@@ -142,7 +185,7 @@ class _WalkieSheetState extends State<WalkieSheet> {
         }
     }
     final last = talk == null && tx == WalkieTx.idle
-        ? walkie.lastTalkOn(ch.index)
+        ? (dm != null ? walkie.lastTalkWith(dmKey!) : walkie.lastTalkOn(ch!.index))
         : null;
     final note = _message ?? (mine ? null : walkie.error);
 
@@ -181,7 +224,7 @@ class _WalkieSheetState extends State<WalkieSheet> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      '${l.walkie_title} · ${ch.name}',
+                      '${l.walkie_title} · ${dm?.name ?? ch!.name}',
                       style: Theme.of(context).textTheme.titleMedium,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -284,6 +327,15 @@ class _WalkieSheetState extends State<WalkieSheet> {
                     style: TextStyle(color: scheme.error),
                   ),
                 ),
+              if (dm != null) ...[
+                const SizedBox(height: 18),
+                Text(
+                  walkie.dmRouteKnown(dm)
+                      ? l.dmWalkie_routed(dm.name)
+                      : l.dmWalkie_noRoute(dm.name),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ] else if (ch != null) ...[
               const SizedBox(height: 18),
               Text(
                 l.walkie_reach,
@@ -328,6 +380,7 @@ class _WalkieSheetState extends State<WalkieSheet> {
                 value: walkie.isVoiceMuted(ch),
                 onChanged: (v) => walkie.setVoiceMuted(ch, v),
               ),
+              ],
               const SizedBox(height: 4),
               Text(
                 l.walkie_footer(walkieMaxTalk.inSeconds),
