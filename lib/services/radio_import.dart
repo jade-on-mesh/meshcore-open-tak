@@ -245,7 +245,10 @@ RadioImport? _parseMeshCoreOne(Uint8List bytes) {
     final key = _b64(c['secret']);
     if (slot < 0 || slot >= 64 || n is! String || n.isEmpty) continue;
     if (key == null || key.length < 16) continue;
-    bySlot[slot] = RadioImportChannel(n, Uint8List.fromList(key.sublist(0, 16)));
+    bySlot[slot] = RadioImportChannel(
+      n,
+      Uint8List.fromList(key.sublist(0, 16)),
+    );
   }
   if (bySlot.isNotEmpty) {
     final last = bySlot.keys.reduce((a, b) => a > b ? a : b);
