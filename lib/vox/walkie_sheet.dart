@@ -316,19 +316,17 @@ class _WalkieSheetState extends State<WalkieSheet> {
               const SizedBox(height: 8),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text(l.walkie_liveAll),
-                subtitle: Text(l.walkie_liveAllHelp),
+                title: Text(l.voiceMute_everyChannel),
+                subtitle: Text(l.voiceMute_everyChannelHelp),
                 value: walkie.liveAll,
                 onChanged: walkie.setLiveAll,
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text(l.walkie_listenLive),
-                subtitle: Text(l.walkie_listenLiveHelp),
-                value: walkie.channelLive(ch),
-                onChanged: walkie.liveAll
-                    ? (v) => walkie.setListenLive(ch, v)
-                    : null,
+                title: Text(l.voiceMute_channel),
+                subtitle: Text(l.voiceMute_channelHelp),
+                value: walkie.isVoiceMuted(ch),
+                onChanged: (v) => walkie.setVoiceMuted(ch, v),
               ),
               const SizedBox(height: 4),
               Text(

@@ -334,6 +334,32 @@ class AppLocalizationsPl extends AppLocalizations {
   String get usbStatus_searching => 'Wyszukiwanie urządzeń USB...';
 
   @override
+  String get voiceMute_everyChannel => 'Play talks on every channel';
+
+  @override
+  String get voiceMute_everyChannelHelp =>
+      'Off: talks play live only in the channel you have open. On: talks on any channel play as they arrive, like a scanner.';
+
+  @override
+  String get voiceMute_channel => 'Mute voice in this channel';
+
+  @override
+  String get voiceMute_channelHelp =>
+      'Its talks don\'t play live and its voice messages don\'t play by themselves. They wait in the chat for a tap.';
+
+  @override
+  String get voiceMute_menuMute => 'Mute voice';
+
+  @override
+  String get voiceMute_menuUnmute => 'Unmute voice';
+
+  @override
+  String get voiceMute_mutedNote => 'Voice muted in this channel';
+
+  @override
+  String get voiceMute_unmutedNote => 'Voice unmuted in this channel';
+
+  @override
   String usbConnectionFailed(String error) {
     return 'Błąd połączenia USB: $error';
   }
@@ -4164,6 +4190,26 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get channelPath_viewMap => 'Wyświetl mapę';
+
+  @override
+  String get channelSearch_menu => 'Search';
+
+  @override
+  String get channelSearch_hint => 'Search this channel';
+
+  @override
+  String get channelSearch_close => 'Close search';
+
+  @override
+  String get channelSearch_noResults => 'No messages match';
+
+  @override
+  String channelSearch_count(int count) {
+    return 'Messages found: $count';
+  }
+
+  @override
+  String get channelSearch_notFound => 'That message is no longer stored';
 
   @override
   String get channelPath_otherObservedPaths => 'Inne zaobserwowane ścieżki';

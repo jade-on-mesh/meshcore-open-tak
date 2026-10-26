@@ -37,6 +37,7 @@ import '../services/translation_service.dart';
 import '../utils/image_save.dart';
 import 'otp_pad_screen.dart';
 import '../utils/lora_airtime.dart';
+import '../widgets/channel_search.dart';
 import '../widgets/marker_label_dialog.dart';
 import '../widgets/received_image_message.dart';
 import '../widgets/chat_day_separator.dart';
@@ -76,6 +77,7 @@ import '../vox/voice_record_sheet.dart';
 import '../vox/voice_service.dart';
 import '../vox/voice_wire.dart';
 import '../team/message_reach_screen.dart';
+import '../vox/walkie_service.dart';
 import '../vox/walkie_sheet.dart';
 import '../utils/share_origin.dart';
 
@@ -130,6 +132,18 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   // than only whenever some unrelated event happens to call
   // notifyListeners() next. No network activity, no pad bytes touched.
   Timer? _participantStripPruneTimer;
+
+  // Search (⋮ > Search, widgets/channel_search.dart): the query, its results
+  // (null while the first search runs), and the message a result jumped to,
+  // tinted for a moment.
+  bool _searching = false;
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _searchDebounce;
+  List<ChannelMessage>? _searchResults;
+  bool _searchBusy = false;
+  int _searchGen = 0;
+  String? _highlightMessageId;
+  Timer? _highlightTimer;
 
   @override
   void initState() {
@@ -256,6 +270,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   @override
   void dispose() {
     _participantStripPruneTimer?.cancel();
+    _searchDebounce?.cancel();
+    _highlightTimer?.cancel();
+    _searchController.dispose();
     _route?.secondaryAnimation?.removeStatusListener(_onCoveringRouteStatus);
     _watchedImageStore?.removeListener(_onImageStoreChanged);
     _connector?.setActiveChannel(null);
@@ -280,6 +297,112 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     setState(() {
       _replyingToMessage = null;
       _useReplyRegion = false;
+    });
+  }
+
+  /// ⋮ > Mute voice: this channel's talks don't play live and its voice
+  /// messages don't play by themselves (WalkieService.setVoiceMuted).
+  Future<void> _toggleVoiceMute() async {
+    final walkie = context.read<WalkieService>();
+    final l10n = context.l10n;
+    final mute = !walkie.isVoiceMuted(widget.channel);
+    await walkie.setVoiceMuted(widget.channel, mute);
+    if (!mounted) return;
+    showDismissibleSnackBar(
+      context,
+      content: Text(
+        mute ? l10n.voiceMute_mutedNote : l10n.voiceMute_unmutedNote,
+      ),
+      duration: const Duration(seconds: 2),
+    );
+  }
+
+  void _openSearch() {
+    setState(() {
+      _searching = true;
+      _searchResults = null;
+    });
+    _searchController.clear();
+  }
+
+  void _closeSearch() {
+    _searchDebounce?.cancel();
+    _searchGen++;
+    setState(() {
+      _searching = false;
+      _searchResults = null;
+      _searchBusy = false;
+    });
+    _searchController.clear();
+  }
+
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    if (value.trim().isEmpty) {
+      _searchGen++;
+      setState(() {
+        _searchResults = null;
+        _searchBusy = false;
+      });
+      return;
+    }
+    _searchDebounce = Timer(const Duration(milliseconds: 250), _runSearch);
+  }
+
+  Future<void> _runSearch() async {
+    final gen = ++_searchGen;
+    final query = _searchController.text;
+    setState(() => _searchBusy = true);
+    final results = await context
+        .read<MeshCoreConnector>()
+        .searchChannelMessages(widget.channel, query);
+    if (!mounted || gen != _searchGen) return;
+    setState(() {
+      _searchResults = results;
+      _searchBusy = false;
+    });
+  }
+
+  /// Closes the search and scrolls the transcript to [message], loading older
+  /// history first when it is not on screen yet.
+  Future<void> _openSearchResult(ChannelMessage message) async {
+    final id = message.messageId;
+    _closeSearch();
+    final connector = context.read<MeshCoreConnector>();
+    final found = await connector.ensureChannelMessageLoaded(
+      widget.channel.index,
+      id,
+    );
+    if (!mounted) return;
+    if (!found) {
+      showDismissibleSnackBar(
+        context,
+        content: Text(context.l10n.channelSearch_notFound),
+        duration: const Duration(seconds: 2),
+      );
+      return;
+    }
+    _highlightTimer?.cancel();
+    setState(() => _highlightMessageId = id);
+    _highlightTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _highlightMessageId = null);
+    });
+    final messages = connector.getChannelMessages(widget.channel);
+    final at = messages.indexWhere((m) => m.messageId == id);
+    final newer = at < 0 ? 0 : messages.length - at;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_messageKeys[id]?.currentContext != null) {
+        _scrollToMessage(id);
+        return;
+      }
+      _scrollController.jumpToEstimatedOffset(
+        unreadCount: newer,
+        totalMessages: messages.length,
+        onJumped: () {
+          if (mounted) _scrollToMessage(id);
+        },
+      );
     });
   }
 
@@ -436,344 +559,436 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => openRegionSelectDialog(widget.channel),
-          child: Row(
-            children: [
-              _channelIcon(widget.channel),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.channel.name.isEmpty
-                          ? context.l10n.channels_channelIndex(
-                              widget.channel.index,
-                            )
-                          : widget.channel.name,
-                      style: const TextStyle(fontSize: 16),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Consumer<MeshCoreConnector>(
-                      builder: (context, connector, _) {
-                        final privacy = switch (Channel.getChannelType(
-                          widget.channel,
-                          _communityIndex,
-                        )) {
-                          ChannelType.public => context.l10n.channels_public,
-                          ChannelType.hashtag => context.l10n.channels_hashtag,
-                          ChannelType.private => context.l10n.channels_private,
-                          ChannelType.communityPublic =>
-                            context.l10n.community_publicChannel,
-                          ChannelType.communityHashtag =>
-                            context.l10n.community_hashtagChannel,
-                        };
-                        final ownRegion = connector.getChannelRegion(
-                          widget.channel.index,
-                        );
-                        final region = connector.getEffectiveChannelRegion(
-                          widget.channel.index,
-                        );
-                        final defaultSuffix = ownRegion.isEmpty
-                            ? ' ${context.l10n.channels_regionDefaultSuffix}'
-                            : '';
-                        final radioDefault = connector.defaultFloodScopeName;
-                        final regionText = region.isNotEmpty
-                            ? ' • ${context.l10n.channels_regionSetTo(region)}$defaultSuffix'
-                            : radioDefault != null &&
-                                  connector.channelUsesRadioDefaultScope(
-                                    widget.channel.index,
-                                  )
-                            ? ' • ${context.l10n.channels_regionSetTo(radioDefault)} ${context.l10n.channels_regionRadioDefaultSuffix}'
-                            : '';
-                        return Text(
-                          '$privacy$regionText',
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        centerTitle: false,
-        bottom: const SyncProgressAppBarBottom(),
-        actions: [
-          Consumer<AppSettingsService>(
-            builder: (context, settings, _) {
-              final muteKey = widget.channel.muteKey;
-              final muted = settings.isChannelMuted(muteKey);
-              return IconButton(
-                tooltip: muted
-                    ? context.l10n.channels_unmuteChannel
-                    : context.l10n.channels_muteChannel,
-                icon: Icon(
-                  muted
-                      ? Icons.notifications_off_outlined
-                      : Icons.notifications_outlined,
-                ),
-                onPressed: () => muted
-                    ? settings.unmuteChannel(muteKey)
-                    : settings.muteChannel(muteKey),
-              );
-            },
-          ),
-          IconButton(
-            tooltip: context.l10n.channels_regionSelect_Title,
-            icon: const Icon(Icons.landscape),
-            onPressed: () => openRegionSelectDialog(widget.channel),
-          ),
-          const SignalGradeIndicator(),
-          const MediaMeshNearbyIcon(),
-          const RadioStatsIconButton(),
-          Consumer<MeshCoreConnector>(
-            builder: (context, connector, _) {
-              final otpEnabled = connector.isChannelOtpEnabled(
-                widget.channel.index,
-              );
-              if (!otpEnabled) return const SizedBox.shrink();
-              // Ports OTP_3_RC1.lua's chat-screen "ReSync" button for a
-              // channel target — see resyncChannel's own doc comment.
-              return IconButton(
-                tooltip: 'ReSync',
-                icon: const Icon(Icons.sync),
-                onPressed: () {
-                  final ok = connector.resyncChannel(widget.channel.index);
-                  showDismissibleSnackBar(
-                    context,
-                    content: Text(
-                      ok
-                          ? 'Pad reloaded — sync check sent'
-                          : 'No OTP pad for this channel',
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-          Consumer<MeshCoreConnector>(
-            builder: (context, connector, _) {
-              final otpEnabled = connector.isChannelOtpEnabled(
-                widget.channel.index,
-              );
-              if (!otpEnabled) return const SizedBox.shrink();
-              // Ports OTP_3_RC1.lua's participant-strip visibility toggle —
-              // shown only where the strip itself could ever appear
-              // (channel + OTP enabled), same gating as _buildParticipantStrip.
-              final shown = context
-                  .watch<AppSettingsService>()
-                  .settings
-                  .channelParticipantStripEnabled;
-              return IconButton(
-                tooltip: shown
-                    ? 'Hide participant sync strip'
-                    : 'Show participant sync strip',
-                icon: Icon(shown ? Icons.people : Icons.people_outline),
-                onPressed: () {
-                  context
-                      .read<AppSettingsService>()
-                      .setChannelParticipantStripEnabled(!shown);
-                },
-              );
-            },
-          ),
-          Consumer<MeshCoreConnector>(
-            builder: (context, connector, _) {
-              final otpEnabled = connector.isChannelOtpEnabled(
-                widget.channel.index,
-              );
-              return IconButton(
-                tooltip: otpEnabled ? 'OTP Pad (encrypting)' : 'OTP Pad',
-                icon: Icon(
-                  otpEnabled ? Icons.lock : Icons.lock_open,
-                  color: otpEnabled ? MeshPalette.blue : null,
-                ),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => OtpPadScreen.forChannel(widget.channel),
-                  ),
-                ),
-              );
-            },
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            onSelected: (value) {
-              if (value == 'clearChat') {
-                _confirmClearChat();
-              }
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'clearChat',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.delete,
-                      size: 20,
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      context.l10n.contact_clearChat,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            Consumer<MeshCoreConnector>(
-              builder: (context, connector, _) =>
-                  _buildParticipantStrip(connector),
-            ),
-            Expanded(
-              child: Consumer<MeshCoreConnector>(
-                builder: (context, connector, child) {
-                  final messages = connector.getChannelMessages(widget.channel);
-                  final layout = _transcriptLayoutFor(context, messages);
-
-                  if (layout.length == 0) {
-                    return EmptyState(
-                      icon: widget.channel.isPublicChannel
-                          ? Icons.public
-                          : Icons.tag,
-                      title: context.l10n.chat_noMessages,
-                      subtitle: context.l10n.chat_sendMessageTo(
+    return PopScope(
+      canPop: !_searching,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _searching) _closeSearch();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => openRegionSelectDialog(widget.channel),
+            child: Row(
+              children: [
+                _channelIcon(widget.channel),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
                         widget.channel.name.isEmpty
                             ? context.l10n.channels_channelIndex(
                                 widget.channel.index,
                               )
                             : widget.channel.name,
+                        style: const TextStyle(fontSize: 16),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Consumer<MeshCoreConnector>(
+                        builder: (context, connector, _) {
+                          final privacy = switch (Channel.getChannelType(
+                            widget.channel,
+                            _communityIndex,
+                          )) {
+                            ChannelType.public => context.l10n.channels_public,
+                            ChannelType.hashtag =>
+                              context.l10n.channels_hashtag,
+                            ChannelType.private =>
+                              context.l10n.channels_private,
+                            ChannelType.communityPublic =>
+                              context.l10n.community_publicChannel,
+                            ChannelType.communityHashtag =>
+                              context.l10n.community_hashtagChannel,
+                          };
+                          final ownRegion = connector.getChannelRegion(
+                            widget.channel.index,
+                          );
+                          final region = connector.getEffectiveChannelRegion(
+                            widget.channel.index,
+                          );
+                          final defaultSuffix = ownRegion.isEmpty
+                              ? ' ${context.l10n.channels_regionDefaultSuffix}'
+                              : '';
+                          final radioDefault = connector.defaultFloodScopeName;
+                          final regionText = region.isNotEmpty
+                              ? ' • ${context.l10n.channels_regionSetTo(region)}$defaultSuffix'
+                              : radioDefault != null &&
+                                    connector.channelUsesRadioDefaultScope(
+                                      widget.channel.index,
+                                    )
+                              ? ' • ${context.l10n.channels_regionSetTo(radioDefault)} ${context.l10n.channels_regionRadioDefaultSuffix}'
+                              : '';
+                          return Text(
+                            '$privacy$regionText',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          centerTitle: false,
+          bottom: _searching
+              ? PreferredSize(
+                  preferredSize: Size.fromHeight(
+                    const SyncProgressAppBarBottom().preferredSize.height +
+                        ChannelSearchField.height,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ChannelSearchField(
+                        controller: _searchController,
+                        onChanged: _onSearchChanged,
+                        onClose: _closeSearch,
+                      ),
+                      const SyncProgressAppBarBottom(),
+                    ],
+                  ),
+                )
+              : const SyncProgressAppBarBottom(),
+          actions: [
+            Consumer<AppSettingsService>(
+              builder: (context, settings, _) {
+                final muteKey = widget.channel.muteKey;
+                final muted = settings.isChannelMuted(muteKey);
+                return IconButton(
+                  tooltip: muted
+                      ? context.l10n.channels_unmuteChannel
+                      : context.l10n.channels_muteChannel,
+                  icon: Icon(
+                    muted
+                        ? Icons.notifications_off_outlined
+                        : Icons.notifications_outlined,
+                  ),
+                  onPressed: () => muted
+                      ? settings.unmuteChannel(muteKey)
+                      : settings.muteChannel(muteKey),
+                );
+              },
+            ),
+            IconButton(
+              tooltip: context.l10n.channels_regionSelect_Title,
+              icon: const Icon(Icons.landscape),
+              onPressed: () => openRegionSelectDialog(widget.channel),
+            ),
+            const SignalGradeIndicator(),
+            const MediaMeshNearbyIcon(),
+            const RadioStatsIconButton(),
+            Consumer<MeshCoreConnector>(
+              builder: (context, connector, _) {
+                final otpEnabled = connector.isChannelOtpEnabled(
+                  widget.channel.index,
+                );
+                if (!otpEnabled) return const SizedBox.shrink();
+                // Ports OTP_3_RC1.lua's chat-screen "ReSync" button for a
+                // channel target — see resyncChannel's own doc comment.
+                return IconButton(
+                  tooltip: 'ReSync',
+                  icon: const Icon(Icons.sync),
+                  onPressed: () {
+                    final ok = connector.resyncChannel(widget.channel.index);
+                    showDismissibleSnackBar(
+                      context,
+                      content: Text(
+                        ok
+                            ? 'Pad reloaded — sync check sent'
+                            : 'No OTP pad for this channel',
                       ),
                     );
-                  }
-
-                  final urlImagesEnabled = connector.isChannelUrlImagesEnabled(
-                    widget.channel.index,
-                  );
-                  final rowCount = layout.length;
-                  final itemCount = rowCount + (_isLoadingOlder ? 1 : 0);
-
-                  // Auto-scroll to bottom if user is already at bottom
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (!mounted) return;
-                    if (_channelSkipNextBottomSnap) {
-                      _channelSkipNextBottomSnap = false;
-                      return;
-                    }
-                    _scrollController.scrollToBottomIfAtBottom();
-                  });
-
-                  return Stack(
+                  },
+                );
+              },
+            ),
+            Consumer<MeshCoreConnector>(
+              builder: (context, connector, _) {
+                final otpEnabled = connector.isChannelOtpEnabled(
+                  widget.channel.index,
+                );
+                if (!otpEnabled) return const SizedBox.shrink();
+                // Ports OTP_3_RC1.lua's participant-strip visibility toggle —
+                // shown only where the strip itself could ever appear
+                // (channel + OTP enabled), same gating as _buildParticipantStrip.
+                final shown = context
+                    .watch<AppSettingsService>()
+                    .settings
+                    .channelParticipantStripEnabled;
+                return IconButton(
+                  tooltip: shown
+                      ? 'Hide participant sync strip'
+                      : 'Show participant sync strip',
+                  icon: Icon(shown ? Icons.people : Icons.people_outline),
+                  onPressed: () {
+                    context
+                        .read<AppSettingsService>()
+                        .setChannelParticipantStripEnabled(!shown);
+                  },
+                );
+              },
+            ),
+            Consumer<MeshCoreConnector>(
+              builder: (context, connector, _) {
+                final otpEnabled = connector.isChannelOtpEnabled(
+                  widget.channel.index,
+                );
+                return IconButton(
+                  tooltip: otpEnabled ? 'OTP Pad (encrypting)' : 'OTP Pad',
+                  icon: Icon(
+                    otpEnabled ? Icons.lock : Icons.lock_open,
+                    color: otpEnabled ? MeshPalette.blue : null,
+                  ),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => OtpPadScreen.forChannel(widget.channel),
+                    ),
+                  ),
+                );
+              },
+            ),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (value) {
+                if (value == 'search') {
+                  _openSearch();
+                } else if (value == 'voiceMute') {
+                  _toggleVoiceMute();
+                } else if (value == 'clearChat') {
+                  _confirmClearChat();
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'search',
+                  child: Row(
                     children: [
-                      ChatZoomWrapper(
-                        child: ListView.builder(
-                          reverse: true, // List grows from bottom up
-                          controller: _scrollController,
-                          padding: const EdgeInsets.all(8),
-                          itemCount: itemCount,
-                          itemBuilder: (context, index) {
-                            // Loading indicator now appears at end (bottom) of reversed list
-                            if (_isLoadingOlder && index == itemCount - 1) {
-                              return const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 16),
-                                child: Center(
-                                  child: SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }
-                            final row = layout.rowAt(index, messages);
-                            final GlobalKey messageKey;
-                            if (layout.keyedIndices.contains(index)) {
-                              messageKey = _messageKeys.putIfAbsent(
-                                row.id,
-                                GlobalKey.new,
-                              );
-                            } else {
-                              messageKey = GlobalKey();
-                            }
-                            final isUnreadAnchor =
-                                _unreadDividerMessageId != null &&
-                                row.id == _unreadDividerMessageId;
-                            return Container(
-                              key: messageKey,
-                              child: Builder(
-                                builder: (context) {
-                                  final textScale = context
-                                      .select<ChatTextScaleService, double>(
-                                        (service) => service.scale,
-                                      );
-                                  final message = row.message;
-                                  final bubble = message != null
-                                      ? _buildMessageBubble(
-                                          message,
-                                          textScale,
-                                          urlImagesEnabled,
-                                        )
-                                      : _buildImageBubble(
-                                          row.image!,
-                                          textScale,
-                                        );
-                                  final startsDay =
-                                      index == rowCount - 1 ||
-                                      !isSameChatDay(
-                                        layout
-                                            .rowAt(index + 1, messages)
-                                            .receivedAt,
-                                        row.receivedAt,
-                                      );
-                                  if (isUnreadAnchor || startsDay) {
-                                    return Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        if (startsDay)
-                                          ChatDaySeparator(day: row.receivedAt),
-                                        if (isUnreadAnchor)
-                                          const UnreadDivider(),
-                                        bubble,
-                                      ],
-                                    );
-                                  }
-                                  return bubble;
-                                },
-                              ),
-                            );
-                          },
+                      const Icon(Icons.search, size: 20),
+                      const SizedBox(width: 12),
+                      Text(context.l10n.channelSearch_menu),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'voiceMute',
+                  child: Builder(
+                    builder: (context) {
+                      final muted = context.read<WalkieService>().isVoiceMuted(
+                        widget.channel,
+                      );
+                      return Row(
+                        children: [
+                          Icon(
+                            muted ? Icons.volume_up : Icons.volume_off,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            muted
+                                ? context.l10n.voiceMute_menuUnmute
+                                : context.l10n.voiceMute_menuMute,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'clearChat',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.delete,
+                        size: 20,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        context.l10n.contact_clearChat,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
                         ),
                       ),
-                      JumpToBottomButton(scrollController: _scrollController),
                     ],
-                  );
-                },
-              ),
+                  ),
+                ),
+              ],
             ),
-            _buildPadStatusBar(),
-            _buildInputBar(),
           ],
+        ),
+        body: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              Consumer<MeshCoreConnector>(
+                builder: (context, connector, _) =>
+                    _buildParticipantStrip(connector),
+              ),
+              if (_searching && _searchController.text.trim().isNotEmpty)
+                Expanded(
+                  child: ChannelSearchResults(
+                    query: _searchController.text,
+                    results: _searchResults,
+                    busy: _searchBusy,
+                    onOpen: _openSearchResult,
+                  ),
+                )
+              else
+                Expanded(
+                  child: Consumer<MeshCoreConnector>(
+                    builder: (context, connector, child) {
+                      final messages = connector.getChannelMessages(
+                        widget.channel,
+                      );
+                      final layout = _transcriptLayoutFor(context, messages);
+
+                      if (layout.length == 0) {
+                        return EmptyState(
+                          icon: widget.channel.isPublicChannel
+                              ? Icons.public
+                              : Icons.tag,
+                          title: context.l10n.chat_noMessages,
+                          subtitle: context.l10n.chat_sendMessageTo(
+                            widget.channel.name.isEmpty
+                                ? context.l10n.channels_channelIndex(
+                                    widget.channel.index,
+                                  )
+                                : widget.channel.name,
+                          ),
+                        );
+                      }
+
+                      final urlImagesEnabled = connector
+                          .isChannelUrlImagesEnabled(widget.channel.index);
+                      final rowCount = layout.length;
+                      final itemCount = rowCount + (_isLoadingOlder ? 1 : 0);
+
+                      // Auto-scroll to bottom if user is already at bottom
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (!mounted) return;
+                        if (_channelSkipNextBottomSnap) {
+                          _channelSkipNextBottomSnap = false;
+                          return;
+                        }
+                        _scrollController.scrollToBottomIfAtBottom();
+                      });
+
+                      return Stack(
+                        children: [
+                          ChatZoomWrapper(
+                            child: ListView.builder(
+                              reverse: true, // List grows from bottom up
+                              controller: _scrollController,
+                              padding: const EdgeInsets.all(8),
+                              itemCount: itemCount,
+                              itemBuilder: (context, index) {
+                                // Loading indicator now appears at end (bottom) of reversed list
+                                if (_isLoadingOlder && index == itemCount - 1) {
+                                  return const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 16),
+                                    child: Center(
+                                      child: SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }
+                                final row = layout.rowAt(index, messages);
+                                final GlobalKey messageKey;
+                                if (layout.keyedIndices.contains(index)) {
+                                  messageKey = _messageKeys.putIfAbsent(
+                                    row.id,
+                                    GlobalKey.new,
+                                  );
+                                } else {
+                                  messageKey = GlobalKey();
+                                }
+                                final isUnreadAnchor =
+                                    _unreadDividerMessageId != null &&
+                                    row.id == _unreadDividerMessageId;
+                                final highlighted =
+                                    _highlightMessageId != null &&
+                                    row.id == _highlightMessageId;
+                                return AnimatedContainer(
+                                  key: messageKey,
+                                  duration: const Duration(milliseconds: 300),
+                                  decoration: BoxDecoration(
+                                    color: highlighted
+                                        ? Theme.of(context)
+                                              .colorScheme
+                                              .primaryContainer
+                                              .withValues(alpha: 0.5)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Builder(
+                                    builder: (context) {
+                                      final textScale = context
+                                          .select<ChatTextScaleService, double>(
+                                            (service) => service.scale,
+                                          );
+                                      final message = row.message;
+                                      final bubble = message != null
+                                          ? _buildMessageBubble(
+                                              message,
+                                              textScale,
+                                              urlImagesEnabled,
+                                            )
+                                          : _buildImageBubble(
+                                              row.image!,
+                                              textScale,
+                                            );
+                                      final startsDay =
+                                          index == rowCount - 1 ||
+                                          !isSameChatDay(
+                                            layout
+                                                .rowAt(index + 1, messages)
+                                                .receivedAt,
+                                            row.receivedAt,
+                                          );
+                                      if (isUnreadAnchor || startsDay) {
+                                        return Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            if (startsDay)
+                                              ChatDaySeparator(
+                                                day: row.receivedAt,
+                                              ),
+                                            if (isUnreadAnchor)
+                                              const UnreadDivider(),
+                                            bubble,
+                                          ],
+                                        );
+                                      }
+                                      return bubble;
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          JumpToBottomButton(
+                            scrollController: _scrollController,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              _buildPadStatusBar(),
+              _buildInputBar(),
+            ],
+          ),
         ),
       ),
     );
