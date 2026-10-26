@@ -6636,10 +6636,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get radioImport_tile => 'Import from another app or firmware';
 
   @override
-  String get radioImport_tileSubtitle => 'Identity, channels and contacts from a MeshCore app or Wadamesh (TAK) backup, MeshCore Open\'s contacts export, or Squatch Mesh\'s or MeshPunk\'s files from the SD card';
+  String get radioImport_tileSubtitle =>
+      'Identity, channels and contacts from a MeshCore app or Wadamesh (TAK) backup, MeshCore Open\'s contacts export, or Squatch Mesh\'s or MeshPunk\'s files from the SD card';
 
   @override
-  String get radioImport_sourceBackup => 'MeshCore backup (MeshCore app, Wadamesh TAK, Squatch Mesh)';
+  String get radioImport_sourceBackup =>
+      'MeshCore backup (MeshCore app, Wadamesh TAK, Squatch Mesh)';
 
   @override
   String get radioImport_sourceOpenContacts => 'MeshCore Open contacts';
@@ -6664,7 +6666,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get radioImport_identityHelp => 'This radio becomes that node: the mesh and your contacts know it by that key. Needs firmware that allows key import.';
+  String get radioImport_identityHelp =>
+      'This radio becomes that node: the mesh and your contacts know it by that key. Needs firmware that allows key import.';
 
   @override
   String radioImport_channels(int count) {
@@ -6672,7 +6675,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get radioImport_channelsHelp => 'Set in the same slots; other slots stay as they are.';
+  String get radioImport_channelsHelp =>
+      'Set in the same slots; other slots stay as they are.';
 
   @override
   String radioImport_contacts(int count) {
@@ -6680,7 +6684,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get radioImport_contactsHelp => 'Added, or updated if already here. Routes are found again as they talk.';
+  String get radioImport_contactsHelp =>
+      'Added, or updated if already here. Routes are found again as they talk.';
 
   @override
   String get radioImport_import => 'Import';
@@ -6689,7 +6694,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get radioImport_importing => 'Importing…';
 
   @override
-  String get radioImport_notKnown => 'Not a file this can import. Pick a meshcore-backup.json, MeshCore Open\'s contacts export, or the files from Squatch Mesh\'s /inw or MeshPunk\'s /meshpunk folder.';
+  String get radioImport_notKnown =>
+      'Not a file this can import. Pick a meshcore-backup.json, MeshCore Open\'s contacts export, or the files from Squatch Mesh\'s /inw or MeshPunk\'s /meshpunk folder.';
 
   @override
   String radioImport_tooLarge(String name) {
@@ -6708,7 +6714,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get radioImport_doneIdentity => 'Identity imported.';
 
   @override
-  String get radioImport_identityRefused => 'The radio refused the identity (its firmware may not allow key import).';
+  String get radioImport_identityRefused =>
+      'The radio refused the identity (its firmware may not allow key import).';
 
   @override
   String radioImport_doneCounts(int channels, int contacts) {

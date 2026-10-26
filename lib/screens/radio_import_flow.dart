@@ -19,17 +19,22 @@ String radioImportSourceLabel(BuildContext context, RadioImportSource s) {
   final l10n = context.l10n;
   return switch (s) {
     RadioImportSource.meshcoreBackup => l10n.radioImport_sourceBackup,
-    RadioImportSource.meshcoreOpenContacts => l10n.radioImport_sourceOpenContacts,
+    RadioImportSource.meshcoreOpenContacts =>
+      l10n.radioImport_sourceOpenContacts,
     RadioImportSource.squatchMesh => l10n.radioImport_sourceSquatch,
     RadioImportSource.meshPunk => l10n.radioImport_sourceMeshPunk,
   };
 }
 
 /// Picks the file(s), shows what's in them, and imports what the user keeps.
-Future<void> runRadioImport(BuildContext context, MeshCoreConnector connector) async {
+Future<void> runRadioImport(
+  BuildContext context,
+  MeshCoreConnector connector,
+) async {
   final l10n = context.l10n;
   final messenger = ScaffoldMessenger.of(context);
-  void show(String text) => messenger.showSnackBar(SnackBar(content: Text(text)));
+  void show(String text) =>
+      messenger.showSnackBar(SnackBar(content: Text(text)));
 
   // Any file: a firmware's files have no extension (contacts3, identity).
   final files = await openFiles();
@@ -97,9 +102,12 @@ Future<void> runRadioImport(BuildContext context, MeshCoreConnector connector) a
   }
   final parts = <String>[
     if (choice.identity && imp.hasIdentity)
-      result.identity ? l10n.radioImport_doneIdentity : l10n.radioImport_identityRefused,
+      result.identity
+          ? l10n.radioImport_doneIdentity
+          : l10n.radioImport_identityRefused,
     l10n.radioImport_doneCounts(result.channels, result.contacts),
-    if (result.contactErrors > 0) l10n.radioImport_contactsRefused(result.contactErrors),
+    if (result.contactErrors > 0)
+      l10n.radioImport_contactsRefused(result.contactErrors),
   ];
   show(parts.join(' '));
 }
@@ -127,7 +135,9 @@ class _ImportDialogState extends State<_ImportDialog> {
     final l10n = context.l10n;
     final imp = widget.imp;
     return AlertDialog(
-      title: Text(l10n.radioImport_found(radioImportSourceLabel(context, imp.source))),
+      title: Text(
+        l10n.radioImport_found(radioImportSourceLabel(context, imp.source)),
+      ),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -139,7 +149,9 @@ class _ImportDialogState extends State<_ImportDialog> {
                 value: _identity,
                 onChanged: (v) => setState(() => _identity = v ?? false),
                 title: Text(
-                  imp.name == null ? l10n.radioImport_identity : l10n.radioImport_identityNamed(imp.name!),
+                  imp.name == null
+                      ? l10n.radioImport_identity
+                      : l10n.radioImport_identityNamed(imp.name!),
                 ),
                 subtitle: Text(l10n.radioImport_identityHelp),
               ),
@@ -163,10 +175,16 @@ class _ImportDialogState extends State<_ImportDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.common_cancel)),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.common_cancel),
+        ),
         FilledButton(
           onPressed: _identity || _channels || _contacts
-              ? () => Navigator.pop(context, _Choice(_identity, _channels, _contacts))
+              ? () => Navigator.pop(
+                  context,
+                  _Choice(_identity, _channels, _contacts),
+                )
               : null,
           child: Text(l10n.radioImport_import),
         ),

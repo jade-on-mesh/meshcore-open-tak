@@ -195,7 +195,8 @@ const int cmdImportContact = 18;
 const int cmdReboot = 19;
 const int cmdGetBattAndStorage = 20;
 const int cmdDeviceQuery = 22;
-const int cmdImportPrivateKey = 24; // firmware built with ENABLE_PRIVATE_KEY_IMPORT
+const int cmdImportPrivateKey =
+    24; // firmware built with ENABLE_PRIVATE_KEY_IMPORT
 const int cmdSendRawData = 25; // VOX: direct-path raw payload
 const int cmdSendLogin = 26;
 const int cmdSendStatusReq = 27;

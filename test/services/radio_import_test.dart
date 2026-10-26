@@ -23,7 +23,10 @@ void main() {
   test('a MeshCore backup JSON (the app, Wadamesh TAK, Squatch Mesh)', () {
     final json = jsonEncode({
       'name': 'Tiamat',
-      'private_key': List.generate(64, (i) => i.toRadixString(16).padLeft(2, '0')).join(),
+      'private_key': List.generate(
+        64,
+        (i) => i.toRadixString(16).padLeft(2, '0'),
+      ).join(),
       'radio_settings': {'frequency': 910.525},
       'channels': [
         {'name': 'Public', 'secret': '8b3387e9c5cdea6ac9e5edbaa115cd72'},
@@ -77,7 +80,9 @@ void main() {
       },
       {'publicKey': 'bad', 'name': 'x'},
     ]);
-    final imp = parseRadioImport({'meshcore_discovered_contacts.json': utf8.encode(json)})!;
+    final imp = parseRadioImport({
+      'meshcore_discovered_contacts.json': utf8.encode(json),
+    })!;
     expect(imp.source, RadioImportSource.meshcoreOpenContacts);
     expect(imp.contacts.single.type, 2);
     expect(imp.contacts.single.lastAdvert, 1761400000);
@@ -132,12 +137,19 @@ void main() {
     expect(imp.source, RadioImportSource.meshPunk);
     expect(imp.name, isNull);
     expect(imp.hasIdentity, isTrue);
-    expect(imp.channels.map((c) => c?.name), ['Public', 'Family', null, '#ops']);
+    expect(imp.channels.map((c) => c?.name), [
+      'Public',
+      'Family',
+      null,
+      '#ops',
+    ]);
     expect(imp.channels[0]!.secret, radioImportPublicSecret);
     expect(imp.contacts.single.longitude, closeTo(-122.6, 1e-6));
 
     final noPublic = parseRadioImport({
-      'channels': utf8.encode('pubdel\n2\tTeam\t00112233445566778899aabbccddeeff\n'),
+      'channels': utf8.encode(
+        'pubdel\n2\tTeam\t00112233445566778899aabbccddeeff\n',
+      ),
     })!;
     expect(noPublic.channels.map((c) => c?.name), [null, null, 'Team']);
   });

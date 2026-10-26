@@ -67,7 +67,8 @@ class RadioImport {
 
   int get channelCount => channels.whereType<RadioImportChannel>().length;
   bool get hasIdentity => privateKey != null;
-  bool get isEmpty => !hasIdentity && name == null && channelCount == 0 && contacts.isEmpty;
+  bool get isEmpty =>
+      !hasIdentity && name == null && channelCount == 0 && contacts.isEmpty;
 }
 
 /// What an import put on the radio.
@@ -84,20 +85,36 @@ class RadioImportResult {
 }
 
 /// MeshCore's Public channel key.
-final Uint8List radioImportPublicSecret = _hex('8b3387e9c5cdea6ac9e5edbaa115cd72')!;
+final Uint8List radioImportPublicSecret = _hex(
+  '8b3387e9c5cdea6ac9e5edbaa115cd72',
+)!;
 
 /// What [files] (name -> bytes, names without folders) hold, or null when
 /// nothing here is a known export. One JSON file, or the files of a
 /// firmware's folder (any of them).
 RadioImport? parseRadioImport(Map<String, Uint8List> files) {
   final names = {for (final k in files.keys) _base(k): files[k]!};
-  final json = names.entries.where((e) => e.key.toLowerCase().endsWith('.json'));
+  final json = names.entries.where(
+    (e) => e.key.toLowerCase().endsWith('.json'),
+  );
   if (json.isNotEmpty) return _parseJson(json.first.value);
-  if (names.containsKey('_main.id') || names.containsKey('contacts3') || names.containsKey('channels2')) {
-    return _parseCompanion(names['_main.id'], names['contacts3'], names['channels2']);
+  if (names.containsKey('_main.id') ||
+      names.containsKey('contacts3') ||
+      names.containsKey('channels2')) {
+    return _parseCompanion(
+      names['_main.id'],
+      names['contacts3'],
+      names['channels2'],
+    );
   }
-  if (names.containsKey('identity') || names.containsKey('contacts.bin') || names.containsKey('channels')) {
-    return _parseMeshPunk(names['identity'], names['contacts.bin'], names['channels']);
+  if (names.containsKey('identity') ||
+      names.containsKey('contacts.bin') ||
+      names.containsKey('channels')) {
+    return _parseMeshPunk(
+      names['identity'],
+      names['contacts.bin'],
+      names['channels'],
+    );
   }
   return null;
 }
@@ -118,7 +135,9 @@ RadioImport? _parseJson(Uint8List bytes) {
   }
   if (doc is List) return _parseOpenContacts(doc);
   if (doc is! Map) return null;
-  if (!doc.containsKey('contacts') && !doc.containsKey('channels') && !doc.containsKey('private_key')) {
+  if (!doc.containsKey('contacts') &&
+      !doc.containsKey('channels') &&
+      !doc.containsKey('private_key')) {
     return null;
   }
   final out = RadioImport(RadioImportSource.meshcoreBackup);
@@ -199,14 +218,23 @@ RadioImport? _parseOpenContacts(List<dynamic> list) {
   return out.contacts.isEmpty ? null : out;
 }
 
-RadioImport _parseCompanion(Uint8List? id, Uint8List? contacts3, Uint8List? channels2) {
+RadioImport _parseCompanion(
+  Uint8List? id,
+  Uint8List? contacts3,
+  Uint8List? channels2,
+) {
   final out = RadioImport(RadioImportSource.squatchMesh);
   _identity(out, id, withName: true);
   if (channels2 != null) {
     for (var i = 0; i + 68 <= channels2.length; i += 68) {
       final name = _cstr(channels2, i + 4, 32);
       out.channels.add(
-        name.isEmpty ? null : RadioImportChannel(name, Uint8List.fromList(channels2.sublist(i + 36, i + 52))),
+        name.isEmpty
+            ? null
+            : RadioImportChannel(
+                name,
+                Uint8List.fromList(channels2.sublist(i + 36, i + 52)),
+              ),
       );
     }
     _trimTrailingNulls(out.channels);
@@ -214,21 +242,38 @@ RadioImport _parseCompanion(Uint8List? id, Uint8List? contacts3, Uint8List? chan
   if (contacts3 != null) {
     final b = ByteData.sublistView(contacts3);
     for (var i = 0; i + 152 <= contacts3.length; i += 152) {
-      final c = _contact(contacts3, b, i, nameAt: i + 32, type: contacts3[i + 64], flags: contacts3[i + 65],
-          lastAdvertAt: i + 72, lastModAt: i + 140, latAt: i + 144, lonAt: i + 148);
+      final c = _contact(
+        contacts3,
+        b,
+        i,
+        nameAt: i + 32,
+        type: contacts3[i + 64],
+        flags: contacts3[i + 65],
+        lastAdvertAt: i + 72,
+        lastModAt: i + 140,
+        latAt: i + 144,
+        lonAt: i + 148,
+      );
       if (c != null) out.contacts.add(c);
     }
   }
   return out;
 }
 
-RadioImport _parseMeshPunk(Uint8List? id, Uint8List? contacts, Uint8List? channels) {
+RadioImport _parseMeshPunk(
+  Uint8List? id,
+  Uint8List? contacts,
+  Uint8List? channels,
+) {
   final out = RadioImport(RadioImportSource.meshPunk);
   _identity(out, id, withName: false);
   final bySlot = <int, RadioImportChannel>{};
   var publicDeleted = false;
   if (channels != null) {
-    for (final line in utf8.decode(channels, allowMalformed: true).split(RegExp(r'[\r\n]+'))) {
+    for (final line
+        in utf8
+            .decode(channels, allowMalformed: true)
+            .split(RegExp(r'[\r\n]+'))) {
       if (line == 'pubdel') {
         publicDeleted = true;
         continue;
@@ -237,11 +282,21 @@ RadioImport _parseMeshPunk(Uint8List? id, Uint8List? contacts, Uint8List? channe
       if (f.length < 3) continue;
       final slot = int.tryParse(f[0]);
       final key = _hex(f[2]);
-      if (slot == null || slot < 1 || slot >= 40 || f[1].isEmpty || key == null || key.length < 16) continue;
-      bySlot[slot] = RadioImportChannel(f[1], Uint8List.fromList(key.sublist(0, 16)));
+      if (slot == null ||
+          slot < 1 ||
+          slot >= 40 ||
+          f[1].isEmpty ||
+          key == null ||
+          key.length < 16)
+        continue;
+      bySlot[slot] = RadioImportChannel(
+        f[1],
+        Uint8List.fromList(key.sublist(0, 16)),
+      );
     }
   }
-  if (!publicDeleted) bySlot[0] = RadioImportChannel('Public', radioImportPublicSecret);
+  if (!publicDeleted)
+    bySlot[0] = RadioImportChannel('Public', radioImportPublicSecret);
   if (bySlot.isNotEmpty) {
     final last = bySlot.keys.reduce((a, b) => a > b ? a : b);
     for (var i = 0; i <= last; i++) {
@@ -251,8 +306,18 @@ RadioImport _parseMeshPunk(Uint8List? id, Uint8List? contacts, Uint8List? channe
   if (contacts != null) {
     final b = ByteData.sublistView(contacts);
     for (var i = 0; i + 143 <= contacts.length; i += 143) {
-      final c = _contact(contacts, b, i, nameAt: i + 32, type: contacts[i + 64], flags: contacts[i + 65],
-          lastAdvertAt: i + 131, lastModAt: null, latAt: i + 135, lonAt: i + 139);
+      final c = _contact(
+        contacts,
+        b,
+        i,
+        nameAt: i + 32,
+        type: contacts[i + 64],
+        flags: contacts[i + 65],
+        lastAdvertAt: i + 131,
+        lastModAt: null,
+        latAt: i + 135,
+        lonAt: i + 139,
+      );
       if (c != null) out.contacts.add(c);
     }
   }
@@ -324,9 +389,17 @@ Uint8List? _hex(String s) {
   return out;
 }
 
-int _int(Object? v, int fallback) => v is num ? v.toInt() : v is String ? int.tryParse(v) ?? fallback : fallback;
+int _int(Object? v, int fallback) => v is num
+    ? v.toInt()
+    : v is String
+    ? int.tryParse(v) ?? fallback
+    : fallback;
 
 double? _double(Object? v) {
-  final d = v is num ? v.toDouble() : v is String ? double.tryParse(v) : null;
+  final d = v is num
+      ? v.toDouble()
+      : v is String
+      ? double.tryParse(v)
+      : null;
   return d == null || d == 0 ? null : d;
 }
