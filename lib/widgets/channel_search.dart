@@ -51,13 +51,17 @@ class ChannelSearchField extends StatelessWidget
   final VoidCallback onClose;
 
   @override
-  Size get preferredSize => const Size.fromHeight(60);
+  Size get preferredSize => const Size.fromHeight(height);
+
+  static const double height = 60;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 4, 8),
+    return SizedBox(
+      height: height,
+      child: Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 4, 8),
       child: Row(
         children: [
           Expanded(
@@ -92,6 +96,7 @@ class ChannelSearchField extends StatelessWidget
             onPressed: onClose,
           ),
         ],
+      ),
       ),
     );
   }

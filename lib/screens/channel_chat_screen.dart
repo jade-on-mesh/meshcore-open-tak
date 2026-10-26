@@ -548,13 +548,6 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          bottom: _searching
-              ? ChannelSearchField(
-                  controller: _searchController,
-                  onChanged: _onSearchChanged,
-                  onClose: _closeSearch,
-                )
-              : null,
           title: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () => openRegionSelectDialog(widget.channel),
@@ -624,7 +617,25 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             ),
           ),
           centerTitle: false,
-          bottom: const SyncProgressAppBarBottom(),
+          bottom: _searching
+              ? PreferredSize(
+                  preferredSize: Size.fromHeight(
+                    const SyncProgressAppBarBottom().preferredSize.height +
+                        ChannelSearchField.height,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ChannelSearchField(
+                        controller: _searchController,
+                        onChanged: _onSearchChanged,
+                        onClose: _closeSearch,
+                      ),
+                      const SyncProgressAppBarBottom(),
+                    ],
+                  ),
+                )
+              : const SyncProgressAppBarBottom(),
           actions: [
             Consumer<AppSettingsService>(
               builder: (context, settings, _) {
