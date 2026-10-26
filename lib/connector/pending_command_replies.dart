@@ -63,6 +63,7 @@ int? replyCodeForCommand(Uint8List data) {
     case cmdSendChannelData:
     case cmdSendRawData: // VOX voice packets / fetch requests
     case cmdSetDefaultFloodScope:
+    case cmdImportPrivateKey:
       return respCodeOk;
     case cmdSendTxtMsg:
     case cmdSendLogin:

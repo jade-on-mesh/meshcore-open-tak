@@ -195,6 +195,8 @@ const int cmdImportContact = 18;
 const int cmdReboot = 19;
 const int cmdGetBattAndStorage = 20;
 const int cmdDeviceQuery = 22;
+const int cmdImportPrivateKey =
+    24; // firmware built with ENABLE_PRIVATE_KEY_IMPORT
 const int cmdSendRawData = 25; // VOX: direct-path raw payload
 const int cmdSendLogin = 26;
 const int cmdSendStatusReq = 27;
@@ -711,6 +713,16 @@ Uint8List buildGetChannelFrame(int channelIndex) {
 
 // Build CMD_SET_CHANNEL frame
 // Format: [cmd][idx][name x32][psk x16]
+// Build CMD_IMPORT_PRIVATE_KEY frame: [cmd][private key x64]. The radio
+// takes the identity and reloads its contacts (OK), or refuses (ERR) when the
+// key is invalid or the firmware was built without key import.
+Uint8List buildImportPrivateKeyFrame(Uint8List privateKey) {
+  final writer = BufferWriter();
+  writer.writeByte(cmdImportPrivateKey);
+  writer.writeBytes(privateKey);
+  return writer.toBytes();
+}
+
 Uint8List buildSetChannelFrame(int channelIndex, String name, Uint8List psk) {
   final writer = BufferWriter();
   writer.writeByte(cmdSetChannel);

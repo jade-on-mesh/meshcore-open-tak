@@ -11095,6 +11095,162 @@ abstract class AppLocalizations {
   /// **'Radio console'**
   String get radioConsole_title;
 
+  /// No description provided for @radioImport_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get radioImport_title;
+
+  /// No description provided for @radioImport_tile.
+  ///
+  /// In en, this message translates to:
+  /// **'Import from another app or firmware'**
+  String get radioImport_tile;
+
+  /// No description provided for @radioImport_tileSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Identity, channels and contacts from a MeshCore app or Wadamesh (TAK) backup, MeshCore Open\'s contacts export, or Squatch Mesh\'s or MeshPunk\'s files from the SD card'**
+  String get radioImport_tileSubtitle;
+
+  /// No description provided for @radioImport_sourceBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'MeshCore backup (MeshCore app, Wadamesh TAK, Squatch Mesh)'**
+  String get radioImport_sourceBackup;
+
+  /// No description provided for @radioImport_sourceMeshCoreOne.
+  ///
+  /// In en, this message translates to:
+  /// **'MeshCore One backup'**
+  String get radioImport_sourceMeshCoreOne;
+
+  /// No description provided for @radioImport_sourceOpenContacts.
+  ///
+  /// In en, this message translates to:
+  /// **'MeshCore Open contacts'**
+  String get radioImport_sourceOpenContacts;
+
+  /// No description provided for @radioImport_sourceSquatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Squatch Mesh files'**
+  String get radioImport_sourceSquatch;
+
+  /// No description provided for @radioImport_sourceMeshPunk.
+  ///
+  /// In en, this message translates to:
+  /// **'MeshPunk files'**
+  String get radioImport_sourceMeshPunk;
+
+  /// No description provided for @radioImport_found.
+  ///
+  /// In en, this message translates to:
+  /// **'Import: {source}'**
+  String radioImport_found(String source);
+
+  /// No description provided for @radioImport_identity.
+  ///
+  /// In en, this message translates to:
+  /// **'Identity (its key)'**
+  String get radioImport_identity;
+
+  /// No description provided for @radioImport_identityNamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Identity: {name}'**
+  String radioImport_identityNamed(String name);
+
+  /// No description provided for @radioImport_identityHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'This radio becomes that node: the mesh and your contacts know it by that key. Needs firmware that allows key import.'**
+  String get radioImport_identityHelp;
+
+  /// No description provided for @radioImport_channels.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} channels'**
+  String radioImport_channels(int count);
+
+  /// No description provided for @radioImport_channelsHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Set in the same slots; other slots stay as they are.'**
+  String get radioImport_channelsHelp;
+
+  /// No description provided for @radioImport_contacts.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} contacts'**
+  String radioImport_contacts(int count);
+
+  /// No description provided for @radioImport_contactsHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Added, or updated if already here. Routes are found again as they talk.'**
+  String get radioImport_contactsHelp;
+
+  /// No description provided for @radioImport_import.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get radioImport_import;
+
+  /// No description provided for @radioImport_importing.
+  ///
+  /// In en, this message translates to:
+  /// **'Importing…'**
+  String get radioImport_importing;
+
+  /// No description provided for @radioImport_notKnown.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a file this can import. Pick a meshcore-backup.json, MeshCore Open\'s contacts export, or the files from Squatch Mesh\'s /inw or MeshPunk\'s /meshpunk folder.'**
+  String get radioImport_notKnown;
+
+  /// No description provided for @radioImport_tooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is too large to import'**
+  String radioImport_tooLarge(String name);
+
+  /// No description provided for @radioImport_notConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to a radio first'**
+  String get radioImport_notConnected;
+
+  /// No description provided for @radioImport_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Import failed: {error}'**
+  String radioImport_failed(String error);
+
+  /// No description provided for @radioImport_doneIdentity.
+  ///
+  /// In en, this message translates to:
+  /// **'Identity imported.'**
+  String get radioImport_doneIdentity;
+
+  /// No description provided for @radioImport_identityRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'The radio refused the identity (its firmware may not allow key import).'**
+  String get radioImport_identityRefused;
+
+  /// No description provided for @radioImport_doneCounts.
+  ///
+  /// In en, this message translates to:
+  /// **'{channels} channels and {contacts} contacts imported.'**
+  String radioImport_doneCounts(int channels, int contacts);
+
+  /// No description provided for @radioImport_contactsRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} contacts the radio refused (is its contact list full?).'**
+  String radioImport_contactsRefused(int count);
+
   /// No description provided for @radioConsole_hint.
   ///
   /// In en, this message translates to:
