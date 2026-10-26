@@ -2737,19 +2737,19 @@ class VoxVoiceService extends ChangeNotifier {
 
   Future<void> _runChannelBurst(String key, _ChannelBurst burst) async {
     try {
-      await _refreshMediaAir();
+      await _mediaAirForSend();
       if (!_mediaAllowed) {
         _logEvent('not sending: it would go out on the main mesh', burst.sid);
         return;
       }
-      // Gather a moment first: several listeners' requests for the same
-      // clip usually come within a few seconds of each other, and one burst
-      // answers them all (each adds what it lacks). Meanwhile, packets heard
-      // from another holder come off the list (_noteHeard). A push answers
-      // no request and goes at once.
+      // Gather a moment first: listeners who tap the same clip almost
+      // together share one burst (each adds what it lacks); a later tap gets
+      // its own. Meanwhile, packets heard from another holder come off the
+      // list (_noteHeard). Kept short: the one asking is watching a spinner.
+      // A push answers no request and goes at once.
       if (!burst.pushing) {
         await Future<void>.delayed(
-          Duration(milliseconds: 2000 + _rng.nextInt(1000)),
+          Duration(milliseconds: 500 + _rng.nextInt(500)),
         );
       }
       final held = _heldPackets(burst.sid);
@@ -2899,7 +2899,7 @@ class VoxVoiceService extends ChangeNotifier {
     int gen,
   ) async {
     if (_serveGen[key] != gen) return; // superseded while queued
-    await _refreshMediaAir();
+    await _mediaAirForSend();
     if (!_mediaAllowed) {
       _logEvent(
         'not answering: it would go out on the main mesh',
@@ -3098,6 +3098,19 @@ class VoxVoiceService extends ChangeNotifier {
   String? _mediaAirRadio;
   DateTime? _mediaAirAt;
   Future<void>? _mediaAirLoading;
+
+  /// The MediaMesh profile, for answering a request now: the one already
+  /// known at once (checked again behind it, so an answer never waits on
+  /// three CLI round trips), else asked for. With none known nothing is sent,
+  /// as before. Changing it in the app asks afresh (canSendMedia).
+  Future<void> _mediaAirForSend() {
+    final radio = _connector.isConnected ? _connector.selfPublicKeyHex : null;
+    if (_mediaAir != null && radio != null && radio == _mediaAirRadio) {
+      unawaited(_refreshMediaAir());
+      return Future.value();
+    }
+    return _refreshMediaAir();
+  }
 
   Future<void> _refreshMediaAir() {
     final radio = _connector.isConnected ? _connector.selfPublicKeyHex : null;
