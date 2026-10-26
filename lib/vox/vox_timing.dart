@@ -34,9 +34,41 @@ Duration voxGapRequestDelay({
 
 /// While packets are flowing: how long without one before the transfer
 /// counts as stalled (its tail lost) and the missing packets are asked for.
-/// Three packet gaps, plus time for the sender's radio to clear its queue.
+/// Three packet gaps (two lost in a row is common on a busy mesh), plus 1 s
+/// for the sender's radio to clear its queue (it was 2.5 s). Two gaps asked
+/// again too soon on lossy links and had packets sent twice. Mirrored in
+/// Wadamesh (VoxFetch::stallWait).
 Duration voxStallWait(Duration packetGap) =>
-    packetGap * 3 + const Duration(milliseconds: 2500);
+    packetGap * 3 + const Duration(milliseconds: 1000);
+
+/// How long a request waits for its first packet before asking again.
+///
+/// [trips]: the radio trips before the first packet lands (2 for a raw
+/// request, 3 for one on the channel, 5 for a VR3 DM), each [hops] repeaters
+/// long and taking [airMs] packets. On MediaMesh's fast packets (under
+/// 400 ms) a channel request is only the request and the answer (2 trips),
+/// and the margin is 2.5 s plus the sender's wait for the request's flood
+/// to clear (voxFloodSettleMaxMs) rather than 8 s: a lost request was being
+/// asked again 11-14 s later even direct or a hop away. A zero-hop request
+/// is answered by the sender at once or a holder within 3 s. Mirrored in
+/// Wadamesh (VoxFetch::waitFor).
+int voxAnswerWaitMs({
+  required int trips,
+  required int hops,
+  required int airMs,
+  bool zeroHop = false,
+  bool channel = false,
+}) {
+  final hopMs = airMs * 2 + 700;
+  final fast = airMs < 400;
+  if (zeroHop) return 2 * hopMs + (fast ? 3500 : 6000);
+  if (!fast) return trips * (hops + 1) * hopMs + 8000;
+  final t = channel ? min(trips, 2) : trips;
+  return t * (hops + 1) * hopMs +
+      2500 +
+      (channel ? voxFloodSettleMaxMs(airMs, hops) : 0);
+}
+
 
 /// The gap to expect between a transfer's packets: the timing model's
 /// [model] until a few have come in ([samples] gaps measured), then twice the
@@ -141,9 +173,11 @@ const Duration voxStallBackoffCap = Duration(minutes: 4);
 /// airtimes, maybe at a slower coding rate: the 1.15) and the airtime itself.
 int voxRelayMs(int airMs) => (airMs + 2.5 * airMs * 1.15).round();
 
-/// The gap between flooded channel packets that was always used: four
-/// airtimes and a little, at least 800 ms.
-int voxFloodBaseGapMs(int airMs) => max(800, airMs * 4 + 150);
+/// The base gap between flooded channel packets: our airtime, a 1-hop
+/// repeater's longest wait and its relay (four airtimes) and a little. At
+/// least 400 ms (it was 800, from the main mesh's slow packets: on 250 kHz
+/// MediaMesh that wasted a fifth of a direct transfer).
+int voxFloodBaseGapMs(int airMs) => max(400, airMs * 4 + 150);
 
 /// The slowest an answer's flooded packets go (twice the base gap), and what
 /// a listener expects at first: it never calls a transfer stalled that is
@@ -191,6 +225,7 @@ class VoxFloodPace {
       _gapMs.clamp(fastGapMs(hops), voxFloodSlowGapMs(airMs));
 
   /// The wait before answering a request that came [hops] repeaters.
+  /// (voxFloodSettleMaxMs is the longest it can be.)
   int settleMs(int hops) => hops <= 0
       ? 0
       : (min(hops, 2) + _extraRelays).clamp(0, 4) * voxRelayMs(airMs);
@@ -238,3 +273,8 @@ class VoxFloodAnswer {
   bool _firstCame = false;
   bool _settleUp = false;
 }
+
+/// The longest a sender waits before answering a request that came [hops]
+/// repeaters (VoxFloodPace.settleMs with everything it can learn).
+int voxFloodSettleMaxMs(int airMs, int hops) =>
+    hops <= 0 ? 0 : 4 * voxRelayMs(airMs);
