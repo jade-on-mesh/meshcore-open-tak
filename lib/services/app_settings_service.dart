@@ -338,6 +338,11 @@ class AppSettingsService extends ChangeNotifier {
     await updateSettings(_settings.copyWith(jumpToOldestUnread: value));
   }
 
+  /// See [AppSettings.linkedImagesOnWifi].
+  Future<void> setLinkedImagesOnWifi(bool value) async {
+    await updateSettings(_settings.copyWith(linkedImagesOnWifi: value));
+  }
+
   /// See [AppSettings.channelParticipantStripEnabled].
   Future<void> setChannelParticipantStripEnabled(bool value) async {
     await updateSettings(

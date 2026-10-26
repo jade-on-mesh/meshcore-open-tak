@@ -80,6 +80,22 @@ void main() {
       expect(attachment, 'https://example.com/picture.png?size=large');
     });
 
+    test('parses gif, webp and bmp links too', () async {
+      expect(
+        await MessageUrlImageHelper.parse('lol https://x.org/a/cat.GIF'),
+        'https://x.org/a/cat.GIF',
+      );
+      expect(
+        await MessageUrlImageHelper.parse('https://cdn.x.org/p.webp?w=640'),
+        'https://cdn.x.org/p.webp?w=640',
+      );
+      expect(
+        await MessageUrlImageHelper.parse('scan: https://x.org/old.bmp.'),
+        'https://x.org/old.bmp',
+      );
+      expect(MessageUrlImageHelper.hasPotentialImageUrl('https://x.org/a.gif'), isTrue);
+    });
+
     test('returns null for plain text', () async {
       expect(await MessageUrlImageHelper.parse('hello world'), isNull);
     });

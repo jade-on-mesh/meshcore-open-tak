@@ -864,8 +864,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                         );
                       }
 
-                      final urlImagesEnabled = connector
-                          .isChannelUrlImagesEnabled(widget.channel.index);
+                      final urlImagesEnabled = connector.showChannelUrlImages(
+                        widget.channel.index,
+                      );
                       final rowCount = layout.length;
                       final itemCount = rowCount + (_isLoadingOlder ? 1 : 0);
 

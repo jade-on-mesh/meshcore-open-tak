@@ -1749,7 +1749,7 @@ class _MessageBubble extends StatelessWidget {
     final poi = voxEnvelope != null ? null : parseMarkerText(message.text);
     final isFailed = message.status == MessageStatus.failed;
     final urlImagesEnabled = context.select<MeshCoreConnector, bool>(
-      (connector) => connector.isContactUrlImagesEnabled(sourceId),
+      (connector) => connector.showContactUrlImages(sourceId),
     );
 
     // Bubble colors: the usual ones, unless OTP is active for this contact:

@@ -427,6 +427,18 @@ class AppSettingsScreen extends StatelessWidget {
             horizontal: 16,
             vertical: 4,
           ),
+          secondary: const Icon(Icons.image_outlined, size: 24),
+          title: Text(context.l10n.appSettings_linkedImages),
+          subtitle: Text(context.l10n.appSettings_linkedImagesSubtitle),
+          value: settingsService.settings.linkedImagesOnWifi,
+          onChanged: settingsService.setLinkedImagesOnWifi,
+        ),
+        const Divider(height: 1, indent: 16),
+        SwitchListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
           secondary: const Icon(Icons.location_searching, size: 24),
           title: Text(context.l10n.appSettings_enableMessageTracing),
           subtitle: Text(context.l10n.appSettings_enableMessageTracingSubtitle),

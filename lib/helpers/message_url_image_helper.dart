@@ -43,7 +43,7 @@ class MessageUrlImageHelper {
   );
 
   static final RegExp _imagePattern = RegExp(
-    r'''https?://[^\s<>'"`]+?\.(?:png|jpe?g|webp)(?:\?[^\s<>'"`]+)?(?:#[^\s<>'"`]+)?''',
+    r'''https?://[^\s<>'"`]+?\.(?:png|jpe?g|gif|webp|bmp)(?:\?[^\s<>'"`]+)?(?:#[^\s<>'"`]+)?''',
     caseSensitive: false,
   );
 
