@@ -26,15 +26,19 @@ List<TextSpan> channelSearchSpans(
     final i = lower.indexOf(q, at);
     if (i < 0) break;
     if (i > at) spans.add(TextSpan(text: text.substring(at, i), style: base));
-    spans.add(TextSpan(text: text.substring(i, i + q.length), style: highlight));
+    spans.add(
+      TextSpan(text: text.substring(i, i + q.length), style: highlight),
+    );
     at = i + q.length;
   }
-  if (at < text.length) spans.add(TextSpan(text: text.substring(at), style: base));
+  if (at < text.length)
+    spans.add(TextSpan(text: text.substring(at), style: base));
   return spans;
 }
 
 /// The search field shown under a channel's app bar.
-class ChannelSearchField extends StatelessWidget implements PreferredSizeWidget {
+class ChannelSearchField extends StatelessWidget
+    implements PreferredSizeWidget {
   const ChannelSearchField({
     super.key,
     required this.controller,
@@ -164,7 +168,8 @@ class ChannelSearchResults extends StatelessWidget {
             separatorBuilder: (_, _) => const Divider(height: 1),
             itemBuilder: (context, i) {
               final m = list[i];
-              final text = m.translatedText?.isNotEmpty == true &&
+              final text =
+                  m.translatedText?.isNotEmpty == true &&
                       !m.displayText.toLowerCase().contains(
                         query.trim().toLowerCase(),
                       )

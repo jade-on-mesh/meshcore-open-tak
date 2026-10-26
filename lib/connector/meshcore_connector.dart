@@ -4190,10 +4190,9 @@ class MeshCoreConnector extends ChangeNotifier {
     String messageId,
   ) async {
     final slot = _canonicalSlot(channelIndex);
-    bool present() =>
-        (_channelMessages[slot] ?? const <ChannelMessage>[]).any(
-          (m) => m.messageId == messageId,
-        );
+    bool present() => (_channelMessages[slot] ?? const <ChannelMessage>[]).any(
+      (m) => m.messageId == messageId,
+    );
     while (!present()) {
       final older = await loadOlderChannelMessages(channelIndex, count: 200);
       if (older.isEmpty) return present();

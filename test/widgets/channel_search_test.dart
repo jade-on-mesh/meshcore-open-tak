@@ -6,13 +6,19 @@ void main() {
   const base = TextStyle(fontSize: 14);
   const hit = TextStyle(fontWeight: FontWeight.bold);
 
-  String marked(List<TextSpan> spans) => spans
-      .map((s) => identical(s.style, hit) ? '[${s.text}]' : s.text)
-      .join();
+  String marked(List<TextSpan> spans) =>
+      spans.map((s) => identical(s.style, hit) ? '[${s.text}]' : s.text).join();
 
   test('every match is marked, ignoring case', () {
     expect(
-      marked(channelSearchSpans('Repeater on the ridge; REPEATER down', 'repeater', base, hit)),
+      marked(
+        channelSearchSpans(
+          'Repeater on the ridge; REPEATER down',
+          'repeater',
+          base,
+          hit,
+        ),
+      ),
       '[Repeater] on the ridge; [REPEATER] down',
     );
   });
@@ -27,6 +33,9 @@ void main() {
   });
 
   test('the query is trimmed', () {
-    expect(marked(channelSearchSpans('net check', ' check ', base, hit)), 'net [check]');
+    expect(
+      marked(channelSearchSpans('net check', ' check ', base, hit)),
+      'net [check]',
+    );
   });
 }
