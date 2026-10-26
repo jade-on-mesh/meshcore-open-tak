@@ -51,12 +51,14 @@ try {
     Write-Host "  1  Brighter voice net for standalones   (downloads 2.4 GB; about 30 min)"
     Write-Host "  2  Voice restorer for the app           (downloads 11 GB; prepares ~1 h, then trains)"
     Write-Host "  3  Export the restorer as it is now"
-    Write-Host "  4  Check the GPU and Codec2"
-    Write-Host "  5  Open the output folder"
+    Write-Host "  4  Small restorer for standalones       (P4, T-Deck; same data; about 2 h)"
+    Write-Host "  5  Export the small restorer as it is now"
+    Write-Host "  6  Check the GPU and Codec2"
+    Write-Host "  7  Open the output folder"
     Write-Host "  Q  Quit"
     $c = (Read-Host "Choose").Trim().ToUpper()
     $data = $null
-    if ($c -in @("1", "2", "3")) { $data = DataDir }
+    if ($c -in @("1", "2", "3", "4", "5")) { $data = DataDir }
     switch ($c) {
       "1" { Run $Py @("-m", "kit.run", "bright", "--data", $data) }
       "2" {
@@ -66,10 +68,17 @@ try {
         Run $Py @("-m", "kit.run", "restorer", "--data", $data, "--hours", $h)
       }
       "3" { Run $Py @("-m", "kit.run", "export", "--data", $data) }
-      "4" { Run $Py @("-m", "kit.run", "check") }
-      "5" { New-Item -ItemType Directory -Force (Join-Path $Kit "output") | Out-Null; Invoke-Item (Join-Path $Kit "output") }
+      "4" {
+        $h = Read-Host "Hours to train this time (Enter for 2; run it again later to continue)"
+        if (-not $h) { $h = "2" }
+        Write-Host "Ctrl+C stops and saves; samples to listen to appear in output\small-restorer-samples."
+        Run $Py @("-m", "kit.run", "small", "--data", $data, "--hours", $h)
+      }
+      "5" { Run $Py @("-m", "kit.run", "small-export", "--data", $data) }
+      "6" { Run $Py @("-m", "kit.run", "check") }
+      "7" { New-Item -ItemType Directory -Force (Join-Path $Kit "output") | Out-Null; Invoke-Item (Join-Path $Kit "output") }
       "Q" { exit 0 }
-      default { Write-Host "Type 1-5 or Q." }
+      default { Write-Host "Type 1-7 or Q." }
     }
   }
 } catch {

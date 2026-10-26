@@ -66,6 +66,35 @@ jobs:
           lag = dsp.lag_of(c8, x * 32767, 8000, 400)
           print("codec2 ok:", c8.size, "samples; lag", lag, "; features", f.shape)
           PY
+      - name: Smoke-test the trainers (CPU, a few steps on made-up speech)
+        run: |
+          set -euo pipefail
+          pip install -q torch==2.7.1 --index-url https://download.pytorch.org/whl/cpu
+          pip install -q -r tools/voice-training/requirements.txt
+          D=$RUNNER_TEMP/kit-data
+          python - "$D" <<'PY'
+          import os, sys
+          import numpy as np, soundfile as sf
+          root = sys.argv[1]
+          rng = np.random.default_rng(1)
+          for s in range(5):
+              d = os.path.join(root, "vctk", "wav48_silence_trimmed", f"p{300 + s}")
+              os.makedirs(d, exist_ok=True)
+              for u in range(2):
+                  t = np.arange(48000 * 2) / 48000
+                  f0 = 110 + 40 * s + 20 * np.sin(2 * np.pi * 0.7 * t)
+                  x = sum(np.sin(2 * np.pi * k * np.cumsum(f0) / 48000) / k for k in range(1, 20))
+                  x = x * (0.5 + 0.5 * np.sin(2 * np.pi * 2.5 * t)) + 0.01 * rng.normal(size=t.size)
+                  sf.write(os.path.join(d, f"p{300 + s}_{u:03d}_mic1.flac"), 0.3 * x / np.abs(x).max(), 48000)
+          PY
+          cd tools/voice-training
+          export C2ROUND=$GITHUB_WORKSPACE/c2round KIT_OFFLINE=1 KIT_WARMUP=1 KIT_SAMPLE_EVERY=2
+          # The big restorer for two steps, so the small one has a teacher.
+          KIT_BATCH=2 python -m kit.run restorer --data "$D" --out "$RUNNER_TEMP/out" --workers 0 --steps 2
+          KIT_SMALL_BATCH=2 KIT_SMALL_DIM=16 KIT_SMALL_LAYERS=1 \
+            python -m kit.run small --data "$D" --out "$RUNNER_TEMP/out" --workers 0 --steps 3
+          cat "$RUNNER_TEMP/out/small-restorer-report.txt"
+          ls "$RUNNER_TEMP/out/small-restorer-samples"
       - name: Assemble
         run: |
           set -euo pipefail

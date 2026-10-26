@@ -1,4 +1,4 @@
-"""Entry point: python -m kit.run {check|bright|restorer|export} [options].
+"""Entry point: python -m kit.run {check|bright|restorer|export|small|small-export} [options].
 START.bat runs this through the menu; the options are for running it by hand."""
 import argparse
 import os
@@ -28,11 +28,12 @@ def check():
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("what", choices=["check", "bright", "restorer", "export"])
+    ap.add_argument("what", choices=["check", "bright", "restorer", "export", "small", "small-export"])
     ap.add_argument("--data", default=os.path.join(HERE, "data"), help="downloads and prepared data (needs ~40 GB for the restorer)")
     ap.add_argument("--out", default=os.path.join(HERE, "output"))
     ap.add_argument("--workers", type=int, default=max(1, min(8, (os.cpu_count() or 2) - 1)))
-    ap.add_argument("--hours", type=float, default=8.0, help="restorer: how long to train this run")
+    ap.add_argument("--hours", type=float, default=None,
+                    help="restorer / small: how long to train this run (8 h / 2 h)")
     ap.add_argument("--steps", type=int, default=None, help="restorer: stop at this many steps in all")
     ap.add_argument("--epochs", type=int, default=40, help="Brighter voice net: passes over the data")
     a = ap.parse_args()
@@ -44,8 +45,15 @@ def main():
         train_bright.main(a.data, a.out, a.workers, epochs=a.epochs)
     elif a.what == "restorer":
         from . import train_restorer
-        train_restorer.main(a.data, a.out, a.workers, hours=a.hours, max_steps=a.steps)
+        train_restorer.main(a.data, a.out, a.workers, hours=a.hours or 8.0, max_steps=a.steps)
         train_restorer.export(a.data, a.out, graph_dir())
+    elif a.what == "small":
+        from . import train_small
+        train_small.main(a.data, a.out, a.workers, hours=a.hours or 2.0, max_steps=a.steps)
+        train_small.export(a.data, a.out)
+    elif a.what == "small-export":
+        from . import train_small
+        train_small.export(a.data, a.out)
     else:
         from . import train_restorer
         train_restorer.export(a.data, a.out, graph_dir())
