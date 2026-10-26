@@ -77,6 +77,7 @@ import '../vox/voice_record_sheet.dart';
 import '../vox/voice_service.dart';
 import '../vox/voice_wire.dart';
 import '../team/message_reach_screen.dart';
+import '../vox/walkie_service.dart';
 import '../vox/walkie_sheet.dart';
 import '../utils/share_origin.dart';
 
@@ -297,6 +298,23 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       _replyingToMessage = null;
       _useReplyRegion = false;
     });
+  }
+
+  /// ⋮ > Mute voice: this channel's talks don't play live and its voice
+  /// messages don't play by themselves (WalkieService.setVoiceMuted).
+  Future<void> _toggleVoiceMute() async {
+    final walkie = context.read<WalkieService>();
+    final l10n = context.l10n;
+    final mute = !walkie.isVoiceMuted(widget.channel);
+    await walkie.setVoiceMuted(widget.channel, mute);
+    if (!mounted) return;
+    showDismissibleSnackBar(
+      context,
+      content: Text(
+        mute ? l10n.voiceMute_mutedNote : l10n.voiceMute_unmutedNote,
+      ),
+      duration: const Duration(seconds: 2),
+    );
   }
 
   void _openSearch() {
@@ -740,6 +758,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
               onSelected: (value) {
                 if (value == 'search') {
                   _openSearch();
+                } else if (value == 'voiceMute') {
+                  _toggleVoiceMute();
                 } else if (value == 'clearChat') {
                   _confirmClearChat();
                 }
@@ -753,6 +773,30 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                       const SizedBox(width: 12),
                       Text(context.l10n.channelSearch_menu),
                     ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'voiceMute',
+                  child: Builder(
+                    builder: (context) {
+                      final muted = context
+                          .read<WalkieService>()
+                          .isVoiceMuted(widget.channel);
+                      return Row(
+                        children: [
+                          Icon(
+                            muted ? Icons.volume_up : Icons.volume_off,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            muted
+                                ? context.l10n.voiceMute_menuUnmute
+                                : context.l10n.voiceMute_menuMute,
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
                 PopupMenuItem(

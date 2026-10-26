@@ -688,6 +688,54 @@ abstract class AppLocalizations {
   /// **'Searching for USB devices...'**
   String get usbStatus_searching;
 
+  /// No description provided for @voiceMute_everyChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Play talks on every channel'**
+  String get voiceMute_everyChannel;
+
+  /// No description provided for @voiceMute_everyChannelHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Off: talks play live only in the channel you have open. On: talks on any channel play as they arrive, like a scanner.'**
+  String get voiceMute_everyChannelHelp;
+
+  /// No description provided for @voiceMute_channel.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute voice in this channel'**
+  String get voiceMute_channel;
+
+  /// No description provided for @voiceMute_channelHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Its talks don\'t play live and its voice messages don\'t play by themselves. They wait in the chat for a tap.'**
+  String get voiceMute_channelHelp;
+
+  /// No description provided for @voiceMute_menuMute.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute voice'**
+  String get voiceMute_menuMute;
+
+  /// No description provided for @voiceMute_menuUnmute.
+  ///
+  /// In en, this message translates to:
+  /// **'Unmute voice'**
+  String get voiceMute_menuUnmute;
+
+  /// No description provided for @voiceMute_mutedNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice muted in this channel'**
+  String get voiceMute_mutedNote;
+
+  /// No description provided for @voiceMute_unmutedNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice unmuted in this channel'**
+  String get voiceMute_unmutedNote;
+
   /// No description provided for @usbConnectionFailed.
   ///
   /// In en, this message translates to:

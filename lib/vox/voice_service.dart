@@ -1823,6 +1823,10 @@ class VoxVoiceService extends ChangeNotifier {
   bool _autoPlay = true;
   bool _autoDownloadChannels = false;
 
+  /// Whether voice is muted in a channel (WalkieService): its voice messages
+  /// don't auto-play there.
+  bool Function(int channelIndex)? channelVoiceMuted;
+
   /// Download and play incoming voice DMs as soon as they arrive.
   bool get autoPlay => _autoPlay;
 
@@ -2013,6 +2017,13 @@ class VoxVoiceService extends ChangeNotifier {
       // Not downloaded by itself: a photo's thumbnail still comes, from its
       // first two packets alone.
       _probeThumb(env, sender: sender, channelIndex: channelIndex);
+      return;
+    }
+    if (channelIndex != null &&
+        !env.isImage &&
+        (channelVoiceMuted?.call(channelIndex) ?? false)) {
+      // Voice muted in this channel: shown, played on a tap.
+      _logEvent('auto-play skipped: voice muted in this channel', sid);
       return;
     }
     if (_heardLive.contains(sid)) {

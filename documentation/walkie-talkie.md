@@ -15,9 +15,13 @@ talk back.
 3. **Hold to talk.** Let go to finish. On a computer, hold **Space** instead.
    A talk can be up to 20 seconds.
 
-Talks play by themselves as they arrive, on any channel, while the app is
-running, whether the walkie-talkie is open or not, like a scanner. The status
-line shows who is talking. While someone is talking, the button
+A talk goes only to the channel it's on: only people with that channel hear
+it. Push-to-talk is in channel chats only, not in DMs.
+
+Talks play by themselves as they arrive in the channel whose chat or
+walkie-talkie you have open. **Play talks on every channel** (off by default)
+plays every channel's talks while the app is running, like a scanner. The
+status line shows who is talking. While someone is talking, the button
 waits until they finish, as on a real radio. It's half duplex: while you talk,
 nothing plays.
 
@@ -27,10 +31,12 @@ nothing plays.
 - **Reach: Direct** sends radio to radio, with no repeaters: only radios in
   range hear it live. It's a little faster and adds no repeater traffic. People
   out of range still get the voice message and can fetch it as usual.
-- **Play talks live** (on by default) is the switch for all channels. Off,
-  talks only play while that channel's walkie-talkie is open.
-- **Play this channel's talks live** mutes one channel when turned off. Its
-  talks still arrive as voice messages and follow your auto-play setting.
+- **Play talks on every channel** (off by default) plays talks from every
+  channel as they arrive, not just the one you have open.
+- **Mute voice in this channel** (also in the channel's ⋮ menu as **Mute
+  voice**): its talks don't play live, even with its chat open (only with its
+  walkie-talkie open), and its voice messages don't play by themselves. They
+  wait in the chat for a tap.
 
 A talk heard live isn't played again when its voice message arrives.
 

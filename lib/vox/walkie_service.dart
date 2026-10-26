@@ -86,6 +86,7 @@ class _Tx {
 class WalkieService extends ChangeNotifier {
   WalkieService(this._connector, this._voice) {
     _voice.liveTalkHandler = _onLive;
+    _voice.channelVoiceMuted = isVoiceMutedAt;
     unawaited(_load());
   }
 
@@ -98,7 +99,7 @@ class WalkieService extends ChangeNotifier {
   static const _kMuted = 'walkie_muted';
   static const _kDirect = 'walkie_direct';
 
-  bool _liveAll = true;
+  bool _liveAll = false;
   Set<String> _mutedKeys = {};
   Set<String> _directKeys = {};
   final Map<int, int> _openPanels = {};
@@ -146,7 +147,7 @@ class WalkieService extends ChangeNotifier {
   Future<void> _load() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _liveAll = prefs.getBool(_kLiveAll) ?? true;
+      _liveAll = prefs.getBool(_kLiveAll) ?? false;
       _mutedKeys = (prefs.getStringList(_kMuted) ?? const []).toSet();
       _directKeys = (prefs.getStringList(_kDirect) ?? const []).toSet();
       notifyListeners();
@@ -162,8 +163,8 @@ class WalkieService extends ChangeNotifier {
     } catch (_) {}
   }
 
-  /// Talks on every channel not muted play as they arrive, walkie open or
-  /// not (on by default).
+  /// Talks on every channel not muted play as they arrive, like a scanner
+  /// (off by default: talks play in the channel whose chat or walkie is open).
   bool get liveAll => _liveAll;
 
   Future<void> setLiveAll(bool v) async {
@@ -214,13 +215,32 @@ class WalkieService extends ChangeNotifier {
     }
   }
 
+  /// A talk on [channelIndex] plays live: its walkie is open; or voice
+  /// isn't muted there and its chat is open, or [liveAll] is on.
   bool _listensTo(int channelIndex) {
     if (_openPanels.containsKey(channelIndex)) return true;
     for (final ch in _connector.channels) {
-      if (ch.index == channelIndex) return listensLive(ch);
+      if (ch.index != channelIndex) continue;
+      if (isVoiceMuted(ch)) return false;
+      return _connector.activeChannelIndex == channelIndex || _liveAll;
     }
     return false;
   }
+
+  /// Voice is muted in [ch]: its talks don't play live (only with its walkie
+  /// open) and its voice messages don't play by themselves.
+  bool isVoiceMuted(Channel ch) =>
+      _mutedKeys.contains(VoxVoiceService.channelTarget(ch));
+
+  bool isVoiceMutedAt(int channelIndex) {
+    for (final ch in _connector.channels) {
+      if (ch.index == channelIndex) return isVoiceMuted(ch);
+    }
+    return false;
+  }
+
+  Future<void> setVoiceMuted(Channel ch, bool muted) =>
+      setListenLive(ch, !muted);
 
   // ------------------------------------------------------------- hearing
 
