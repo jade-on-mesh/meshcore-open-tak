@@ -287,16 +287,18 @@ RadioImport _parseMeshPunk(
           slot >= 40 ||
           f[1].isEmpty ||
           key == null ||
-          key.length < 16)
+          key.length < 16) {
         continue;
+      }
       bySlot[slot] = RadioImportChannel(
         f[1],
         Uint8List.fromList(key.sublist(0, 16)),
       );
     }
   }
-  if (!publicDeleted)
+  if (!publicDeleted) {
     bySlot[0] = RadioImportChannel('Public', radioImportPublicSecret);
+  }
   if (bySlot.isNotEmpty) {
     final last = bySlot.keys.reduce((a, b) => a > b ? a : b);
     for (var i = 0; i <= last; i++) {
