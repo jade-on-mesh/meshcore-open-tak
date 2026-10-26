@@ -191,7 +191,7 @@ int? _parseBase36(String s) {
   return int.tryParse(s, radix: 36);
 }
 
-/// Longest envelope [VoxVoiceEnvelope.encode] makes without a caption:
+/// Longest [VoxVoiceEnvelope.envelopeText] (no label or caption):
 /// prefix, then base-36 session id (7), mode (2: a photo's is 40, `14`),
 /// packets (2) and duration or aspect (2), with their colons.
 const int voxEnvelopeMaxLength = 20;
@@ -199,7 +199,7 @@ const int voxEnvelopeMaxLength = 20;
 /// Bytes left for a caption in a text message of [maxTextBytes]: the
 /// envelope and the space after it come first.
 int voxCaptionMaxBytes(int maxTextBytes) =>
-    max(0, maxTextBytes - voxEnvelopeMaxLength - 1);
+    max(0, maxTextBytes - voxEnvelopeMaxLength - 1 - voxKindLabelMaxLength - 1);
 
 /// [caption] trimmed and cut to at most [maxBytes] of UTF-8, on a character
 /// boundary.
@@ -222,11 +222,27 @@ String voxFitCaption(String caption, int maxBytes) {
 /// show it as a caption: "Voice message: PTT".
 const String walkieTalkCaption = 'PTT';
 
+/// The plain word after a Mimi voice message's envelope, so people on clients
+/// that don't know the codes can tell what it is: `VM1:1ps9wxb:w:5:5 VOICE`.
+/// Codec2 (VE3) has none: MeshCore SAR, where VE3 comes from, can't play a
+/// VE3 with anything after it.
+const String voxVoiceLabel = 'VOICE';
+
+/// The plain word after a photo's envelope: `VI1:1ps9wxb:k:i:4b IMAGE caption`.
+const String voxImageLabel = 'IMAGE';
+
+/// The longest of the labels above (bytes).
+const int voxKindLabelMaxLength = 5;
+
 /// `VE3:` voice envelope carried as a normal text message.
 ///
-/// A caption may follow it in the same message, after a space:
-/// `VI1:1ps9wxb:k:i:4b Look at this`. The envelope never contains a space,
-/// and an envelope with no caption is exactly the plain VE3 text.
+/// A photo's or Mimi clip's plain label follows it, after a space
+/// ([voxImageLabel], [voxVoiceLabel]), then any caption:
+/// `VI1:1ps9wxb:k:i:4b IMAGE Look at this`. Codec2 (VE3) has no label, so a
+/// VE3 without a caption is exactly MeshCore SAR's; a talk's caption is
+/// [walkieTalkCaption]. The envelope never contains a space. Versions before
+/// the labels show the label as (part of) the caption; envelopes without one,
+/// from those versions, still parse.
 class VoxVoiceEnvelope {
   /// Codec2 clips (standard VE3).
   static const String prefix = 'VE3:';
@@ -295,7 +311,7 @@ class VoxVoiceEnvelope {
     // caption.
     final gap = t.indexOf(RegExp(r'\s'));
     final fields = gap < 0 ? t : t.substring(0, gap);
-    final caption = gap < 0 ? '' : t.substring(gap + 1).trim();
+    var caption = gap < 0 ? '' : t.substring(gap + 1).trim();
     final parts = fields.substring(prefix.length).split(':');
     if (parts.length != 4) return null;
     final sidVal = _parseBase36(parts[0]);
@@ -308,6 +324,7 @@ class VoxVoiceEnvelope {
     if (sidVal > 0xFFFFFFFF) return null;
     final mode = VoxVoiceMode.fromWireId(modeId);
     if (mode == null || prefixFor(mode) != head) return null;
+    caption = _withoutLabel(caption, labelFor(mode));
     if (total < 1 || total > voxMaxPackets) return null;
     if (dur < 0 || dur > voxMaxDurationSeconds) return null;
     return VoxVoiceEnvelope(
@@ -319,14 +336,40 @@ class VoxVoiceEnvelope {
     );
   }
 
-  String encode() {
+  /// The plain word that follows [mode]'s envelope; null for Codec2 (VE3).
+  static String? labelFor(VoxVoiceMode mode) => mode.isImage
+      ? voxImageLabel
+      : mode.isMimi
+      ? voxVoiceLabel
+      : null;
+
+  /// [caption] with a leading [label] word taken off.
+  static String _withoutLabel(String caption, String? label) {
+    if (label == null) return caption;
+    if (caption == label) return '';
+    if (caption.startsWith('$label ') || caption.startsWith('$label\n')) {
+      return caption.substring(label.length + 1).trim();
+    }
+    return caption;
+  }
+
+  /// The envelope alone, without the label or caption.
+  String get envelopeText {
     final sid = int.parse(sessionId, radix: 16).toRadixString(36);
-    final env =
-        '${prefixFor(mode)}$sid:'
+    return '${prefixFor(mode)}$sid:'
         '${mode.wireId.toRadixString(36)}:'
         '${totalPackets.toRadixString(36)}:'
         '${durationSeconds.toRadixString(36)}';
-    return caption.isEmpty ? env : '$env $caption';
+  }
+
+  /// The message text: envelope, label, caption.
+  String encode() {
+    final words = [
+      envelopeText,
+      if (!isTalk) ?labelFor(mode),
+      if (caption.isNotEmpty) caption,
+    ];
+    return words.join(' ');
   }
 
   bool get isImage => mode.isImage;

@@ -78,15 +78,59 @@ void main() {
       durationSeconds: 75,
     );
 
-    test('without a caption the text is plain VE3, unchanged', () {
-      expect(photo.encode(), isNot(contains(' ')));
+    test('without a caption the text is the envelope and its label', () {
+      expect(photo.encode(), '${photo.envelopeText} IMAGE');
+      expect(photo.envelopeText, isNot(contains(' ')));
       expect(photo.withCaption('  ').encode(), photo.encode());
       expect(VoxVoiceEnvelope.tryParse(photo.encode())!.caption, isEmpty);
     });
 
+    test('labels say what it is in plain words', () {
+      const mimi = VoxVoiceEnvelope(
+        sessionId: 'deadbeef',
+        mode: VoxVoiceMode.mimi,
+        totalPackets: 4,
+        durationSeconds: 4,
+      );
+      expect(mimi.encode(), 'VM1:1ps9wxb:w:4:4 VOICE');
+      expect(
+        mimi.withCaption('on my way').encode(),
+        'VM1:1ps9wxb:w:4:4 VOICE on my way',
+      );
+      expect(VoxVoiceEnvelope.tryParse(mimi.encode())!.caption, isEmpty);
+      expect(VoxVoiceEnvelope.tryParse('VM1:a:w:4:4 VOICE hi')!.caption, 'hi');
+      // Codec2 stays as MeshCore SAR sends it: no label, and a talk is PTT.
+      const c2 = VoxVoiceEnvelope(
+        sessionId: 'deadbeef',
+        mode: VoxVoiceMode.mode1200,
+        totalPackets: 4,
+        durationSeconds: 4,
+      );
+      expect(c2.encode(), 'VE3:1ps9wxb:1:4:4');
+      expect(c2.withCaption('hi').encode(), 'VE3:1ps9wxb:1:4:4 hi');
+      expect(
+        c2.withCaption(walkieTalkCaption).encode(),
+        'VE3:1ps9wxb:1:4:4 PTT',
+      );
+      expect(
+        VoxVoiceEnvelope.tryParse('VE3:a:1:4:4 VOICE hi')!.caption,
+        'VOICE hi',
+      );
+      // Only the word for its own kind is taken off.
+      expect(VoxVoiceEnvelope.tryParse('VI1:a:14:4:4 VOICE')!.caption, 'VOICE');
+      expect(
+        VoxVoiceEnvelope.tryParse('VI1:a:14:4:4 IMAGES')!.caption,
+        'IMAGES',
+      );
+      expect(
+        VoxVoiceEnvelope.previewText('VM1:a:w:4:4 VOICE'),
+        '🎙 Voice message',
+      );
+    });
+
     test('rides after the envelope and round-trips', () {
       final text = photo.withCaption('Look at this: the T-Deck!').encode();
-      expect(text, startsWith('${photo.encode()} '));
+      expect(text, startsWith('${photo.envelopeText} IMAGE '));
       final back = VoxVoiceEnvelope.tryParse(text)!;
       expect(back.caption, 'Look at this: the T-Deck!');
       expect(back.sessionId, 'deadbeef');
@@ -112,7 +156,7 @@ void main() {
         totalPackets: voxMaxPackets,
         durationSeconds: voxMaxDurationSeconds,
       );
-      expect(env.encode().length, voxEnvelopeMaxLength);
+      expect(env.envelopeText.length, voxEnvelopeMaxLength);
       for (final m in VoxVoiceMode.values) {
         final e = VoxVoiceEnvelope(
           sessionId: 'ffffffff',
@@ -121,7 +165,7 @@ void main() {
           durationSeconds: voxMaxDurationSeconds,
         );
         expect(
-          e.encode().length,
+          e.envelopeText.length,
           lessThanOrEqualTo(voxEnvelopeMaxLength),
           reason: m.label,
         );
@@ -294,7 +338,7 @@ void main() {
         durationSeconds: 5,
       );
       final text = env.encode();
-      expect(text, 'VM1:1ps9wxb:w:5:5');
+      expect(text, 'VM1:1ps9wxb:w:5:5 VOICE');
       final back = VoxVoiceEnvelope.tryParse(text)!;
       expect(back.mode, VoxVoiceMode.mimi);
       // A Mimi mode id must never be accepted inside a VE3 envelope,
