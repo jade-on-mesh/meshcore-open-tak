@@ -166,8 +166,7 @@ class VoxVoiceEnhancer extends ChangeNotifier {
     if (!supported || _state == VoxVoiceEnhanceState.downloading) return;
     try {
       final f = await _file();
-      _state =
-          await f.exists() && await f.length() == spec.bytes
+      _state = await f.exists() && await f.length() == spec.bytes
           ? VoxVoiceEnhanceState.ready
           : VoxVoiceEnhanceState.missing;
     } catch (_) {
@@ -193,9 +192,7 @@ class VoxVoiceEnhancer extends ChangeNotifier {
     try {
       final dest = await _file();
       part = File('${dest.path}.part');
-      final resp = await client.send(
-        http.Request('GET', Uri.parse(spec.url)),
-      );
+      final resp = await client.send(http.Request('GET', Uri.parse(spec.url)));
       if (resp.statusCode != 200) {
         throw HttpException('HTTP ${resp.statusCode}');
       }
