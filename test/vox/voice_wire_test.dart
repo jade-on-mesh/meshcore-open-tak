@@ -112,11 +112,20 @@ void main() {
         c2.withCaption(walkieTalkCaption).encode(),
         'VE3:1ps9wxb:1:4:4 PTT',
       );
-      expect(VoxVoiceEnvelope.tryParse('VE3:a:1:4:4 VOICE hi')!.caption, 'VOICE hi');
+      expect(
+        VoxVoiceEnvelope.tryParse('VE3:a:1:4:4 VOICE hi')!.caption,
+        'VOICE hi',
+      );
       // Only the word for its own kind is taken off.
       expect(VoxVoiceEnvelope.tryParse('VI1:a:14:4:4 VOICE')!.caption, 'VOICE');
-      expect(VoxVoiceEnvelope.tryParse('VI1:a:14:4:4 IMAGES')!.caption, 'IMAGES');
-      expect(VoxVoiceEnvelope.previewText('VM1:a:w:4:4 VOICE'), '🎙 Voice message');
+      expect(
+        VoxVoiceEnvelope.tryParse('VI1:a:14:4:4 IMAGES')!.caption,
+        'IMAGES',
+      );
+      expect(
+        VoxVoiceEnvelope.previewText('VM1:a:w:4:4 VOICE'),
+        '🎙 Voice message',
+      );
     });
 
     test('rides after the envelope and round-trips', () {

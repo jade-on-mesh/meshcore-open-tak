@@ -198,10 +198,8 @@ const int voxEnvelopeMaxLength = 20;
 
 /// Bytes left for a caption in a text message of [maxTextBytes]: the
 /// envelope and the space after it come first.
-int voxCaptionMaxBytes(int maxTextBytes) => max(
-  0,
-  maxTextBytes - voxEnvelopeMaxLength - 1 - voxKindLabelMaxLength - 1,
-);
+int voxCaptionMaxBytes(int maxTextBytes) =>
+    max(0, maxTextBytes - voxEnvelopeMaxLength - 1 - voxKindLabelMaxLength - 1);
 
 /// [caption] trimmed and cut to at most [maxBytes] of UTF-8, on a character
 /// boundary.
