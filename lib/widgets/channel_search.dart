@@ -61,42 +61,42 @@ class ChannelSearchField extends StatelessWidget
     return SizedBox(
       height: height,
       child: Padding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 4, 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: controller,
-              autofocus: true,
-              textInputAction: TextInputAction.search,
-              onChanged: onChanged,
-              decoration: InputDecoration(
-                isDense: true,
-                hintText: l10n.channelSearch_hint,
-                prefixIcon: const Icon(Icons.search),
-                border: const OutlineInputBorder(),
-                suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: controller,
-                  builder: (context, value, _) => value.text.isEmpty
-                      ? const SizedBox.shrink()
-                      : IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            controller.clear();
-                            onChanged('');
-                          },
-                        ),
+        padding: const EdgeInsets.fromLTRB(12, 4, 4, 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: controller,
+                autofocus: true,
+                textInputAction: TextInputAction.search,
+                onChanged: onChanged,
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: l10n.channelSearch_hint,
+                  prefixIcon: const Icon(Icons.search),
+                  border: const OutlineInputBorder(),
+                  suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: controller,
+                    builder: (context, value, _) => value.text.isEmpty
+                        ? const SizedBox.shrink()
+                        : IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              controller.clear();
+                              onChanged('');
+                            },
+                          ),
+                  ),
                 ),
               ),
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.close),
-            tooltip: l10n.channelSearch_close,
-            onPressed: onClose,
-          ),
-        ],
-      ),
+            IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: l10n.channelSearch_close,
+              onPressed: onClose,
+            ),
+          ],
+        ),
       ),
     );
   }
