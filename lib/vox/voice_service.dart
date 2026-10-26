@@ -186,6 +186,11 @@ class _IncomingClip {
 
   /// Highest packet index asked for in the latest request (sent last).
   int expectedLast = -1;
+
+  /// When the last request went out, and whether a packet has come since
+  /// (for the log's timing: how long the answer took to start).
+  DateTime? askedAt;
+  bool answeredSinceAsk = false;
   Timer? watchdog;
 
   /// Some packet came through a repeater (or by a way that doesn't say):
@@ -1399,6 +1404,8 @@ class VoxVoiceService extends ChangeNotifier {
     clip.attempts++;
     clip.lastMethod = method;
     clip.rxLast = null; // the next packet starts a new burst
+    clip.askedAt = DateTime.now();
+    clip.answeredSinceAsk = false;
     if (method == _Method.channel) clip.triedChannel = true;
     if (method == _Method.zeroHop) clip.triedZeroHop = true;
     final sc = clip.sender;
@@ -1527,7 +1534,7 @@ class VoxVoiceService extends ChangeNotifier {
             clip.envelope.sessionId,
           );
           final ok = await _connector.sendChannelDataBlobs(
-            [req.encode(salt: clip.salts.next())],
+            [req.forChannel().encode(salt: clip.salts.next())],
             channelIndex: clip.channelIndex!,
             dataType: voxChannelDataType,
             interChunkDelay: Duration.zero,
@@ -1621,7 +1628,8 @@ class VoxVoiceService extends ChangeNotifier {
     _logEvent(
       'timeout after ${clip.lastMethod?.name}: '
       '${clip.packets.length}/${clip.envelope.totalPackets} packets'
-      '${clip.isComplete ? '' : ', missing ${_indexList(clip.missing)}'}',
+      '${clip.isComplete ? '' : ', missing ${_indexList(clip.missing)}'}'
+      '${_askTiming(clip)}',
       clip.envelope.sessionId,
     );
     final sid = clip.envelope.sessionId;
@@ -2190,7 +2198,7 @@ class VoxVoiceService extends ChangeNotifier {
           sid,
         );
         await _connector.sendChannelDataBlobs(
-          [req.encode(salt: clip.salts.next())],
+          [req.forChannel().encode(salt: clip.salts.next())],
           channelIndex: ch,
           dataType: voxChannelDataType,
           interChunkDelay: Duration.zero,
@@ -2270,7 +2278,11 @@ class VoxVoiceService extends ChangeNotifier {
             ? 'empty'
             : VoxVoicePacket.isVoicePacket(p)
             ? 'voice packet #${p.length > 5 ? p[5] : '?'}'
-                  '${p[0] == voxVoicePacketSaltedMagic ? ' (salted)' : ''}'
+                  '${p[0] == voxVoicePacketSaltedMagic
+                      ? ' (salted)'
+                      : p[0] == voxVoicePacketMarkedMagic
+                      ? ' (marked, ${p[p.length - 1] & 0x3F} to come)'
+                      : ''}'
             : p[0] == voxVoiceFetchMagic
             ? 'fetch request'
             : p[0] == _pingMagic
@@ -2330,6 +2342,7 @@ class VoxVoiceService extends ChangeNotifier {
     switch (payload[0]) {
       case voxVoicePacketMagic:
       case voxVoicePacketSaltedMagic:
+      case voxVoicePacketMarkedMagic:
         final pkt = VoxVoicePacket.tryParse(payload);
         if (pkt == null) return;
         if (channelIndex != null) {
@@ -2431,7 +2444,7 @@ class VoxVoiceService extends ChangeNotifier {
         sid,
       );
     }
-    _acceptPacket(clip, pkt.index, pkt.codecData);
+    _acceptPacket(clip, pkt.index, pkt.codecData, left: pkt.left);
   }
 
   void _acceptPacket(
@@ -2439,6 +2452,7 @@ class VoxVoiceService extends ChangeNotifier {
     int index,
     Uint8List data, {
     bool notify = true,
+    int? left,
   }) {
     if (clip.isComplete || index >= clip.envelope.totalPackets) return;
     final fresh = !clip.packets.containsKey(index);
@@ -2448,6 +2462,14 @@ class VoxVoiceService extends ChangeNotifier {
         (clip.status == VoxClipStatus.requesting ||
             clip.status == VoxClipStatus.receiving)) {
       clip.noteArrival(DateTime.now());
+      final asked = clip.askedAt;
+      if (!clip.answeredSinceAsk && asked != null) {
+        clip.answeredSinceAsk = true;
+        _logEvent(
+          'first packet ${_secs(DateTime.now().difference(asked))} after asking',
+          clip.envelope.sessionId,
+        );
+      }
     }
     final sid = clip.envelope.sessionId;
     if (clip.isComplete) {
@@ -2460,7 +2482,24 @@ class VoxVoiceService extends ChangeNotifier {
         clip.status == VoxClipStatus.receiving) {
       clip.status = VoxClipStatus.receiving;
       clip.message = null;
-      if (index == clip.expectedLast) {
+      if (left != null) {
+        // A marked packet says how many of the answer are still to come: when
+        // none, it's over and the gaps are final; else the rest should take
+        // that many gaps, and no longer.
+        clip.watchdog?.cancel();
+        final gap = clip.rxGaps > 0
+            ? clip.rxGapMs
+            : _burstGap(clip).inMilliseconds;
+        final wait = Duration(milliseconds: voxMarkedWaitMs(left, gap));
+        if (left == 0) {
+          _logEvent(
+            'answer over (marked), ${clip.missing.length} missing; '
+            're-requesting in ${wait.inMilliseconds}ms',
+            sid,
+          );
+        }
+        clip.watchdog = Timer(wait, () => _onWatchdog(clip));
+      } else if (index == clip.expectedLast) {
         // The sender has sent its last packet, so the gaps are final: ask
         // for them again right away instead of waiting out the timeout.
         clip.watchdog?.cancel();
@@ -2572,6 +2611,22 @@ class VoxVoiceService extends ChangeNotifier {
     );
   }
 
+  /// " (asked 12.3 s ago; packets ~900 ms apart)" for the log.
+  static String _askTiming(_IncomingClip clip) {
+    final asked = clip.askedAt;
+    if (asked == null) return '';
+    final parts = <String>[
+      'asked ${_secs(DateTime.now().difference(asked))} ago',
+      clip.answeredSinceAsk
+          ? (clip.rxGaps > 0 ? 'packets ~${clip.rxGapMs} ms apart' : 'one packet came')
+          : 'nothing came',
+    ];
+    return ' (${parts.join('; ')})';
+  }
+
+  static String _secs(Duration d) =>
+      '${(d.inMilliseconds / 1000).toStringAsFixed(1)} s';
+
   /// Packet indices as a short list: "#3-5, #10".
   static String _indexList(Iterable<int> indices) {
     final v = indices.toSet().toList()..sort();
@@ -2678,6 +2733,7 @@ class VoxVoiceService extends ChangeNotifier {
       key,
       () => _ChannelBurst(req.sessionId, channel),
     );
+    burst.askedAt ??= DateTime.now();
     final wanted = req.missingIndices ?? List<int>.generate(total, (i) => i);
     final before = burst.pending.length;
     burst.pending.addAll(
@@ -2689,6 +2745,7 @@ class VoxVoiceService extends ChangeNotifier {
       burst.addParity(total, image: held.image);
     }
     burst.saltOk = burst.saltOk && req.saltOk;
+    burst.markOk = burst.markOk && req.markOk;
     burst.maxHops = max(burst.maxHops, hops ?? 3);
     _logEvent(
       '${req.requesterKey6} asks for ${req.missingIndices == null ? 'all' : _indexList(wanted)} '
@@ -2712,7 +2769,8 @@ class VoxVoiceService extends ChangeNotifier {
 
   /// Listen before talk on MediaMesh (voxLbtHold): returns once radio2 has
   /// been quiet a packet's airtime and a random bit, or after 20 s of waiting.
-  Future<void> _radio2Quiet(String sid) async {
+  /// Returns how long it held the packet back, in ms (for the log).
+  Future<int> _radio2Quiet(String sid) async {
     final start = DateTime.now();
     final quiet = voxLbtQuietMs(
       _packetAir().inMilliseconds,
@@ -2728,7 +2786,7 @@ class VoxVoiceService extends ChangeNotifier {
         quietMs: quiet,
         waitedMs: now.difference(start).inMilliseconds,
       )) {
-        return;
+        return now.difference(start).inMilliseconds;
       }
       if (!noted) {
         noted = true;
@@ -2779,6 +2837,10 @@ class VoxVoiceService extends ChangeNotifier {
       // radio2's own listen-before-talk and the settle above cover it.)
       if (!burst.pushing && _mediaAir == null) await _waitBriefQuiet();
       var sent = 0;
+      var markedSent = 0;
+      var busyMs = 0;
+      DateTime? firstAt;
+      final startedAt = DateTime.now();
       final sentData = <int>[];
       var zeroHopSent = 0;
       var paritySent = 0;
@@ -2798,14 +2860,26 @@ class VoxVoiceService extends ChangeNotifier {
         } else {
           final data = held.packets[index];
           if (data == null) continue;
+          // Marked (0x58) when every listener asked reads it: the packets
+          // still to come of this answer, so they know when it's over.
+          final mark = burst.saltOk && burst.markOk && !burst.pushing;
           payload = VoxVoicePacket(
             sessionId: burst.sid,
             index: index,
             codecData: data,
-          ).encode(salt: burst.saltOk ? _rng.nextInt(256) : null);
+          ).encode(
+            salt: !burst.saltOk
+                ? null
+                : mark
+                ? _nextMarkSend(burst.sid, index)
+                : _rng.nextInt(256),
+            left: mark ? burst.pending.length : null,
+          );
+          if (mark) markedSent++;
         }
         final zeroHop = burst.maxHops == 0;
-        await _radio2Quiet(burst.sid);
+        busyMs += await _radio2Quiet(burst.sid);
+        firstAt ??= DateTime.now();
         try {
           await _connector.sendChannelDataPacket(
             channelIndex: burst.channel,
@@ -2834,7 +2908,9 @@ class VoxVoiceService extends ChangeNotifier {
         '${paritySent > 0 ? ', $paritySent of them parity' : ''}'
         '${zeroHopSent > 0 ? ' ($zeroHopSent zero-hop)' : ''}'
         '${burst.suppressed > 0 ? '; ${burst.suppressed} left out, heard from another node' : ''}'
-        '${zeroHopSent < sent ? ', ${pace.gapMs(burst.maxHops)} ms apart after ${burst.pushing ? 0 : pace.settleMs(burst.maxHops)} ms' : ''}',
+        '${zeroHopSent < sent ? ', ${pace.gapMs(burst.maxHops)} ms apart after ${burst.pushing ? 0 : pace.settleMs(burst.maxHops)} ms' : ''}'
+        '${markedSent > 0 ? ', marked' : ''}'
+        '${_burstTiming(burst, firstAt, startedAt, busyMs)}',
         burst.sid,
       );
       // What listeners still lack after this tells the pace how it did.
@@ -2873,6 +2949,34 @@ class VoxVoiceService extends ChangeNotifier {
     samples: clip.rxGaps,
     floor: _zeroHopGap(),
   );
+
+  /// Sends of each packet in marked answers (mod 4), so a resend's trailing
+  /// byte differs from the copies repeaters have seen (voxVoicePacketMarkedMagic).
+  final Map<String, Map<int, int>> _markSends = {};
+
+  int _nextMarkSend(String sid, int index) {
+    final m = _markSends.putIfAbsent(sid, () => {});
+    if (_markSends.length > 32) _markSends.remove(_markSends.keys.first);
+    final n = (m[index] ?? -1) + 1;
+    m[index] = n;
+    return n;
+  }
+
+  /// "; first packet 1.4 s after the request (MediaMesh busy 0.3 s), all of
+  /// it in 9.2 s" for the log.
+  static String _burstTiming(
+    _ChannelBurst burst,
+    DateTime? firstAt,
+    DateTime startedAt,
+    int busyMs,
+  ) {
+    if (firstAt == null) return '';
+    final from = burst.askedAt ?? startedAt;
+    return '; first packet ${_secs(firstAt.difference(from))} after the '
+        '${burst.askedAt == null ? 'start' : 'request'}'
+        '${busyMs > 0 ? ' (MediaMesh busy ${_secs(Duration(milliseconds: busyMs))} in all)' : ''}'
+        ', all of it in ${_secs(DateTime.now().difference(from))}';
+  }
 
   /// Each channel's answer pace (VoxFloodPace), learnt from the requests
   /// after its answers; and the last answer for each clip on a channel.
@@ -2923,8 +3027,9 @@ class VoxVoiceService extends ChangeNotifier {
     _recentServes.removeWhere(
       (_, t) => now.difference(t) > const Duration(minutes: 10),
     );
+    final askedAt = DateTime.now();
     _serveChain = _serveChain
-        .then((_) => _serve(req, viaChannel, waitForRoute, key, gen))
+        .then((_) => _serve(req, viaChannel, waitForRoute, key, gen, askedAt))
         .catchError((_) {});
   }
 
@@ -2937,6 +3042,7 @@ class VoxVoiceService extends ChangeNotifier {
     bool waitForRoute,
     String key,
     int gen,
+    DateTime servedFrom,
   ) async {
     if (_serveGen[key] != gen) return; // superseded while queued
     await _mediaAirForSend();
@@ -3060,6 +3166,8 @@ class VoxVoiceService extends ChangeNotifier {
       '${forced != null ? ' (FORCED)' : ''}',
       req.sessionId,
     );
+    var busyMs = 0;
+    DateTime? firstAt;
     for (var i = 0; i < packets.length; i++) {
       if (!_connector.isConnected) return;
       if (_serveGen[key] != gen) {
@@ -3070,7 +3178,8 @@ class VoxVoiceService extends ChangeNotifier {
         return;
       }
       if (i > 0) await Future<void>.delayed(gap);
-      await _radio2Quiet(req.sessionId);
+      busyMs += await _radio2Quiet(req.sessionId);
+      firstAt ??= DateTime.now();
       try {
         // Salt each send so a resend is never dropped as a duplicate by a
         // radio that saw an earlier copy; skip it if the frame would not fit.
@@ -3096,7 +3205,7 @@ class VoxVoiceService extends ChangeNotifier {
       if (!_connector.isConnected || _serveGen[key] != gen) break;
       if (2 + route.length + p.length > _maxCompanionFrame) break;
       await Future<void>.delayed(gap);
-      await _radio2Quiet(req.sessionId);
+      busyMs += await _radio2Quiet(req.sessionId);
       try {
         await _connector.sendFrame(
           buildSendRawDataFrame(path: route, payload: p),
@@ -3109,7 +3218,10 @@ class VoxVoiceService extends ChangeNotifier {
     }
     _logEvent(
       'served all ${packets.length} packets'
-      '${paritySent > 0 ? ' and $paritySent parity' : ''}',
+      '${paritySent > 0 ? ' and $paritySent parity' : ''}'
+      '${firstAt == null ? '' : '; first packet ${_secs(firstAt.difference(servedFrom))} after the request'}'
+      '${busyMs > 0 ? ' (MediaMesh busy ${_secs(Duration(milliseconds: busyMs))} in all)' : ''}'
+      ', all of it in ${_secs(DateTime.now().difference(servedFrom))}',
       req.sessionId,
     );
   }
@@ -3521,6 +3633,12 @@ class _ChannelBurst {
   final int channel;
   final SplayTreeSet<int> pending = SplayTreeSet<int>();
   bool saltOk = true;
+
+  /// Every listener who asked reads marked packets (0x58).
+  bool markOk = true;
+
+  /// When the first request this burst answers came (for the log's timing).
+  DateTime? askedAt;
   int maxHops = 0;
   bool running = false;
 
