@@ -3234,9 +3234,21 @@ class VoxVoiceService extends ChangeNotifier {
   /// or the two collide. The repeater may use a slower coding rate than us,
   /// hence the 1.15 margin. Only the first two relays are near enough to
   /// matter; further hops pipeline.
+  ///
+  /// Flooded (a channel answer): every repeater relays each packet, so to a
+  /// listener [hops] away the next waits for the last one's relays to clear,
+  /// three relays' worth at most, and never more than twice the 1-hop gap. A
+  /// 4-hop MediaMesh photo at 800 ms apart lost all but one packet of each
+  /// answer. Mirrored in Wadamesh (VoxServe::packetGap), which sends them.
   Duration _packetGap({required bool flood, int hops = 0}) {
     final air = _packetAir().inMilliseconds;
-    if (flood) return Duration(milliseconds: max(800, air * 4 + 150));
+    if (flood) {
+      final base = max(800, air * 4 + 150);
+      if (hops < 2) return Duration(milliseconds: base);
+      final relay = (air + 2.5 * air * 1.15).round();
+      final g = min(air + min(hops, 3) * relay, 2 * base);
+      return Duration(milliseconds: max(g, base));
+    }
     if (hops <= 0) return Duration(milliseconds: max(400, air * 2 + 150));
     final relayAir = air * 1.15;
     final h = min(hops, 2);
