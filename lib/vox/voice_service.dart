@@ -1557,10 +1557,6 @@ class VoxVoiceService extends ChangeNotifier {
       forcedRoute?.length ?? max(clip.sender?.pathLength ?? 3, 0);
 
   Duration _waitFor(_IncomingClip clip) {
-    final hops = _clipHops(clip) + 1;
-    // One radio transmission of a full voice packet, plus each repeater's
-    // retransmit delay and the firmware/BLE turnaround.
-    final hopMs = _packetAir().inMilliseconds * 2 + 700;
     final perPacket = _burstGap(clip);
     // Trips before the first voice packet lands: request out + packet back.
     // A DM request also needs path return + reciprocal path first.
@@ -1569,10 +1565,15 @@ class VoxVoiceService extends ChangeNotifier {
       _Method.channel => 3,
       _ => 2,
     };
-    final wait = clip.lastMethod == _Method.zeroHop
-        // In range: the answer is a packet away (holders wait up to 4.5 s).
-        ? Duration(milliseconds: 2 * hopMs + 6000)
-        : Duration(milliseconds: trips * hops * hopMs + 8000);
+    final wait = Duration(
+      milliseconds: voxAnswerWaitMs(
+        trips: trips,
+        hops: _clipHops(clip),
+        airMs: _packetAir().inMilliseconds,
+        zeroHop: clip.lastMethod == _Method.zeroHop,
+        channel: clip.lastMethod == _Method.channel,
+      ),
+    );
     // Once packets flow, the stream is live: silence for a few packet gaps
     // means its tail was lost, not that the request is still on its way.
     return clip.status == VoxClipStatus.receiving
@@ -2610,7 +2611,8 @@ class VoxVoiceService extends ChangeNotifier {
       // only steps in if nobody has started sending it a few seconds later;
       // a partial copy waits longer still, for a whole one.
       final delay = own
-          ? const Duration(milliseconds: 300)
+          ? Duration
+                .zero // its burst gathers for a moment anyway
           : Duration(
               milliseconds: (whole ? 5000 : 8000) + Random().nextInt(3000),
             );
@@ -2762,7 +2764,7 @@ class VoxVoiceService extends ChangeNotifier {
         await Future<void>.delayed(
           Duration(
             milliseconds:
-                500 + _rng.nextInt(500) + pace.settleMs(burst.maxHops),
+                150 + _rng.nextInt(250) + pace.settleMs(burst.maxHops),
           ),
         );
       }
@@ -2772,7 +2774,10 @@ class VoxVoiceService extends ChangeNotifier {
       // Listen before the burst, briefly: the request that started it may
       // still be relayed. Within the burst the gaps do this. A push answers
       // no request, and its lead after the announcement already went by.
-      if (!burst.pushing) await _waitBriefQuiet();
+      // (Not when the packets go on radio2: this listens to the main
+      // radio, which on a busy mesh held every answer 1.5 s for nothing;
+      // radio2's own listen-before-talk and the settle above cover it.)
+      if (!burst.pushing && _mediaAir == null) await _waitBriefQuiet();
       var sent = 0;
       final sentData = <int>[];
       var zeroHopSent = 0;

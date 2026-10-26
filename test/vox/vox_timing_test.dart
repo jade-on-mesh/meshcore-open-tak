@@ -31,10 +31,33 @@ void main() {
     );
   });
 
-  test('stall wait is three gaps and a margin', () {
+  test('stall wait is three gaps and a second', () {
     expect(
       voxStallWait(const Duration(milliseconds: 800)),
-      const Duration(milliseconds: 4900),
+      const Duration(milliseconds: 3400),
+    );
+  });
+
+  test('the wait for an answer is short on MediaMesh, as before elsewhere', () {
+    // MediaMesh 250 kHz (157 ms): a hop is 1014 ms.
+    expect(voxAnswerWaitMs(trips: 3, hops: 0, airMs: 157, channel: true), 4528);
+    expect(
+      voxAnswerWaitMs(trips: 3, hops: 1, airMs: 157, channel: true),
+      2 * 2 * 1014 + 2500 + 4 * 608,
+    );
+    expect(voxAnswerWaitMs(trips: 2, hops: 0, airMs: 157), 2 * 1014 + 2500);
+    expect(
+      voxAnswerWaitMs(trips: 2, hops: 0, airMs: 157, zeroHop: true),
+      2 * 1014 + 3500,
+    );
+    // The main mesh's slow packets (1200 ms): unchanged.
+    expect(
+      voxAnswerWaitMs(trips: 3, hops: 1, airMs: 1200, channel: true),
+      3 * 2 * 3100 + 8000,
+    );
+    expect(
+      voxAnswerWaitMs(trips: 2, hops: 0, airMs: 1200, zeroHop: true),
+      2 * 3100 + 6000,
     );
   });
 
@@ -125,8 +148,8 @@ void main() {
     // MediaMesh 250 kHz: 157 ms a packet; a relay is 157 + 2.5 * 180.55.
     expect(voxRelayMs(157), 608);
     final p = VoxFloodPace(157);
-    expect(p.gapMs(0), 800);
-    expect(p.gapMs(1), 800);
+    expect(p.gapMs(0), 778);
+    expect(p.gapMs(1), 778);
     expect(p.gapMs(20), 922); // two relays' clearing time, on average
     expect(p.settleMs(0), 0); // heard direct: answer at once
     expect(p.settleMs(1), 608);
@@ -136,17 +159,17 @@ void main() {
     // one more relay of waiting.
     final a = VoxFloodAnswer([1, 4, 5, 7, 8, 9]);
     p.feedback(a, {1, 4, 5, 8, 9});
-    expect(p.gapMs(4), 1200);
+    expect(p.gapMs(4), 1167);
     expect(p.settleMs(4), 3 * 608);
     // Another listener saying the same about that answer moves nothing more.
     p.feedback(a, {1, 4, 5, 8, 9});
-    expect(p.gapMs(4), 1200);
+    expect(p.gapMs(4), 1167);
     expect(p.settleMs(4), 3 * 608);
     // One who got nearly all of it: the pace was fine, its loss was the
     // others' links. The slowing is undone and the pace speeds up.
     p.feedback(a, {});
     expect(p.gapMs(4), 922);
-    expect(p.gapMs(0), 800);
+    expect(p.gapMs(0), 778);
     expect(p.settleMs(4), 2 * 608);
     // ...and after that, no report on that answer slows it.
     p.feedback(a, {1, 4, 5, 7, 8, 9});
@@ -157,7 +180,7 @@ void main() {
     for (var k = 0; k < 6; k++) {
       p.feedback(VoxFloodAnswer([0, 1, 2, 3]), {0, 2, 3});
     }
-    expect(p.gapMs(4), 1600);
+    expect(p.gapMs(4), 1556);
     expect(p.settleMs(4), 4 * 608);
     // Then it clears: back to fast within a few answers.
     for (var k = 0; k < 6; k++) {
