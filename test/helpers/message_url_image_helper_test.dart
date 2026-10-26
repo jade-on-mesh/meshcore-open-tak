@@ -93,7 +93,10 @@ void main() {
         await MessageUrlImageHelper.parse('scan: https://x.org/old.bmp.'),
         'https://x.org/old.bmp',
       );
-      expect(MessageUrlImageHelper.hasPotentialImageUrl('https://x.org/a.gif'), isTrue);
+      expect(
+        MessageUrlImageHelper.hasPotentialImageUrl('https://x.org/a.gif'),
+        isTrue,
+      );
     });
 
     test('returns null for plain text', () async {
