@@ -30,6 +30,7 @@ import 'ble_debug_log_screen.dart';
 import '../widgets/radio_stats_entry.dart';
 import 'telemetry_screen.dart';
 import '../widgets/sync_progress_overlay.dart';
+import 'radio_import_flow.dart';
 import 'region_management_screen.dart';
 import '../utils/share_origin.dart';
 
@@ -165,6 +166,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: _selectConnector(
                 (c) => c.isConnected,
                 _buildActionsCardContent,
+              ),
+            ),
+
+            // IMPORT section: another app's or firmware's identity,
+            // channels and contacts onto this radio.
+            SectionHeader(l10n.radioImport_title),
+            MeshCard(
+              padding: EdgeInsets.zero,
+              child: _selectConnector(
+                (c) => c.isConnected,
+                (context, connector) => MeshNavTile(
+                  icon: Icons.upload_file_outlined,
+                  title: l10n.radioImport_tile,
+                  subtitle: l10n.radioImport_tileSubtitle,
+                  subtitleMaxLines: 4,
+                  onTap: connector.isConnected
+                      ? () => runRadioImport(context, connector)
+                      : null,
+                ),
               ),
             ),
 

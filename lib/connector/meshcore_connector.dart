@@ -49,6 +49,7 @@ import '../services/image_chunk_transport.dart'
         respCodeChannelDataRecv,
         senderPrefixFromKey;
 import '../services/image_codec_service.dart';
+import '../services/radio_import.dart';
 import '../services/otp_image_transport.dart';
 import '../services/received_image_store.dart';
 import '../widgets/image_send_codec_binding.dart'
@@ -8698,6 +8699,99 @@ class MeshCoreConnector extends ChangeNotifier {
   Future<void> setNodeName(String name) async {
     if (!isConnected) return;
     await sendFrame(buildSetAdvertNameFrame(name));
+  }
+
+  /// Puts [imp] on the connected radio (Settings > Import): the identity
+  /// (its key, which makes the radio reload its contacts, then the name),
+  /// the channels in their slots, then the contacts, added or updated.
+  /// [onProgress] gets steps done of total.
+  Future<RadioImportResult> applyRadioImport(
+    RadioImport imp, {
+    bool identity = true,
+    bool channels = true,
+    bool contacts = true,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    if (!isConnected) throw Exception('Not connected to a MeshCore device');
+    final result = RadioImportResult();
+    final chans = channels ? imp.channels : const <RadioImportChannel?>[];
+    final total =
+        (identity && imp.privateKey != null ? 1 : 0) +
+        (identity && imp.name != null ? 1 : 0) +
+        chans.whereType<RadioImportChannel>().length +
+        (contacts ? imp.contacts.length : 0);
+    var done = 0;
+    void step() => onProgress?.call(++done, total);
+
+    if (identity && imp.privateKey != null) {
+      try {
+        await sendFrame(
+          buildImportPrivateKeyFrame(imp.privateKey!),
+          waitForGenericAck: true,
+        );
+        result.identity = true;
+      } catch (e) {
+        result.identityError = '$e';
+      }
+      step();
+    }
+    if (identity && imp.name != null) {
+      try {
+        await sendFrame(
+          buildSetAdvertNameFrame(imp.name!),
+          waitForGenericAck: true,
+        );
+      } catch (_) {}
+      step();
+    }
+    var setAny = false;
+    for (var i = 0; i < chans.length && i < _maxChannels; i++) {
+      final c = chans[i];
+      if (c == null) continue;
+      try {
+        await sendFrame(
+          buildSetChannelFrame(i, c.name, c.secret),
+          waitForGenericAck: true,
+        );
+        result.channels++;
+        setAny = true;
+      } catch (_) {}
+      step();
+    }
+    if (setAny) await getChannels(force: true);
+    if (contacts) {
+      for (final c in imp.contacts) {
+        if (selfPublicKey != null && listEquals(c.publicKey, selfPublicKey)) {
+          step();
+          continue;
+        }
+        try {
+          await sendFrame(
+            buildUpdateContactPathFrame(
+              c.publicKey,
+              Uint8List(0),
+              0xFF, // no route yet
+              type: c.type,
+              flags: c.flags,
+              name: c.name,
+              lat: c.latitude,
+              lon: c.longitude,
+              lastAdvert: c.lastAdvert > 0
+                  ? DateTime.fromMillisecondsSinceEpoch(c.lastAdvert * 1000)
+                  : null,
+              lastModified: DateTime.now(),
+            ),
+            waitForGenericAck: true,
+          );
+          result.contacts++;
+        } catch (_) {
+          result.contactErrors++;
+        }
+        step();
+      }
+    }
+    if (result.identity || result.contacts > 0) await refreshContacts();
+    return result;
   }
 
   Future<void> setNodeLocation({
