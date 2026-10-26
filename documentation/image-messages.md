@@ -51,6 +51,8 @@ Mesh photos (AV1, formerly "VOX photos") come in three sizes. The encoder picks 
 
 Sharp is meant for a fast MediaMesh preset. Wadamesh radios need the build that accepts up to 96 packets per photo to show it (older builds take 64).
 
+**In plain words.** A Mesh photo goes out as a short text, `VI1:<id>:14:<packets>:<aspect> IMAGE`, then any caption. The word `IMAGE` tells people on clients that don't know the code what it is, like a talk's `PTT`; a Mimi voice message says `VOICE`. A Codec2 voice message (`VE3:`) stays bare, because MeshCore SAR, where that format comes from, can't play one with anything after it. Older versions of the app and Wadamesh TAK show the word as part of the caption.
+
 **On every app.** Mesh photos are sent and shown on Android, Windows, macOS and
 Linux. On a computer, the photo button opens a file chooser (there is no
 camera there). The encoder is libaom, built for each platform from the same
