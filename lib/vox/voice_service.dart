@@ -2611,7 +2611,8 @@ class VoxVoiceService extends ChangeNotifier {
       // only steps in if nobody has started sending it a few seconds later;
       // a partial copy waits longer still, for a whole one.
       final delay = own
-          ? Duration.zero // its burst gathers for a moment anyway
+          ? Duration
+                .zero // its burst gathers for a moment anyway
           : Duration(
               milliseconds: (whole ? 5000 : 8000) + Random().nextInt(3000),
             );

@@ -69,7 +69,6 @@ int voxAnswerWaitMs({
       (channel ? voxFloodSettleMaxMs(airMs, hops) : 0);
 }
 
-
 /// The gap to expect between a transfer's packets: the timing model's
 /// [model] until a few have come in ([samples] gaps measured), then twice the
 /// gap they actually came at ([seen], smoothed) when that's sooner, but never

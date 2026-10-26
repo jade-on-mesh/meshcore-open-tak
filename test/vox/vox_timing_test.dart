@@ -46,10 +46,19 @@ void main() {
       2 * 2 * 1014 + 2500 + 4 * 608,
     );
     expect(voxAnswerWaitMs(trips: 2, hops: 0, airMs: 157), 2 * 1014 + 2500);
-    expect(voxAnswerWaitMs(trips: 2, hops: 0, airMs: 157, zeroHop: true), 2 * 1014 + 3500);
+    expect(
+      voxAnswerWaitMs(trips: 2, hops: 0, airMs: 157, zeroHop: true),
+      2 * 1014 + 3500,
+    );
     // The main mesh's slow packets (1200 ms): unchanged.
-    expect(voxAnswerWaitMs(trips: 3, hops: 1, airMs: 1200, channel: true), 3 * 2 * 3100 + 8000);
-    expect(voxAnswerWaitMs(trips: 2, hops: 0, airMs: 1200, zeroHop: true), 2 * 3100 + 6000);
+    expect(
+      voxAnswerWaitMs(trips: 3, hops: 1, airMs: 1200, channel: true),
+      3 * 2 * 3100 + 8000,
+    );
+    expect(
+      voxAnswerWaitMs(trips: 2, hops: 0, airMs: 1200, zeroHop: true),
+      2 * 3100 + 6000,
+    );
   });
 
   test('passive finish needs half the packets', () {
