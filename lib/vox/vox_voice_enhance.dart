@@ -1,18 +1,19 @@
-// MeshCore Open TAK - AI voice enhancement for received Codec2 clips.
+// MeshCore Open TAK - the AI voice restorer for received Codec2 clips.
 //
-// Codec2 sends 8 kHz speech, so everything above 4 kHz (the "s", "f" and "t"
-// sounds and the air in a voice) is missing and it sounds muffled. The enhancer
-// fills that band back in and plays the clip at 48 kHz. What was received
-// (below 4 kHz) is played as decoded; only the band above it is generated.
+// Codec2 sends 8 kHz speech that sounds buzzy and robotic, with nothing above
+// 4 kHz (the "s", "f" and "t" sounds and the air in a voice). The restorer
+// rebuilds the whole voice from it and plays the clip at 48 kHz.
 //
 // Model: LavaSR's bandwidth-extension enhancer (Vocos backbone and spectrogram
-// head), Apache-2.0, Yatharth Sharma, https://github.com/ysharma3501/LavaSR,
-// via the ONNX export at https://github.com/Topping1/LavaSR-ONNX. Wrapped by
-// scripts/models/voice_bwe_to_onnx.py with its signal processing (upsampling,
-// STFT, mel features, the low/high merge and the inverse STFT) into one graph:
+// head; Apache-2.0, Yatharth Sharma, https://github.com/ysharma3501/LavaSR, via
+// https://github.com/Topping1/LavaSR-ONNX), fine-tuned on Codec2 itself (VCTK,
+// CC-BY-4.0) with tools/voice-training and exported through
+// scripts/models/voice_bwe_to_onnx.py with its 4 kHz merge off: one graph,
 // input "pcm" float32 [N] at 8 kHz, output "audio" float32 [6N] at 48 kHz.
-// Published as this repo's `voice-bwe-onnx-v1` release, downloaded on first
-// use (~28 MB) and checked by SHA-256, like the Mimi voice and photo models.
+// Published as this repo's `voice-restorer-onnx-v1` release, downloaded once
+// (~28 MB, on Wi-Fi on first open) and checked by SHA-256, like the Mimi voice
+// and photo models. It replaced the plain enhancer (`voice-bwe-onnx-v1`,
+// treble only); that model's file is deleted from phones that had it.
 //
 // Playback only: the clip as received is what's stored, forwarded and served.
 // Mimi clips are already wideband and are played as they are.
@@ -30,15 +31,44 @@ import 'package:path_provider/path_provider.dart';
 
 import 'voice_dsp.dart';
 
-/// The model file, as published.
-class VoxVoiceEnhanceModel {
-  static const name = 'lavasr-bwe-8k-48k.onnx';
-  static const sha256Hex =
-      '23a73ebdec18e122d60d5c5de563b74f9f2559d2564d8e8b5a00c16c1f769df4';
-  static const bytes = 28459238;
-  static const url =
+/// A voice model file, as published. Both take 8 kHz in and give 48 kHz out.
+class VoxVoiceModelSpec {
+  const VoxVoiceModelSpec({
+    required this.name,
+    required this.sha256Hex,
+    required this.bytes,
+    required this.tag,
+    required this.dir,
+  });
+  final String name;
+  final String sha256Hex;
+  final int bytes;
+
+  /// This repo's release it's published in.
+  final String tag;
+
+  /// Folder under the app's support directory.
+  final String dir;
+
+  String get url =>
       'https://github.com/jade-on-mesh/meshcore-open-tak/releases/download/'
-      'voice-bwe-onnx-v1/$name';
+      '$tag/$name';
+}
+
+/// The voice model and its shape.
+class VoxVoiceEnhanceModel {
+  /// The folder the old treble-only enhancer was kept in (deleted).
+  static const oldEnhancerDir = 'vox_voice_bwe';
+
+  /// The voice restorer (the whole voice), trained with tools/voice-training.
+  static const restorer = VoxVoiceModelSpec(
+    name: 'codec2-restorer-8k-48k.onnx',
+    sha256Hex:
+        'abc0e80e32a83a4fc964cdba62ad0288a86f34c7ac2eb32c3465e9f4d5f3578e',
+    bytes: 28318025,
+    tag: 'voice-restorer-onnx-v1',
+    dir: 'vox_voice_restorer',
+  );
 
   /// Output samples per input sample (8 kHz in, 48 kHz out).
   static const upsample = 6;
@@ -79,17 +109,37 @@ Int16List voxEnhanceOutput(List<num> audio, int samples8k) {
 
 enum VoxVoiceEnhanceState { missing, downloading, ready, failed }
 
-/// Download state and inference for the voice enhancer. One per app.
+/// Download state and inference for one voice model. One of each per app.
 class VoxVoiceEnhancer extends ChangeNotifier {
-  VoxVoiceEnhancer._() {
+  VoxVoiceEnhancer._(this.spec) {
     unawaited(refresh());
   }
-  static final VoxVoiceEnhancer instance = VoxVoiceEnhancer._();
+
+  /// The voice restorer: rebuilds the whole voice.
+  static final VoxVoiceEnhancer restorer = VoxVoiceEnhancer._(
+    VoxVoiceEnhanceModel.restorer,
+  );
+
+  final VoxVoiceModelSpec spec;
+
+  /// Deletes the old treble-only enhancer's model (~28 MB) from phones that
+  /// downloaded it; the restorer replaced it.
+  static Future<void> deleteOldEnhancer() async {
+    if (!supported) return;
+    try {
+      final base = await getApplicationSupportDirectory();
+      final d = Directory(
+        '${base.path}${Platform.pathSeparator}'
+        '${VoxVoiceEnhanceModel.oldEnhancerDir}',
+      );
+      if (await d.exists()) await d.delete(recursive: true);
+    } catch (_) {}
+  }
 
   /// Whether this build can run the model at all (no ONNX Runtime on web).
   static bool get supported => !kIsWeb;
 
-  static int get downloadMb => (VoxVoiceEnhanceModel.bytes / 1e6).round();
+  int get downloadMb => (spec.bytes / 1e6).round();
 
   VoxVoiceEnhanceState _state = VoxVoiceEnhanceState.missing;
   double _progress = 0;
@@ -105,19 +155,16 @@ class VoxVoiceEnhancer extends ChangeNotifier {
   Future<File> _file() async {
     if (_path != null) return _path!;
     final base = await getApplicationSupportDirectory();
-    final d = Directory('${base.path}${Platform.pathSeparator}vox_voice_bwe');
+    final d = Directory('${base.path}${Platform.pathSeparator}${spec.dir}');
     if (!await d.exists()) await d.create(recursive: true);
-    return _path = File(
-      '${d.path}${Platform.pathSeparator}${VoxVoiceEnhanceModel.name}',
-    );
+    return _path = File('${d.path}${Platform.pathSeparator}${spec.name}');
   }
 
   Future<void> refresh() async {
     if (!supported || _state == VoxVoiceEnhanceState.downloading) return;
     try {
       final f = await _file();
-      _state =
-          await f.exists() && await f.length() == VoxVoiceEnhanceModel.bytes
+      _state = await f.exists() && await f.length() == spec.bytes
           ? VoxVoiceEnhanceState.ready
           : VoxVoiceEnhanceState.missing;
     } catch (_) {
@@ -143,9 +190,7 @@ class VoxVoiceEnhancer extends ChangeNotifier {
     try {
       final dest = await _file();
       part = File('${dest.path}.part');
-      final resp = await client.send(
-        http.Request('GET', Uri.parse(VoxVoiceEnhanceModel.url)),
-      );
+      final resp = await client.send(http.Request('GET', Uri.parse(spec.url)));
       if (resp.statusCode != 200) {
         throw HttpException('HTTP ${resp.statusCode}');
       }
@@ -156,14 +201,14 @@ class VoxVoiceEnhancer extends ChangeNotifier {
           if (_cancel) throw const _Cancelled();
           sink.add(c);
           done += c.length;
-          _progress = done / VoxVoiceEnhanceModel.bytes;
+          _progress = done / spec.bytes;
           notifyListeners();
         }
       } finally {
         await sink.close();
       }
       final digest = await sha256.bind(part.openRead()).first;
-      if (digest.toString() != VoxVoiceEnhanceModel.sha256Hex) {
+      if (digest.toString() != spec.sha256Hex) {
         throw StateError('the download failed its checksum');
       }
       if (await dest.exists()) await dest.delete();
@@ -219,7 +264,7 @@ class VoxVoiceEnhancer extends ChangeNotifier {
   }
 
   Future<Int16List> _enhance(Int16List pcm8k) async {
-    if (!isReady) throw StateError('The voice enhancer is not downloaded');
+    if (!isReady) throw StateError('${spec.name} is not downloaded');
     _idle?.cancel();
     final session = _session ??= await _runtime.createSession(
       (await _file()).path,
