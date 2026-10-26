@@ -136,3 +136,29 @@ Duration voxStallBackoff(Duration wait, int stalls) {
 }
 
 const Duration voxStallBackoffCap = Duration(minutes: 4);
+
+/// A stock repeater's relay of a flooded packet: its random wait (up to 2.5
+/// airtimes, maybe at a slower coding rate: the 1.15) and the airtime itself.
+int voxRelayMs(int airMs) => (airMs + 2.5 * airMs * 1.15).round();
+
+/// The gap between flooded channel packets answering a listener [hops]
+/// repeaters away. Each packet floods out through every repeater on the way,
+/// so the next waits for the last one's relays near us to clear: three
+/// relays' worth at most (farther ones reuse the channel), and never more
+/// than twice the 1-hop gap. A 4-hop MediaMesh photo sent 800 ms apart lost
+/// all but one packet of each answer. Mirrored in Wadamesh
+/// (VoxServe::packetGap, VoxFetch::packetGap).
+int voxFloodGapMs(int airMs, int hops) {
+  final base = max(800, airMs * 4 + 150);
+  if (hops < 2) return base;
+  final g = min(airMs + min(hops, 3) * voxRelayMs(airMs), 2 * base);
+  return max(g, base);
+}
+
+/// How long a flooded request keeps being relayed around the one answering
+/// after it's heard [hops] repeaters from its sender: a relay per hop, up to
+/// four. Answer packets sent into that are lost, at repeaters that hear both
+/// (the first packets of every answer to a 4-hop listener were). Mirrored in
+/// Wadamesh (VoxServe::floodSettleMs).
+int voxFloodSettleMs(int airMs, int hops) =>
+    hops.clamp(0, 4) * voxRelayMs(airMs);

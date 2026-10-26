@@ -2747,9 +2747,15 @@ class VoxVoiceService extends ChangeNotifier {
       // its own. Meanwhile, packets heard from another holder come off the
       // list (_noteHeard). Kept short: the one asking is watching a spinner.
       // A push answers no request and goes at once.
+      // Then a relay's time for each hop the farthest request came (up to
+      // four): its flood is still being relayed around us, by repeaters we
+      // may not hear but our next hop does, and a packet sent into that is
+      // lost. A 4-hop MediaMesh photo lost the first packets of every answer
+      // (#1 never arrived in 14 asks) with only the 0.5-1 s gather.
       if (!burst.pushing) {
         await Future<void>.delayed(
-          Duration(milliseconds: 500 + _rng.nextInt(500)),
+          Duration(milliseconds: 500 + _rng.nextInt(500)) +
+              _floodSettle(burst.maxHops),
         );
       }
       final held = _heldPackets(burst.sid);
@@ -2802,7 +2808,9 @@ class VoxVoiceService extends ChangeNotifier {
         _lastChannelPacket[burst.sid] = DateTime.now();
         if (burst.pending.isNotEmpty) {
           await Future<void>.delayed(
-            zeroHop ? _zeroHopGap() : _packetGap(flood: true),
+            zeroHop
+                ? _zeroHopGap()
+                : _packetGap(flood: true, hops: burst.maxHops),
           );
         }
       }
@@ -2844,6 +2852,11 @@ class VoxVoiceService extends ChangeNotifier {
     seen: Duration(milliseconds: clip.rxGapMs),
     samples: clip.rxGaps,
     floor: _zeroHopGap(),
+  );
+
+  /// See [voxFloodSettleMs].
+  Duration _floodSettle(int hops) => Duration(
+    milliseconds: voxFloodSettleMs(_packetAir().inMilliseconds, hops),
   );
 
   Duration _zeroHopGap() =>
@@ -3242,13 +3255,7 @@ class VoxVoiceService extends ChangeNotifier {
   /// answer. Mirrored in Wadamesh (VoxServe::packetGap), which sends them.
   Duration _packetGap({required bool flood, int hops = 0}) {
     final air = _packetAir().inMilliseconds;
-    if (flood) {
-      final base = max(800, air * 4 + 150);
-      if (hops < 2) return Duration(milliseconds: base);
-      final relay = (air + 2.5 * air * 1.15).round();
-      final g = min(air + min(hops, 3) * relay, 2 * base);
-      return Duration(milliseconds: max(g, base));
-    }
+    if (flood) return Duration(milliseconds: voxFloodGapMs(air, hops));
     if (hops <= 0) return Duration(milliseconds: max(400, air * 2 + 150));
     final relayAir = air * 1.15;
     final h = min(hops, 2);

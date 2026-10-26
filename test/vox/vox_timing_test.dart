@@ -120,4 +120,19 @@ void main() {
     expect(voxStallBackoff(w, 9), const Duration(microseconds: 227812500));
     expect(voxStallBackoff(w, 12), voxStallBackoffCap);
   });
+
+  test('flooded channel answers wait and pace by the hops to the listener', () {
+    // MediaMesh 250 kHz: 157 ms a packet; a relay is 157 + 2.5 * 180.55.
+    expect(voxRelayMs(157), 608);
+    expect(voxFloodGapMs(157, 0), 800);
+    expect(voxFloodGapMs(157, 1), 800);
+    expect(voxFloodGapMs(157, 4), 1600); // capped at twice
+    expect(voxFloodSettleMs(157, 0), 0);
+    expect(voxFloodSettleMs(157, 4), 4 * 608);
+    expect(voxFloodSettleMs(157, 9), 4 * 608);
+    // The main mesh's slower packets: the same as Wadamesh's host test.
+    expect(voxFloodGapMs(500, 1), 2150);
+    expect(voxFloodGapMs(500, 4), 4300);
+    expect(voxFloodSettleMs(500, 1), 1938);
+  });
 }
