@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meshcore_open/services/radio_import.dart';
 
@@ -152,6 +153,62 @@ void main() {
       ),
     })!;
     expect(noPublic.channels.map((c) => c?.name), [null, null, 'Team']);
+  });
+
+  test("MeshCore One's app backup (.mc1backup)", () {
+    final env = {
+      'appBuild': '1',
+      'appVersion': '1.0',
+      'channels': [
+        {
+          'index': 0,
+          'name': 'Public',
+          'radioID': 'A',
+          'secret': base64Encode(radioImportPublicSecret),
+        },
+        {
+          'index': 2,
+          'name': '#hike',
+          'radioID': 'A',
+          'secret': base64Encode(List.filled(16, 0xF0)),
+        },
+        {
+          'index': 1,
+          'name': 'Other radio',
+          'radioID': 'B',
+          'secret': base64Encode(List.filled(16, 1)),
+        },
+      ],
+      'contacts': [
+        {
+          'radioID': 'A',
+          'publicKey': base64Encode(List.filled(32, 0x44)),
+          'name': 'Dave',
+          'nickname': 'Davey',
+          'typeRawValue': 1,
+          'flags': 0,
+          'latitude': 47.5,
+          'longitude': -122.25,
+          'lastAdvertTimestamp': 1761500000,
+          'lastModified': 1761500001,
+        },
+      ],
+      'devices': [
+        {'radioID': 'A', 'nodeName': 'Tiamat'},
+      ],
+      'version': 1,
+    };
+    final packed = Uint8List.fromList(
+      Deflate(utf8.encode(jsonEncode(env))).getBytes(),
+    );
+    final imp = parseRadioImport({'Backup.mc1backup': packed})!;
+    expect(imp.source, RadioImportSource.meshCoreOne);
+    expect(imp.name, 'Tiamat');
+    expect(imp.hasIdentity, isFalse);
+    expect(imp.channels.map((c) => c?.name), ['Public', null, '#hike']);
+    expect(imp.contacts.single.name, 'Davey');
+    expect(imp.contacts.single.lastAdvert, 1761500000);
+    expect(parseRadioImport({'x.mc1backup': Uint8List(8)}), isNull);
   });
 
   test('anything else is not an import', () {

@@ -202,6 +202,8 @@ One-tap device operations:
 | From | Pick | What it holds |
 |---|---|---|
 | The MeshCore app, Wadamesh TAK, Wadamesh, Squatch Mesh | Their backup, `meshcore-backup.json` | Name and key, channels, contacts |
+| MeshCore One | Its node config export (a `.json`) | Name and key, channels, contacts |
+| MeshCore One | Its app backup, a `.mc1backup` | Name, channels, contacts (no key: use the node config export for that) |
 | MeshCore Open | Its contacts export (Discovered contacts > Export) | Contacts |
 | Squatch Mesh | From its SD card's `/inw` folder: `identity/_main.id`, `contacts3`, `channels2` | Key and name, channels, contacts |
 | MeshPunk | From its SD card's `/meshpunk` folder: `identity`, `contacts.bin`, `channels` | Key, channels (Public too unless deleted there), contacts |
@@ -210,7 +212,7 @@ One-tap device operations:
 - **Channels** go in the same slots; slots the import leaves empty stay as they are.
 - **Contacts** are added, or updated if the radio has them. Routes are found again as you talk.
 
-MeshCore One, Ripple and MeshOS aren't supported yet: their files aren't documented.
+Ripple and MeshOS aren't supported yet: their files aren't documented.
 
 ## Export
 

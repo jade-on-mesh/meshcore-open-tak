@@ -6646,6 +6646,9 @@ class AppLocalizationsUk extends AppLocalizations {
       'MeshCore backup (MeshCore app, Wadamesh TAK, Squatch Mesh)';
 
   @override
+  String get radioImport_sourceMeshCoreOne => 'MeshCore One backup';
+
+  @override
   String get radioImport_sourceOpenContacts => 'MeshCore Open contacts';
 
   @override

@@ -8,18 +8,24 @@
 //   - Squatch Mesh's SD-card files (/inw): MeshCore's companion files
 //     identity/_main.id, contacts3 (152-byte records), channels2 (68-byte);
 //   - MeshPunk's SD-card files (/meshpunk): identity, contacts.bin (143-byte
-//     records) and channels (text: slot, name, secret hex).
+//     records) and channels (text: slot, name, secret hex);
+//   - MeshCore One's app backup (.mc1backup): raw-deflated JSON with base64
+//     keys. It holds contacts and channels but no private key (MeshCore One's
+//     "node config" export is the MeshCore backup JSON above, with the key).
 // The same formats Wadamesh TAK reads (src/helpers/ForeignImport.h there).
 // Pure Dart, no I/O: the screen picks the files, the connector applies it.
 
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
+
 enum RadioImportSource {
   meshcoreBackup,
   meshcoreOpenContacts,
   squatchMesh,
   meshPunk,
+  meshCoreOne,
 }
 
 class RadioImportChannel {
@@ -94,6 +100,10 @@ final Uint8List radioImportPublicSecret = _hex(
 /// firmware's folder (any of them).
 RadioImport? parseRadioImport(Map<String, Uint8List> files) {
   final names = {for (final k in files.keys) _base(k): files[k]!};
+  final mc1 = names.entries.where(
+    (e) => e.key.toLowerCase().endsWith('.mc1backup'),
+  );
+  if (mc1.isNotEmpty) return _parseMeshCoreOne(mc1.first.value);
   final json = names.entries.where(
     (e) => e.key.toLowerCase().endsWith('.json'),
   );
@@ -186,6 +196,92 @@ RadioImport? _parseJson(Uint8List bytes) {
     }
   }
   return out;
+}
+
+/// MeshCore One's .mc1backup: Apple's zlib (raw DEFLATE) around sorted-keys
+/// JSON. A backup can hold several radios; the one with the most contacts is
+/// taken.
+RadioImport? _parseMeshCoreOne(Uint8List bytes) {
+  Object? doc;
+  try {
+    // Raw DEFLATE; skip a zlib header if a tool added one.
+    final zlib =
+        bytes.length > 2 &&
+        bytes[0] & 0x0F == 8 &&
+        (bytes[0] << 8 | bytes[1]) % 31 == 0;
+    final raw = Inflate(zlib ? bytes.sublist(2) : bytes).getBytes();
+    doc = jsonDecode(utf8.decode(raw, allowMalformed: true));
+  } catch (_) {
+    return null;
+  }
+  if (doc is! Map) return null;
+  final contacts = doc['contacts'] is List ? doc['contacts'] as List : const [];
+  final channels = doc['channels'] is List ? doc['channels'] as List : const [];
+  final devices = doc['devices'] is List ? doc['devices'] as List : const [];
+  final perRadio = <Object?, int>{};
+  for (final c in contacts) {
+    if (c is Map) perRadio[c['radioID']] = (perRadio[c['radioID']] ?? 0) + 1;
+  }
+  for (final c in channels) {
+    if (c is Map) perRadio.putIfAbsent(c['radioID'], () => 0);
+  }
+  if (perRadio.isEmpty) return null;
+  final radio = perRadio.entries
+      .reduce((a, b) => b.value > a.value ? b : a)
+      .key;
+
+  final out = RadioImport(RadioImportSource.meshCoreOne);
+  for (final d in devices) {
+    if (d is Map && d['radioID'] == radio) {
+      final n = d['nodeName'];
+      if (n is String && n.isNotEmpty) out.name = n;
+    }
+  }
+  final bySlot = <int, RadioImportChannel>{};
+  for (final c in channels) {
+    if (c is! Map || c['radioID'] != radio) continue;
+    final slot = _int(c['index'], -1);
+    final n = c['name'];
+    final key = _b64(c['secret']);
+    if (slot < 0 || slot >= 64 || n is! String || n.isEmpty) continue;
+    if (key == null || key.length < 16) continue;
+    bySlot[slot] = RadioImportChannel(n, Uint8List.fromList(key.sublist(0, 16)));
+  }
+  if (bySlot.isNotEmpty) {
+    final last = bySlot.keys.reduce((a, b) => a > b ? a : b);
+    for (var i = 0; i <= last; i++) {
+      out.channels.add(bySlot[i]);
+    }
+  }
+  for (final c in contacts) {
+    if (c is! Map || c['radioID'] != radio) continue;
+    final key = _b64(c['publicKey']);
+    if (key == null || key.length != 32) continue;
+    final nick = c['nickname'];
+    final n = nick is String && nick.isNotEmpty ? nick : c['name'];
+    out.contacts.add(
+      RadioImportContact(
+        publicKey: key,
+        name: n is String ? n : '',
+        type: _int(c['typeRawValue'], 1),
+        flags: _int(c['flags'], 0),
+        latitude: _double(c['latitude']),
+        longitude: _double(c['longitude']),
+        lastAdvert: _int(c['lastAdvertTimestamp'], 0),
+        lastModified: _int(c['lastModified'], 0),
+      ),
+    );
+  }
+  return out.isEmpty ? null : out;
+}
+
+Uint8List? _b64(Object? v) {
+  if (v is! String) return null;
+  try {
+    return base64Decode(v);
+  } catch (_) {
+    return null;
+  }
 }
 
 RadioImport? _parseOpenContacts(List<dynamic> list) {

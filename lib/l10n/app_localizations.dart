@@ -11119,6 +11119,12 @@ abstract class AppLocalizations {
   /// **'MeshCore backup (MeshCore app, Wadamesh TAK, Squatch Mesh)'**
   String get radioImport_sourceBackup;
 
+  /// No description provided for @radioImport_sourceMeshCoreOne.
+  ///
+  /// In en, this message translates to:
+  /// **'MeshCore One backup'**
+  String get radioImport_sourceMeshCoreOne;
+
   /// No description provided for @radioImport_sourceOpenContacts.
   ///
   /// In en, this message translates to:

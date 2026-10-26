@@ -23,6 +23,7 @@ String radioImportSourceLabel(BuildContext context, RadioImportSource s) {
       l10n.radioImport_sourceOpenContacts,
     RadioImportSource.squatchMesh => l10n.radioImport_sourceSquatch,
     RadioImportSource.meshPunk => l10n.radioImport_sourceMeshPunk,
+    RadioImportSource.meshCoreOne => l10n.radioImport_sourceMeshCoreOne,
   };
 }
 
