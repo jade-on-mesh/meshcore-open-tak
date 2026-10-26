@@ -514,6 +514,7 @@ void showVoxVoiceLog(BuildContext context, VoxVoiceService service) {
                   ),
                   const Divider(height: 1),
                   VoxMimiTile(service: service),
+                  VoxEnhanceVoiceTile(service: service, restore: true),
                   VoxEnhanceVoiceTile(service: service),
                   VoxCodec2QualityTile(service: service),
                   VoxAutoPlayTile(service: service),
@@ -927,10 +928,16 @@ class VoxMimiTile extends StatelessWidget {
   }
 }
 
-/// AI voice enhancement: download / progress / on-off.
+/// AI voice enhancement: download / progress / on-off. [restore] for the
+/// voice restorer (the whole voice), else the enhancer (the treble).
 class VoxEnhanceVoiceTile extends StatelessWidget {
   final VoxVoiceService service;
-  const VoxEnhanceVoiceTile({super.key, required this.service});
+  final bool restore;
+  const VoxEnhanceVoiceTile({
+    super.key,
+    required this.service,
+    this.restore = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -938,8 +945,10 @@ class VoxEnhanceVoiceTile extends StatelessWidget {
     return ListenableBuilder(
       listenable: service,
       builder: (context, _) {
-        final e = service.enhancer;
-        final size = '${VoxVoiceEnhancer.downloadMb} MB';
+        final e = restore ? service.restorer : service.enhancer;
+        final size = '${e.downloadMb} MB';
+        final what = restore ? 'voice restorer' : 'voice enhancer';
+        final icon = restore ? Icons.record_voice_over : Icons.auto_awesome;
         switch (e.state) {
           case VoxVoiceEnhanceState.ready:
             return GestureDetector(
@@ -947,9 +956,12 @@ class VoxEnhanceVoiceTile extends StatelessWidget {
                 final ok = await showDialog<bool>(
                   context: context,
                   builder: (c) => AlertDialog(
-                    title: const Text('Delete voice enhancer?'),
+                    title: Text('Delete $what?'),
                     content: Text(
-                      'Frees $size. Codec2 clips will play as decoded.',
+                      restore
+                          ? 'Frees $size. Codec2 clips will play through the '
+                                'voice enhancer, or as decoded.'
+                          : 'Frees $size. Codec2 clips will play as decoded.',
                     ),
                     actions: [
                       TextButton(
@@ -966,23 +978,33 @@ class VoxEnhanceVoiceTile extends StatelessWidget {
                 if (ok == true) await e.deleteModel();
               },
               child: SwitchListTile(
-                secondary: const Icon(Icons.auto_awesome),
-                title: const Text('Enhance Codec2 voice (AI)'),
-                subtitle: const Text(
-                  'Fills in the treble Codec2 leaves out, so voices sound '
-                  'less muffled. What was received plays as it is; the added '
-                  'band is generated. Long-press to delete the model.',
+                secondary: Icon(icon),
+                title: Text(
+                  restore
+                      ? 'Restore Codec2 voice (AI)'
+                      : 'Enhance Codec2 voice (AI)',
                 ),
-                value: service.enhanceVoice,
-                onChanged: service.setEnhanceVoice,
+                subtitle: Text(
+                  restore
+                      ? 'Rebuilds the whole voice from Codec2: less buzzy and '
+                            'robotic, with the treble filled in. Used instead '
+                            'of the enhancer while on. Long-press to delete '
+                            'the model.'
+                      : 'Fills in the treble Codec2 leaves out, so voices '
+                            'sound less muffled. What was received plays as '
+                            'it is; the added band is generated. Long-press '
+                            'to delete the model.',
+                ),
+                value: restore ? service.restoreVoice : service.enhanceVoice,
+                onChanged: restore
+                    ? service.setRestoreVoice
+                    : service.setEnhanceVoice,
               ),
             );
           case VoxVoiceEnhanceState.downloading:
             return ListTile(
               leading: const Icon(Icons.downloading),
-              title: Text(
-                'Downloading voice enhancer ${(e.progress * 100).round()}%',
-              ),
+              title: Text('Downloading $what ${(e.progress * 100).round()}%'),
               subtitle: LinearProgressIndicator(value: e.progress),
               trailing: TextButton(
                 onPressed: e.cancelDownload,
@@ -992,11 +1014,15 @@ class VoxEnhanceVoiceTile extends StatelessWidget {
           case VoxVoiceEnhanceState.missing:
           case VoxVoiceEnhanceState.failed:
             return ListTile(
-              leading: const Icon(Icons.auto_awesome),
-              title: const Text('AI voice enhancer'),
+              leading: Icon(icon),
+              title: Text(restore ? 'AI voice restorer' : 'AI voice enhancer'),
               subtitle: Text(
                 e.state == VoxVoiceEnhanceState.failed
                     ? 'Download failed: ${e.error}. Tap Get to retry.'
+                    : restore
+                    ? 'Makes Codec2 clips sound clearer and less robotic on '
+                          'this phone. One-time $size download (Wi-Fi '
+                          'recommended).'
                     : 'Makes Codec2 clips sound less muffled on this phone. '
                           'One-time $size download (Wi-Fi recommended).',
               ),

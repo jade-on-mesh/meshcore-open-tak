@@ -99,10 +99,18 @@ enhancer** downloaded, Codec2 clips play with that upper band filled in, at
   cores, so a 20-second clip takes a second or so before it plays; the result
   is kept with the clip's decoded audio.
 - **Where.** Android, Windows, macOS and Linux. Not on the web build.
+- **Voice restorer.** A second choice beside the enhancer: **AI voice
+  restorer** → **Get** (about 28 MB, once), then **Restore Codec2 voice (AI)**.
+  It is the same network fine-tuned on Codec2 itself (VCTK speech, CC-BY-4.0,
+  378,673 steps), with the 4 kHz merge off, so it rebuilds the whole voice:
+  less buzzy and robotic below 4 kHz as well as the treble above. With both on,
+  clips play through the restorer. It is published as the
+  `voice-restorer-onnx-v1` release, checked by SHA-256, and runs at the same
+  speed. Both models are fetched on Wi-Fi the first time the app opens.
 - **Training your own.** `tools/voice-training` is a kit for a gaming PC (on
   Windows, unzip it and double-click START.bat). It fine-tunes this model into
-  a restorer that also cleans up Codec2's sound below 4 kHz, and trains the
-  tiny net Wadamesh TAK standalones can use for Brighter voice.
+  the restorer, and trains the tiny net Wadamesh TAK standalones can use for
+  Brighter voice.
 
 ## Enhance (MeshCore Open TAK)
 
