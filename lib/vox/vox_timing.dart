@@ -48,9 +48,8 @@ Duration voxStallWait(Duration packetGap) =>
 /// one more gap, plus half a gap (at least 400 ms) for a repeater's wait:
 /// a lost tail of one packet is asked for after about two gaps, not three
 /// and a second. Mirrored in Wadamesh (VoxFetch::markedWait).
-int voxMarkedWaitMs(int left, int gapMs) => left <= 0
-    ? 300
-    : (left + 1) * gapMs + max(400, gapMs ~/ 2);
+int voxMarkedWaitMs(int left, int gapMs) =>
+    left <= 0 ? 300 : (left + 1) * gapMs + max(400, gapMs ~/ 2);
 
 /// How long a request waits for its first packet before asking again.
 ///

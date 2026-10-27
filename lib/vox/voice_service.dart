@@ -2646,7 +2646,9 @@ class VoxVoiceService extends ChangeNotifier {
     final parts = <String>[
       'asked ${_secs(DateTime.now().difference(asked))} ago',
       clip.answeredSinceAsk
-          ? (clip.rxGaps > 0 ? 'packets ~${clip.rxGapMs} ms apart' : 'one packet came')
+          ? (clip.rxGaps > 0
+                ? 'packets ~${clip.rxGapMs} ms apart'
+                : 'one packet came')
           : 'nothing came',
     ];
     return ' (${parts.join('; ')})';
@@ -2891,18 +2893,19 @@ class VoxVoiceService extends ChangeNotifier {
           // Marked (0x58) when every listener asked reads it: the packets
           // still to come of this answer, so they know when it's over.
           final mark = burst.saltOk && burst.markOk && !burst.pushing;
-          payload = VoxVoicePacket(
-            sessionId: burst.sid,
-            index: index,
-            codecData: data,
-          ).encode(
-            salt: !burst.saltOk
-                ? null
-                : mark
-                ? _nextMarkSend(burst.sid, index)
-                : _rng.nextInt(256),
-            left: mark ? burst.pending.length : null,
-          );
+          payload =
+              VoxVoicePacket(
+                sessionId: burst.sid,
+                index: index,
+                codecData: data,
+              ).encode(
+                salt: !burst.saltOk
+                    ? null
+                    : mark
+                    ? _nextMarkSend(burst.sid, index)
+                    : _rng.nextInt(256),
+                left: mark ? burst.pending.length : null,
+              );
           if (mark) markedSent++;
         }
         final zeroHop = burst.maxHops == 0;
@@ -3692,7 +3695,11 @@ class VoxVoiceService extends ChangeNotifier {
     unawaited(_sendTransferReport(w, report.encode(), sid));
   }
 
-  Future<void> _sendTransferReport(_TestWatch w, String text, String sid) async {
+  Future<void> _sendTransferReport(
+    _TestWatch w,
+    String text,
+    String sid,
+  ) async {
     final ci = w.channelIndex;
     // After the answer's last packets have cleared, and on a channel spread
     // out, so many receivers' reports don't collide.

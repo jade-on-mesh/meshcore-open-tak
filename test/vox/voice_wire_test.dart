@@ -593,7 +593,10 @@ void main() {
       expect(back.codecData, codec);
       // Many to come: capped at 63. Resends differ.
       expect(VoxVoicePacket.tryParse(p.encode(salt: 0, left: 200))!.left, 63);
-      expect(p.encode(salt: 0, left: 0), isNot(equals(p.encode(salt: 1, left: 0))));
+      expect(
+        p.encode(salt: 0, left: 0),
+        isNot(equals(p.encode(salt: 1, left: 0))),
+      );
       // Plain and salted packets carry no count.
       expect(VoxVoicePacket.tryParse(p.encode())!.left, isNull);
       expect(VoxVoicePacket.tryParse(p.encode(salt: 3))!.left, isNull);

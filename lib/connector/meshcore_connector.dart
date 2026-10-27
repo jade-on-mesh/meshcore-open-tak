@@ -910,7 +910,11 @@ class MeshCoreConnector extends ChangeNotifier {
   bool Function(int channelIndex, String senderName, String text)?
   voxChannelControlInterceptor;
 
-  bool _interceptChannelText(int channelIndex, String senderName, String text) =>
+  bool _interceptChannelText(
+    int channelIndex,
+    String senderName,
+    String text,
+  ) =>
       (teamCompatTextInterceptor?.call(channelIndex, senderName, text) ??
           false) ||
       (voxChannelControlInterceptor?.call(channelIndex, senderName, text) ??

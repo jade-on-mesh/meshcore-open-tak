@@ -685,9 +685,7 @@ Future<void> _showTransferProgress(
       builder: (context, snap) {
         final lines = snap.data;
         if (lines != null) {
-          return SingleChildScrollView(
-            child: SelectableText(lines.join('\n')),
-          );
+          return SingleChildScrollView(child: SelectableText(lines.join('\n')));
         }
         return ValueListenableBuilder<String?>(
           valueListenable: service.transferTestStatus,
@@ -701,9 +699,7 @@ Future<void> _showTransferProgress(
                 const SizedBox(width: 16),
               ],
               Expanded(
-                child: Text(
-                  status ?? 'Done: the results are in the log.',
-                ),
+                child: Text(status ?? 'Done: the results are in the log.'),
               ),
             ],
           ),
@@ -725,8 +721,9 @@ Future<void> _showTransferProgress(
         builder: (context, snap) => snap.data == null
             ? const SizedBox.shrink()
             : TextButton(
-                onPressed: () =>
-                    Clipboard.setData(ClipboardData(text: snap.data!.join('\n'))),
+                onPressed: () => Clipboard.setData(
+                  ClipboardData(text: snap.data!.join('\n')),
+                ),
                 child: const Text('Copy'),
               ),
       ),

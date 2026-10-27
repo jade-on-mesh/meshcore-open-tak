@@ -23,8 +23,10 @@ String voxTransferTestCaption(int index, int count) =>
 
 /// True for a caption [voxTransferTestCaption] made (a location tag after it
 /// is allowed).
-bool voxIsTransferTestCaption(String caption) =>
-    RegExp(r'^Transfer test \d+/\d+ ' '$voxTransferTestMark').hasMatch(caption);
+bool voxIsTransferTestCaption(String caption) => RegExp(
+  r'^Transfer test \d+/\d+ '
+  '$voxTransferTestMark',
+).hasMatch(caption);
 
 /// One receiver's report on one test photo.
 class VoxTransferReport {
