@@ -268,7 +268,7 @@ Enable URL images per contact in Chat → overflow → Contact Settings, or per 
 
 The message sends a reference; image retrieval needs internet access and makes requests to the relevant host or gateway. This differs from [image packets transmitted over the mesh](image-messages.md). With previews disabled, the chat may indicate that a message contains a possible image URL.
 
-**App Settings → Download linked images on Wi-Fi** shows linked pictures in every chat while the phone is on Wi-Fi (or Ethernet), without turning URL images on chat by chat. On mobile data only the chats with URL images on show them. It's off by default, since loading a link tells the picture's server your address. Wadamesh TAK has the same option on standalones (Settings → General → Linked images).
+**App Settings → Download linked images on Wi-Fi** shows linked pictures in every chat while the phone is on Wi-Fi (or Ethernet), without turning URL images on chat by chat. On mobile data only the chats with URL images on show them. It's on by default; loading a link tells the picture's server your address, so turn it off if you'd rather not. Wadamesh TAK has the same option on standalones (Settings → General → Linked images).
 
 ## Regions, Mesh Images, and Radio Statistics
 

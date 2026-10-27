@@ -145,8 +145,9 @@ class AppSettings {
 
   /// Pictures linked in messages (a .jpg/.png/.gif/.webp/.bmp URL) load in
   /// every chat while the phone is on Wi-Fi, not only in the chats where
-  /// URL images are turned on. Off by default: loading a link tells that
-  /// server the phone's address.
+  /// URL images are turned on. On by default (the server the picture is on
+  /// sees the phone's address; turn it off to keep that). Stored under a new
+  /// key, so phones that saved the old default (off) get the new one.
   final bool linkedImagesOnWifi;
   final bool imageMessagesEnabled;
 
@@ -276,7 +277,7 @@ class AppSettings {
     this.tcpServerAddress = '',
     this.tcpServerPort = 0,
     this.jumpToOldestUnread = false,
-    this.linkedImagesOnWifi = false,
+    this.linkedImagesOnWifi = true,
     this.channelParticipantStripEnabled = false,
     this.imageMessagesEnabled = false,
     this.networkMapUploadEnabled = false,
@@ -368,7 +369,7 @@ class AppSettings {
       'tcp_server_address': tcpServerAddress,
       'tcp_server_port': tcpServerPort,
       'jump_to_oldest_unread': jumpToOldestUnread,
-      'linked_images_on_wifi': linkedImagesOnWifi,
+      'linked_images_wifi_auto': linkedImagesOnWifi,
       'channel_participant_strip_enabled': channelParticipantStripEnabled,
       'image_messages_enabled': imageMessagesEnabled,
       'network_map_upload_enabled': networkMapUploadEnabled,
@@ -503,7 +504,7 @@ class AppSettings {
       tcpServerAddress: json['tcp_server_address'] as String? ?? '',
       tcpServerPort: json['tcp_server_port'] as int? ?? 0,
       jumpToOldestUnread: json['jump_to_oldest_unread'] as bool? ?? false,
-      linkedImagesOnWifi: json['linked_images_on_wifi'] as bool? ?? false,
+      linkedImagesOnWifi: json['linked_images_wifi_auto'] as bool? ?? true,
       channelParticipantStripEnabled:
           json['channel_participant_strip_enabled'] as bool? ?? false,
       imageMessagesEnabled: json['image_messages_enabled'] as bool? ?? false,
