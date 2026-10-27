@@ -1,0 +1,28 @@
+name: Model links
+
+# Every model the app downloads (enhancer, voice restorer, Mimi, the AEIC HD
+# pack, translation, AEIC-SE) must be there before a build reaches a phone: the
+# enhancer once shipped pointing at a release that hadn't been published, and
+# every phone got HTTP 404. scripts/ci/check_model_links.py reads the links out
+# of lib/ and checks each one. Runs on every push, before the "Latest build" is
+# published (build.yml), and daily (a release or model taken down later).
+on:
+  push:
+  workflow_dispatch:
+  workflow_call:
+  schedule:
+    - cron: "17 14 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Every model link answers, at the size the app expects
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/ci/check_model_links.py .

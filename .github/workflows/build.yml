@@ -504,9 +504,14 @@ jobs:
     needs: [android]
     uses: ./.github/workflows/smoke.yml
 
+  # Every model the app downloads is published (model-links.yml): a build
+  # whose enhancer, restorer or codec link 404s isn't published.
+  model-links:
+    uses: ./.github/workflows/model-links.yml
+
   publish:
-    if: always() && github.ref == 'refs/heads/main' && needs.android.result == 'success' && needs.smoke.result == 'success'
-    needs: [android, smoke, windows, macos, linux]
+    if: always() && github.ref == 'refs/heads/main' && needs.android.result == 'success' && needs.smoke.result == 'success' && needs.model-links.result == 'success'
+    needs: [android, smoke, windows, macos, linux, model-links]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
