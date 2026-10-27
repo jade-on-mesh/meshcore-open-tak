@@ -574,4 +574,50 @@ void main() {
       expect(big.encode(salt: 255).length, lessThanOrEqualTo(162));
     });
   });
+
+  group('marked packets (end of answer)', () {
+    final codec = Uint8List.fromList(List.generate(156, (i) => i));
+    test('carry how many are to come, in the salt byte', () {
+      final p = VoxVoicePacket(
+        sessionId: '0a0b0c0d',
+        index: 7,
+        codecData: codec,
+      );
+      final b = p.encode(salt: 2, left: 5);
+      expect(b[0], voxVoicePacketMarkedMagic);
+      expect(b.length, p.encode(salt: 9).length); // the size of a salted one
+      expect(b.last, (2 << 6) | 5);
+      final back = VoxVoicePacket.tryParse(b)!;
+      expect(back.index, 7);
+      expect(back.left, 5);
+      expect(back.codecData, codec);
+      // Many to come: capped at 63. Resends differ.
+      expect(VoxVoicePacket.tryParse(p.encode(salt: 0, left: 200))!.left, 63);
+      expect(
+        p.encode(salt: 0, left: 0),
+        isNot(equals(p.encode(salt: 1, left: 0))),
+      );
+      // Plain and salted packets carry no count.
+      expect(VoxVoicePacket.tryParse(p.encode())!.left, isNull);
+      expect(VoxVoicePacket.tryParse(p.encode(salt: 3))!.left, isNull);
+    });
+
+    test('channel requests say they read them; raw ones never do', () {
+      const r = VoxVoiceFetchRequest(
+        sessionId: '0a0b0c0d',
+        requesterKey6: 'a1a2a3a4a5a6',
+        missingIndices: [1, 4],
+        saltOk: true,
+      );
+      // Raw: flags stay within 0x07, or Keymind sends it on the main mesh.
+      expect(r.encode()[5] & ~7, 0);
+      expect(VoxVoiceFetchRequest.tryParse(r.encode())!.markOk, isFalse);
+      final c = r.forChannel().encode();
+      expect(c[5] & voxFetchFlagMarkOk, voxFetchFlagMarkOk);
+      final back = VoxVoiceFetchRequest.tryParse(c)!;
+      expect(back.markOk, isTrue);
+      expect(back.missingIndices, [1, 4]);
+      expect(back.saltOk, isTrue);
+    });
+  });
 }

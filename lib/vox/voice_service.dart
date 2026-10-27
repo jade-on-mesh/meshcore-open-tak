@@ -48,6 +48,7 @@ import 'vox_voice_enhance.dart';
 import 'voice_wire.dart';
 import 'walkie_wire.dart';
 import 'vox_timing.dart';
+import 'transfer_test.dart';
 import '../utils/lora_airtime.dart';
 import 'wav.dart';
 import '../team/photo_mosaic_prefs.dart';
@@ -186,6 +187,11 @@ class _IncomingClip {
 
   /// Highest packet index asked for in the latest request (sent last).
   int expectedLast = -1;
+
+  /// When the last request went out, and whether a packet has come since
+  /// (for the log's timing: how long the answer took to start).
+  DateTime? askedAt;
+  bool answeredSinceAsk = false;
   Timer? watchdog;
 
   /// Some packet came through a repeater (or by a way that doesn't say):
@@ -236,6 +242,7 @@ class VoxVoiceService extends ChangeNotifier {
     : _store = store ?? VoxClipStore() {
     _sub = _connector.receivedFrames.listen(_onFrame);
     _connector.voxControlTextInterceptor = _onControlText;
+    _connector.voxChannelControlInterceptor = _onChannelControlText;
     _connector.voxIncomingTextObserver = _onIncomingText;
     unawaited(_loadTestSettings());
     unawaited(_loadReceivedVia());
@@ -592,6 +599,12 @@ class VoxVoiceService extends ChangeNotifier {
   }
 
   /// Chat contacts, for picking a link-test target.
+  /// The radio's channels that have a name (set up), for the transfer test.
+  List<Channel> get namedChannels => [
+    for (final c in _connector.channels)
+      if (c.name.trim().isNotEmpty) c,
+  ];
+
   List<Contact> get chatContacts {
     final list = [
       for (final c in _connector.contacts)
@@ -1399,6 +1412,8 @@ class VoxVoiceService extends ChangeNotifier {
     clip.attempts++;
     clip.lastMethod = method;
     clip.rxLast = null; // the next packet starts a new burst
+    clip.askedAt = DateTime.now();
+    clip.answeredSinceAsk = false;
     if (method == _Method.channel) clip.triedChannel = true;
     if (method == _Method.zeroHop) clip.triedZeroHop = true;
     final sc = clip.sender;
@@ -1527,7 +1542,7 @@ class VoxVoiceService extends ChangeNotifier {
             clip.envelope.sessionId,
           );
           final ok = await _connector.sendChannelDataBlobs(
-            [req.encode(salt: clip.salts.next())],
+            [req.forChannel().encode(salt: clip.salts.next())],
             channelIndex: clip.channelIndex!,
             dataType: voxChannelDataType,
             interChunkDelay: Duration.zero,
@@ -1621,7 +1636,8 @@ class VoxVoiceService extends ChangeNotifier {
     _logEvent(
       'timeout after ${clip.lastMethod?.name}: '
       '${clip.packets.length}/${clip.envelope.totalPackets} packets'
-      '${clip.isComplete ? '' : ', missing ${_indexList(clip.missing)}'}',
+      '${clip.isComplete ? '' : ', missing ${_indexList(clip.missing)}'}'
+      '${_askTiming(clip)}',
       clip.envelope.sessionId,
     );
     final sid = clip.envelope.sessionId;
@@ -1678,6 +1694,7 @@ class VoxVoiceService extends ChangeNotifier {
     clip.watchdog?.cancel();
     clip.status = VoxClipStatus.unavailable;
     clip.message = message;
+    _reportTransfer(clip);
     notifyListeners();
   }
 
@@ -2068,6 +2085,19 @@ class VoxVoiceService extends ChangeNotifier {
     final sender = senderKeyHex != null
         ? contactByKeyHex(senderKeyHex)
         : (senderName == null ? null : contactByName(senderName));
+    if (env.isImage && voxIsTransferTestCaption(env.caption)) {
+      // Someone's transfer test: fetched now, whatever the settings, and
+      // reported back when done.
+      if (_testWatch.length > 16) _testWatch.remove(_testWatch.keys.first);
+      _testWatch[sid] = _TestWatch(
+        DateTime.now(),
+        senderKeyHex: senderKeyHex,
+        channelIndex: channelIndex,
+      );
+      _logEvent('transfer test photo: downloading it now', sid);
+      unawaited(requestClip(env, sender: sender, channelIndex: channelIndex));
+      return;
+    }
     if (!_autoPlay) {
       // Not downloaded by itself: a photo's thumbnail still comes, from its
       // first two packets alone.
@@ -2190,7 +2220,7 @@ class VoxVoiceService extends ChangeNotifier {
           sid,
         );
         await _connector.sendChannelDataBlobs(
-          [req.encode(salt: clip.salts.next())],
+          [req.forChannel().encode(salt: clip.salts.next())],
           channelIndex: ch,
           dataType: voxChannelDataType,
           interChunkDelay: Duration.zero,
@@ -2270,7 +2300,11 @@ class VoxVoiceService extends ChangeNotifier {
             ? 'empty'
             : VoxVoicePacket.isVoicePacket(p)
             ? 'voice packet #${p.length > 5 ? p[5] : '?'}'
-                  '${p[0] == voxVoicePacketSaltedMagic ? ' (salted)' : ''}'
+                  '${p[0] == voxVoicePacketSaltedMagic
+                      ? ' (salted)'
+                      : p[0] == voxVoicePacketMarkedMagic
+                      ? ' (marked, ${p[p.length - 1] & 0x3F} to come)'
+                      : ''}'
             : p[0] == voxVoiceFetchMagic
             ? 'fetch request'
             : p[0] == _pingMagic
@@ -2330,6 +2364,7 @@ class VoxVoiceService extends ChangeNotifier {
     switch (payload[0]) {
       case voxVoicePacketMagic:
       case voxVoicePacketSaltedMagic:
+      case voxVoicePacketMarkedMagic:
         final pkt = VoxVoicePacket.tryParse(payload);
         if (pkt == null) return;
         if (channelIndex != null) {
@@ -2369,6 +2404,11 @@ class VoxVoiceService extends ChangeNotifier {
   }
 
   bool _onControlText(String senderKeyHex, String text) {
+    if (VoxTransferReport.looksLikeReport(text)) {
+      final c = contactByKeyHex(senderKeyHex);
+      _onTransferReport(text, c?.name ?? senderKeyHex.substring(0, 8));
+      return true;
+    }
     if (!VoxVoiceTextRequest.looksLikeRequest(text)) return false;
     final req = VoxVoiceTextRequest.tryParse(text);
     _logEvent(
@@ -2431,7 +2471,7 @@ class VoxVoiceService extends ChangeNotifier {
         sid,
       );
     }
-    _acceptPacket(clip, pkt.index, pkt.codecData);
+    _acceptPacket(clip, pkt.index, pkt.codecData, left: pkt.left);
   }
 
   void _acceptPacket(
@@ -2439,6 +2479,7 @@ class VoxVoiceService extends ChangeNotifier {
     int index,
     Uint8List data, {
     bool notify = true,
+    int? left,
   }) {
     if (clip.isComplete || index >= clip.envelope.totalPackets) return;
     final fresh = !clip.packets.containsKey(index);
@@ -2448,6 +2489,14 @@ class VoxVoiceService extends ChangeNotifier {
         (clip.status == VoxClipStatus.requesting ||
             clip.status == VoxClipStatus.receiving)) {
       clip.noteArrival(DateTime.now());
+      final asked = clip.askedAt;
+      if (!clip.answeredSinceAsk && asked != null) {
+        clip.answeredSinceAsk = true;
+        _logEvent(
+          'first packet ${_secs(DateTime.now().difference(asked))} after asking',
+          clip.envelope.sessionId,
+        );
+      }
     }
     final sid = clip.envelope.sessionId;
     if (clip.isComplete) {
@@ -2456,11 +2505,29 @@ class VoxVoiceService extends ChangeNotifier {
       _remember(sid, clip.envelope.mode, clip.joined());
       if (_viaMask.containsKey(sid)) unawaited(_saveReceivedVia());
       _onClipComplete(clip.envelope);
+      _reportTransfer(clip);
     } else if (clip.status == VoxClipStatus.requesting ||
         clip.status == VoxClipStatus.receiving) {
       clip.status = VoxClipStatus.receiving;
       clip.message = null;
-      if (index == clip.expectedLast) {
+      if (left != null) {
+        // A marked packet says how many of the answer are still to come: when
+        // none, it's over and the gaps are final; else the rest should take
+        // that many gaps, and no longer.
+        clip.watchdog?.cancel();
+        final gap = clip.rxGaps > 0
+            ? clip.rxGapMs
+            : _burstGap(clip).inMilliseconds;
+        final wait = Duration(milliseconds: voxMarkedWaitMs(left, gap));
+        if (left == 0) {
+          _logEvent(
+            'answer over (marked), ${clip.missing.length} missing; '
+            're-requesting in ${wait.inMilliseconds}ms',
+            sid,
+          );
+        }
+        clip.watchdog = Timer(wait, () => _onWatchdog(clip));
+      } else if (index == clip.expectedLast) {
         // The sender has sent its last packet, so the gaps are final: ask
         // for them again right away instead of waiting out the timeout.
         clip.watchdog?.cancel();
@@ -2572,6 +2639,24 @@ class VoxVoiceService extends ChangeNotifier {
     );
   }
 
+  /// " (asked 12.3 s ago; packets ~900 ms apart)" for the log.
+  static String _askTiming(_IncomingClip clip) {
+    final asked = clip.askedAt;
+    if (asked == null) return '';
+    final parts = <String>[
+      'asked ${_secs(DateTime.now().difference(asked))} ago',
+      clip.answeredSinceAsk
+          ? (clip.rxGaps > 0
+                ? 'packets ~${clip.rxGapMs} ms apart'
+                : 'one packet came')
+          : 'nothing came',
+    ];
+    return ' (${parts.join('; ')})';
+  }
+
+  static String _secs(Duration d) =>
+      '${(d.inMilliseconds / 1000).toStringAsFixed(1)} s';
+
   /// Packet indices as a short list: "#3-5, #10".
   static String _indexList(Iterable<int> indices) {
     final v = indices.toSet().toList()..sort();
@@ -2678,6 +2763,7 @@ class VoxVoiceService extends ChangeNotifier {
       key,
       () => _ChannelBurst(req.sessionId, channel),
     );
+    burst.askedAt ??= DateTime.now();
     final wanted = req.missingIndices ?? List<int>.generate(total, (i) => i);
     final before = burst.pending.length;
     burst.pending.addAll(
@@ -2689,6 +2775,7 @@ class VoxVoiceService extends ChangeNotifier {
       burst.addParity(total, image: held.image);
     }
     burst.saltOk = burst.saltOk && req.saltOk;
+    burst.markOk = burst.markOk && req.markOk;
     burst.maxHops = max(burst.maxHops, hops ?? 3);
     _logEvent(
       '${req.requesterKey6} asks for ${req.missingIndices == null ? 'all' : _indexList(wanted)} '
@@ -2712,7 +2799,8 @@ class VoxVoiceService extends ChangeNotifier {
 
   /// Listen before talk on MediaMesh (voxLbtHold): returns once radio2 has
   /// been quiet a packet's airtime and a random bit, or after 20 s of waiting.
-  Future<void> _radio2Quiet(String sid) async {
+  /// Returns how long it held the packet back, in ms (for the log).
+  Future<int> _radio2Quiet(String sid) async {
     final start = DateTime.now();
     final quiet = voxLbtQuietMs(
       _packetAir().inMilliseconds,
@@ -2728,7 +2816,7 @@ class VoxVoiceService extends ChangeNotifier {
         quietMs: quiet,
         waitedMs: now.difference(start).inMilliseconds,
       )) {
-        return;
+        return now.difference(start).inMilliseconds;
       }
       if (!noted) {
         noted = true;
@@ -2779,6 +2867,10 @@ class VoxVoiceService extends ChangeNotifier {
       // radio2's own listen-before-talk and the settle above cover it.)
       if (!burst.pushing && _mediaAir == null) await _waitBriefQuiet();
       var sent = 0;
+      var markedSent = 0;
+      var busyMs = 0;
+      DateTime? firstAt;
+      final startedAt = DateTime.now();
       final sentData = <int>[];
       var zeroHopSent = 0;
       var paritySent = 0;
@@ -2798,14 +2890,27 @@ class VoxVoiceService extends ChangeNotifier {
         } else {
           final data = held.packets[index];
           if (data == null) continue;
-          payload = VoxVoicePacket(
-            sessionId: burst.sid,
-            index: index,
-            codecData: data,
-          ).encode(salt: burst.saltOk ? _rng.nextInt(256) : null);
+          // Marked (0x58) when every listener asked reads it: the packets
+          // still to come of this answer, so they know when it's over.
+          final mark = burst.saltOk && burst.markOk && !burst.pushing;
+          payload =
+              VoxVoicePacket(
+                sessionId: burst.sid,
+                index: index,
+                codecData: data,
+              ).encode(
+                salt: !burst.saltOk
+                    ? null
+                    : mark
+                    ? _nextMarkSend(burst.sid, index)
+                    : _rng.nextInt(256),
+                left: mark ? burst.pending.length : null,
+              );
+          if (mark) markedSent++;
         }
         final zeroHop = burst.maxHops == 0;
-        await _radio2Quiet(burst.sid);
+        busyMs += await _radio2Quiet(burst.sid);
+        firstAt ??= DateTime.now();
         try {
           await _connector.sendChannelDataPacket(
             channelIndex: burst.channel,
@@ -2834,7 +2939,9 @@ class VoxVoiceService extends ChangeNotifier {
         '${paritySent > 0 ? ', $paritySent of them parity' : ''}'
         '${zeroHopSent > 0 ? ' ($zeroHopSent zero-hop)' : ''}'
         '${burst.suppressed > 0 ? '; ${burst.suppressed} left out, heard from another node' : ''}'
-        '${zeroHopSent < sent ? ', ${pace.gapMs(burst.maxHops)} ms apart after ${burst.pushing ? 0 : pace.settleMs(burst.maxHops)} ms' : ''}',
+        '${zeroHopSent < sent ? ', ${pace.gapMs(burst.maxHops)} ms apart after ${burst.pushing ? 0 : pace.settleMs(burst.maxHops)} ms' : ''}'
+        '${markedSent > 0 ? ', marked' : ''}'
+        '${_burstTiming(burst, firstAt, startedAt, busyMs)}',
         burst.sid,
       );
       // What listeners still lack after this tells the pace how it did.
@@ -2874,6 +2981,34 @@ class VoxVoiceService extends ChangeNotifier {
     floor: _zeroHopGap(),
   );
 
+  /// Sends of each packet in marked answers (mod 4), so a resend's trailing
+  /// byte differs from the copies repeaters have seen (voxVoicePacketMarkedMagic).
+  final Map<String, Map<int, int>> _markSends = {};
+
+  int _nextMarkSend(String sid, int index) {
+    final m = _markSends.putIfAbsent(sid, () => {});
+    if (_markSends.length > 32) _markSends.remove(_markSends.keys.first);
+    final n = (m[index] ?? -1) + 1;
+    m[index] = n;
+    return n;
+  }
+
+  /// "; first packet 1.4 s after the request (MediaMesh busy 0.3 s), all of
+  /// it in 9.2 s" for the log.
+  static String _burstTiming(
+    _ChannelBurst burst,
+    DateTime? firstAt,
+    DateTime startedAt,
+    int busyMs,
+  ) {
+    if (firstAt == null) return '';
+    final from = burst.askedAt ?? startedAt;
+    return '; first packet ${_secs(firstAt.difference(from))} after the '
+        '${burst.askedAt == null ? 'start' : 'request'}'
+        '${busyMs > 0 ? ' (MediaMesh busy ${_secs(Duration(milliseconds: busyMs))} in all)' : ''}'
+        ', all of it in ${_secs(DateTime.now().difference(from))}';
+  }
+
   /// Each channel's answer pace (VoxFloodPace), learnt from the requests
   /// after its answers; and the last answer for each clip on a channel.
   final Map<int, VoxFloodPace> _floodPace = {};
@@ -2894,6 +3029,7 @@ class VoxVoiceService extends ChangeNotifier {
     required int? viaChannel,
     bool waitForRoute = false,
   }) {
+    _transferRuns[req.sessionId]?.requestsServed++;
     final path = req.requesterPath;
     if (_coveredByPush(
       req.sessionId,
@@ -2923,8 +3059,9 @@ class VoxVoiceService extends ChangeNotifier {
     _recentServes.removeWhere(
       (_, t) => now.difference(t) > const Duration(minutes: 10),
     );
+    final askedAt = DateTime.now();
     _serveChain = _serveChain
-        .then((_) => _serve(req, viaChannel, waitForRoute, key, gen))
+        .then((_) => _serve(req, viaChannel, waitForRoute, key, gen, askedAt))
         .catchError((_) {});
   }
 
@@ -2937,6 +3074,7 @@ class VoxVoiceService extends ChangeNotifier {
     bool waitForRoute,
     String key,
     int gen,
+    DateTime servedFrom,
   ) async {
     if (_serveGen[key] != gen) return; // superseded while queued
     await _mediaAirForSend();
@@ -3060,6 +3198,8 @@ class VoxVoiceService extends ChangeNotifier {
       '${forced != null ? ' (FORCED)' : ''}',
       req.sessionId,
     );
+    var busyMs = 0;
+    DateTime? firstAt;
     for (var i = 0; i < packets.length; i++) {
       if (!_connector.isConnected) return;
       if (_serveGen[key] != gen) {
@@ -3070,7 +3210,8 @@ class VoxVoiceService extends ChangeNotifier {
         return;
       }
       if (i > 0) await Future<void>.delayed(gap);
-      await _radio2Quiet(req.sessionId);
+      busyMs += await _radio2Quiet(req.sessionId);
+      firstAt ??= DateTime.now();
       try {
         // Salt each send so a resend is never dropped as a duplicate by a
         // radio that saw an earlier copy; skip it if the frame would not fit.
@@ -3096,7 +3237,7 @@ class VoxVoiceService extends ChangeNotifier {
       if (!_connector.isConnected || _serveGen[key] != gen) break;
       if (2 + route.length + p.length > _maxCompanionFrame) break;
       await Future<void>.delayed(gap);
-      await _radio2Quiet(req.sessionId);
+      busyMs += await _radio2Quiet(req.sessionId);
       try {
         await _connector.sendFrame(
           buildSendRawDataFrame(path: route, payload: p),
@@ -3109,7 +3250,10 @@ class VoxVoiceService extends ChangeNotifier {
     }
     _logEvent(
       'served all ${packets.length} packets'
-      '${paritySent > 0 ? ' and $paritySent parity' : ''}',
+      '${paritySent > 0 ? ' and $paritySent parity' : ''}'
+      '${firstAt == null ? '' : '; first packet ${_secs(firstAt.difference(servedFrom))} after the request'}'
+      '${busyMs > 0 ? ' (MediaMesh busy ${_secs(Duration(milliseconds: busyMs))} in all)' : ''}'
+      ', all of it in ${_secs(DateTime.now().difference(servedFrom))}',
       req.sessionId,
     );
   }
@@ -3409,6 +3553,183 @@ class VoxVoiceService extends ChangeNotifier {
     );
   }
 
+  // ----------------------------------------------------------- transfer test
+
+  /// Receiver side: test photos being fetched, to report on when done.
+  final Map<String, _TestWatch> _testWatch = {};
+
+  /// Sender side: the running test's photos, by session id.
+  final Map<String, VoxTransferRun> _transferRuns = {};
+  bool _transferStop = false;
+
+  /// What the running transfer test is doing (null: none running).
+  final ValueNotifier<String?> transferTestStatus = ValueNotifier(null);
+
+  bool get transferTestRunning => transferTestStatus.value != null;
+
+  /// How long a test photo waits for its report(s).
+  static const _transferRunTimeout = Duration(minutes: 3);
+
+  /// On a channel, after the latest report: how long to wait for more.
+  static const _transferChannelSettle = Duration(seconds: 30);
+
+  /// Sends a small test photo [count] times to [contact] or [channel], one
+  /// at a time, each once its report(s) came back or after 3 minutes, and
+  /// returns the results as lines (also written to the log).
+  Future<List<String>> runTransferTest({
+    Contact? contact,
+    Channel? channel,
+    int count = 3,
+  }) async {
+    assert((contact == null) != (channel == null));
+    if (transferTestRunning) return ['A transfer test is already running.'];
+    if (!_connector.isConnected) return ['Not connected.'];
+    if (!imagesAvailable) {
+      return ['Photos are not available on this device.'];
+    }
+    final target = contact?.name ?? '#${channel!.name}';
+    _transferStop = false;
+    transferTestStatus.value = 'Encoding the test photo…';
+    final runs = <VoxTransferRun>[];
+    String? stopped;
+    try {
+      final image = await encodeImage(
+        voxTransferTestImage(),
+        VoxImageDetail.standard,
+        useFocus: false,
+      );
+      for (var i = 1; i <= count && !_transferStop; i++) {
+        transferTestStatus.value = 'Sending photo $i of $count to $target…';
+        final caption = voxTransferTestCaption(i, count);
+        final clip = _imageClip(image);
+        final env = contact != null
+            ? await sendClipToContact(contact, clip, caption: caption)
+            : await sendClipToChannel(channel!, clip, caption: caption);
+        final run = VoxTransferRun(
+          index: i,
+          sessionId: env.sessionId,
+          totalPackets: env.totalPackets,
+          sentAt: DateTime.now(),
+        );
+        _transferRuns[env.sessionId] = run;
+        runs.add(run);
+        _logEvent('transfer test $i/$count to $target', env.sessionId);
+        transferTestStatus.value =
+            'Photo $i of $count: waiting for '
+            '${contact != null ? 'the report' : 'reports'}…';
+        await _waitForTransferReports(run, onChannel: channel != null);
+      }
+      if (_transferStop) stopped = 'Stopped by you.';
+    } catch (e) {
+      stopped = 'Stopped: $e';
+    } finally {
+      for (final r in runs) {
+        _transferRuns.remove(r.sessionId);
+      }
+      transferTestStatus.value = null;
+    }
+    final lines = voxTransferSummary(runs, target: target);
+    if (stopped != null) lines.add(stopped);
+    for (final l in lines) {
+      _logEvent('transfer test: $l');
+    }
+    return lines;
+  }
+
+  /// Ends the running transfer test after the photo in flight.
+  void stopTransferTest() => _transferStop = true;
+
+  Future<void> _waitForTransferReports(
+    VoxTransferRun run, {
+    required bool onChannel,
+  }) async {
+    final end = run.sentAt.add(_transferRunTimeout);
+    while (!_transferStop && DateTime.now().isBefore(end)) {
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      final last = run.lastReportAt;
+      if (last == null) continue;
+      if (!onChannel) return;
+      if (DateTime.now().difference(last) >= _transferChannelSettle) return;
+    }
+  }
+
+  bool _onChannelControlText(int channelIndex, String senderName, String text) {
+    if (!VoxTransferReport.looksLikeReport(text)) return false;
+    _onTransferReport(text, senderName);
+    return true; // never shown in the chat
+  }
+
+  void _onTransferReport(String text, String from) {
+    final r = VoxTransferReport.tryParse(text);
+    if (r == null) {
+      _logEvent('transfer report from $from could not be parsed');
+      return;
+    }
+    _logEvent(
+      'transfer report from $from: '
+      '${r.complete ? 'complete' : 'got ${r.got}/${r.total}'} in '
+      '${_secs(Duration(milliseconds: r.ms))}, ${r.requests} requests',
+      r.sessionId,
+    );
+    final run = _transferRuns[r.sessionId];
+    if (run == null) return;
+    run.reports[from] = r;
+    run.lastReportAt = DateTime.now();
+    transferTestStatus.value =
+        'Photo ${run.index}: ${run.reports.length} '
+        '${run.reports.length == 1 ? 'report' : 'reports'} in…';
+  }
+
+  /// A test photo we were fetching is done (or given up on): tell its sender.
+  void _reportTransfer(_IncomingClip clip) {
+    final sid = clip.envelope.sessionId;
+    final w = _testWatch.remove(sid);
+    if (w == null) return;
+    final report = VoxTransferReport(
+      sessionId: sid,
+      ms: DateTime.now().difference(w.heardAt).inMilliseconds,
+      requests: clip.attempts,
+      got: clip.packets.length,
+      total: clip.envelope.totalPackets,
+    );
+    unawaited(_sendTransferReport(w, report.encode(), sid));
+  }
+
+  Future<void> _sendTransferReport(
+    _TestWatch w,
+    String text,
+    String sid,
+  ) async {
+    final ci = w.channelIndex;
+    // After the answer's last packets have cleared, and on a channel spread
+    // out, so many receivers' reports don't collide.
+    await Future<void>.delayed(
+      Duration(milliseconds: 1500 + _rng.nextInt(ci != null ? 6000 : 1000)),
+    );
+    try {
+      if (ci != null) {
+        await _connector.sendFrame(
+          buildSendChannelTextMsgFrame(ci, text),
+          waitForGenericAck: true,
+        );
+      } else {
+        final key = w.senderKeyHex;
+        final c = key == null ? null : contactByKeyHex(key);
+        if (c == null) {
+          _logEvent('transfer test: sender not in contacts, no report', sid);
+          return;
+        }
+        await _connector.sendFrame(
+          buildSendTextMsgFrame(c.publicKey, text),
+          waitForGenericAck: true,
+        );
+      }
+      _logEvent('transfer test report sent: $text', sid);
+    } catch (e) {
+      _logEvent('transfer test report could not be sent: $e', sid);
+    }
+  }
+
   @override
   void dispose() {
     mimi.removeListener(notifyListeners);
@@ -3418,6 +3739,10 @@ class VoxVoiceService extends ChangeNotifier {
     if (_connector.voxControlTextInterceptor == _onControlText) {
       _connector.voxControlTextInterceptor = null;
     }
+    if (_connector.voxChannelControlInterceptor == _onChannelControlText) {
+      _connector.voxChannelControlInterceptor = null;
+    }
+    transferTestStatus.dispose();
     if (_connector.voxIncomingTextObserver == _onIncomingText) {
       _connector.voxIncomingTextObserver = null;
     }
@@ -3521,6 +3846,12 @@ class _ChannelBurst {
   final int channel;
   final SplayTreeSet<int> pending = SplayTreeSet<int>();
   bool saltOk = true;
+
+  /// Every listener who asked reads marked packets (0x58).
+  bool markOk = true;
+
+  /// When the first request this burst answers came (for the log's timing).
+  DateTime? askedAt;
   int maxHops = 0;
   bool running = false;
 
@@ -3550,4 +3881,12 @@ class _Held {
   final int total;
   final bool whole;
   final bool image;
+}
+
+/// A transfer-test photo being fetched, and where to report on it.
+class _TestWatch {
+  final DateTime heardAt;
+  final String? senderKeyHex;
+  final int? channelIndex;
+  _TestWatch(this.heardAt, {this.senderKeyHex, this.channelIndex});
 }

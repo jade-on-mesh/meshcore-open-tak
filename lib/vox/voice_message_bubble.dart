@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../connector/meshcore_connector.dart';
 import '../l10n/l10n.dart';
+import '../models/channel.dart';
 import '../models/contact.dart';
 import '../services/chat_text_scale_service.dart';
 import 'image_message_bubble.dart';
@@ -528,6 +529,16 @@ void showVoxVoiceLog(BuildContext context, VoxVoiceService service) {
                     ),
                     onTap: () => _pickLinkTestTarget(context, service),
                   ),
+                  ListTile(
+                    leading: const Icon(Icons.speed),
+                    title: const Text('Transfer test'),
+                    subtitle: const Text(
+                      'Send a small test photo a few times to a contact or '
+                      'channel, then see how many arrived, how fast, and how '
+                      'many requests it took. Receivers need this app, open.',
+                    ),
+                    onTap: () => _runTransferTest(context, service),
+                  ),
                   const Divider(height: 1),
                   Expanded(
                     child: ListView.builder(
@@ -584,6 +595,145 @@ Future<void> _pickLinkTestTarget(
   );
   if (picked != null) unawaited(service.sendLinkTest(picked));
 }
+
+Future<void> _runTransferTest(
+  BuildContext context,
+  VoxVoiceService service,
+) async {
+  if (service.transferTestRunning) {
+    await _showTransferProgress(context, service, null);
+    return;
+  }
+  final contacts = service.chatContacts;
+  final channels = service.namedChannels;
+  var count = 3;
+  final picked = await showDialog<Object>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => SimpleDialog(
+        title: const Text('Transfer test to'),
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                const Text('Photos'),
+                const SizedBox(width: 12),
+                SegmentedButton<int>(
+                  segments: const [
+                    ButtonSegment(value: 3, label: Text('3')),
+                    ButtonSegment(value: 5, label: Text('5')),
+                    ButtonSegment(value: 10, label: Text('10')),
+                  ],
+                  selected: {count},
+                  onSelectionChanged: (v) => setState(() => count = v.first),
+                ),
+              ],
+            ),
+          ),
+          if (channels.isNotEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 16, 24, 4),
+              child: Text('Channels'),
+            ),
+          for (final ch in channels)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, ch),
+              child: Text('#${ch.name}'),
+            ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(24, 16, 24, 4),
+            child: Text('Contacts'),
+          ),
+          if (contacts.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Text('No chat contacts yet.'),
+            ),
+          for (final c in contacts)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, c),
+              child: Text(
+                '${c.name}  ·  ${c.pathLength < 0 ? 'no route' : '${c.pathLength} hops'}',
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+  if (picked == null || !context.mounted) return;
+  final run = service.runTransferTest(
+    contact: picked is Contact ? picked : null,
+    channel: picked is Channel ? picked : null,
+    count: count,
+  );
+  await _showTransferProgress(context, service, run);
+}
+
+/// The running test's progress, then its results ([run] null: progress
+/// only, for a test started earlier).
+Future<void> _showTransferProgress(
+  BuildContext context,
+  VoxVoiceService service,
+  Future<List<String>>? run,
+) => showDialog<void>(
+  context: context,
+  builder: (context) => AlertDialog(
+    title: const Text('Transfer test'),
+    content: FutureBuilder<List<String>>(
+      future: run,
+      builder: (context, snap) {
+        final lines = snap.data;
+        if (lines != null) {
+          return SingleChildScrollView(child: SelectableText(lines.join('\n')));
+        }
+        return ValueListenableBuilder<String?>(
+          valueListenable: service.transferTestStatus,
+          builder: (context, status, _) => Row(
+            children: [
+              if (status != null) ...[
+                const SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 16),
+              ],
+              Expanded(
+                child: Text(status ?? 'Done: the results are in the log.'),
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+    actions: [
+      ValueListenableBuilder<String?>(
+        valueListenable: service.transferTestStatus,
+        builder: (context, status, _) => status == null
+            ? const SizedBox.shrink()
+            : TextButton(
+                onPressed: service.stopTransferTest,
+                child: const Text('Stop'),
+              ),
+      ),
+      FutureBuilder<List<String>>(
+        future: run,
+        builder: (context, snap) => snap.data == null
+            ? const SizedBox.shrink()
+            : TextButton(
+                onPressed: () => Clipboard.setData(
+                  ClipboardData(text: snap.data!.join('\n')),
+                ),
+                child: const Text('Copy'),
+              ),
+      ),
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Close'),
+      ),
+    ],
+  ),
+);
 
 /// Auto-play settings: play new voice DMs as they arrive.
 class VoxAutoPlayTile extends StatelessWidget {

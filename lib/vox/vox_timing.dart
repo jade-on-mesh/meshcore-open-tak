@@ -41,6 +41,16 @@ Duration voxGapRequestDelay({
 Duration voxStallWait(Duration packetGap) =>
     packetGap * 3 + const Duration(milliseconds: 1000);
 
+/// After a marked packet (0x58) saying [left] more of the answer are to come,
+/// [gapMs] apart: how long before asking for what's missing. None left: the
+/// answer is over, so at once (300 ms, for a relay of the last one still on
+/// its way by another path). Else the time those packets should take and
+/// one more gap, plus half a gap (at least 400 ms) for a repeater's wait:
+/// a lost tail of one packet is asked for after about two gaps, not three
+/// and a second. Mirrored in Wadamesh (VoxFetch::markedWait).
+int voxMarkedWaitMs(int left, int gapMs) =>
+    left <= 0 ? 300 : (left + 1) * gapMs + max(400, gapMs ~/ 2);
+
 /// How long a request waits for its first packet before asking again.
 ///
 /// [trips]: the radio trips before the first packet lands (2 for a raw

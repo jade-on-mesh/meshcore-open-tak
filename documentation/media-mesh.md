@@ -137,6 +137,28 @@ The radio's firmware makes this choice for each packet; the app only turns
 MediaMesh on and sets its frequency. Nothing changes in how photos and voice
 are sent from the app.
 
+## How a photo's missing packets are asked for
+
+A listener missing packets asks for them, and the photo's sender answers with just those. Each answer is timed so it reaches far listeners and slows down only on a busy mesh. Two things make this quicker and easier to follow:
+
+- **End of answer.** When the request goes on the channel, it says the listener can read *marked* packets. The answer's packets then count down how many are still to come. When the count reaches zero, the listener asks for anything still missing straight away. When the last packets are lost, it asks again once their time has passed, not after a fixed wait.
+  - Raw (direct) requests and answers aren't marked. The radio's firmware picks radio2 for those by their first byte, and a new kind would go out on the main mesh.
+  - Older apps and Wadamesh builds don't ask for marked packets, so they get them as before.
+- **Timing in the log.** The transfer log (the ⓘ under a photo or voice message) shows:
+  - for each request, how long the first packet took;
+  - on a timeout, how long ago it asked and how far apart packets came;
+  - on the sender, how long after the request it started, how long a busy MediaMesh held it back, and how long the whole answer took.
+
+## Transfer test
+
+The voice diagnostics sheet (ⓘ) has **Transfer test**: pick a contact or a channel and 3, 5 or 10 photos. The app sends a small test photo (Standard detail), waits for it to arrive, then sends the next, and shows:
+
+- how many downloads completed, out of all the receivers' reports;
+- the median, best and worst time from the announcement to the whole photo;
+- the requests it took (each request after the first is a retry).
+
+Receivers running this app fetch a test photo at once, whatever their auto-download settings, and answer with a hidden `VT1:` text (a DM for a contact test, on the channel for a channel test), which this app never shows in the chat. Older apps and other clients show the test photo as an ordinary photo, and the report as text. Each photo waits up to 3 minutes for its report; on a channel, until 30 seconds pass with no new report. The results are also written to the log.
+
 ## MediaMesh nearby
 
 A small tower icon next to the radio-stats dot in the app bar and chat screens shows whether a MediaMesh is on the air where you are:

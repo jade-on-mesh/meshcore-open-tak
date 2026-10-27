@@ -148,6 +148,25 @@ const int voxFetchFlagHasPath = 0x04;
 /// resend unique.
 const int voxVoicePacketSaltedMagic = 0x57; // 'W'
 
+/// VOX extension: the requester understands marked packets (0x58), which say
+/// how many more of the answer are coming. **Channel requests only**: the
+/// Keymind companion sends a raw request out on radio2 only when its flags
+/// are within 0x07 (CompanionTrafficRouting.h); a channel request is routed
+/// by its data type (0x5643), whatever is in it.
+const int voxFetchFlagMarkOk = 0x08;
+
+/// VOX extension: a salted packet (0x57) whose trailing byte also counts
+/// down the answer it belongs to: `(resend << 6) | min(left, 63)`, `left`
+/// being how many of the answer's packets are still to come after this one
+/// (63: that many or more), `resend` counting this packet's sends (mod 4) so
+/// a resend never repeats a copy repeaters have already seen. The same size
+/// as 0x57, so it fits wherever that does. Sent only on a channel (raw data
+/// starting 0x58 would go out on the main mesh: Keymind routes raw media by
+/// its first byte), and only to listeners who asked with [voxFetchFlagMarkOk]
+/// (older builds don't read it). The listener knows the moment the answer is
+/// over (left 0) and how long the rest should take.
+const int voxVoicePacketMarkedMagic = 0x58; // 'X'
+
 /// 32-bit session id, held as 8 lowercase hex chars (big-endian bytes).
 String voxNewSessionId([Random? rng]) {
   final r = rng ?? Random.secure();
@@ -398,40 +417,60 @@ class VoxVoicePacket {
   final int index;
   final Uint8List codecData;
 
+  /// A marked packet (0x58): how many of its answer are still to come after
+  /// it (63: that many or more). Null for any other packet.
+  final int? left;
+
   VoxVoicePacket({
     required this.sessionId,
     required this.index,
     required this.codecData,
+    this.left,
   }) : assert(_isSessionId(sessionId)),
        assert(index >= 0 && index < voxMaxPackets);
 
   static bool isVoicePacket(List<int> payload) =>
       payload.isNotEmpty &&
       (payload[0] == voxVoicePacketMagic ||
-          payload[0] == voxVoicePacketSaltedMagic);
+          payload[0] == voxVoicePacketSaltedMagic ||
+          payload[0] == voxVoicePacketMarkedMagic);
 
   static VoxVoicePacket? tryParse(List<int> payload) {
     if (!isVoicePacket(payload)) return null;
-    final salted = payload[0] == voxVoicePacketSaltedMagic;
+    final salted = payload[0] != voxVoicePacketMagic;
     final end = salted ? payload.length - 1 : payload.length;
     if (end <= headerLength) return null;
     return VoxVoicePacket(
       sessionId: voxSessionIdFromBytes(payload, 1),
       index: payload[5],
       codecData: Uint8List.fromList(payload.sublist(headerLength, end)),
+      left: payload[0] == voxVoicePacketMarkedMagic
+          ? payload[payload.length - 1] & 0x3F
+          : null,
     );
   }
 
   /// Standard VE3 packet, or, with [salt], a VOX salted packet
   /// (`0x57`, one extra trailing byte) so resends are never deduplicated.
-  Uint8List encode({int? salt}) {
+  /// With [left] too, a marked packet (0x58, [voxVoicePacketMarkedMagic]):
+  /// the trailing byte is `([salt] << 6) | min(left, 63)` instead, so [salt]
+  /// should count this packet's sends.
+  Uint8List encode({int? salt, int? left}) {
     final extra = salt == null ? 0 : 1;
     final out = Uint8List(headerLength + codecData.length + extra);
-    out[0] = salt == null ? voxVoicePacketMagic : voxVoicePacketSaltedMagic;
+    out[0] = salt == null
+        ? voxVoicePacketMagic
+        : left == null
+        ? voxVoicePacketSaltedMagic
+        : voxVoicePacketMarkedMagic;
     out.setRange(1, 5, voxSessionIdToBytes(sessionId));
     out[5] = index;
     out.setRange(headerLength, headerLength + codecData.length, codecData);
-    if (salt != null) out[out.length - 1] = salt & 0xFF;
+    if (salt != null) {
+      out[out.length - 1] = left == null
+          ? salt & 0xFF
+          : ((salt & 3) << 6) | min(left, 63);
+    }
     return out;
   }
 }
@@ -470,13 +509,29 @@ class VoxVoiceFetchRequest {
   /// or null if not given. Empty means the requester reached us directly.
   final List<int>? requesterPath;
 
+  /// The requester reads marked packets (0x58). Set on channel requests only
+  /// ([voxFetchFlagMarkOk]).
+  final bool markOk;
+
   const VoxVoiceFetchRequest({
     required this.sessionId,
     required this.requesterKey6,
     this.missingIndices,
     this.saltOk = false,
     this.requesterPath,
+    this.markOk = false,
   });
+
+  /// The same request, saying the requester reads marked packets: for
+  /// sending on a channel only ([voxFetchFlagMarkOk]).
+  VoxVoiceFetchRequest forChannel() => VoxVoiceFetchRequest(
+    sessionId: sessionId,
+    requesterKey6: requesterKey6,
+    missingIndices: missingIndices,
+    saltOk: saltOk,
+    requesterPath: requesterPath,
+    markOk: true,
+  );
 
   static VoxVoiceFetchRequest? tryParse(List<int> payload) {
     if (payload.length < minLength) return null;
@@ -510,6 +565,7 @@ class VoxVoiceFetchRequest {
       missingIndices: missing,
       saltOk: (flags & voxFetchFlagSaltOk) != 0,
       requesterPath: path,
+      markOk: (flags & voxFetchFlagMarkOk) != 0,
     );
   }
 
@@ -547,7 +603,8 @@ class VoxVoiceFetchRequest {
     out[5] =
         (missingIndices == null ? 0x00 : voxFetchFlagMissingOnly) |
         (saltOk ? voxFetchFlagSaltOk : 0x00) |
-        (path != null ? voxFetchFlagHasPath : 0x00);
+        (path != null ? voxFetchFlagHasPath : 0x00) |
+        (markOk ? voxFetchFlagMarkOk : 0x00);
     for (var i = 0; i < 6; i++) {
       out[6 + i] = int.parse(
         requesterKey6.substring(i * 2, i * 2 + 2),

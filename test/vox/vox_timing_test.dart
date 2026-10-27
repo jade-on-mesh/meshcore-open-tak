@@ -196,4 +196,15 @@ void main() {
     expect(m.settleMs(1), 1938);
     expect(voxFloodSlowGapMs(500), 4300);
   });
+
+  test('a marked packet: ask at once when none are left, else after them', () {
+    expect(voxMarkedWaitMs(0, 900), 300);
+    expect(voxMarkedWaitMs(1, 900), 2 * 900 + 450);
+    expect(voxMarkedWaitMs(3, 600), 4 * 600 + 400);
+    // A lost last packet is asked for sooner than the stall wait.
+    expect(
+      voxMarkedWaitMs(1, 900),
+      lessThan(voxStallWait(const Duration(milliseconds: 900)).inMilliseconds),
+    );
+  });
 }
