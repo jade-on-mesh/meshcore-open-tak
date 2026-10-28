@@ -2680,6 +2680,14 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           ? (used, max, defaultColor) =>
                 _otpComposeCounterColor(context.read<MeshCoreConnector>(), used)
           : null,
+      idleTrailing: VoxMicButton(
+        recipientLabel: widget.channel.name,
+        codecTarget: VoxVoiceService.channelTarget(widget.channel),
+        caption: caption,
+        onSend: (clip, text) => context
+            .read<VoxVoiceService>()
+            .sendClipToChannel(widget.channel, clip, caption: text),
+      ),
       leading: [
         VoxImageButton(
           aiSketch: _aiSketchOption,
@@ -2688,14 +2696,6 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           onSend: (image, text) => context
               .read<VoxVoiceService>()
               .sendImageToChannel(widget.channel, image, caption: text),
-        ),
-        VoxMicButton(
-          recipientLabel: widget.channel.name,
-          codecTarget: VoxVoiceService.channelTarget(widget.channel),
-          caption: caption,
-          onSend: (clip, text) => context
-              .read<VoxVoiceService>()
-              .sendClipToChannel(widget.channel, clip, caption: text),
         ),
         WalkieButton(channel: widget.channel),
       ],

@@ -71,8 +71,12 @@ class ChatComposer extends StatelessWidget {
   final ValueChanged<String> onAction;
   final List<Widget> header;
 
-  /// MeshCore Open TAK: buttons after the "+" menu (photo, voice).
+  /// MeshCore Open TAK: buttons after the "+" menu (photo, push-to-talk).
   final List<Widget> leading;
+
+  /// MeshCore Open TAK: shown in the send button's place while there's
+  /// nothing to send (the voice-message button), as messaging apps do.
+  final Widget? idleTrailing;
 
   /// MeshCore Open TAK: the byte counter's text and colour (an OTP pad's
   /// remaining budget), passed to [ByteCountedTextField].
@@ -94,6 +98,7 @@ class ChatComposer extends StatelessWidget {
     this.encoder,
     this.header = const [],
     this.leading = const [],
+    this.idleTrailing,
     this.counterTextBuilder,
     this.counterColorBuilder,
   });
@@ -177,6 +182,9 @@ class ChatComposer extends StatelessWidget {
                   _CollapsingButtons(
                     controller: controller,
                     focusNode: focusNode,
+                    // A phone's width: folded until asked, so the field
+                    // gets the room even before typing.
+                    alwaysFold: MediaQuery.sizeOf(context).width < 600,
                     children: [
                       ...leading,
                       if (translation.$1)
@@ -205,6 +213,8 @@ class ChatComposer extends StatelessWidget {
                     valueListenable: controller,
                     builder: (context, value, _) {
                       final hasText = value.text.trim().isNotEmpty;
+                      final idle = idleTrailing;
+                      if (!hasText && idle != null) return idle;
                       return IconButton.filled(
                         icon: const Icon(Icons.send, size: 20),
                         tooltip: sendTooltip,
@@ -323,18 +333,24 @@ class ChatComposer extends StatelessWidget {
 }
 
 /// MeshCore Open TAK: the buttons between "+" and the text field (photo,
-/// voice, push-to-talk, translation). Once there's text they fold into one
-/// chevron so the field gets the width, as messaging apps do; the chevron
-/// unfolds them until the text changes. An empty field keeps them in reach.
+/// push-to-talk, translation). Once there's text, or always on a phone's
+/// width, they fold into one chevron so the field gets the width, as
+/// messaging apps do; the chevron unfolds them until the text changes. The
+/// voice-message button sits in the send button's place instead
+/// ([ChatComposer.idleTrailing]), so it's always one tap away.
 class _CollapsingButtons extends StatefulWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
   final List<Widget> children;
 
+  /// Folded even with an empty field (narrow screens).
+  final bool alwaysFold;
+
   const _CollapsingButtons({
     required this.controller,
     required this.focusNode,
     required this.children,
+    this.alwaysFold = false,
   });
 
   @override
@@ -385,7 +401,7 @@ class _CollapsingButtonsState extends State<_CollapsingButtons> {
   Widget build(BuildContext context) {
     if (widget.children.isEmpty) return const SizedBox.shrink();
     final folded =
-        widget.controller.text.isNotEmpty &&
+        (widget.alwaysFold || widget.controller.text.isNotEmpty) &&
         !_unfolded &&
         widget.children.length > 1;
     return AnimatedSize(
