@@ -2,7 +2,7 @@
 
 **A fork of [MeshCore Open](https://github.com/zjs81/meshcore-open) for team operations over LoRa mesh: ATAK-style team awareness, TAK Server interop, voice and photo messages.**
 
-It runs on stock MeshCore companion firmware. No firmware changes are needed. (Formerly MeshCore Open VOX; internal code names still say "vox".)
+It needs **Keymind Cascade 1.18 or later** on the companion radio: voice and photos travel on its MediaMesh radio (`radio2`), which stock MeshCore companion firmware doesn't have. (Formerly MeshCore Open VOX; internal code names still say "vox".)
 
 ### What it adds
 
@@ -66,7 +66,7 @@ The [web client](https://meshcoreopen.org/install/web/) runs in Chrome (and Chro
 
 Use the [installation website](https://meshcoreopen.org/) for available downloads, Obtainium, and the web client. Building from source is covered below.
 
-1. Use a MeshCore radio running companion firmware with the transport you intend to use.
+1. Use a radio running Keymind Cascade 1.18 or later companion firmware, with the transport you intend to use.
 2. Open the app, scan for BLE devices or select USB/TCP, and connect.
 3. After synchronization, open a channel to broadcast or open Contacts to send a direct message. Peers need compatible radio settings; channels need the same PSK.
 
