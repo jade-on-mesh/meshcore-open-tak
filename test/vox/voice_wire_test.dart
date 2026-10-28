@@ -3,7 +3,11 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:meshcore_open/connector/meshcore_protocol.dart';
 import 'package:meshcore_open/vox/voice_wire.dart';
+
+RawRoute _route(List<int> b, {int width = 1}) =>
+    RawRoute(Uint8List.fromList(b), hashWidth: width);
 
 Uint8List _hex(String h) => Uint8List.fromList([
   for (var i = 0; i < h.length; i += 2)
@@ -427,31 +431,31 @@ void main() {
 
   group('requester path', () {
     test('round-trips with missing indices and an empty (direct) path', () {
-      const req = VoxVoiceFetchRequest(
+      final req = VoxVoiceFetchRequest(
         sessionId: 'deadbeef',
         requesterKey6: 'a1b2c3d4e5f6',
         missingIndices: [11],
         saltOk: true,
-        requesterPath: [],
+        requesterPath: RawRoute.empty,
       );
       final back = VoxVoiceFetchRequest.tryParse(req.encode())!;
       expect(back.missingIndices, [11]);
-      expect(back.requesterPath, isEmpty);
+      expect(back.requesterPath!.isEmpty, isTrue);
       expect(back.saltOk, isTrue);
     });
 
     test('round-trips a multi-hop path for a send-all request', () {
-      const req = VoxVoiceFetchRequest(
+      final req = VoxVoiceFetchRequest(
         sessionId: 'deadbeef',
         requesterKey6: 'a1b2c3d4e5f6',
         saltOk: true,
-        requesterPath: [0x19, 0x1e],
+        requesterPath: _route([0x19, 0x1e]),
       );
       final bytes = req.encode();
       expect(bytes[5] & voxFetchFlagHasPath, voxFetchFlagHasPath);
       final back = VoxVoiceFetchRequest.tryParse(bytes)!;
       expect(back.missingIndices, isNull);
-      expect(back.requesterPath, [0x19, 0x1e]);
+      expect(back.requesterPath!.bytes, [0x19, 0x1e]);
     });
 
     test('requests without a path stay byte-identical to plain VE3', () {
@@ -464,6 +468,86 @@ void main() {
         isNull,
       );
       expect(req.encode().length, VoxVoiceFetchRequest.minLength);
+    });
+
+    test('a 1-byte path keeps its byte count as the length byte', () {
+      final req = VoxVoiceFetchRequest(
+        sessionId: 'deadbeef',
+        requesterKey6: 'a1b2c3d4e5f6',
+        requesterPath: _route([0x19, 0x1e]),
+      );
+      expect(req.encode().sublist(13), [2, 0x19, 0x1e]);
+    });
+
+    for (final width in [2, 3]) {
+      test('round-trips a $width-byte-hash path', () {
+        final bytes = List.generate(2 * width, (i) => 0x10 + i);
+        final req = VoxVoiceFetchRequest(
+          sessionId: 'deadbeef',
+          requesterKey6: 'a1b2c3d4e5f6',
+          missingIndices: [4, 9],
+          saltOk: true,
+          requesterPath: _route(bytes, width: width),
+        );
+        final encoded = req.encode(salt: 0x21);
+        final back = VoxVoiceFetchRequest.tryParse(encoded)!;
+        expect(back.requesterPath!.hashWidth, width);
+        expect(back.requesterPath!.hops, 2);
+        expect(back.requesterPath!.bytes, bytes);
+        expect(back.missingIndices!.toSet(), {4, 9});
+        // Older parsers read the length byte as a byte count up to 63: a
+        // multi-byte path reads as too long and is ignored, not misread.
+        expect(encoded[encoded.length - bytes.length - 1], greaterThan(63));
+      });
+    }
+  });
+
+  group('RawRoute', () {
+    test('reverses whole hashes, not bytes', () {
+      final r = _route([0xa1, 0xa2, 0xb1, 0xb2, 0xc1, 0xc2], width: 2);
+      expect(r.reversed().bytes, [0xc1, 0xc2, 0xb1, 0xb2, 0xa1, 0xa2]);
+      expect(r.reversed().hashWidth, 2);
+      expect(_route([1, 2, 3]).reversed().bytes, [3, 2, 1]);
+    });
+
+    test('encodes path_len as MeshCore does', () {
+      expect(_route([1, 2, 3]).encodedLength, 3);
+      expect(_route([1, 2, 3, 4], width: 2).encodedLength, 0x42);
+      expect(_route([1, 2, 3, 4, 5, 6], width: 3).encodedLength, 0x82);
+      expect(RawRoute.empty.encodedLength, 0);
+    });
+
+    test('decode rejects reserved widths and short input', () {
+      expect(RawRoute.decode(0xC1, [0, 0, 0, 0, 0], 0), isNull);
+      expect(RawRoute.decode(0x42, [1, 2, 3], 0), isNull);
+      final r = RawRoute.decode(0x42, [9, 1, 2, 3, 4], 1)!;
+      expect(r.hashWidth, 2);
+      expect(r.bytes, [1, 2, 3, 4]);
+    });
+
+    test('labels hops by hash', () {
+      expect(_route([0xab, 0xcd, 0x01, 0x02], width: 2).toHex(), 'abcd,0102');
+      expect(_route([0xab, 0x01]).toHex(), 'ab,01');
+      expect(RawRoute.empty.toHex(), '(0 hop)');
+    });
+
+    test('raw data frame carries the encoded path_len', () {
+      final frame = buildSendRawDataFrame(
+        route: _route([0xa1, 0xa2, 0xb1, 0xb2], width: 2),
+        payload: Uint8List.fromList([0x72, 1, 2, 3]),
+      );
+      expect(frame, [
+        cmdSendRawData,
+        0x42,
+        0xa1,
+        0xa2,
+        0xb1,
+        0xb2,
+        0x72,
+        1,
+        2,
+        3,
+      ]);
     });
   });
 
@@ -515,12 +599,12 @@ void main() {
 
     test('same bytes as Wadamesh for the same salt', () {
       // test/test_vox_wire.cpp: {1,2,3,35} with salt 0x13 repeats 2 four times.
-      const r = VoxVoiceFetchRequest(
+      final r = VoxVoiceFetchRequest(
         sessionId: '1a2b3c4d',
         requesterKey6: 'a1b2c3d4e5f6',
         missingIndices: [35, 2, 1, 3, 2],
         saltOk: true,
-        requesterPath: [0xAB, 0xCD],
+        requesterPath: _route([0xAB, 0xCD]),
       );
       final got = r.encode(salt: 0x13).sublist(12);
       expect(got, [8, 1, 2, 3, 35, 2, 2, 2, 2, 2, 0xAB, 0xCD]);
@@ -531,25 +615,25 @@ void main() {
         final back = VoxVoiceFetchRequest.tryParse(req.encode(salt: s))!;
         expect(back.missingIndices!.toSet(), {61});
       }
-      const two = VoxVoiceFetchRequest(
+      final two = VoxVoiceFetchRequest(
         sessionId: 'deadbeef',
         requesterKey6: 'a1b2c3d4e5f6',
         missingIndices: [3, 61],
         saltOk: true,
-        requesterPath: [0x19, 0x1e],
+        requesterPath: _route([0x19, 0x1e]),
       );
       final back = VoxVoiceFetchRequest.tryParse(two.encode(salt: 0xab))!;
       expect(back.missingIndices!.toSet(), {3, 61});
-      expect(back.requesterPath, [0x19, 0x1e]);
+      expect(back.requesterPath!.bytes, [0x19, 0x1e]);
     });
 
     test('salted requests keep the shape firmware routes as media', () {
-      const withPath = VoxVoiceFetchRequest(
+      final withPath = VoxVoiceFetchRequest(
         sessionId: 'deadbeef',
         requesterKey6: 'a1b2c3d4e5f6',
         missingIndices: [3, 61],
         saltOk: true,
-        requesterPath: [0x19, 0x1e],
+        requesterPath: _route([0x19, 0x1e]),
       );
       for (var s = 0; s < 256; s++) {
         expect(firmwareSeesMedia(req.encode(salt: s)), isTrue);
@@ -569,7 +653,7 @@ void main() {
         requesterKey6: 'a1b2c3d4e5f6',
         missingIndices: List.generate(200, (i) => i),
         saltOk: true,
-        requesterPath: List.filled(8, 1),
+        requesterPath: _route(List.filled(8, 1)),
       );
       expect(big.encode(salt: 255).length, lessThanOrEqualTo(162));
     });

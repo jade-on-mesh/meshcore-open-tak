@@ -64,11 +64,16 @@ is 162 bytes on the raw-data plane.
 - `flags & 0x01` = only the listed `indices` are wanted; otherwise all.
 - `requesterKey6` = first 6 bytes of the requester's public key. The sender
   uses it to find the contact and its direct route for the reply.
+- `flags & 0x04` = `[path_len][path...]` follows `indices`: the route the
+  requester used, which the sender reverses (hop by hop) to reply. `path_len`
+  is encoded as on air (hash size - 1 in the top two bits, hop count below),
+  so for 1-byte hashes it is the byte count.
 
 ### Companion protocol frames used
 
 - `CMD_SEND_RAW_DATA` (25): `[25][path_len][path...][payload]`. Direct only;
-  firmware replies `RESP_CODE_OK`.
+  firmware replies `RESP_CODE_OK`. `path_len` carries the hash size like a
+  contact path, so routes with 1-, 2- or 3-byte path hashes all work.
 - `PUSH_CODE_RAW_DATA` (0x84): `[0x84][snr*4][rssi][0xFF][payload]`.
 
 ## Behaviour
@@ -156,6 +161,5 @@ in order.
 ## Not yet implemented
 
 - Swarm recovery (`0x6d`); the channel fallback covers a similar need
-- Raw data over multi-byte path hashes (firmware limitation)
 - Desktop: Linux needs a system `libcodec2`; macOS and Windows don't ship
   Codec2 yet, so voice is hidden there

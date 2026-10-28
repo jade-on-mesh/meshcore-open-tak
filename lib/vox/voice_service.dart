@@ -535,13 +535,15 @@ class VoxVoiceService extends ChangeNotifier {
   /// requester to the sender. Replies use the reverse order.
   List<String> get forcedRepeaterKeys => _forcedRepeaterKeys;
 
-  /// The forced route as path bytes, or null when the toggle is off/empty.
-  Uint8List? get forcedRoute {
+  /// The forced route (1-byte hashes), or null when the toggle is off/empty.
+  RawRoute? get forcedRoute {
     if (!_forceRepeaterRoute || _forcedRepeaterKeys.isEmpty) return null;
-    return Uint8List.fromList([
-      for (final k in _forcedRepeaterKeys)
-        int.parse(k.substring(0, 2), radix: 16),
-    ]);
+    return RawRoute(
+      Uint8List.fromList([
+        for (final k in _forcedRepeaterKeys)
+          int.parse(k.substring(0, 2), radix: 16),
+      ]),
+    );
   }
 
   /// Names for the forced route, for display ("Hilltop → Ridge").
@@ -587,7 +589,7 @@ class VoxVoiceService extends ChangeNotifier {
     _forcedRepeaterKeys = List.unmodifiable(keys);
     _logEvent(
       enabled && keys.isNotEmpty
-          ? 'testing: forcing voice via ${forcedRouteLabel()} (${_hex(forcedRoute!)})'
+          ? 'testing: forcing voice via ${forcedRouteLabel()} (${forcedRoute!.toHex()})'
           : 'testing: forced repeater route off',
     );
     notifyListeners();
@@ -703,18 +705,18 @@ class VoxVoiceService extends ChangeNotifier {
   /// DM push-to-talk packets addressed to this radio, for WalkieService.
   void Function(WalkieDmAudio packet, int? via)? dmTalkHandler;
 
-  /// The raw-data route to [c] (1-byte hashes only), or null when there's
-  /// none: a DM talk then goes zero-hop.
-  Uint8List? directRouteTo(Contact c) => _directRoute(c);
+  /// The raw-data route to [c], or null when there's none: a DM talk then
+  /// goes zero-hop.
+  RawRoute? directRouteTo(Contact c) => _directRoute(c);
 
   /// Pause between a DM talk's packets along a [hops]-hop route (0: zero-hop).
   Duration walkieDmGap(int hops) =>
       hops <= 0 ? _zeroHopGap() : _packetGap(flood: false, hops: hops);
 
   /// Sends one DM talk packet along [route] (empty: zero-hop).
-  Future<void> sendWalkieDmPacket(Uint8List route, Uint8List payload) =>
+  Future<void> sendWalkieDmPacket(RawRoute route, Uint8List payload) =>
       _connector.sendFrame(
-        buildSendRawDataFrame(path: route, payload: payload),
+        buildSendRawDataFrame(route: route, payload: payload),
         waitForGenericAck: true,
       );
 
@@ -1468,7 +1470,7 @@ class VoxVoiceService extends ChangeNotifier {
           final route = forced ?? _directRoute(clip.sender!)!;
           _logEvent(
             'attempt ${clip.attempts}: raw request to ${clip.sender?.name ?? 'sender'} '
-            'via ${_hex(route)}${forced != null ? ' (FORCED)' : ''} (${req.missingIndices == null ? 'all' : '${req.missingIndices!.length} missing'})',
+            'via ${route.toHex()}${forced != null ? ' (FORCED)' : ''} (${req.missingIndices == null ? 'all' : '${req.missingIndices!.length} missing'})',
             clip.envelope.sessionId,
           );
           // Tell the sender how we reached it, so it answers the same way
@@ -1488,7 +1490,7 @@ class VoxVoiceService extends ChangeNotifier {
           }
           await _connector.sendFrame(
             buildSendRawDataFrame(
-              path: route,
+              route: route,
               payload: withPath.encode(salt: clip.salts.next()),
             ),
             waitForGenericAck: true,
@@ -1526,11 +1528,11 @@ class VoxVoiceService extends ChangeNotifier {
             requesterKey6: req.requesterKey6,
             missingIndices: req.missingIndices,
             saltOk: true,
-            requesterPath: const [], // answer zero-hop
+            requesterPath: RawRoute.empty, // answer zero-hop
           );
           await _connector.sendFrame(
             buildSendRawDataFrame(
-              path: Uint8List(0),
+              route: RawRoute.empty,
               payload: zr.encode(salt: clip.salts.next()),
             ),
             waitForGenericAck: true,
@@ -1569,7 +1571,7 @@ class VoxVoiceService extends ChangeNotifier {
 
   /// Repeaters between us and the clip's sender.
   int _clipHops(_IncomingClip clip) =>
-      forcedRoute?.length ?? max(clip.sender?.pathLength ?? 3, 0);
+      forcedRoute?.hops ?? max(clip.sender?.pathLength ?? 3, 0);
 
   Duration _waitFor(_IncomingClip clip) {
     final perPacket = _burstGap(clip);
@@ -2242,7 +2244,7 @@ class VoxVoiceService extends ChangeNotifier {
       );
       await _connector.sendFrame(
         buildSendRawDataFrame(
-          path: route,
+          route: route,
           payload: withPath.encode(salt: clip.salts.next()),
         ),
         waitForGenericAck: true,
@@ -3034,7 +3036,7 @@ class VoxVoiceService extends ChangeNotifier {
     if (_coveredByPush(
       req.sessionId,
       all: req.missingIndices == null,
-      hops: path?.length,
+      hops: path?.hops,
     )) {
       _logEvent(
         '${req.requesterKey6} (in range) asks for all of it: being pushed',
@@ -3160,15 +3162,15 @@ class VoxVoiceService extends ChangeNotifier {
     );
     final forced = forcedRoute;
     final viaRequest = req.requesterPath;
-    Uint8List? route = forced != null
-        ? Uint8List.fromList(forced.reversed.toList())
+    RawRoute? route = forced != null
+        ? forced.reversed()
         // The way the request just reached us, reversed: known to work now.
-        : viaRequest != null && viaRequest.length <= _maxRawPathBytes
-        ? Uint8List.fromList(viaRequest.reversed.toList())
+        : viaRequest != null && viaRequest.bytes.length <= _maxRawPathBytes
+        ? viaRequest.reversed()
         : null;
     if (forced == null && viaRequest != null) {
       _logEvent(
-        'replying along the request\'s path (${viaRequest.isEmpty ? 'direct' : _hex(Uint8List.fromList(viaRequest))})',
+        'replying along the request\'s path (${viaRequest.isEmpty ? 'direct' : viaRequest.toHex()})',
         req.sessionId,
       );
     }
@@ -3183,17 +3185,15 @@ class VoxVoiceService extends ChangeNotifier {
       _logEvent(
         requester == null
             ? 'cannot answer ${req.requesterKey6}: not in contacts'
-            : requester.pathHashWidth != 1
-            ? 'cannot answer ${requester.name}: ${requester.pathHashWidth}-byte path hashes are not supported for raw data'
             : 'cannot answer ${requester.name}: no direct route back '
                   '(waited ${waitForRoute ? 25 : 3}s)',
         req.sessionId,
       );
       return;
     }
-    final gap = _packetGap(flood: false, hops: route.length);
+    final gap = _packetGap(flood: false, hops: route.hops);
     _logEvent(
-      'serving ${packets.length} packets to ${req.requesterKey6} via ${_hex(route)}'
+      'serving ${packets.length} packets to ${req.requesterKey6} via ${route.toHex()}'
       ', ${gap.inMilliseconds}ms apart'
       '${forced != null ? ' (FORCED)' : ''}',
       req.sessionId,
@@ -3216,11 +3216,11 @@ class VoxVoiceService extends ChangeNotifier {
         // Salt each send so a resend is never dropped as a duplicate by a
         // radio that saw an earlier copy; skip it if the frame would not fit.
         final fits =
-            2 + route.length + packets[i].encode().length + 1 <=
+            2 + route.bytes.length + packets[i].encode().length + 1 <=
             _maxCompanionFrame;
         await _connector.sendFrame(
           buildSendRawDataFrame(
-            path: route,
+            route: route,
             payload: packets[i].encode(
               salt: req.saltOk && fits ? _rng.nextInt(256) : null,
             ),
@@ -3235,12 +3235,12 @@ class VoxVoiceService extends ChangeNotifier {
     var paritySent = 0;
     for (final p in parity) {
       if (!_connector.isConnected || _serveGen[key] != gen) break;
-      if (2 + route.length + p.length > _maxCompanionFrame) break;
+      if (2 + route.bytes.length + p.length > _maxCompanionFrame) break;
       await Future<void>.delayed(gap);
       busyMs += await _radio2Quiet(req.sessionId);
       try {
         await _connector.sendFrame(
-          buildSendRawDataFrame(path: route, payload: p),
+          buildSendRawDataFrame(route: route, payload: p),
           waitForGenericAck: true,
         );
         paritySent++;
@@ -3260,18 +3260,27 @@ class VoxVoiceService extends ChangeNotifier {
 
   // ---------------------------------------------------------------- routing
 
-  /// Path bytes for a direct send, or null if there is no usable direct path.
-  /// Raw data cannot be flooded, and the firmware reads the path length as a
-  /// byte count, so multi-byte path hashes are not supported yet.
-  Uint8List? _directRoute(Contact c) {
-    if (c.pathHashWidth != 1) return null;
+  /// The route for a direct send, or null if there is no usable direct path
+  /// (raw data cannot be flooded). Keeps the contact's path hash width.
+  RawRoute? _directRoute(Contact c) {
     if (c.pathOverride != null) {
-      if (c.pathOverride! < 0) return null;
+      final hops = c.pathOverride!;
+      if (hops < 0) return null;
       final bytes = c.pathOverrideBytes ?? Uint8List(0);
-      return Uint8List.fromList(bytes.take(c.pathOverride!).toList());
+      final width = Contact.inferPathHashWidth(hops, bytes.length);
+      if (bytes.length < hops * width) return null;
+      return RawRoute(
+        Uint8List.fromList(bytes.sublist(0, hops * width)),
+        hashWidth: width,
+      );
     }
-    if (c.pathLength < 0 || c.path.length < c.pathLength) return null;
-    return Uint8List.fromList(c.path.sublist(0, c.pathLength));
+    final width = c.pathHashWidth.clamp(1, 3);
+    final len = c.pathLength * width;
+    if (c.pathLength < 0 || c.path.length < len) return null;
+    return RawRoute(
+      Uint8List.fromList(c.path.sublist(0, len)),
+      hashWidth: width,
+    );
   }
 
   // Where this radio sends photos and voice (MediaAirProfile): radio2's
@@ -3447,9 +3456,9 @@ class VoxVoiceService extends ChangeNotifier {
   final Map<int, DateTime> _pongsAnswered = {};
 
   /// Routes a link test will try towards [target], labelled for the log.
-  List<(String, Uint8List)> linkTestRoutes(Contact target) {
-    final routes = <(String, Uint8List)>[
-      ('no repeaters (0 hop)', Uint8List(0)),
+  List<(String, RawRoute)> linkTestRoutes(Contact target) {
+    final routes = <(String, RawRoute)>[
+      ('no repeaters (0 hop)', RawRoute.empty),
     ];
     final r = _directRoute(target);
     if (r != null && r.isNotEmpty) routes.add(('contact route', r));
@@ -3478,16 +3487,16 @@ class VoxVoiceService extends ChangeNotifier {
           nonce & 255,
         ])
         ..add(self.sublist(0, 6))
-        ..addByte(path.length)
-        ..add(path);
+        ..addByte(path.encodedLength)
+        ..add(path.bytes);
       _pingsOut[nonce] = (DateTime.now(), label);
       try {
         await _connector.sendFrame(
-          buildSendRawDataFrame(path: path, payload: b.toBytes()),
+          buildSendRawDataFrame(route: path, payload: b.toBytes()),
           waitForGenericAck: true,
         );
         _logEvent(
-          'PING sent via $label ${_hex(path)} (#${nonce.toRadixString(16)})',
+          'PING sent via $label ${path.toHex()} (#${nonce.toRadixString(16)})',
         );
       } catch (e) {
         _logEvent('PING via $label could not be sent: $e');
@@ -3517,15 +3526,15 @@ class VoxVoiceService extends ChangeNotifier {
     final key6 = voxKey6Hex(p.sublist(5, 11));
     final self = _connector.selfPublicKey;
     if (self == null || key6 == voxKey6Hex(self)) return;
-    final n = p[11];
-    if (p.length < 12 + n) return;
-    final back = Uint8List.fromList(p.sublist(12, 12 + n).reversed.toList());
+    final sentVia = RawRoute.decode(p[11], p, 12);
+    if (sentVia == null) return;
+    final back = sentVia.reversed();
     final last = _pongsAnswered[nonce];
     if (last != null && DateTime.now().difference(last).inSeconds < 10) return;
     _pongsAnswered[nonce] = DateTime.now();
     _logEvent(
-      'PING from $key6 (sent via ${_hex(p.sublist(12, 12 + n))}); '
-      'answering via ${_hex(back)}',
+      'PING from $key6 (sent via ${sentVia.toHex()}); '
+      'answering via ${back.toHex()}',
     );
     final b = BytesBuilder()
       ..addByte(_pongMagic)
@@ -3533,7 +3542,7 @@ class VoxVoiceService extends ChangeNotifier {
       ..add(self.sublist(0, 6));
     try {
       await _connector.sendFrame(
-        buildSendRawDataFrame(path: back, payload: b.toBytes()),
+        buildSendRawDataFrame(route: back, payload: b.toBytes()),
         waitForGenericAck: true,
       );
     } catch (e) {

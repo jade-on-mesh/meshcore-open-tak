@@ -1373,16 +1373,76 @@ Uint8List floodTransportCode({
 // MeshCore Open TAK: raw data (used for on-demand voice packets).
 //
 // CMD_SEND_RAW_DATA: [25][path_len][path...][payload]. The firmware only sends
-// raw data along a known direct path (flood is rejected) and treats path_len
-// as a byte count, so only 1-byte path hashes are supported.
+// raw data along a known direct path (flood is rejected). path_len is encoded
+// as on air (hash size - 1 in the top two bits, hop count below), so 1-, 2-
+// and 3-byte path hashes all work; for 1-byte hashes it is the byte count.
+
+/// A direct route for raw data: [hops] hop hashes of [hashWidth] bytes each,
+/// in the order the packet travels.
+class RawRoute {
+  RawRoute(this.bytes, {this.hashWidth = 1})
+    : assert(hashWidth >= 1 && hashWidth <= 3),
+      assert(bytes.length % hashWidth == 0);
+
+  /// No repeaters: heard only by radios in range.
+  static final RawRoute empty = RawRoute(Uint8List(0));
+
+  final Uint8List bytes;
+  final int hashWidth;
+
+  int get hops => bytes.length ~/ hashWidth;
+  bool get isEmpty => bytes.isEmpty;
+  bool get isNotEmpty => bytes.isNotEmpty;
+
+  /// path_len as MeshCore encodes it on air and in CMD_SEND_RAW_DATA.
+  int get encodedLength => ((hashWidth - 1) << 6) | (hops & 0x3F);
+
+  /// The way back: the same hops in reverse order, each hash kept whole.
+  RawRoute reversed() {
+    final out = Uint8List(bytes.length);
+    for (var h = 0; h < hops; h++) {
+      out.setRange(
+        (hops - 1 - h) * hashWidth,
+        (hops - h) * hashWidth,
+        bytes,
+        h * hashWidth,
+      );
+    }
+    return RawRoute(out, hashWidth: hashWidth);
+  }
+
+  /// The route whose encoded path_len is [encoded] and whose hashes start at
+  /// [src][at], or null if the encoding is invalid or [src] is too short.
+  static RawRoute? decode(int encoded, List<int> src, int at) {
+    final width = ((encoded >> 6) & 0x03) + 1;
+    final len = (encoded & 0x3F) * width;
+    if (width > 3 || len > maxPathSize || src.length < at + len) return null;
+    return RawRoute(
+      Uint8List.fromList(src.sublist(at, at + len)),
+      hashWidth: width,
+    );
+  }
+
+  /// Hops as hex, comma separated ("(0 hop)" when empty).
+  String toHex() {
+    if (isEmpty) return '(0 hop)';
+    final sb = StringBuffer();
+    for (var i = 0; i < bytes.length; i++) {
+      if (i > 0 && i % hashWidth == 0) sb.write(',');
+      sb.write(bytes[i].toRadixString(16).padLeft(2, '0'));
+    }
+    return sb.toString();
+  }
+}
+
 Uint8List buildSendRawDataFrame({
-  required Uint8List path,
+  required RawRoute route,
   required Uint8List payload,
 }) {
   final writer = BufferWriter();
   writer.writeByte(cmdSendRawData);
-  writer.writeByte(path.length);
-  writer.writeBytes(path);
+  writer.writeByte(route.encodedLength);
+  writer.writeBytes(route.bytes);
   writer.writeBytes(payload);
   return writer.toBytes();
 }

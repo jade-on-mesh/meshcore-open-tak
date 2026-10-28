@@ -28,6 +28,7 @@ final byteLength = hopCount * width;
 
 - Model/storage `pathLength` stores **hop count**, with `-1` representing flood/unknown.
 - `pathHashWidth` stores the bytes per hop for that path.
+- Raw-data sends (photo and voice transfers, DM push-to-talk) use the same packed `path_len` in `CMD_SEND_RAW_DATA`, so they follow a contact's route at any width. `RawRoute` in `meshcore_protocol.dart` carries the bytes and width, and reverses a route hop by hop for replies.
 - `pathBytes` (or `Contact.path`) contains concatenated prefixes.
 - Use the path’s own width when splitting, reversing, matching, and rendering it; do not substitute the device’s current width for historical metadata.
 

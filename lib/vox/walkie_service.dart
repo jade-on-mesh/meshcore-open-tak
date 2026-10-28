@@ -17,6 +17,7 @@ import 'package:record/record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../connector/meshcore_connector.dart';
+import '../connector/meshcore_protocol.dart' show RawRoute;
 import '../models/channel.dart';
 import '../models/contact.dart';
 import '../services/media_lockdown.dart';
@@ -62,7 +63,7 @@ enum WalkieTx { idle, starting, onAir, finishing }
 
 class _Tx {
   _Tx(this.channel, this.sessionId, this.direct) : contact = null, route = null;
-  _Tx.dm(Contact this.contact, Uint8List this.route, this.sessionId)
+  _Tx.dm(Contact this.contact, RawRoute this.route, this.sessionId)
     : channel = null,
       direct = route.isEmpty;
 
@@ -71,7 +72,7 @@ class _Tx {
 
   /// A DM talk's contact and the route to them (empty: zero-hop).
   final Contact? contact;
-  final Uint8List? route;
+  final RawRoute? route;
   final String sessionId;
   final bool direct;
   final AudioRecorder recorder = AudioRecorder();
@@ -509,7 +510,7 @@ class WalkieService extends ChangeNotifier {
     }
     final busy = activeTalkWith(contact.publicKeyHex);
     if (busy != null) return '${contact.name} is talking';
-    final route = _voice.directRouteTo(contact) ?? Uint8List(0);
+    final route = _voice.directRouteTo(contact) ?? RawRoute.empty;
     return _begin(_Tx.dm(contact, route, voxNewSessionId(_rng)));
   }
 
@@ -641,7 +642,7 @@ class WalkieService extends ChangeNotifier {
       if (tx.failed) return;
       final route = tx.route;
       final gap = route != null
-          ? _voice.walkieDmGap(route.length)
+          ? _voice.walkieDmGap(route.hops)
           : _voice.walkieGap(direct: tx.direct);
       final last = tx.lastSent;
       if (last != null) {

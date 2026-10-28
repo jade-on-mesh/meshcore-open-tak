@@ -19,6 +19,8 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
+import '../connector/meshcore_protocol.dart';
+
 /// Codec2 modes with the mode ids used on the wire by VE3.
 ///
 /// [wireId] is the VE3 envelope id. [codec2Id] is the value passed to
@@ -133,8 +135,10 @@ const int voxFetchFlagMissingOnly = 0x01;
 /// Plain VE3 implementations only look at bit 0, so they ignore this.
 const int voxFetchFlagSaltOk = 0x02;
 
-/// VOX extension: the request ends with `[len][path bytes]`, the route the
-/// requester used to reach the sender (requester -> sender order). The
+/// VOX extension: the request ends with `[path_len][path bytes]`, the route
+/// the requester used to reach the sender (requester -> sender order).
+/// path_len is encoded as MeshCore does on air (hash size - 1 in the top two
+/// bits, hop count below), which for 1-byte hashes is the byte count. The
 /// sender replies along the reverse, which is known to work right now,
 /// instead of its own stored route (which can be stale or asymmetric).
 const int voxFetchFlagHasPath = 0x04;
@@ -507,7 +511,7 @@ class VoxVoiceFetchRequest {
 
   /// The route the requester used to reach the sender (requester -> sender),
   /// or null if not given. Empty means the requester reached us directly.
-  final List<int>? requesterPath;
+  final RawRoute? requesterPath;
 
   /// The requester reads marked packets (0x58). Set on channel requests only
   /// ([voxFetchFlagMarkOk]).
@@ -551,13 +555,10 @@ class VoxVoiceFetchRequest {
           if (payload[minLength + i] < voxMaxPackets) payload[minLength + i],
       }.toList()..sort();
     }
-    List<int>? path;
+    RawRoute? path;
     final pathAt = minLength + count;
     if ((flags & voxFetchFlagHasPath) != 0 && payload.length > pathAt) {
-      final n = payload[pathAt];
-      if (n <= 63 && payload.length >= pathAt + 1 + n) {
-        path = payload.sublist(pathAt + 1, pathAt + 1 + n);
-      }
+      path = RawRoute.decode(payload[pathAt], payload, pathAt + 1);
     }
     return VoxVoiceFetchRequest(
       sessionId: voxSessionIdFromBytes(payload, 1),
@@ -596,7 +597,7 @@ class VoxVoiceFetchRequest {
           missing[((salt & 0xFF) >> 4) % min(missing.length, room)],
     ];
     final path = requesterPath;
-    final pathBytes = path == null ? 0 : 1 + path.length;
+    final pathBytes = path == null ? 0 : 1 + path.bytes.length;
     final out = Uint8List(minLength + capped.length + pathBytes);
     out[0] = voxVoiceFetchMagic;
     out.setRange(1, 5, voxSessionIdToBytes(sessionId));
@@ -614,11 +615,11 @@ class VoxVoiceFetchRequest {
     out[12] = capped.length;
     out.setRange(minLength, minLength + capped.length, capped);
     if (path != null) {
-      out[minLength + capped.length] = path.length;
+      out[minLength + capped.length] = path.encodedLength;
       out.setRange(
         minLength + capped.length + 1,
-        minLength + capped.length + 1 + path.length,
-        path,
+        minLength + capped.length + 1 + path.bytes.length,
+        path.bytes,
       );
     }
     return out;

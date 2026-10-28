@@ -31,7 +31,7 @@ It needs **Keymind Cascade 1.18 or later** on the companion radio: voice and pho
 
 Audio is therefore only transmitted to people who actually want to hear it, which keeps channel airtime sane. Details: [docs/vox-voice.md](docs/vox-voice.md).
 
-If there's no direct route, VOX sets one up with a silent DM. In channels, where the sender may not be a contact, the request and audio are flooded on the channel instead, and everyone on the channel who taps the clip gets it from that one transfer. Channel fallback needs companion firmware v1.15+; direct transfer over multi-byte path hashes isn't supported yet. Please be mindful of duty-cycle limits on shared regional meshes. Photos and voice only go out on [MediaMesh](documentation/media-mesh.md) (the radio's `radio2`), never on the main mesh.
+If there's no direct route, VOX sets one up with a silent DM. In channels, where the sender may not be a contact, the request and audio are flooded on the channel instead, and everyone on the channel who taps the clip gets it from that one transfer. Channel fallback needs companion firmware v1.15+. Direct transfers work over 1-, 2- and 3-byte path hashes, so both phones need an app version with that support when the route between them uses multi-byte hashes. Please be mindful of duty-cycle limits on shared regional meshes. Photos and voice only go out on [MediaMesh](documentation/media-mesh.md) (the radio's `radio2`), never on the main mesh.
 
 ### Licensing
 
