@@ -1827,6 +1827,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get chat_shareMyLocation => 'Compartir mi ubicación';
 
   @override
+  String get chat_showComposerButtons => 'Show photo and voice buttons';
+
+  @override
   String get chat_noRadioLocation => 'Tu radio no tiene una ubicación definida';
 
   @override

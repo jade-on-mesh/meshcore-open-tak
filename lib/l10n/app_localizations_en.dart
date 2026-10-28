@@ -1800,6 +1800,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chat_shareMyLocation => 'Share my location';
 
   @override
+  String get chat_showComposerButtons => 'Show photo and voice buttons';
+
+  @override
   String get chat_noRadioLocation => 'Your radio has no location set';
 
   @override

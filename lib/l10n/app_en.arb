@@ -939,6 +939,7 @@
   "@chat_shareMyLocation": {
     "description": "Chat input menu action that shares the radio's own position as a map marker"
   },
+  "chat_showComposerButtons": "Show photo and voice buttons",
   "chat_noRadioLocation": "Your radio has no location set",
   "@chat_noRadioLocation": {
     "description": "Shown when sharing a location but the radio reports no usable position"

@@ -1821,6 +1821,9 @@ class AppLocalizationsHu extends AppLocalizations {
   String get chat_shareMyLocation => 'Saját helyem megosztása';
 
   @override
+  String get chat_showComposerButtons => 'Show photo and voice buttons';
+
+  @override
   String get chat_noRadioLocation => 'A rádiónak nincs beállított helye';
 
   @override

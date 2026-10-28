@@ -1845,6 +1845,9 @@ class AppLocalizationsPl extends AppLocalizations {
   String get chat_shareMyLocation => 'Udostępnij moją lokalizację';
 
   @override
+  String get chat_showComposerButtons => 'Show photo and voice buttons';
+
+  @override
   String get chat_noRadioLocation =>
       'Twoje radio nie ma ustawionej lokalizacji';
 

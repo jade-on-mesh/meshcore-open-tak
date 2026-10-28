@@ -1821,6 +1821,9 @@ class AppLocalizationsUk extends AppLocalizations {
   String get chat_shareMyLocation => 'Поділитися моєю геопозицією';
 
   @override
+  String get chat_showComposerButtons => 'Show photo and voice buttons';
+
+  @override
   String get chat_noRadioLocation => 'У вашому радіо не задано геопозицію';
 
   @override

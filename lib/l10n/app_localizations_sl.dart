@@ -1818,6 +1818,9 @@ class AppLocalizationsSl extends AppLocalizations {
   String get chat_shareMyLocation => 'Deli mojo lokacijo';
 
   @override
+  String get chat_showComposerButtons => 'Show photo and voice buttons';
+
+  @override
   String get chat_noRadioLocation => 'Vaš radio nima nastavljene lokacije';
 
   @override

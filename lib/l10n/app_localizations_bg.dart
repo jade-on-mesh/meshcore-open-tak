@@ -1832,6 +1832,9 @@ class AppLocalizationsBg extends AppLocalizations {
   String get chat_shareMyLocation => 'Споделяне на моето местоположение';
 
   @override
+  String get chat_showComposerButtons => 'Show photo and voice buttons';
+
+  @override
   String get chat_noRadioLocation => 'Радиото ви няма зададено местоположение';
 
   @override

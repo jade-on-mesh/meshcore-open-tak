@@ -1816,6 +1816,9 @@ class AppLocalizationsNl extends AppLocalizations {
   String get chat_shareMyLocation => 'Mijn locatie delen';
 
   @override
+  String get chat_showComposerButtons => 'Show photo and voice buttons';
+
+  @override
   String get chat_noRadioLocation => 'Je radio heeft geen locatie ingesteld';
 
   @override
