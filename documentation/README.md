@@ -4,7 +4,7 @@ MeshCore Open is an open-source Flutter client for MeshCore LoRa mesh networking
 
 ## Start here
 
-1. Use compatible MeshCore companion firmware and [connect a radio](scanner-and-connection.md).
+1. Use Keymind Cascade 1.18 or later companion firmware (see [MediaMesh](media-mesh.md)) and [connect a radio](scanner-and-connection.md).
 2. Wait for synchronization, then open a [channel](channels.md) or [contact chat](chat-and-messaging.md).
 3. For scoped floods, configure [regions](regions.md). For image packets, install the [image model](image-messages.md).
 4. If a device or feature is unavailable, use [troubleshooting](troubleshooting.md).
