@@ -285,8 +285,17 @@ class ChatComposer extends StatelessWidget {
           borderRadius: BorderRadius.circular(MeshRadii.md),
           borderSide: BorderSide(color: color, width: width),
         );
+    // Grows with the message up to about a third of the room the keyboard
+    // leaves (6 lines at most, 1 in landscape with the keyboard up), then
+    // scrolls inside itself, so it never reaches under the keyboard or
+    // pushes the chat off the screen.
+    final media = MediaQuery.of(context);
+    final room =
+        media.size.height - media.viewInsets.bottom - media.padding.top;
+    final maxLines = (room * 0.3 / 26).floor().clamp(1, 6);
     return ByteCountedTextField(
       maxBytes: maxBytes,
+      maxLines: maxLines,
       softLimitBytes: softLimitBytes,
       softLimitNote: softLimitNote,
       controller: controller,

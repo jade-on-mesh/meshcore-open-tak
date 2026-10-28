@@ -70,6 +70,10 @@ class ByteCountedTextField extends StatelessWidget {
   final Color Function(int usedBytes, int maxBytes, Color defaultColor)?
   counterColorBuilder;
 
+  /// The most lines the field grows to before it scrolls inside itself
+  /// (null: it grows without limit).
+  final int? maxLines;
+
   const ByteCountedTextField({
     super.key,
     required this.maxBytes,
@@ -90,6 +94,7 @@ class ByteCountedTextField extends StatelessWidget {
     this.softLimitNote,
     this.counterTextBuilder,
     this.counterColorBuilder,
+    this.maxLines,
   });
 
   @override
@@ -129,7 +134,8 @@ class ByteCountedTextField extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TextField(
-              maxLines: null,
+              minLines: 1,
+              maxLines: maxLines,
               controller: controller,
               focusNode: focusNode,
               autofocus: autofocus,
