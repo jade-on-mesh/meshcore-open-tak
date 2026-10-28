@@ -723,16 +723,11 @@ class _ChatScreenState extends State<ChatScreen> {
           : null,
       idleTrailing: VoxMicButton(
         recipientLabel: _resolveContact(connector).name,
-        codecTarget: VoxVoiceService.contactTarget(
-          _resolveContact(connector),
-        ),
+        codecTarget: VoxVoiceService.contactTarget(_resolveContact(connector)),
         caption: caption,
-        onSend: (clip, text) =>
-            context.read<VoxVoiceService>().sendClipToContact(
-              _resolveContact(connector),
-              clip,
-              caption: text,
-            ),
+        onSend: (clip, text) => context
+            .read<VoxVoiceService>()
+            .sendClipToContact(_resolveContact(connector), clip, caption: text),
       ),
       leading: [
         VoxImageButton(
