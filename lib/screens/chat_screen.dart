@@ -721,6 +721,14 @@ class _ChatScreenState extends State<ChatScreen> {
               defaultColor,
             )
           : null,
+      idleTrailing: VoxMicButton(
+        recipientLabel: _resolveContact(connector).name,
+        codecTarget: VoxVoiceService.contactTarget(_resolveContact(connector)),
+        caption: caption,
+        onSend: (clip, text) => context
+            .read<VoxVoiceService>()
+            .sendClipToContact(_resolveContact(connector), clip, caption: text),
+      ),
       leading: [
         VoxImageButton(
           // AI sketches to a person ride the OTP pipeline, so they are
@@ -751,19 +759,6 @@ class _ChatScreenState extends State<ChatScreen> {
               context.read<VoxVoiceService>().sendImageToContact(
                 _resolveContact(connector),
                 image,
-                caption: text,
-              ),
-        ),
-        VoxMicButton(
-          recipientLabel: _resolveContact(connector).name,
-          codecTarget: VoxVoiceService.contactTarget(
-            _resolveContact(connector),
-          ),
-          caption: caption,
-          onSend: (clip, text) =>
-              context.read<VoxVoiceService>().sendClipToContact(
-                _resolveContact(connector),
-                clip,
                 caption: text,
               ),
         ),
