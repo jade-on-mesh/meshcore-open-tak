@@ -1830,6 +1830,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get chat_shareMyLocation => 'Meinen Standort teilen';
 
   @override
+  String get chat_showComposerButtons => 'Show photo and voice buttons';
+
+  @override
   String get chat_noRadioLocation =>
       'Ihr Funkgerät hat keinen Standort festgelegt';
 

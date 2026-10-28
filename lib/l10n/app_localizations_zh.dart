@@ -1726,6 +1726,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chat_shareMyLocation => '分享我的位置';
 
   @override
+  String get chat_showComposerButtons => 'Show photo and voice buttons';
+
+  @override
   String get chat_noRadioLocation => '您的电台未设置位置';
 
   @override

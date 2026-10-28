@@ -3250,6 +3250,12 @@ abstract class AppLocalizations {
   /// **'Share my location'**
   String get chat_shareMyLocation;
 
+  /// No description provided for @chat_showComposerButtons.
+  ///
+  /// In en, this message translates to:
+  /// **'Show photo and voice buttons'**
+  String get chat_showComposerButtons;
+
   /// Shown when sharing a location but the radio reports no usable position
   ///
   /// In en, this message translates to:

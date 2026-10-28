@@ -1749,6 +1749,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get chat_shareMyLocation => '내 위치 공유';
 
   @override
+  String get chat_showComposerButtons => 'Show photo and voice buttons';
+
+  @override
   String get chat_noRadioLocation => '무전기에 위치가 설정되어 있지 않습니다';
 
   @override

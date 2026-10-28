@@ -1806,6 +1806,9 @@ class AppLocalizationsSv extends AppLocalizations {
   String get chat_shareMyLocation => 'Dela min plats';
 
   @override
+  String get chat_showComposerButtons => 'Show photo and voice buttons';
+
+  @override
   String get chat_noRadioLocation => 'Din radio har ingen plats inställd';
 
   @override

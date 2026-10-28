@@ -1819,6 +1819,9 @@ class AppLocalizationsSk extends AppLocalizations {
   String get chat_shareMyLocation => 'Zdieľať moju polohu';
 
   @override
+  String get chat_showComposerButtons => 'Show photo and voice buttons';
+
+  @override
   String get chat_noRadioLocation => 'Vaše rádio nemá nastavenú polohu';
 
   @override

@@ -174,13 +174,20 @@ class ChatComposer extends StatelessWidget {
                       onPressed: () => _openActionMenu(buttonContext),
                     ),
                   ),
-                  ...leading,
-                  if (translation.$1)
-                    MessageTranslationButton(
-                      enabled: translation.$2,
-                      languageCode: translation.$3,
-                      onPressed: () => showComposerTranslationOptions(context),
-                    ),
+                  _CollapsingButtons(
+                    controller: controller,
+                    focusNode: focusNode,
+                    children: [
+                      ...leading,
+                      if (translation.$1)
+                        MessageTranslationButton(
+                          enabled: translation.$2,
+                          languageCode: translation.$3,
+                          onPressed: () =>
+                              showComposerTranslationOptions(context),
+                        ),
+                    ],
+                  ),
                   Expanded(
                     child: ValueListenableBuilder<TextEditingValue>(
                       valueListenable: controller,
@@ -291,6 +298,7 @@ class ChatComposer extends StatelessWidget {
       counterColorBuilder: counterColorBuilder,
       decoration: InputDecoration(
         hintText: context.l10n.chat_typeMessage,
+        hintMaxLines: 1,
         border: border(scheme.outlineVariant),
         enabledBorder: border(scheme.outlineVariant),
         focusedBorder: border(scheme.primary, 1.5),
@@ -301,6 +309,89 @@ class ChatComposer extends StatelessWidget {
           vertical: 12,
         ),
       ),
+    );
+  }
+}
+
+/// MeshCore Open TAK: the buttons between "+" and the text field (photo,
+/// voice, push-to-talk, translation). Once there's text they fold into one
+/// chevron so the field gets the width, as messaging apps do; the chevron
+/// unfolds them until the text changes. An empty field keeps them in reach.
+class _CollapsingButtons extends StatefulWidget {
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final List<Widget> children;
+
+  const _CollapsingButtons({
+    required this.controller,
+    required this.focusNode,
+    required this.children,
+  });
+
+  @override
+  State<_CollapsingButtons> createState() => _CollapsingButtonsState();
+}
+
+class _CollapsingButtonsState extends State<_CollapsingButtons> {
+  bool _unfolded = false;
+  String _textWhenUnfolded = '';
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_changed);
+    widget.focusNode.addListener(_changed);
+  }
+
+  @override
+  void didUpdateWidget(_CollapsingButtons old) {
+    super.didUpdateWidget(old);
+    if (old.controller != widget.controller) {
+      old.controller.removeListener(_changed);
+      widget.controller.addListener(_changed);
+    }
+    if (old.focusNode != widget.focusNode) {
+      old.focusNode.removeListener(_changed);
+      widget.focusNode.addListener(_changed);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_changed);
+    widget.focusNode.removeListener(_changed);
+    super.dispose();
+  }
+
+  void _changed() {
+    if (!mounted) return;
+    // Typing folds them away again.
+    if (_unfolded && widget.controller.text != _textWhenUnfolded) {
+      _unfolded = false;
+    }
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.children.isEmpty) return const SizedBox.shrink();
+    final folded =
+        widget.controller.text.isNotEmpty &&
+        !_unfolded &&
+        widget.children.length > 1;
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 150),
+      alignment: Alignment.centerLeft,
+      child: folded
+          ? IconButton(
+              icon: const Icon(Icons.chevron_right),
+              tooltip: context.l10n.chat_showComposerButtons,
+              onPressed: () => setState(() {
+                _unfolded = true;
+                _textWhenUnfolded = widget.controller.text;
+              }),
+            )
+          : Row(mainAxisSize: MainAxisSize.min, children: widget.children),
     );
   }
 }

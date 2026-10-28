@@ -1831,6 +1831,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get chat_shareMyLocation => 'Поделиться моим местоположением';
 
   @override
+  String get chat_showComposerButtons => 'Show photo and voice buttons';
+
+  @override
   String get chat_noRadioLocation => 'В вашем радио не задано местоположение';
 
   @override

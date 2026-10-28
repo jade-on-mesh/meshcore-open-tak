@@ -1744,6 +1744,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get chat_shareMyLocation => '自分の位置情報を共有';
 
   @override
+  String get chat_showComposerButtons => 'Show photo and voice buttons';
+
+  @override
   String get chat_noRadioLocation => '無線機に位置情報が設定されていません';
 
   @override
