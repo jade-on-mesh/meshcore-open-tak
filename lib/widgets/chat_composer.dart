@@ -290,7 +290,8 @@ class ChatComposer extends StatelessWidget {
     // scrolls inside itself, so it never reaches under the keyboard or
     // pushes the chat off the screen.
     final media = MediaQuery.of(context);
-    final room = media.size.height - media.viewInsets.bottom - media.padding.top;
+    final room =
+        media.size.height - media.viewInsets.bottom - media.padding.top;
     final maxLines = (room * 0.3 / 26).floor().clamp(1, 6);
     return ByteCountedTextField(
       maxBytes: maxBytes,
