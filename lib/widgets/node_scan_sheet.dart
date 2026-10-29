@@ -64,23 +64,23 @@ class _NodeScanSheetState extends State<NodeScanSheet> {
     _subscription = widget.connector
         .discoverNearbyNodes(wantRadio2: true)
         .listen(
-      (response) {
-        if (!mounted) return;
-        setState(() {
-          _results
-            ..add(response)
-            ..sort((a, b) => b.snr.compareTo(a.snr));
-        });
-      },
-      onError: (Object _) {
-        if (!mounted) return;
-        setState(() => _failed = true);
-      },
-      onDone: () {
-        if (!mounted) return;
-        setState(() => _scanning = false);
-      },
-    );
+          (response) {
+            if (!mounted) return;
+            setState(() {
+              _results
+                ..add(response)
+                ..sort((a, b) => b.snr.compareTo(a.snr));
+            });
+          },
+          onError: (Object _) {
+            if (!mounted) return;
+            setState(() => _failed = true);
+          },
+          onDone: () {
+            if (!mounted) return;
+            setState(() => _scanning = false);
+          },
+        );
   }
 
   bool _isContact(NodeDiscoverResponse response) {

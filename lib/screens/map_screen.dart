@@ -1911,7 +1911,9 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
             shape: BoxShape.circle,
             color: selected ? MapPalette.selected : color,
             border: Border.all(
-              color: mediaMesh ? MapPalette.mediaMesh : MapPalette.markerOutline,
+              color: mediaMesh
+                  ? MapPalette.mediaMesh
+                  : MapPalette.markerOutline,
               width: selected ? 3 : (mediaMesh ? 3 : 2.5),
             ),
             boxShadow: [

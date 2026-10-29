@@ -154,7 +154,8 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
-  String get mmRepeater_noneKnown => 'No MediaMesh repeaters known yet. Find MediaMesh or Discover nearby nodes asks the repeaters in reach; a repeater\'s MediaMesh settings also tell.';
+  String get mmRepeater_noneKnown =>
+      'No MediaMesh repeaters known yet. Find MediaMesh or Discover nearby nodes asks the repeaters in reach; a repeater\'s MediaMesh settings also tell.';
 
   @override
   String get mosaic_show => 'Photos on the map';

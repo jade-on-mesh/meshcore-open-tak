@@ -1,5 +1,12 @@
 {
   "bg": [
+    "mmRepeater_chip",
+    "mmRepeater_legend",
+    "mmRepeater_meta",
+    "mmRepeater_listens",
+    "mmRepeater_sends",
+    "mmRepeater_info",
+    "mmRepeater_noneKnown",
     "mosaic_show",
     "mosaic_showHelp",
     "mosaic_tag",
@@ -540,6 +547,13 @@
   ],
 
   "de": [
+    "mmRepeater_chip",
+    "mmRepeater_legend",
+    "mmRepeater_meta",
+    "mmRepeater_listens",
+    "mmRepeater_sends",
+    "mmRepeater_info",
+    "mmRepeater_noneKnown",
     "mosaic_show",
     "mosaic_showHelp",
     "mosaic_tag",
@@ -1080,6 +1094,13 @@
   ],
 
   "es": [
+    "mmRepeater_chip",
+    "mmRepeater_legend",
+    "mmRepeater_meta",
+    "mmRepeater_listens",
+    "mmRepeater_sends",
+    "mmRepeater_info",
+    "mmRepeater_noneKnown",
     "mosaic_show",
     "mosaic_showHelp",
     "mosaic_tag",
@@ -1620,6 +1641,13 @@
   ],
 
   "fr": [
+    "mmRepeater_chip",
+    "mmRepeater_legend",
+    "mmRepeater_meta",
+    "mmRepeater_listens",
+    "mmRepeater_sends",
+    "mmRepeater_info",
+    "mmRepeater_noneKnown",
     "mosaic_show",
     "mosaic_showHelp",
     "mosaic_tag",
@@ -2160,6 +2188,13 @@
   ],
 
   "hu": [
+    "mmRepeater_chip",
+    "mmRepeater_legend",
+    "mmRepeater_meta",
+    "mmRepeater_listens",
+    "mmRepeater_sends",
+    "mmRepeater_info",
+    "mmRepeater_noneKnown",
     "mosaic_show",
     "mosaic_showHelp",
     "mosaic_tag",
@@ -2700,6 +2735,13 @@
   ],
 
   "it": [
+    "mmRepeater_chip",
+    "mmRepeater_legend",
+    "mmRepeater_meta",
+    "mmRepeater_listens",
+    "mmRepeater_sends",
+    "mmRepeater_info",
+    "mmRepeater_noneKnown",
     "mosaic_show",
     "mosaic_showHelp",
     "mosaic_tag",
@@ -3240,6 +3282,13 @@
   ],
 
   "ja": [
+    "mmRepeater_chip",
+    "mmRepeater_legend",
+    "mmRepeater_meta",
+    "mmRepeater_listens",
+    "mmRepeater_sends",
+    "mmRepeater_info",
+    "mmRepeater_noneKnown",
     "mosaic_show",
     "mosaic_showHelp",
     "mosaic_tag",
@@ -3780,6 +3829,13 @@
   ],
 
   "ko": [
+    "mmRepeater_chip",
+    "mmRepeater_legend",
+    "mmRepeater_meta",
+    "mmRepeater_listens",
+    "mmRepeater_sends",
+    "mmRepeater_info",
+    "mmRepeater_noneKnown",
     "mosaic_show",
     "mosaic_showHelp",
     "mosaic_tag",
@@ -4320,6 +4376,13 @@
   ],
 
   "nl": [
+    "mmRepeater_chip",
+    "mmRepeater_legend",
+    "mmRepeater_meta",
+    "mmRepeater_listens",
+    "mmRepeater_sends",
+    "mmRepeater_info",
+    "mmRepeater_noneKnown",
     "mosaic_show",
     "mosaic_showHelp",
     "mosaic_tag",
@@ -4860,6 +4923,13 @@
   ],
 
   "pl": [
+    "mmRepeater_chip",
+    "mmRepeater_legend",
+    "mmRepeater_meta",
+    "mmRepeater_listens",
+    "mmRepeater_sends",
+    "mmRepeater_info",
+    "mmRepeater_noneKnown",
     "mosaic_show",
     "mosaic_showHelp",
     "mosaic_tag",
@@ -5400,6 +5470,13 @@
   ],
 
   "pt": [
+    "mmRepeater_chip",
+    "mmRepeater_legend",
+    "mmRepeater_meta",
+    "mmRepeater_listens",
+    "mmRepeater_sends",
+    "mmRepeater_info",
+    "mmRepeater_noneKnown",
     "mosaic_show",
     "mosaic_showHelp",
     "mosaic_tag",
@@ -5940,6 +6017,13 @@
   ],
 
   "ru": [
+    "mmRepeater_chip",
+    "mmRepeater_legend",
+    "mmRepeater_meta",
+    "mmRepeater_listens",
+    "mmRepeater_sends",
+    "mmRepeater_info",
+    "mmRepeater_noneKnown",
     "mosaic_show",
     "mosaic_showHelp",
     "mosaic_tag",
@@ -6480,6 +6564,13 @@
   ],
 
   "sk": [
+    "mmRepeater_chip",
+    "mmRepeater_legend",
+    "mmRepeater_meta",
+    "mmRepeater_listens",
+    "mmRepeater_sends",
+    "mmRepeater_info",
+    "mmRepeater_noneKnown",
     "mosaic_show",
     "mosaic_showHelp",
     "mosaic_tag",
@@ -7020,6 +7111,13 @@
   ],
 
   "sl": [
+    "mmRepeater_chip",
+    "mmRepeater_legend",
+    "mmRepeater_meta",
+    "mmRepeater_listens",
+    "mmRepeater_sends",
+    "mmRepeater_info",
+    "mmRepeater_noneKnown",
     "mosaic_show",
     "mosaic_showHelp",
     "mosaic_tag",
@@ -7560,6 +7658,13 @@
   ],
 
   "sv": [
+    "mmRepeater_chip",
+    "mmRepeater_legend",
+    "mmRepeater_meta",
+    "mmRepeater_listens",
+    "mmRepeater_sends",
+    "mmRepeater_info",
+    "mmRepeater_noneKnown",
     "mosaic_show",
     "mosaic_showHelp",
     "mosaic_tag",
@@ -8100,6 +8205,13 @@
   ],
 
   "uk": [
+    "mmRepeater_chip",
+    "mmRepeater_legend",
+    "mmRepeater_meta",
+    "mmRepeater_listens",
+    "mmRepeater_sends",
+    "mmRepeater_info",
+    "mmRepeater_noneKnown",
     "mosaic_show",
     "mosaic_showHelp",
     "mosaic_tag",
@@ -8640,6 +8752,13 @@
   ],
 
   "zh": [
+    "mmRepeater_chip",
+    "mmRepeater_legend",
+    "mmRepeater_meta",
+    "mmRepeater_listens",
+    "mmRepeater_sends",
+    "mmRepeater_info",
+    "mmRepeater_noneKnown",
     "mosaic_show",
     "mosaic_showHelp",
     "mosaic_tag",

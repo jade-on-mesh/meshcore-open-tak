@@ -186,10 +186,7 @@ class MediaMeshRepeaters extends ChangeNotifier {
     _asking = true;
     try {
       await c
-          .discoverNearbyNodes(
-            typeMask: 1 << advTypeRepeater,
-            wantRadio2: true,
-          )
+          .discoverNearbyNodes(typeMask: 1 << advTypeRepeater, wantRadio2: true)
           .drain<void>();
     } catch (_) {
     } finally {
