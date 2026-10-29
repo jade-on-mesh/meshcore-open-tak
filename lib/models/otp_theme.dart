@@ -110,7 +110,9 @@ class OtpTheme {
       newpad: Color(0xFFA6E8FF), // lighter blue
       channel: Color(0xFFFF69B4), // hot pink
       resultOk: Color(0xFF5BCEFA), // light blue
-      keyphrase: Color(0xFFF5A9B8), // light pink
+      // White (was a third light pink, the same as ciphertext): the sender
+      // pool is now blue, pink, lighter blue, white - the flag's colours.
+      keyphrase: Color(0xFFFFFFFF),
       padinfo: Color(0xFF38BDF8),
       ready: Color(0xFFE5E7EB),
       bg: Color(0xFF000000),
