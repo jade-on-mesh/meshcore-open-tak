@@ -56,6 +56,7 @@ import '../services/received_image_store.dart';
 import '../widgets/image_send_codec_binding.dart'
     show ImageCodecRatePoint, kImageCodecSquareSize;
 import '../models/image_codec_support.dart' show aeicRatePointForUi;
+import '../services/mediamesh_repeaters.dart';
 import '../services/message_retry_service.dart';
 import '../services/path_history_service.dart';
 import '../services/app_settings_service.dart';
@@ -8489,6 +8490,11 @@ class MeshCoreConnector extends ChangeNotifier {
           final keyHex = response.publicKeyHex;
           if (selfKeyHex.isNotEmpty && selfKeyHex.startsWith(keyHex)) return;
           if (!seenKeys.add(keyHex)) return;
+          // Whichever asked, remember which repeaters run MediaMesh (map).
+          final radio2 = response.radio2;
+          if (radio2 != null) {
+            MediaMeshRepeaters.instance.noteDiscover(keyHex, radio2);
+          }
           if (!controller.isClosed) controller.add(response);
         });
         try {

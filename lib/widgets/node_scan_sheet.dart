@@ -59,24 +59,28 @@ class _NodeScanSheetState extends State<NodeScanSheet> {
       _scanning = true;
       _failed = false;
     });
-    _subscription = widget.connector.discoverNearbyNodes().listen(
-      (response) {
-        if (!mounted) return;
-        setState(() {
-          _results
-            ..add(response)
-            ..sort((a, b) => b.snr.compareTo(a.snr));
-        });
-      },
-      onError: (Object _) {
-        if (!mounted) return;
-        setState(() => _failed = true);
-      },
-      onDone: () {
-        if (!mounted) return;
-        setState(() => _scanning = false);
-      },
-    );
+    // With the radio2 flag, MediaMesh repeaters say so (the map marks them);
+    // stock firmware ignores it.
+    _subscription = widget.connector
+        .discoverNearbyNodes(wantRadio2: true)
+        .listen(
+          (response) {
+            if (!mounted) return;
+            setState(() {
+              _results
+                ..add(response)
+                ..sort((a, b) => b.snr.compareTo(a.snr));
+            });
+          },
+          onError: (Object _) {
+            if (!mounted) return;
+            setState(() => _failed = true);
+          },
+          onDone: () {
+            if (!mounted) return;
+            setState(() => _scanning = false);
+          },
+        );
   }
 
   bool _isContact(NodeDiscoverResponse response) {
