@@ -25,6 +25,7 @@ import '../l10n/contact_localization.dart';
 import '../services/app_settings_service.dart';
 import '../services/path_history_service.dart';
 import '../services/map_marker_service.dart';
+import '../services/mediamesh_repeaters.dart';
 import '../services/map_tile_cache_service.dart';
 import '../services/network_map/network_map_api_client.dart';
 import '../services/ui_view_state_service.dart';
@@ -122,6 +123,8 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
   String? _selectedKey;
   LatLng? _selectedGuessPos;
   _Freshness _freshness = _Freshness.all;
+  // Show only repeaters known to run MediaMesh (the MediaMesh chip).
+  bool _onlyMediaMesh = false;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
   String _searchQuery = '';
@@ -178,6 +181,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
   void dispose() {
     _ageTimer?.cancel();
     _online.removeListener(_onOnlineChanged);
+    MediaMeshRepeaters.instance.removeListener(_onMediaMeshChanged);
     _online.dispose();
     _saveLastCamera();
     _searchController.dispose();
@@ -275,11 +279,20 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
     );
   }
 
+  void _onMediaMeshChanged() {
+    if (mounted) setState(() {});
+  }
+
+  bool _isMediaMesh(Contact c) =>
+      c.type == advTypeRepeater &&
+      MediaMeshRepeaters.instance.isMediaMesh(c.publicKeyHex);
+
   @override
   void initState() {
     super.initState();
     _loadRemovedMarkers();
     _online.addListener(_onOnlineChanged);
+    MediaMeshRepeaters.instance.addListener(_onMediaMeshChanged);
     _ageTimer = Timer.periodic(const Duration(seconds: 60), (_) {
       if (mounted) setState(() {});
     });
@@ -589,17 +602,20 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
           _Freshness.stale =>
             filteredByTime.where((c) => _ageOf(c) == _NodeAge.stale).toList(),
         };
+        final filteredByMediaMesh = _onlyMediaMesh
+            ? filteredByFreshness.where(_isMediaMesh).toList()
+            : filteredByFreshness;
 
         // Filter by key prefix
         final keyPrefix = settings.mapKeyPrefix.trim();
         final filteredByKeyPrefix =
             (settings.mapKeyPrefixEnabled && keyPrefix.isNotEmpty)
-            ? filteredByFreshness.where((c) {
+            ? filteredByMediaMesh.where((c) {
                 return c.publicKeyHex.toLowerCase().startsWith(
                   keyPrefix.toLowerCase(),
                 );
               }).toList()
-            : filteredByFreshness;
+            : filteredByMediaMesh;
 
         // Filter by location
         final contactsWithLocation = filteredByKeyPrefix.where((c) {
@@ -1374,6 +1390,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
       }
 
       final color = _getNodeColor(guess.contact.type);
+      final mediaMesh = _isMediaMesh(guess.contact);
       final marker = Marker(
         point: guess.position,
         width: 48,
@@ -1408,10 +1425,18 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                 ],
               ),
               alignment: Alignment.center,
-              child: Icon(
-                Icons.not_listed_location,
-                color: _overlayPrimaryTextColor,
-                size: 19,
+              child: Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.center,
+                children: [
+                  Icon(
+                    Icons.not_listed_location,
+                    color: _overlayPrimaryTextColor,
+                    size: 19,
+                  ),
+                  if (mediaMesh)
+                    Positioned(right: -14, top: -14, child: _mediaMeshBadge()),
+                ],
               ),
             ),
           ),
@@ -1607,6 +1632,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
     final stale = age == _NodeAge.stale;
     final online = age == _NodeAge.online;
     final batteryLow = _isBatteryLow(contact);
+    final mediaMesh = _isMediaMesh(contact);
     final size = selected ? 46.0 : (dot ? 22.0 : 40.0);
     return Marker(
       point: LatLng(contact.latitude!, contact.longitude!),
@@ -1641,8 +1667,10 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                       shape: BoxShape.circle,
                       color: baseColor,
                       border: Border.all(
-                        color: MapPalette.markerOutline,
-                        width: 2,
+                        color: mediaMesh
+                            ? MapPalette.mediaMesh
+                            : MapPalette.markerOutline,
+                        width: mediaMesh ? 3 : 2,
                       ),
                       boxShadow: const [
                         BoxShadow(
@@ -1660,6 +1688,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                     stale: stale,
                     online: online,
                     batteryLow: batteryLow,
+                    mediaMesh: mediaMesh,
                   ),
           ),
         ),
@@ -1862,6 +1891,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
     bool stale = false,
     bool online = false,
     bool batteryLow = false,
+    bool mediaMesh = false,
   }) {
     final statusColor = batteryLow
         ? MapPalette.batteryLow
@@ -1881,8 +1911,8 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
             shape: BoxShape.circle,
             color: selected ? MapPalette.selected : color,
             border: Border.all(
-              color: MapPalette.markerOutline,
-              width: selected ? 3 : 2.5,
+              color: mediaMesh ? MapPalette.mediaMesh : MapPalette.markerOutline,
+              width: selected ? 3 : (mediaMesh ? 3 : 2.5),
             ),
             boxShadow: [
               const BoxShadow(
@@ -1926,9 +1956,32 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                 : null,
           ),
         ),
+        if (mediaMesh)
+          Positioned(
+            right: selected ? -3 : -4,
+            top: selected ? -3 : -4,
+            child: _mediaMeshBadge(),
+          ),
       ],
     );
   }
+
+  /// The MediaMesh badge: a fast-media mark on a repeater known to run radio2.
+  Widget _mediaMeshBadge() => Container(
+    width: 17,
+    height: 17,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: MapPalette.mediaMesh,
+      border: Border.all(color: MapPalette.markerOutline, width: 1.5),
+    ),
+    alignment: Alignment.center,
+    child: const Icon(
+      Icons.perm_media,
+      size: 9,
+      color: MapPalette.markerOutline,
+    ),
+  );
 
   Widget _buildLegendItem(IconData icon, String label, Color color) {
     return Padding(
@@ -2105,6 +2158,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                 text: _overlayPrimaryTextColor,
                 filtered:
                     _freshness != _Freshness.all ||
+                    _onlyMediaMesh ||
                     !settings.mapShowRepeaters ||
                     !settings.mapShowChatNodes ||
                     !settings.mapShowRooms ||
@@ -2149,6 +2203,21 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                   onTap: () => settingsService.setMapShowRepeaters(
                     !settings.mapShowRepeaters,
                   ),
+                ),
+                _mapChip(
+                  label: context.l10n.mmRepeater_chip,
+                  selected: _onlyMediaMesh,
+                  color: MapPalette.mediaMesh,
+                  onTap: () {
+                    setState(() => _onlyMediaMesh = !_onlyMediaMesh);
+                    if (_onlyMediaMesh &&
+                        MediaMeshRepeaters.instance.count == 0) {
+                      showDismissibleSnackBar(
+                        context,
+                        context.l10n.mmRepeater_noneKnown,
+                      );
+                    }
+                  },
                 ),
                 _mapChip(
                   label: context.l10n.map_chatNodes,
@@ -2538,6 +2607,11 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
             MapPalette.repeater,
           ),
           _buildLegendItem(
+            Icons.perm_media,
+            context.l10n.mmRepeater_legend,
+            MapPalette.mediaMesh,
+          ),
+          _buildLegendItem(
             Icons.meeting_room,
             context.l10n.map_room,
             MapPalette.router,
@@ -2721,6 +2795,17 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                     context.l10n.map_nodeId,
                     contact.publicKeyHex.substring(0, 12),
                   ),
+                  if (_mediaMeshInfo(contact) case final mm?)
+                    _miniMeta(
+                      context.l10n.mmRepeater_meta,
+                      context.l10n.mmRepeater_info(
+                        mm.profileLabel,
+                        mm.sends
+                            ? context.l10n.mmRepeater_sends
+                            : context.l10n.mmRepeater_listens,
+                        _formatLastSeen(mm.heardAt),
+                      ),
+                    ),
                   if (pos != null)
                     _miniMeta(
                       context.l10n.map_location,
@@ -2758,6 +2843,11 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
         ),
       ),
     );
+  }
+
+  MediaMeshRepeaterInfo? _mediaMeshInfo(Contact c) {
+    if (!_isMediaMesh(c)) return null;
+    return MediaMeshRepeaters.instance.infoFor(c.publicKeyHex);
   }
 
   Widget _miniMeta(String label, String value) {

@@ -78,6 +78,8 @@ class MapPalette {
   static const selected = Color(0xFF0EA5E9);
   static const sensor = Color(0xFF0F766E);
   static const shared = Color(0xFF0369A1);
+  // Repeaters known to run MediaMesh (radio2): ring and badge on the map.
+  static const mediaMesh = Color(0xFFD946EF);
 
   static const panelLight = Color(0xF0FFFFFF);
   static const panelDark = Color(0xF50B1220);

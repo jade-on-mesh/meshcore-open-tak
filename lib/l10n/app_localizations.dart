@@ -364,6 +364,48 @@ abstract class AppLocalizations {
   /// **'Sent. Waiting for the contact to confirm.'**
   String get messageStatus_sentDirect;
 
+  /// No description provided for @mmRepeater_chip.
+  ///
+  /// In en, this message translates to:
+  /// **'MediaMesh'**
+  String get mmRepeater_chip;
+
+  /// No description provided for @mmRepeater_legend.
+  ///
+  /// In en, this message translates to:
+  /// **'MediaMesh repeater'**
+  String get mmRepeater_legend;
+
+  /// No description provided for @mmRepeater_meta.
+  ///
+  /// In en, this message translates to:
+  /// **'MediaMesh'**
+  String get mmRepeater_meta;
+
+  /// No description provided for @mmRepeater_listens.
+  ///
+  /// In en, this message translates to:
+  /// **'listens'**
+  String get mmRepeater_listens;
+
+  /// No description provided for @mmRepeater_sends.
+  ///
+  /// In en, this message translates to:
+  /// **'listens and sends'**
+  String get mmRepeater_sends;
+
+  /// No description provided for @mmRepeater_info.
+  ///
+  /// In en, this message translates to:
+  /// **'{profile}, {mode}, heard {ago}'**
+  String mmRepeater_info(String profile, String mode, String ago);
+
+  /// No description provided for @mmRepeater_noneKnown.
+  ///
+  /// In en, this message translates to:
+  /// **'No MediaMesh repeaters known yet. Find MediaMesh or Discover nearby nodes asks the repeaters in reach; a repeater\'s MediaMesh settings also tell.'**
+  String get mmRepeater_noneKnown;
+
   /// No description provided for @mosaic_show.
   ///
   /// In en, this message translates to:

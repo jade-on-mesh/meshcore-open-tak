@@ -130,6 +130,29 @@ class AppLocalizationsZh extends AppLocalizations {
   String get messageStatus_sentDirect => '已发送。正在等待联系人确认。';
 
   @override
+  String get mmRepeater_chip => 'MediaMesh';
+
+  @override
+  String get mmRepeater_legend => 'MediaMesh repeater';
+
+  @override
+  String get mmRepeater_meta => 'MediaMesh';
+
+  @override
+  String get mmRepeater_listens => 'listens';
+
+  @override
+  String get mmRepeater_sends => 'listens and sends';
+
+  @override
+  String mmRepeater_info(String profile, String mode, String ago) {
+    return '$profile, $mode, heard $ago';
+  }
+
+  @override
+  String get mmRepeater_noneKnown => 'No MediaMesh repeaters known yet. Find MediaMesh or Discover nearby nodes asks the repeaters in reach; a repeater\'s MediaMesh settings also tell.';
+
+  @override
   String get mosaic_show => 'Photos on the map';
 
   @override

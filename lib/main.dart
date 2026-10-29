@@ -15,6 +15,7 @@ import 'team/drone_detector.dart';
 import 'team/map_highlights.dart';
 import 'services/mediamesh_coverage.dart';
 import 'services/media_mesh_nearby.dart';
+import 'services/mediamesh_repeaters.dart';
 import 'services/media_lockdown.dart';
 import 'utils/platform_info.dart';
 
@@ -127,6 +128,11 @@ void main() async {
   );
   await _startupStep('mapHighlights.load', () => MapHighlights.instance.load());
   MediaMeshNearby.instance.attach(connector);
+  await _startupStep(
+    'mediaMeshRepeaters.load',
+    () => MediaMeshRepeaters.instance.load(),
+  );
+  MediaMeshRepeaters.instance.attach(connector);
 
   // ---- image messages (AEIC over GRP_DATA) --------------------------------
   // The codec owns the ONNX decoder; the store owns received-image state and

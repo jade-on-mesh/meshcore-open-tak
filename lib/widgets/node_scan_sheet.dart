@@ -59,7 +59,11 @@ class _NodeScanSheetState extends State<NodeScanSheet> {
       _scanning = true;
       _failed = false;
     });
-    _subscription = widget.connector.discoverNearbyNodes().listen(
+    // With the radio2 flag, MediaMesh repeaters say so (the map marks them);
+    // stock firmware ignores it.
+    _subscription = widget.connector
+        .discoverNearbyNodes(wantRadio2: true)
+        .listen(
       (response) {
         if (!mounted) return;
         setState(() {

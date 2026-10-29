@@ -11,6 +11,7 @@ import '../l10n/l10n.dart';
 import '../models/contact.dart';
 import '../models/radio_settings.dart';
 import '../services/media_mesh.dart';
+import '../services/mediamesh_repeaters.dart';
 import '../services/repeater_command_service.dart';
 import '../services/repeater_radio2.dart';
 import '../theme/mesh_theme.dart';
@@ -208,6 +209,22 @@ class _RepeaterRadio2ScreenState extends State<RepeaterRadio2Screen> {
     _preambleController.text = p.preamble?.toString() ?? '';
     _freqInvalid = false;
     _preambleInvalid = false;
+    // The map marks this repeater as MediaMesh (or no longer).
+    MediaMeshRepeaters.instance.note(
+      widget.repeater.publicKeyHex,
+      MediaMeshRepeaterInfo(
+        active: p.mode != Radio2Mode.off,
+        mode: switch (p.mode) {
+          Radio2Mode.off => 0,
+          Radio2Mode.rx => 1,
+          Radio2Mode.rxtx => 2,
+        },
+        frequencyKHz: (p.frequencyMHz * 1000).round(),
+        bandwidthHz: p.bandwidth.hz,
+        spreadingFactor: p.spreadingFactor.value,
+        heardAt: DateTime.now(),
+      ),
+    );
   }
 
   // --------------------------------------------------------------- writes
