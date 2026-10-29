@@ -2216,7 +2216,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                         MediaMeshRepeaters.instance.count == 0) {
                       showDismissibleSnackBar(
                         context,
-                        context.l10n.mmRepeater_noneKnown,
+                        content: Text(context.l10n.mmRepeater_noneKnown),
                       );
                     }
                   },
