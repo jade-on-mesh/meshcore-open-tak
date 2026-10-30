@@ -1,0 +1,5 @@
+total 72588
+drwxr-xr-x 2 runner runner     4096 Oct 30 00:52 .
+drwxr-xr-x 8 runner runner     4096 Oct 30 00:52 ..
+-rw-r--r-- 1 runner runner 74314730 Oct 30 00:52 app-release.apk
+-rw-r--r-- 1 runner runner       40 Oct 30 00:52 app-release.apk.sha1
