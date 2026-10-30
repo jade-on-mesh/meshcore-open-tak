@@ -1,0 +1,2 @@
+Formatted 551 files (0 changed) in 3.46 seconds.
+exit=0
