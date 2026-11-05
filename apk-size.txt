@@ -1,0 +1,5 @@
+total 53000
+drwxr-xr-x 2 runner runner     4096 Nov  5 18:46 .
+drwxr-xr-x 8 runner runner     4096 Nov  5 18:46 ..
+-rw-r--r-- 1 runner runner 54258763 Nov  5 18:46 app-release.apk
+-rw-r--r-- 1 runner runner       40 Nov  5 18:46 app-release.apk.sha1
