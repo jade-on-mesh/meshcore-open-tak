@@ -1479,7 +1479,7 @@ Future<void> _reportAt(BuildContext context, double lat, double lon) =>
     showModalBottomSheet<void>(
       context: context,
       builder: (c) => SafeArea(
-        child: Column(
+        child: SingleChildScrollView(child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
@@ -1508,7 +1508,7 @@ Future<void> _reportAt(BuildContext context, double lat, double lon) =>
               },
             ),
           ],
-        ),
+        ),),
       ),
     );
 

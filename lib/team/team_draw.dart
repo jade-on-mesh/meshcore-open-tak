@@ -837,7 +837,7 @@ Future<ShapeKind?> showDrawToolPicker(BuildContext context) =>
       context: context,
       showDragHandle: true,
       builder: (c) => SafeArea(
-        child: Column(
+        child: SingleChildScrollView(child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const ListTile(
@@ -857,6 +857,6 @@ Future<ShapeKind?> showDrawToolPicker(BuildContext context) =>
                 onTap: () => Navigator.pop(c, k),
               ),
           ],
-        ),
+        ),),
       ),
     );

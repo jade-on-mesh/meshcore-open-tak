@@ -1138,7 +1138,7 @@ Future<void> showTeamMemberSheet(
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: SingleChildScrollView(child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1220,7 +1220,7 @@ Future<void> showTeamMemberSheet(
             const SizedBox(height: 12),
             _houndButton(context, () => team.houndMember(key4)),
           ],
-        ),
+        ),),
       ),
     );
   },
@@ -1477,7 +1477,7 @@ Future<void> showTakEntitySheet(
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: SingleChildScrollView(child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1503,7 +1503,7 @@ Future<void> showTakEntitySheet(
               () => team.houndPoint(e.lat, e.lon, e.callsign ?? 'TAK'),
             ),
           ],
-        ),
+        ),),
       ),
     );
   },
@@ -1519,7 +1519,7 @@ Future<void> showTeamMapActions(
   builder: (context) {
     final team = context.read<TeamService>();
     return SafeArea(
-      child: Column(
+      child: SingleChildScrollView(child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           ListTile(
@@ -1579,7 +1579,7 @@ Future<void> showTeamMapActions(
             },
           ),
         ],
-      ),
+      ),),
     );
   },
 );
@@ -1753,7 +1753,7 @@ class TeamMapOverlay extends StatelessWidget {
     return showModalBottomSheet<void>(
       context: context,
       builder: (c) => SafeArea(
-        child: Column(
+        child: SingleChildScrollView(child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
@@ -1812,7 +1812,7 @@ class TeamMapOverlay extends StatelessWidget {
               ),
             ),
           ],
-        ),
+        ),),
       ),
     );
   }
@@ -1982,7 +1982,7 @@ class _SosButtonState extends State<_SosButton>
     final type = await showModalBottomSheet<TeamAlertType>(
       context: context,
       builder: (c) => SafeArea(
-        child: Column(
+        child: SingleChildScrollView(child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const ListTile(title: Text('Send an alert to your team')),
@@ -2012,7 +2012,7 @@ class _SosButtonState extends State<_SosButton>
                 onTap: () => Navigator.pop(c, t),
               ),
           ],
-        ),
+        ),),
       ),
     );
     if (type != null) await widget.team.raiseAlert(type);
@@ -2156,7 +2156,7 @@ Future<void> showSharedPointSheet(BuildContext context, TeamPoint p) =>
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
+            child: SingleChildScrollView(child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -2201,7 +2201,7 @@ Future<void> showSharedPointSheet(BuildContext context, TeamPoint p) =>
                   ],
                 ),
               ],
-            ),
+            ),),
           ),
         );
       },
@@ -2228,7 +2228,7 @@ Future<void> showSharedShapeSheet(
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: SingleChildScrollView(child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -2265,7 +2265,7 @@ Future<void> showSharedShapeSheet(
               },
             ),
           ],
-        ),
+        ),),
       ),
     );
   },

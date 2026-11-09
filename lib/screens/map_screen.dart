@@ -3447,7 +3447,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
     showModalBottomSheet(
       context: context,
       builder: (sheetContext) => SafeArea(
-        child: Column(
+        child: SingleChildScrollView(child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
@@ -3478,7 +3478,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
               onTap: () => Navigator.pop(sheetContext),
             ),
           ],
-        ),
+        ),),
       ),
     );
   }

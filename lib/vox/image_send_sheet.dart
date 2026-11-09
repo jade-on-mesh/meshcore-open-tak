@@ -117,7 +117,7 @@ Future<void> showVoxImagePicker(
       : await showModalBottomSheet<ImageSource>(
           context: context,
           builder: (context) => SafeArea(
-            child: Column(
+            child: SingleChildScrollView(child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (aiSketch != null)
@@ -136,7 +136,7 @@ Future<void> showVoxImagePicker(
                   onTap: () => Navigator.pop(context, ImageSource.gallery),
                 ),
               ],
-            ),
+            ),),
           ),
         );
   if (source == null || !context.mounted) return;

@@ -247,7 +247,7 @@ Future<ShapeKind?> _pickFenceShape(BuildContext context) =>
       context: context,
       showDragHandle: true,
       builder: (c) => SafeArea(
-        child: Column(
+        child: SingleChildScrollView(child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const ListTile(
@@ -267,7 +267,7 @@ Future<ShapeKind?> _pickFenceShape(BuildContext context) =>
                 onTap: () => Navigator.pop(c, k),
               ),
           ],
-        ),
+        ),),
       ),
     );
 
@@ -331,7 +331,7 @@ Future<void> _showAlertPicker(BuildContext context, TeamService team) async {
     context: context,
     showDragHandle: true,
     builder: (c) => SafeArea(
-      child: Column(
+      child: SingleChildScrollView(child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const ListTile(
@@ -363,7 +363,7 @@ Future<void> _showAlertPicker(BuildContext context, TeamService team) async {
             onTap: () => Navigator.pop(c),
           ),
         ],
-      ),
+      ),),
     ),
   );
   if (type == null || !context.mounted) return;
@@ -564,7 +564,7 @@ Future<void> _showStatusPicker(BuildContext context, TeamService team) =>
       builder: (c) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: Column(
+          child: SingleChildScrollView(child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -586,7 +586,7 @@ Future<void> _showStatusPicker(BuildContext context, TeamService team) =>
                 ],
               ),
             ],
-          ),
+          ),),
         ),
       ),
     );
@@ -627,7 +627,7 @@ class _GoToDialogState extends State<_GoToDialog> {
   Widget build(BuildContext context) {
     final p = _parsed;
     final fix = widget.team.fix;
-    return AlertDialog(
+    return AlertDialog(scrollable: true,
       title: const Text('Go to coordinates'),
       content: Column(
         mainAxisSize: MainAxisSize.min,

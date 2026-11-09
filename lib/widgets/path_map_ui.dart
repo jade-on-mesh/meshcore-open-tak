@@ -234,7 +234,7 @@ void showSharedNodeSheet(
   showModalBottomSheet(
     context: context,
     builder: (sheetContext) => SafeArea(
-      child: Column(
+      child: SingleChildScrollView(child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -276,7 +276,7 @@ void showSharedNodeSheet(
             ),
           const SizedBox(height: 8),
         ],
-      ),
+      ),),
     ),
   );
 }

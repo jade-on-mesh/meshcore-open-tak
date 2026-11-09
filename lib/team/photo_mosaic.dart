@@ -559,7 +559,7 @@ Future<void> showPhotoMosaicSheet(BuildContext context) =>
           context.read<TeamService>(),
         );
         return SafeArea(
-          child: Column(
+          child: SingleChildScrollView(child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ValueListenableBuilder<bool>(
@@ -592,7 +592,7 @@ Future<void> showPhotoMosaicSheet(BuildContext context) =>
                 },
               ),
             ],
-          ),
+          ),),
         );
       },
     );

@@ -1595,7 +1595,7 @@ class AppSettingsScreen extends StatelessWidget {
     final hl = MapHighlights.instance;
     showMeshSheet(
       context,
-      builder: (ctx) => Column(
+      builder: (ctx) => SingleChildScrollView(child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           BottomSheetHeader(title: context.l10n.mapHighlight_title),
@@ -1613,7 +1613,7 @@ class AppSettingsScreen extends StatelessWidget {
               },
             ),
         ],
-      ),
+      ),),
     );
   }
 

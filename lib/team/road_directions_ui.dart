@@ -97,7 +97,7 @@ Future<void> showRoadDirectionsSheet(BuildContext context, TeamService team) {
             16,
             16 + MediaQuery.of(c).viewInsets.bottom,
           ),
-          child: Column(
+          child: SingleChildScrollView(child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -141,7 +141,7 @@ Future<void> showRoadDirectionsSheet(BuildContext context, TeamService team) {
                 ),
               ),
             ],
-          ),
+          ),),
         ),
       );
     },

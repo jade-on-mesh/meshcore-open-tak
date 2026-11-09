@@ -331,7 +331,7 @@ class _AeicHdSendSheetState extends State<_AeicHdSendSheet> {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-        child: Column(
+        child: SingleChildScrollView(child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -401,7 +401,7 @@ class _AeicHdSendSheetState extends State<_AeicHdSendSheet> {
               ],
             ),
           ],
-        ),
+        ),),
       ),
     );
   }

@@ -296,7 +296,7 @@ class _ListenSheetState extends State<_ListenSheet> {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-        child: Column(
+        child: SingleChildScrollView(child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.hearing, size: 48, color: theme.colorScheme.primary),
@@ -318,7 +318,7 @@ class _ListenSheetState extends State<_ListenSheet> {
               LinearProgressIndicator(value: p == null ? null : p.$1 / p.$2),
             ],
           ],
-        ),
+        ),),
       ),
     );
   }
