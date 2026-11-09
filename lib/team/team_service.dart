@@ -451,6 +451,15 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
                 enableWakeLock: true,
               ),
             )
+          : defaultTargetPlatform == TargetPlatform.iOS
+          // Keeps sharing in the background, with the blue location pill.
+          ? AppleSettings(
+              accuracy: LocationAccuracy.high,
+              distanceFilter: 5,
+              allowBackgroundLocationUpdates: true,
+              showBackgroundLocationIndicator: true,
+              pauseLocationUpdatesAutomatically: false,
+            )
           : const LocationSettings(
               accuracy: LocationAccuracy.high,
               distanceFilter: 5,

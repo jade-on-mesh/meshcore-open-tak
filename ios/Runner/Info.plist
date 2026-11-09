@@ -24,6 +24,8 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>http</string>
@@ -37,6 +39,8 @@
 	<string>This app uses Bluetooth to communicate with MeshCore devices.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>This app uses the camera to scan QR codes for joining communities.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>This app saves the pictures you choose to your photo library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app lets you pick a photo to compress and send over the mesh.</string>
 	<key>UIApplicationSceneManifest</key>
@@ -65,6 +69,7 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>bluetooth-central</string>
+		<string>location</string>
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
