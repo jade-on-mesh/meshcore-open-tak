@@ -692,7 +692,9 @@ class ReceivedImageStore extends ChangeNotifier {
     if (info.hashType != HashType.ours) return false;
     for (final e in entries) {
       if (e.reactionHash != info.targetHash) continue;
-      final r = {for (final x in e.reactions.entries) x.key: [...x.value]};
+      final r = {
+        for (final x in e.reactions.entries) x.key: [...x.value],
+      };
       (r[info.emoji] ??= []).add(info.senderName);
       unawaited(_store(e.copyWith(reactions: r)));
       return true;
