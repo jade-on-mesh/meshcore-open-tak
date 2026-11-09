@@ -507,7 +507,9 @@ void showVoxVoiceLog(BuildContext context, VoxVoiceService service) {
                               label: const Text('Copy log'),
                               onPressed: () {
                                 Clipboard.setData(ClipboardData(text: text));
-                                ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                                ScaffoldMessenger.maybeOf(
+                                  context,
+                                )?.showSnackBar(
                                   const SnackBar(content: Text('Copied')),
                                 );
                               },
@@ -518,7 +520,8 @@ void showVoxVoiceLog(BuildContext context, VoxVoiceService service) {
                               onPressed: () => SharePlus.instance.share(
                                 ShareParams(
                                   text: text,
-                                  subject: 'MeshCore Open TAK voice diagnostics',
+                                  subject:
+                                      'MeshCore Open TAK voice diagnostics',
                                 ),
                               ),
                             ),
