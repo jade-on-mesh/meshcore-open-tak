@@ -621,11 +621,11 @@ jobs:
             echo
             echo "| Platform | Download |"
             echo "| --- | --- |"
-            echo "| Android (arm64) | **meshcore-open-tak.apk**, signed with the $signed |"
+            echo "| Android (arm64) | **meshcore-open-tak.apk**, signed with the $signed. For automatic updates, [add it to Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.jadeonmesh.meshcore_open_vox%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fjade-on-mesh%2Fmeshcore-open-tak%22%2C%22author%22%3A%22jade-on-mesh%22%2C%22name%22%3A%22MeshCore%20Open%20TAK%22%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Afalse%2C%5C%22fallbackToOlderReleases%5C%22%3Atrue%2C%5C%22verifyLatestTag%5C%22%3Atrue%2C%5C%22useLatestAssetDateAsReleaseDate%5C%22%3Atrue%2C%5C%22releaseDateAsVersion%5C%22%3Atrue%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5Emeshcore-open-tak%5C%5C%5C%5C.apk%24%5C%22%7D%22%7D) |"
             have meshcore-open-tak-windows-setup.exe && echo "| Windows (x64) | **meshcore-open-tak-windows-setup.exe** (installer), or the .zip to run without installing |"
             have meshcore-open-tak-macos.dmg && echo "| macOS 14+ | **meshcore-open-tak-macos.dmg**: drag to Applications |"
             have meshcore-open-tak-linux-x86_64.AppImage && echo "| Linux (x86_64) | **meshcore-open-tak-linux-x86_64.AppImage** (chmod +x and run), or the .tar.gz |"
-            have meshcore-open-tak-ios.ipa && echo "| iOS 16.4+ | **meshcore-open-tak-ios.ipa**, unsigned, for AltStore, SideStore or Sideloadly. For updates, add the AltStore or SideStore source https://github.com/${GITHUB_REPOSITORY}/releases/download/latest-build/meshcore-open-tak-ios.json |"
+            have meshcore-open-tak-ios.ipa && echo "| iOS 16.4+ | Easiest: the TestFlight beta, https://testflight.apple.com/join/TB4jspvT. Or **meshcore-open-tak-ios.ipa**, unsigned, for AltStore, SideStore or Sideloadly. For updates, add the AltStore or SideStore source https://github.com/${GITHUB_REPOSITORY}/releases/download/latest-build/meshcore-open-tak-ios.json |"
             echo
             echo "The desktop builds are unsigned: on Windows choose *More info → Run anyway*; on macOS right-click the app → *Open* the first time."
             echo "Once installed, the app offers later builds itself (Settings → App updates)."

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="404" height="120" viewBox="0 0 404 120" role="img" aria-label="Join the beta on TestFlight">
+  <rect x="2" y="2" width="400" height="116" rx="14" fill="#000" stroke="#a6a6a6" stroke-width="3"/>
+  <g fill="#fff" font-family="-apple-system, 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif" text-anchor="middle">
+    <text x="202" y="49" font-size="24" font-weight="600" letter-spacing="1">JOIN THE BETA ON</text>
+    <text x="202" y="96" font-size="48" font-weight="500">TestFlight</text>
+  </g>
+</svg>
