@@ -166,6 +166,7 @@ void main() async {
   // Availability/isBusy changes are the only thing that un-parks a decode
   // queue that stopped because the codec was unusable or busy.
   imageCodecService.addListener(receivedImageStore.notifyDecoderChanged);
+  connector.imageReactionHandler = receivedImageStore.applyReaction;
   final imageReassembler = ImageStreamReassembler(
     store: receivedImageStore,
     channelIdForSlot: connector.channelIdForSlot,

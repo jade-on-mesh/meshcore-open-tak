@@ -12383,7 +12383,21 @@ class MeshCoreConnector extends ChangeNotifier {
     return null;
   }
 
+  /// Channel image messages (AEIC over GRP_DATA) live in ReceivedImageStore,
+  /// not in the message lists: a channel reaction no message matches is
+  /// offered to it (main.dart wires it). True when it took the reaction. (A
+  /// DM image is a text message, so DM reactions already reach it.)
+  bool Function(ReactionInfo info)? imageReactionHandler;
+
   bool _processReaction(
+    List<ChannelMessage> messages,
+    ReactionInfo reactionInfo,
+  ) {
+    return _applyChannelReaction(messages, reactionInfo) ||
+        (imageReactionHandler?.call(reactionInfo) ?? false);
+  }
+
+  bool _applyChannelReaction(
     List<ChannelMessage> messages,
     ReactionInfo reactionInfo,
   ) {
