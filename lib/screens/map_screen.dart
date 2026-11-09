@@ -3447,37 +3447,39 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
     showModalBottomSheet(
       context: context,
       builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.place),
-              title: Text(context.l10n.map_shareMarkerHere),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _shareMarker(
-                  context: context,
-                  connector: connector,
-                  position: position,
-                  defaultLabel: context.l10n.map_pointOfInterest,
-                  flags: 'poi',
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.my_location),
-              title: Text(context.l10n.map_setAsMyLocation),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                confirmAndSetMyLocation(this.context, connector, position);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.close),
-              title: Text(context.l10n.common_cancel),
-              onTap: () => Navigator.pop(sheetContext),
-            ),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.place),
+                title: Text(context.l10n.map_shareMarkerHere),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _shareMarker(
+                    context: context,
+                    connector: connector,
+                    position: position,
+                    defaultLabel: context.l10n.map_pointOfInterest,
+                    flags: 'poi',
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.my_location),
+                title: Text(context.l10n.map_setAsMyLocation),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  confirmAndSetMyLocation(this.context, connector, position);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.close),
+                title: Text(context.l10n.common_cancel),
+                onTap: () => Navigator.pop(sheetContext),
+              ),
+            ],
+          ),
         ),
       ),
     );

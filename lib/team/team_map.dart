@@ -1138,88 +1138,91 @@ Future<void> showTeamMemberSheet(
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: Color(p.color.argb),
-                  child: Icon(
-                    teamRoleIconFor(team, p.roleId),
-                    color: Colors.black,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: Color(p.color.argb),
+                    child: Icon(
+                      teamRoleIconFor(team, p.roleId),
+                      color: Colors.black,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        m.callsign,
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      Text(
-                        '${team.roleName(p.roleId)} · ${p.color.label} team'
-                        '${p.relayed ? ' · via TAK' : ''}',
-                      ),
-                    ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          m.callsign,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        Text(
+                          '${team.roleName(p.roleId)} · ${p.color.label} team'
+                          '${p.relayed ? ' · via TAK' : ''}',
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (p.sosActive)
-              const Text(
-                'SOS ACTIVE',
-                style: TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
-                ),
+                ],
               ),
-            if (p.status != TeamStatus.none) Text('Status: ${p.status.label}'),
-            for (final al in team.activeAlerts)
-              if (al.senderKey4 == key4)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: QuickReplySection(
-                    entries: teamReplyEntries(
-                      context,
-                      team.repliesFor(
-                        teamReplyRefKey(TeamReplyRef.alert, key4, al.alertId),
+              const SizedBox(height: 12),
+              if (p.sosActive)
+                const Text(
+                  'SOS ACTIVE',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              if (p.status != TeamStatus.none)
+                Text('Status: ${p.status.label}'),
+              for (final al in team.activeAlerts)
+                if (al.senderKey4 == key4)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: QuickReplySection(
+                      entries: teamReplyEntries(
+                        context,
+                        team.repliesFor(
+                          teamReplyRefKey(TeamReplyRef.alert, key4, al.alertId),
+                        ),
                       ),
-                    ),
-                    codes: teamAlertReplies,
-                    onPick: (code, arg) => unawaited(
-                      team.sendReply(
-                        ref: TeamReplyRef.alert,
-                        toKey4: key4,
-                        refId: al.alertId,
-                        code: code,
-                        arg: arg,
+                      codes: teamAlertReplies,
+                      onPick: (code, arg) => unawaited(
+                        team.sendReply(
+                          ref: TeamReplyRef.alert,
+                          toKey4: key4,
+                          refId: al.alertId,
+                          code: code,
+                          arg: arg,
+                        ),
                       ),
                     ),
                   ),
-                ),
-            Text(
-              'Heard ${teamAgo(m.heard)}${p.fromRadio ? ' · radio GPS' : ''}',
-            ),
-            if (range != null) Text('From you: $range'),
-            if (p.speedMps != null && p.speedMps! > 0.3)
               Text(
-                'Moving ${(p.speedMps! * 3.6).toStringAsFixed(1)} km/h, '
-                'heading ${p.headingDeg!.round()}°',
+                'Heard ${teamAgo(m.heard)}${p.fromRadio ? ' · radio GPS' : ''}',
               ),
-            if (p.altitudeM != null) Text('Altitude ${p.altitudeM} m'),
-            if (p.batteryPct != null) Text('Battery ${p.batteryPct}%'),
-            Text(
-              '${p.lat.toStringAsFixed(5)}, ${p.lon.toStringAsFixed(5)}'
-              '${p.accuracyM > 0 ? ' ±${p.accuracyM} m' : ''}',
-            ),
-            const SizedBox(height: 12),
-            _houndButton(context, () => team.houndMember(key4)),
-          ],
+              if (range != null) Text('From you: $range'),
+              if (p.speedMps != null && p.speedMps! > 0.3)
+                Text(
+                  'Moving ${(p.speedMps! * 3.6).toStringAsFixed(1)} km/h, '
+                  'heading ${p.headingDeg!.round()}°',
+                ),
+              if (p.altitudeM != null) Text('Altitude ${p.altitudeM} m'),
+              if (p.batteryPct != null) Text('Battery ${p.batteryPct}%'),
+              Text(
+                '${p.lat.toStringAsFixed(5)}, ${p.lon.toStringAsFixed(5)}'
+                '${p.accuracyM > 0 ? ' ±${p.accuracyM} m' : ''}',
+              ),
+              const SizedBox(height: 12),
+              _houndButton(context, () => team.houndMember(key4)),
+            ],
+          ),
         ),
       ),
     );
@@ -1477,32 +1480,34 @@ Future<void> showTakEntitySheet(
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              e.callsign ?? e.uid,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            Text(
-              'From TAK · ${e.type}${e.groupRole == null ? '' : ' · ${e.groupRole}'}'
-              '${e.groupName == null ? '' : ' · ${e.groupName}'}',
-            ),
-            Text('Updated ${teamAgo(e.time)}'),
-            if (range != null) Text('From you: $range'),
-            if (e.emergencyType != null)
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Text(
-                'Alert: ${e.emergencyType}',
-                style: const TextStyle(color: Colors.red),
+                e.callsign ?? e.uid,
+                style: Theme.of(context).textTheme.titleLarge,
               ),
-            if ((e.remarks ?? '').isNotEmpty) Text(e.remarks!),
-            const SizedBox(height: 12),
-            _houndButton(
-              context,
-              () => team.houndPoint(e.lat, e.lon, e.callsign ?? 'TAK'),
-            ),
-          ],
+              Text(
+                'From TAK · ${e.type}${e.groupRole == null ? '' : ' · ${e.groupRole}'}'
+                '${e.groupName == null ? '' : ' · ${e.groupName}'}',
+              ),
+              Text('Updated ${teamAgo(e.time)}'),
+              if (range != null) Text('From you: $range'),
+              if (e.emergencyType != null)
+                Text(
+                  'Alert: ${e.emergencyType}',
+                  style: const TextStyle(color: Colors.red),
+                ),
+              if ((e.remarks ?? '').isNotEmpty) Text(e.remarks!),
+              const SizedBox(height: 12),
+              _houndButton(
+                context,
+                () => team.houndPoint(e.lat, e.lon, e.callsign ?? 'TAK'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1519,66 +1524,70 @@ Future<void> showTeamMapActions(
   builder: (context) {
     final team = context.read<TeamService>();
     return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            title: Text(team.formatCoord(at.latitude, at.longitude)),
-            subtitle: Text(_rangeFromMe(team, at.latitude, at.longitude) ?? ''),
-          ),
-          ListTile(
-            leading: const Icon(Icons.add_location_alt),
-            title: const Text('Drop tactical pin'),
-            onTap: () {
-              Navigator.pop(context);
-              showTeamPinEditor(context, lat: at.latitude, lon: at.longitude);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.edit_note),
-            title: const Text('Report here'),
-            onTap: () {
-              Navigator.pop(context);
-              showGeneralReportForm(
-                context,
-                lat: at.latitude,
-                lon: at.longitude,
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.report_outlined),
-            title: const Text('SALUTE report here'),
-            onTap: () {
-              Navigator.pop(context);
-              showSaluteForm(context, lat: at.latitude, lon: at.longitude);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.local_hospital, color: casevacRed),
-            title: const Text('CASEVAC 9-line here'),
-            onTap: () {
-              Navigator.pop(context);
-              showCasevacForm(context, lat: at.latitude, lon: at.longitude);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.track_changes),
-            title: const Text('Bloodhound to here'),
-            onTap: () {
-              team.houndPoint(at.latitude, at.longitude, 'Map point');
-              Navigator.pop(context);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.share_location),
-            title: const Text('Share as chat marker'),
-            onTap: () {
-              Navigator.pop(context);
-              shareMarker();
-            },
-          ),
-        ],
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text(team.formatCoord(at.latitude, at.longitude)),
+              subtitle: Text(
+                _rangeFromMe(team, at.latitude, at.longitude) ?? '',
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.add_location_alt),
+              title: const Text('Drop tactical pin'),
+              onTap: () {
+                Navigator.pop(context);
+                showTeamPinEditor(context, lat: at.latitude, lon: at.longitude);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_note),
+              title: const Text('Report here'),
+              onTap: () {
+                Navigator.pop(context);
+                showGeneralReportForm(
+                  context,
+                  lat: at.latitude,
+                  lon: at.longitude,
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.report_outlined),
+              title: const Text('SALUTE report here'),
+              onTap: () {
+                Navigator.pop(context);
+                showSaluteForm(context, lat: at.latitude, lon: at.longitude);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.local_hospital, color: casevacRed),
+              title: const Text('CASEVAC 9-line here'),
+              onTap: () {
+                Navigator.pop(context);
+                showCasevacForm(context, lat: at.latitude, lon: at.longitude);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.track_changes),
+              title: const Text('Bloodhound to here'),
+              onTap: () {
+                team.houndPoint(at.latitude, at.longitude, 'Map point');
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.share_location),
+              title: const Text('Share as chat marker'),
+              onTap: () {
+                Navigator.pop(context);
+                shareMarker();
+              },
+            ),
+          ],
+        ),
       ),
     );
   },
@@ -1753,65 +1762,67 @@ class TeamMapOverlay extends StatelessWidget {
     return showModalBottomSheet<void>(
       context: context,
       builder: (c) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: const Text('At my position'),
-              subtitle: Text(
-                fix == null
-                    ? 'No position yet. Long-press the map to place things there.'
-                    : '${fix.lat.toStringAsFixed(5)}, ${fix.lon.toStringAsFixed(5)}'
-                          '${fix.source == TeamFixSource.radio ? ' (radio GPS)' : ''}',
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: const Text('At my position'),
+                subtitle: Text(
+                  fix == null
+                      ? 'No position yet. Long-press the map to place things there.'
+                      : '${fix.lat.toStringAsFixed(5)}, ${fix.lon.toStringAsFixed(5)}'
+                            '${fix.source == TeamFixSource.radio ? ' (radio GPS)' : ''}',
+                ),
               ),
-            ),
-            ListTile(
-              enabled: fix != null,
-              leading: const Icon(Icons.add_location_alt),
-              title: const Text('Drop tactical pin'),
-              onTap: () {
-                Navigator.pop(c);
-                showTeamPinEditor(context, lat: fix!.lat, lon: fix.lon);
-              },
-            ),
-            ListTile(
-              enabled: fix != null,
-              leading: const Icon(Icons.edit_note),
-              title: const Text('Report'),
-              onTap: () {
-                Navigator.pop(c);
-                showGeneralReportForm(context, lat: fix!.lat, lon: fix.lon);
-              },
-            ),
-            ListTile(
-              enabled: fix != null,
-              leading: const Icon(Icons.assignment_outlined),
-              title: const Text('SALUTE report'),
-              onTap: () {
-                Navigator.pop(c);
-                showSaluteForm(context, lat: fix!.lat, lon: fix.lon);
-              },
-            ),
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  for (final st in TeamStatus.values.skip(1))
-                    ChoiceChip(
-                      label: Text(st.label),
-                      selected: team.status == st,
-                      onSelected: (sel) {
-                        unawaited(team.setStatus(sel ? st : TeamStatus.none));
-                        Navigator.pop(c);
-                      },
-                    ),
-                ],
+              ListTile(
+                enabled: fix != null,
+                leading: const Icon(Icons.add_location_alt),
+                title: const Text('Drop tactical pin'),
+                onTap: () {
+                  Navigator.pop(c);
+                  showTeamPinEditor(context, lat: fix!.lat, lon: fix.lon);
+                },
               ),
-            ),
-          ],
+              ListTile(
+                enabled: fix != null,
+                leading: const Icon(Icons.edit_note),
+                title: const Text('Report'),
+                onTap: () {
+                  Navigator.pop(c);
+                  showGeneralReportForm(context, lat: fix!.lat, lon: fix.lon);
+                },
+              ),
+              ListTile(
+                enabled: fix != null,
+                leading: const Icon(Icons.assignment_outlined),
+                title: const Text('SALUTE report'),
+                onTap: () {
+                  Navigator.pop(c);
+                  showSaluteForm(context, lat: fix!.lat, lon: fix.lon);
+                },
+              ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final st in TeamStatus.values.skip(1))
+                      ChoiceChip(
+                        label: Text(st.label),
+                        selected: team.status == st,
+                        onSelected: (sel) {
+                          unawaited(team.setStatus(sel ? st : TeamStatus.none));
+                          Navigator.pop(c);
+                        },
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1982,36 +1993,38 @@ class _SosButtonState extends State<_SosButton>
     final type = await showModalBottomSheet<TeamAlertType>(
       context: context,
       builder: (c) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const ListTile(title: Text('Send an alert to your team')),
-            for (final t in const [
-              TeamAlertType.sos,
-              TeamAlertType.inContact,
-              TeamAlertType.ringTheBell,
-            ])
-              ListTile(
-                leading: Icon(
-                  t == TeamAlertType.sos
-                      ? Icons.sos
-                      : t == TeamAlertType.inContact
-                      ? Icons.warning
-                      : Icons.notifications_active,
-                  color: Colors.red,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const ListTile(title: Text('Send an alert to your team')),
+              for (final t in const [
+                TeamAlertType.sos,
+                TeamAlertType.inContact,
+                TeamAlertType.ringTheBell,
+              ])
+                ListTile(
+                  leading: Icon(
+                    t == TeamAlertType.sos
+                        ? Icons.sos
+                        : t == TeamAlertType.inContact
+                        ? Icons.warning
+                        : Icons.notifications_active,
+                    color: Colors.red,
+                  ),
+                  title: Text(t.label),
+                  subtitle: Text(switch (t) {
+                    TeamAlertType.sos => 'Emergency: I need help now',
+                    TeamAlertType.inContact =>
+                      'Encountered a threat or situation',
+                    TeamAlertType.ringTheBell =>
+                      'All team members: respond / regroup',
+                    _ => '',
+                  }),
+                  onTap: () => Navigator.pop(c, t),
                 ),
-                title: Text(t.label),
-                subtitle: Text(switch (t) {
-                  TeamAlertType.sos => 'Emergency: I need help now',
-                  TeamAlertType.inContact =>
-                    'Encountered a threat or situation',
-                  TeamAlertType.ringTheBell =>
-                    'All team members: respond / regroup',
-                  _ => '',
-                }),
-                onTap: () => Navigator.pop(c, t),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -2156,117 +2169,123 @@ Future<void> showSharedPointSheet(BuildContext context, TeamPoint p) =>
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  p.callsign.isEmpty ? 'ATAK point' : p.callsign,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 4),
-                Text('${p.cotType} · shared by $author · ${teamAgo(p.time)}'),
-                Text(
-                  '${p.lat.toStringAsFixed(5)}, ${p.lon.toStringAsFixed(5)}'
-                  '${p.haeM != null ? ' · ${p.haeM} m' : ''}',
-                ),
-                if (p.remarks.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(p.remarks),
-                ],
-                if (p.attachment != null) ...[
-                  const SizedBox(height: 8),
-                  _attachmentView(context, p.attachment!, p.authorKey4),
-                ],
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    _houndButton(
-                      context,
-                      () => team.houndPoint(
-                        p.lat,
-                        p.lon,
-                        p.callsign.isEmpty ? 'ATAK point' : p.callsign,
-                      ),
-                    ),
-                    TextButton.icon(
-                      icon: const Icon(Icons.visibility_off),
-                      label: const Text('Hide on this phone'),
-                      onPressed: () {
-                        team.dismissItem(p.key);
-                        Navigator.pop(context);
-                      },
-                    ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    p.callsign.isEmpty ? 'ATAK point' : p.callsign,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 4),
+                  Text('${p.cotType} · shared by $author · ${teamAgo(p.time)}'),
+                  Text(
+                    '${p.lat.toStringAsFixed(5)}, ${p.lon.toStringAsFixed(5)}'
+                    '${p.haeM != null ? ' · ${p.haeM} m' : ''}',
+                  ),
+                  if (p.remarks.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(p.remarks),
                   ],
-                ),
-              ],
+                  if (p.attachment != null) ...[
+                    const SizedBox(height: 8),
+                    _attachmentView(context, p.attachment!, p.authorKey4),
+                  ],
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      _houndButton(
+                        context,
+                        () => team.houndPoint(
+                          p.lat,
+                          p.lon,
+                          p.callsign.isEmpty ? 'ATAK point' : p.callsign,
+                        ),
+                      ),
+                      TextButton.icon(
+                        icon: const Icon(Icons.visibility_off),
+                        label: const Text('Hide on this phone'),
+                        onPressed: () {
+                          team.dismissItem(p.key);
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         );
       },
     );
 
-Future<void> showSharedShapeSheet(
-  BuildContext context,
-  TeamAtakShape s,
-) => showModalBottomSheet<void>(
-  context: context,
-  builder: (context) {
-    final team = context.read<TeamService>();
-    final author =
-        team.memberByKey(s.authorKey4)?.callsign ?? s.authorKey4.toUpperCase();
-    var length = 0.0;
-    for (var i = 1; i < s.points.length; i++) {
-      length += teamDistanceMeters(
-        s.points[i - 1].$1,
-        s.points[i - 1].$2,
-        s.points[i].$1,
-        s.points[i].$2,
-      );
-    }
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              s.label.isEmpty ? s.kind.label : s.label,
-              style: Theme.of(context).textTheme.titleLarge,
+Future<void> showSharedShapeSheet(BuildContext context, TeamAtakShape s) =>
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (context) {
+        final team = context.read<TeamService>();
+        final author =
+            team.memberByKey(s.authorKey4)?.callsign ??
+            s.authorKey4.toUpperCase();
+        var length = 0.0;
+        for (var i = 1; i < s.points.length; i++) {
+          length += teamDistanceMeters(
+            s.points[i - 1].$1,
+            s.points[i - 1].$2,
+            s.points[i].$1,
+            s.points[i].$2,
+          );
+        }
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    s.label.isEmpty ? s.kind.label : s.label,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    [
+                      s.kind.label,
+                      if (s.kind == TeamShapeKind.circle)
+                        'radius ${s.radiusM} m'
+                      else
+                        '${s.points.length} points',
+                      if (length > 0 &&
+                          (s.kind == TeamShapeKind.route ||
+                              s.kind == TeamShapeKind.polyline))
+                        length >= 1000
+                            ? '${(length / 1000).toStringAsFixed(1)} km'
+                            : '${length.round()} m',
+                      'shared by $author',
+                      teamAgo(s.time),
+                    ].join(' · '),
+                  ),
+                  if (s.note.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(s.note),
+                  ],
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    icon: const Icon(Icons.visibility_off),
+                    label: const Text('Hide on this phone'),
+                    onPressed: () {
+                      team.dismissItem(s.key);
+                      Navigator.pop(context);
+                    },
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              [
-                s.kind.label,
-                if (s.kind == TeamShapeKind.circle)
-                  'radius ${s.radiusM} m'
-                else
-                  '${s.points.length} points',
-                if (length > 0 &&
-                    (s.kind == TeamShapeKind.route ||
-                        s.kind == TeamShapeKind.polyline))
-                  length >= 1000
-                      ? '${(length / 1000).toStringAsFixed(1)} km'
-                      : '${length.round()} m',
-                'shared by $author',
-                teamAgo(s.time),
-              ].join(' · '),
-            ),
-            if (s.note.isNotEmpty) ...[const SizedBox(height: 8), Text(s.note)],
-            const SizedBox(height: 12),
-            TextButton.icon(
-              icon: const Icon(Icons.visibility_off),
-              label: const Text('Hide on this phone'),
-              onPressed: () {
-                team.dismissItem(s.key);
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
-  },
-);

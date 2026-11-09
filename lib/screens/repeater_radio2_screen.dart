@@ -377,6 +377,7 @@ class _RepeaterRadio2ScreenState extends State<RepeaterRadio2Screen> {
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         icon: Icon(
           off ? Icons.power_settings_new : Icons.settings_input_antenna,
           color: _radio2Color,

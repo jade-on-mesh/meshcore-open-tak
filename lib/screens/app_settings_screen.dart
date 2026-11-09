@@ -1595,24 +1595,26 @@ class AppSettingsScreen extends StatelessWidget {
     final hl = MapHighlights.instance;
     showMeshSheet(
       context,
-      builder: (ctx) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          BottomSheetHeader(title: context.l10n.mapHighlight_title),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-            child: Text(context.l10n.mapHighlight_help),
-          ),
-          for (final m in MapHighlights.choicesMinutes)
-            MeshSheetOption(
-              label: _highlightLabel(context, m),
-              selected: hl.minutes == m,
-              onTap: () {
-                unawaited(hl.setMinutes(m));
-                Navigator.pop(ctx);
-              },
+      builder: (ctx) => SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            BottomSheetHeader(title: context.l10n.mapHighlight_title),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child: Text(context.l10n.mapHighlight_help),
             ),
-        ],
+            for (final m in MapHighlights.choicesMinutes)
+              MeshSheetOption(
+                label: _highlightLabel(context, m),
+                selected: hl.minutes == m,
+                onTap: () {
+                  unawaited(hl.setMinutes(m));
+                  Navigator.pop(ctx);
+                },
+              ),
+          ],
+        ),
       ),
     );
   }

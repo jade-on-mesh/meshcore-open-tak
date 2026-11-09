@@ -242,34 +242,37 @@ Future<void> showMapTools(
   );
 }
 
-Future<ShapeKind?> _pickFenceShape(BuildContext context) =>
-    showModalBottomSheet<ShapeKind>(
-      context: context,
-      showDragHandle: true,
-      builder: (c) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const ListTile(
-              title: Text('Geofence'),
-              subtitle: Text(
-                'Alerts every teammate when anyone enters or leaves the area.',
-              ),
+Future<ShapeKind?> _pickFenceShape(
+  BuildContext context,
+) => showModalBottomSheet<ShapeKind>(
+  context: context,
+  showDragHandle: true,
+  builder: (c) => SafeArea(
+    child: SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const ListTile(
+            title: Text('Geofence'),
+            subtitle: Text(
+              'Alerts every teammate when anyone enters or leaves the area.',
             ),
-            for (final k in [
-              ShapeKind.circle,
-              ShapeKind.polygon,
-              ShapeKind.rectangle,
-            ])
-              ListTile(
-                leading: Icon(shapeKindIcon(k)),
-                title: Text(k.label),
-                onTap: () => Navigator.pop(c, k),
-              ),
-          ],
-        ),
+          ),
+          for (final k in [
+            ShapeKind.circle,
+            ShapeKind.polygon,
+            ShapeKind.rectangle,
+          ])
+            ListTile(
+              leading: Icon(shapeKindIcon(k)),
+              title: Text(k.label),
+              onTap: () => Navigator.pop(c, k),
+            ),
+        ],
       ),
-    );
+    ),
+  ),
+);
 
 class _ToolTile extends StatelessWidget {
   final _Tool tool;
@@ -331,38 +334,40 @@ Future<void> _showAlertPicker(BuildContext context, TeamService team) async {
     context: context,
     showDragHandle: true,
     builder: (c) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const ListTile(
-            title: Text('Raise an alert'),
-            subtitle: Text('Every teammate gets a full-screen alarm.'),
-          ),
-          for (final (t, icon, sub) in [
-            (TeamAlertType.sos, Icons.sos, 'Emergency, I need help now'),
-            (
-              TeamAlertType.inContact,
-              Icons.warning_amber,
-              'Under threat, in contact',
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(
+              title: Text('Raise an alert'),
+              subtitle: Text('Every teammate gets a full-screen alarm.'),
             ),
-            (
-              TeamAlertType.ringTheBell,
-              Icons.notifications_active,
-              'Everyone check in',
-            ),
-          ])
+            for (final (t, icon, sub) in [
+              (TeamAlertType.sos, Icons.sos, 'Emergency, I need help now'),
+              (
+                TeamAlertType.inContact,
+                Icons.warning_amber,
+                'Under threat, in contact',
+              ),
+              (
+                TeamAlertType.ringTheBell,
+                Icons.notifications_active,
+                'Everyone check in',
+              ),
+            ])
+              ListTile(
+                leading: Icon(icon, color: Colors.red),
+                title: Text(t.label),
+                subtitle: Text(sub),
+                onTap: () => Navigator.pop(c, t),
+              ),
             ListTile(
-              leading: Icon(icon, color: Colors.red),
-              title: Text(t.label),
-              subtitle: Text(sub),
-              onTap: () => Navigator.pop(c, t),
+              leading: const Icon(Icons.close),
+              title: const Text('Cancel'),
+              onTap: () => Navigator.pop(c),
             ),
-          ListTile(
-            leading: const Icon(Icons.close),
-            title: const Text('Cancel'),
-            onTap: () => Navigator.pop(c),
-          ),
-        ],
+          ],
+        ),
       ),
     ),
   );
@@ -564,28 +569,30 @@ Future<void> _showStatusPicker(BuildContext context, TeamService team) =>
       builder: (c) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Your status', style: Theme.of(c).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  for (final st in TeamStatus.values.skip(1))
-                    ChoiceChip(
-                      label: Text(st.label),
-                      selected: team.status == st,
-                      onSelected: (sel) {
-                        unawaited(team.setStatus(sel ? st : TeamStatus.none));
-                        Navigator.pop(c);
-                      },
-                    ),
-                ],
-              ),
-            ],
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Your status', style: Theme.of(c).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final st in TeamStatus.values.skip(1))
+                      ChoiceChip(
+                        label: Text(st.label),
+                        selected: team.status == st,
+                        onSelected: (sel) {
+                          unawaited(team.setStatus(sel ? st : TeamStatus.none));
+                          Navigator.pop(c);
+                        },
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -628,6 +635,7 @@ class _GoToDialogState extends State<_GoToDialog> {
     final p = _parsed;
     final fix = widget.team.fix;
     return AlertDialog(
+      scrollable: true,
       title: const Text('Go to coordinates'),
       content: Column(
         mainAxisSize: MainAxisSize.min,

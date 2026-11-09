@@ -117,25 +117,27 @@ Future<void> showVoxImagePicker(
       : await showModalBottomSheet<ImageSource>(
           context: context,
           builder: (context) => SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (aiSketch != null)
-                  _PhotoKindChooser(hd: aiSketch.sendHd != null),
-                if (!desktop)
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (aiSketch != null)
+                    _PhotoKindChooser(hd: aiSketch.sendHd != null),
+                  if (!desktop)
+                    ListTile(
+                      leading: const Icon(Icons.photo_camera_outlined),
+                      title: const Text('Take photo'),
+                      onTap: () => Navigator.pop(context, ImageSource.camera),
+                    ),
                   ListTile(
-                    leading: const Icon(Icons.photo_camera_outlined),
-                    title: const Text('Take photo'),
-                    onTap: () => Navigator.pop(context, ImageSource.camera),
+                    leading: const Icon(Icons.photo_library_outlined),
+                    title: Text(
+                      desktop ? 'Choose a picture' : 'Choose from gallery',
+                    ),
+                    onTap: () => Navigator.pop(context, ImageSource.gallery),
                   ),
-                ListTile(
-                  leading: const Icon(Icons.photo_library_outlined),
-                  title: Text(
-                    desktop ? 'Choose a picture' : 'Choose from gallery',
-                  ),
-                  onTap: () => Navigator.pop(context, ImageSource.gallery),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );

@@ -837,26 +837,28 @@ Future<ShapeKind?> showDrawToolPicker(BuildContext context) =>
       context: context,
       showDragHandle: true,
       builder: (c) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const ListTile(
-              title: Text('Draw'),
-              subtitle: Text('Shared with your team and TAK.'),
-            ),
-            for (final k in [
-              ShapeKind.line,
-              ShapeKind.freehand,
-              ShapeKind.polygon,
-              ShapeKind.rectangle,
-              ShapeKind.circle,
-            ])
-              ListTile(
-                leading: Icon(shapeKindIcon(k)),
-                title: Text(k.label),
-                onTap: () => Navigator.pop(c, k),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const ListTile(
+                title: Text('Draw'),
+                subtitle: Text('Shared with your team and TAK.'),
               ),
-          ],
+              for (final k in [
+                ShapeKind.line,
+                ShapeKind.freehand,
+                ShapeKind.polygon,
+                ShapeKind.rectangle,
+                ShapeKind.circle,
+              ])
+                ListTile(
+                  leading: Icon(shapeKindIcon(k)),
+                  title: Text(k.label),
+                  onTap: () => Navigator.pop(c, k),
+                ),
+            ],
+          ),
         ),
       ),
     );
