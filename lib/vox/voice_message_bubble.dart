@@ -481,76 +481,82 @@ void showVoxVoiceLog(BuildContext context, VoxVoiceService service) {
                 ...service.log.reversed.map((e) => e.toString()),
               ];
               final text = lines.join('\n');
-              return Column(
-                children: [
-                  const ListTile(
-                    title: Text('Voice diagnostics'),
-                    subtitle: Text(
-                      'Newest first. Copy or share the whole log when '
-                      'reporting a problem.',
-                    ),
-                  ),
-                  // Buttons, not an icon at the edge: on a phone the icon
-                  // was off screen and the log can't be selected in one go.
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        FilledButton.tonalIcon(
-                          icon: const Icon(Icons.copy),
-                          label: const Text('Copy log'),
-                          onPressed: () {
-                            Clipboard.setData(ClipboardData(text: text));
-                            ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-                              const SnackBar(content: Text('Copied')),
-                            );
-                          },
+              // One scroll for everything: with large text the settings
+              // alone are taller than the sheet, and only the log scrolled.
+              return CustomScrollView(
+                slivers: [
+                  SliverList.list(
+                    children: [
+                      const ListTile(
+                        title: Text('Voice diagnostics'),
+                        subtitle: Text(
+                          'Newest first. Copy or share the whole log when '
+                          'reporting a problem.',
                         ),
-                        FilledButton.tonalIcon(
-                          icon: const Icon(Icons.share),
-                          label: const Text('Share log'),
-                          onPressed: () => SharePlus.instance.share(
-                            ShareParams(
-                              text: text,
-                              subject: 'MeshCore Open TAK voice diagnostics',
+                      ),
+                      // Buttons, not an icon at the edge: on a phone the icon
+                      // was off screen and the log can't be selected in one go.
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            FilledButton.tonalIcon(
+                              icon: const Icon(Icons.copy),
+                              label: const Text('Copy log'),
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: text));
+                                ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                                  const SnackBar(content: Text('Copied')),
+                                );
+                              },
                             ),
-                          ),
+                            FilledButton.tonalIcon(
+                              icon: const Icon(Icons.share),
+                              label: const Text('Share log'),
+                              onPressed: () => SharePlus.instance.share(
+                                ShareParams(
+                                  text: text,
+                                  subject: 'MeshCore Open TAK voice diagnostics',
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                      const Divider(height: 1),
+                      VoxMimiTile(service: service),
+                      VoxEnhanceVoiceTile(service: service),
+                      VoxCodec2QualityTile(service: service),
+                      VoxAutoPlayTile(service: service),
+                      VoxForcedRouteTile(service: service),
+                      ListTile(
+                        leading: const Icon(Icons.network_ping),
+                        title: const Text('Link test'),
+                        subtitle: const Text(
+                          'Ping a contact over raw data: no repeaters, their '
+                          'stored route, and your forced repeaters. Their app '
+                          'must be open.',
+                        ),
+                        onTap: () => _pickLinkTestTarget(context, service),
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.speed),
+                        title: const Text('Transfer test'),
+                        subtitle: const Text(
+                          'Send a small test photo a few times to a contact or '
+                          'channel, then see how many arrived, how fast, and how '
+                          'many requests it took. Receivers need this app, open.',
+                        ),
+                        onTap: () => _runTransferTest(context, service),
+                      ),
+                      const Divider(height: 1),
+                    ],
                   ),
-                  const Divider(height: 1),
-                  VoxMimiTile(service: service),
-                  VoxEnhanceVoiceTile(service: service),
-                  VoxCodec2QualityTile(service: service),
-                  VoxAutoPlayTile(service: service),
-                  VoxForcedRouteTile(service: service),
-                  ListTile(
-                    leading: const Icon(Icons.network_ping),
-                    title: const Text('Link test'),
-                    subtitle: const Text(
-                      'Ping a contact over raw data: no repeaters, their '
-                      'stored route, and your forced repeaters. Their app '
-                      'must be open.',
-                    ),
-                    onTap: () => _pickLinkTestTarget(context, service),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.speed),
-                    title: const Text('Transfer test'),
-                    subtitle: const Text(
-                      'Send a small test photo a few times to a contact or '
-                      'channel, then see how many arrived, how fast, and how '
-                      'many requests it took. Receivers need this app, open.',
-                    ),
-                    onTap: () => _runTransferTest(context, service),
-                  ),
-                  const Divider(height: 1),
-                  Expanded(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(12),
+                  SliverPadding(
+                    padding: const EdgeInsets.all(12),
+                    sliver: SliverList.builder(
                       itemCount: lines.length,
                       itemBuilder: (_, i) => Padding(
                         padding: const EdgeInsets.only(bottom: 4),
