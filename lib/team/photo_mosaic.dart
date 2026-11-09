@@ -559,40 +559,42 @@ Future<void> showPhotoMosaicSheet(BuildContext context) =>
           context.read<TeamService>(),
         );
         return SafeArea(
-          child: SingleChildScrollView(child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ValueListenableBuilder<bool>(
-                valueListenable: PhotoMosaicPrefs.show,
-                builder: (_, on, _) => SwitchListTile(
-                  secondary: const Icon(Icons.photo_library_outlined),
-                  title: Text(l.mosaic_show),
-                  subtitle: Text(l.mosaic_showHelp(photos.length)),
-                  value: on,
-                  onChanged: (v) => unawaited(PhotoMosaicPrefs.setShow(v)),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ValueListenableBuilder<bool>(
+                  valueListenable: PhotoMosaicPrefs.show,
+                  builder: (_, on, _) => SwitchListTile(
+                    secondary: const Icon(Icons.photo_library_outlined),
+                    title: Text(l.mosaic_show),
+                    subtitle: Text(l.mosaic_showHelp(photos.length)),
+                    value: on,
+                    onChanged: (v) => unawaited(PhotoMosaicPrefs.setShow(v)),
+                  ),
                 ),
-              ),
-              ValueListenableBuilder<bool>(
-                valueListenable: PhotoMosaicPrefs.tagOwn,
-                builder: (_, on, _) => SwitchListTile(
-                  secondary: const Icon(Icons.add_location_alt_outlined),
-                  title: Text(l.mosaic_tag),
-                  subtitle: Text(l.mosaic_tagHelp),
-                  value: on,
-                  onChanged: (v) => unawaited(PhotoMosaicPrefs.setTagOwn(v)),
+                ValueListenableBuilder<bool>(
+                  valueListenable: PhotoMosaicPrefs.tagOwn,
+                  builder: (_, on, _) => SwitchListTile(
+                    secondary: const Icon(Icons.add_location_alt_outlined),
+                    title: Text(l.mosaic_tag),
+                    subtitle: Text(l.mosaic_tagHelp),
+                    value: on,
+                    onChanged: (v) => unawaited(PhotoMosaicPrefs.setTagOwn(v)),
+                  ),
                 ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.view_timeline_outlined),
-                title: Text(l.mosaic_all),
-                enabled: photos.isNotEmpty,
-                onTap: () {
-                  Navigator.pop(context);
-                  unawaited(showMosaicTimeline(context, photos));
-                },
-              ),
-            ],
-          ),),
+                ListTile(
+                  leading: const Icon(Icons.view_timeline_outlined),
+                  title: Text(l.mosaic_all),
+                  enabled: photos.isNotEmpty,
+                  onTap: () {
+                    Navigator.pop(context);
+                    unawaited(showMosaicTimeline(context, photos));
+                  },
+                ),
+              ],
+            ),
+          ),
         );
       },
     );

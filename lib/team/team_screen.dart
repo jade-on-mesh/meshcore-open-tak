@@ -1479,36 +1479,38 @@ Future<void> _reportAt(BuildContext context, double lat, double lon) =>
     showModalBottomSheet<void>(
       context: context,
       builder: (c) => SafeArea(
-        child: SingleChildScrollView(child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.edit_note),
-              title: const Text('Report here'),
-              subtitle: const Text('Anything the team should know'),
-              onTap: () {
-                Navigator.pop(c);
-                showGeneralReportForm(context, lat: lat, lon: lon);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.report_outlined),
-              title: const Text('SALUTE report here'),
-              onTap: () {
-                Navigator.pop(c);
-                showSaluteForm(context, lat: lat, lon: lon);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.local_hospital, color: casevacRed),
-              title: const Text('CASEVAC 9-line here'),
-              onTap: () {
-                Navigator.pop(c);
-                showCasevacForm(context, lat: lat, lon: lon);
-              },
-            ),
-          ],
-        ),),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.edit_note),
+                title: const Text('Report here'),
+                subtitle: const Text('Anything the team should know'),
+                onTap: () {
+                  Navigator.pop(c);
+                  showGeneralReportForm(context, lat: lat, lon: lon);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.report_outlined),
+                title: const Text('SALUTE report here'),
+                onTap: () {
+                  Navigator.pop(c);
+                  showSaluteForm(context, lat: lat, lon: lon);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.local_hospital, color: casevacRed),
+                title: const Text('CASEVAC 9-line here'),
+                onTap: () {
+                  Navigator.pop(c);
+                  showCasevacForm(context, lat: lat, lon: lon);
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
 

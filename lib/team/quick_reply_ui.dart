@@ -75,18 +75,20 @@ class QuickReplyChips extends StatelessWidget {
     final min = await showModalBottomSheet<int>(
       context: context,
       builder: (c) => SafeArea(
-        child: SingleChildScrollView(child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(title: Text(context.l10n.quickReply_etaPick)),
-            for (final m in teamReplyEtas)
-              ListTile(
-                leading: const Icon(Icons.schedule),
-                title: Text(context.l10n.quickReply_etaMin(m)),
-                onTap: () => Navigator.pop(c, m),
-              ),
-          ],
-        ),),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(title: Text(context.l10n.quickReply_etaPick)),
+              for (final m in teamReplyEtas)
+                ListTile(
+                  leading: const Icon(Icons.schedule),
+                  title: Text(context.l10n.quickReply_etaMin(m)),
+                  onTap: () => Navigator.pop(c, m),
+                ),
+            ],
+          ),
+        ),
       ),
     );
     if (min != null) onPick(TeamReplyCode.eta, min);

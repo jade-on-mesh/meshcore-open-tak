@@ -127,34 +127,36 @@ class _ListenSheetState extends State<_ListenSheet> {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-        child: SingleChildScrollView(child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.hearing, size: 48, color: theme.colorScheme.primary),
-            const SizedBox(height: 12),
-            Text(l10n.sound_listening, style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(
-              _error ?? l10n.sound_listeningHelp,
-              textAlign: TextAlign.center,
-              style: _error == null
-                  ? theme.textTheme.bodySmall
-                  : TextStyle(color: theme.colorScheme.error),
-            ),
-            if (_other != null) ...[
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.hearing, size: 48, color: theme.colorScheme.primary),
+              const SizedBox(height: 12),
+              Text(l10n.sound_listening, style: theme.textTheme.titleMedium),
               const SizedBox(height: 8),
               Text(
-                l10n.sound_heardOther(_other!),
+                _error ?? l10n.sound_listeningHelp,
                 textAlign: TextAlign.center,
-                style: theme.textTheme.bodySmall,
+                style: _error == null
+                    ? theme.textTheme.bodySmall
+                    : TextStyle(color: theme.colorScheme.error),
               ),
+              if (_other != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  l10n.sound_heardOther(_other!),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+              if (_error == null) ...[
+                const SizedBox(height: 16),
+                const LinearProgressIndicator(),
+              ],
             ],
-            if (_error == null) ...[
-              const SizedBox(height: 16),
-              const LinearProgressIndicator(),
-            ],
-          ],
-        ),),
+          ),
+        ),
       ),
     );
   }

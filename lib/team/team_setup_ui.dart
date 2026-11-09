@@ -296,29 +296,31 @@ class _ListenSheetState extends State<_ListenSheet> {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-        child: SingleChildScrollView(child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.hearing, size: 48, color: theme.colorScheme.primary),
-            const SizedBox(height: 12),
-            Text(l10n.sound_listening, style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(
-              _error ??
-                  (p == null
-                      ? l10n.teamSetup_listenHelp
-                      : l10n.teamSetup_heardParts(p.$1, p.$2)),
-              textAlign: TextAlign.center,
-              style: _error == null
-                  ? theme.textTheme.bodySmall
-                  : TextStyle(color: theme.colorScheme.error),
-            ),
-            if (_error == null) ...[
-              const SizedBox(height: 16),
-              LinearProgressIndicator(value: p == null ? null : p.$1 / p.$2),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.hearing, size: 48, color: theme.colorScheme.primary),
+              const SizedBox(height: 12),
+              Text(l10n.sound_listening, style: theme.textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Text(
+                _error ??
+                    (p == null
+                        ? l10n.teamSetup_listenHelp
+                        : l10n.teamSetup_heardParts(p.$1, p.$2)),
+                textAlign: TextAlign.center,
+                style: _error == null
+                    ? theme.textTheme.bodySmall
+                    : TextStyle(color: theme.colorScheme.error),
+              ),
+              if (_error == null) ...[
+                const SizedBox(height: 16),
+                LinearProgressIndicator(value: p == null ? null : p.$1 / p.$2),
+              ],
             ],
-          ],
-        ),),
+          ),
+        ),
       ),
     );
   }

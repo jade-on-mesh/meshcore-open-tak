@@ -331,77 +331,79 @@ class _AeicHdSendSheetState extends State<_AeicHdSendSheet> {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-        child: SingleChildScrollView(child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('AI sketch HD', style: theme.textTheme.titleLarge),
-            const SizedBox(height: 12),
-            Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.memory(
-                  widget.imageBytes,
-                  height: 200,
-                  fit: BoxFit.contain,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('AI sketch HD', style: theme.textTheme.titleLarge),
+              const SizedBox(height: 12),
+              Center(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.memory(
+                    widget.imageBytes,
+                    height: 200,
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            if (_error != null)
-              Text(_error!, style: TextStyle(color: theme.colorScheme.error))
-            else if (payload == null)
-              ListenableBuilder(
-                listenable: hd,
-                builder: (context, _) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    LinearProgressIndicator(
-                      value: hd.isBusy && hd.jobProgress > 0
-                          ? hd.jobProgress
-                          : null,
-                    ),
-                    const SizedBox(height: 6),
-                    const Text('Compressing…'),
-                  ],
+              const SizedBox(height: 12),
+              if (_error != null)
+                Text(_error!, style: TextStyle(color: theme.colorScheme.error))
+              else if (payload == null)
+                ListenableBuilder(
+                  listenable: hd,
+                  builder: (context, _) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      LinearProgressIndicator(
+                        value: hd.isBusy && hd.jobProgress > 0
+                            ? hd.jobProgress
+                            : null,
+                      ),
+                      const SizedBox(height: 6),
+                      const Text('Compressing…'),
+                    ],
+                  ),
+                )
+              else
+                Text(
+                  '${payload.length} bytes, ${estimate!.chunkCount} packets'
+                  '${estimate.includesParity ? ' (with parity)' : ''}, '
+                  'about ${_duration(estimate.pacedWallClock)} to send. '
+                  'The receiving phone takes a few minutes to draw it.',
                 ),
-              )
-            else
-              Text(
-                '${payload.length} bytes, ${estimate!.chunkCount} packets'
-                '${estimate.includesParity ? ' (with parity)' : ''}, '
-                'about ${_duration(estimate.pacedWallClock)} to send. '
-                'The receiving phone takes a few minutes to draw it.',
-              ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: payload == null
-                      ? null
-                      : () => Navigator.pop(
-                          context,
-                          ImageSendPreviewResult(
-                            payload: payload,
-                            rate: ImageCodecRatePoint.hd,
-                            includeParity: estimate!.includesParity,
-                            packetCount: estimate.chunkCount,
-                            airtime: estimate.totalAirtime,
-                            wallClock: estimate.pacedWallClock,
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: payload == null
+                        ? null
+                        : () => Navigator.pop(
+                            context,
+                            ImageSendPreviewResult(
+                              payload: payload,
+                              rate: ImageCodecRatePoint.hd,
+                              includeParity: estimate!.includesParity,
+                              packetCount: estimate.chunkCount,
+                              airtime: estimate.totalAirtime,
+                              wallClock: estimate.pacedWallClock,
+                            ),
                           ),
-                        ),
-                  child: const Text('Send'),
-                ),
-              ],
-            ),
-          ],
-        ),),
+                    child: const Text('Send'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

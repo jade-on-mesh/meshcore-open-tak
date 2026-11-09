@@ -35,38 +35,40 @@ Future<void> showDataPackageSheet(BuildContext context) =>
       context: context,
       showDragHandle: true,
       builder: (c) => SafeArea(
-        child: SingleChildScrollView(child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const ListTile(
-              title: Text('Data packages'),
-              subtitle: Text('Swap map items with ATAK, WinTAK and iTAK.'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.unarchive_outlined),
-              title: const Text('Export team map'),
-              subtitle: const Text(
-                'Pins, reports, CASEVACs, routes and drawings as a .zip '
-                'that TAK apps import.',
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const ListTile(
+                title: Text('Data packages'),
+                subtitle: Text('Swap map items with ATAK, WinTAK and iTAK.'),
               ),
-              onTap: () {
-                Navigator.pop(c);
-                unawaited(_export(context));
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.archive_outlined),
-              title: const Text('Import a data package'),
-              subtitle: const Text(
-                'Map items, or a TAK Server connection package.',
+              ListTile(
+                leading: const Icon(Icons.unarchive_outlined),
+                title: const Text('Export team map'),
+                subtitle: const Text(
+                  'Pins, reports, CASEVACs, routes and drawings as a .zip '
+                  'that TAK apps import.',
+                ),
+                onTap: () {
+                  Navigator.pop(c);
+                  unawaited(_export(context));
+                },
               ),
-              onTap: () {
-                Navigator.pop(c);
-                unawaited(_import(context));
-              },
-            ),
-          ],
-        ),),
+              ListTile(
+                leading: const Icon(Icons.archive_outlined),
+                title: const Text('Import a data package'),
+                subtitle: const Text(
+                  'Map items, or a TAK Server connection package.',
+                ),
+                onTap: () {
+                  Navigator.pop(c);
+                  unawaited(_import(context));
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
 
