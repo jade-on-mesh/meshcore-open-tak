@@ -1698,7 +1698,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
               padding: EdgeInsets.only(left: layoutOutgoing ? 0 : 42),
               child: ReactionChips(
                 reactions: message.reactions,
-                onTap: (_) => _showReactionsReport(message),
+                onTap: (_) => _showReactionsReport(message.reactionList()),
               ),
             ),
           ],
@@ -1855,7 +1855,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     );
   }
 
-  void _showReactionsReport(ChannelMessage message) {
+  void _showReactionsReport(List<ReactionInfo> reactions) {
     final scheme = Theme.of(context).colorScheme;
     showDialog(
       context: context,
@@ -1867,7 +1867,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             child: ListView(
               shrinkWrap: true,
               padding: const EdgeInsets.symmetric(vertical: 4),
-              children: message.reactionList().map((reaction) {
+              children: reactions.map((reaction) {
                 return Container(
                   padding: const EdgeInsetsDirectional.symmetric(vertical: 4),
                   child: Container(
@@ -2548,6 +2548,19 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                       ),
                     ),
                   ),
+                  if (entry.reactions.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        left: 8,
+                        right: 8,
+                        bottom: 6,
+                      ),
+                      child: ReactionChips(
+                        reactions: entry.reactions,
+                        onTap: (_) =>
+                            _showReactionsReport(_imageReactionList(entry)),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -2579,6 +2592,16 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                 ),
                 subtitle: _imageSenderLabel(entry),
               ),
+              // Can't react to your own photo
+              if (!entry.isOutgoing)
+                ListTile(
+                  leading: const Icon(Icons.add_reaction_outlined),
+                  title: Text(l10n.chat_addReaction),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _showImageEmojiPicker(entry);
+                  },
+                ),
               if (canSave)
                 ListTile(
                   leading: const Icon(Icons.save_alt),
@@ -2625,6 +2648,34 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       ),
     );
   }
+
+  void _showImageEmojiPicker(ReceivedImageEntry entry) {
+    showMeshSheet(
+      context,
+      builder: (_) => EmojiPicker(
+        onEmojiSelected: (emoji) {
+          final index = ReactionHelper.emojiToIndex(emoji);
+          if (index == null) return; // Unknown emoji, skip
+          context.read<MeshCoreConnector>().sendChannelMessage(
+            widget.channel,
+            ReactionHelper.encodeReaction(entry.reactionHash, index),
+          );
+        },
+      ),
+    );
+  }
+
+  /// [entry]'s reactions as [_showReactionsReport] lists them.
+  static List<ReactionInfo> _imageReactionList(ReceivedImageEntry entry) => [
+    for (final r in entry.reactions.entries)
+      for (final who in r.value)
+        ReactionInfo(
+          targetHash: entry.reactionHash,
+          emoji: r.key,
+          hashType: HashType.ours,
+          senderName: who,
+        ),
+  ];
 
   Future<void> _saveImage(ReceivedImageEntry entry) async {
     final l10n = context.l10n;

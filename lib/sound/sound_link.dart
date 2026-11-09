@@ -59,9 +59,7 @@ class SoundLink {
     });
     _playing = true;
     try {
-      await p.play(
-        await voxWavSource(voxPcm16ToWav(pcm, sampleRate: _rate)),
-      );
+      await p.play(await voxWavSource(voxPcm16ToWav(pcm, sampleRate: _rate)));
       await done.future.timeout(
         Duration(milliseconds: ms + 3000),
         onTimeout: () {},

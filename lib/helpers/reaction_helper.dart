@@ -125,6 +125,17 @@ class ReactionHelper {
     return hash.toRadixString(16).padLeft(4, '0');
   }
 
+  /// The reaction hash of an image message (AEIC chunks on a channel or in a
+  /// DM). Those carry no text and no timestamp, so it is over what sender and
+  /// receivers both know: the sender's 2-byte key prefix and the 8-bit image
+  /// id. Reacted to like a text message, with [encodeReaction].
+  static String imageReactionHash(int senderPrefix, int imgId) =>
+      computeReactionHash(
+        imgId,
+        'img${senderPrefix.toRadixString(16).padLeft(4, '0')}',
+        'photo',
+      );
+
   /// Platform-independent reimplementation of the Dart VM's
   /// `String.hashCode` (one-at-a-time hash over UTF-16 code units, finalized
   /// to 30 bits). Reaction hashes were originally computed with

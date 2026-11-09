@@ -47,6 +47,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import '../helpers/reaction_helper.dart';
 import '../models/image_codec_support.dart';
 import '../widgets/image_send_codec_binding.dart';
 import 'image_chunk_transport.dart';
@@ -225,6 +226,14 @@ class ReceivedImageEntry {
   /// caption (see `received_image_message.dart`).
   final Uint8List? pngBytes;
 
+  /// Emoji reactions, emoji -> who sent each (null: unknown), as on
+  /// `ChannelMessage.reactions`.
+  final Map<String, List<String?>> reactions;
+
+  /// What a reaction to this image names ([ReactionHelper.imageReactionHash]).
+  String get reactionHash =>
+      ReactionHelper.imageReactionHash(senderPrefix, imgId);
+
   const ReceivedImageEntry({
     required this.streamId,
     required this.senderPrefix,
@@ -250,6 +259,7 @@ class ReceivedImageEntry {
     this.pngByteCount = 0,
     this.viaMask = 0,
     this.pngBytes,
+    this.reactions = const {},
   });
 
   ImageStreamKey get key => ImageStreamKey(
@@ -288,6 +298,7 @@ class ReceivedImageEntry {
     int? pngByteCount,
     int? viaMask,
     Object? pngBytes = _unset,
+    Map<String, List<String?>>? reactions,
   }) {
     return ReceivedImageEntry(
       streamId: streamId,
@@ -316,6 +327,7 @@ class ReceivedImageEntry {
       pngBytes: identical(pngBytes, _unset)
           ? this.pngBytes
           : pngBytes as Uint8List?,
+      reactions: reactions ?? this.reactions,
     );
   }
 
@@ -344,6 +356,7 @@ class ReceivedImageEntry {
     if (decodeMs != null) 'decodeMs': decodeMs,
     if (error != null) 'error': error,
     if (viaMask != 0) 'viaMask': viaMask,
+    if (reactions.isNotEmpty) 'reactions': reactions,
   };
 
   factory ReceivedImageEntry.fromJson(Map<String, dynamic> json) {
@@ -373,7 +386,19 @@ class ReceivedImageEntry {
       bitstreamByteCount: json['bitstreamByteCount'] as int? ?? 0,
       pngByteCount: json['pngByteCount'] as int? ?? 0,
       viaMask: json['viaMask'] as int? ?? 0,
+      reactions: _parseReactions(json['reactions']),
     );
+  }
+
+  static Map<String, List<String?>> _parseReactions(Object? raw) {
+    if (raw is! Map) return const {};
+    return {
+      for (final e in raw.entries)
+        if (e.value is List)
+          e.key.toString(): [
+            for (final who in e.value as List) who is String ? who : null,
+          ],
+    };
   }
 
   @override
@@ -658,6 +683,24 @@ class ReceivedImageStore extends ChangeNotifier {
   }
 
   ReceivedImageEntry? entryFor(String streamId) => _entries[streamId];
+
+  /// A reaction ([info], from a channel or DM) to an image: added to the
+  /// newest image it names. False when it names none here — it may be for a
+  /// text message. Image ids are 8-bit and come round again, so an older
+  /// image with the same sender and id loses out to the newest.
+  bool applyReaction(ReactionInfo info) {
+    if (info.hashType != HashType.ours) return false;
+    for (final e in entries) {
+      if (e.reactionHash != info.targetHash) continue;
+      final r = {
+        for (final x in e.reactions.entries) x.key: [...x.value],
+      };
+      (r[info.emoji] ??= []).add(info.senderName);
+      unawaited(_store(e.copyWith(reactions: r)));
+      return true;
+    }
+    return false;
+  }
 
   ReceivedImageEntry? entryForKey(ImageStreamKey key) {
     final id = _byKey[key];
