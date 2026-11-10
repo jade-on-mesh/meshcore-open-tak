@@ -31,6 +31,9 @@ import '../models/image_codec_support.dart';
 import '../services/image_chunk_transport.dart';
 import '../services/media_mesh.dart';
 import '../services/received_image_store.dart';
+import '../utils/app_logger.dart';
+
+void _log(String m) => appLogger.info(m, tag: 'AI sketch HD');
 
 /// GRP_DATA data type of the packets above ('AEIC', one past the images').
 const int dataTypeAeicHdRepair = 0xAE1D;
@@ -230,7 +233,16 @@ class AeicHdRepairService {
       connector,
       entry.channelIndex,
     );
-    if (release == null) return false;
+    if (release == null) {
+      _log('ask for the rest: radio2 can\'t send');
+      return false;
+    }
+    _log(
+      'asking for the rest of '
+      '${entry.senderPrefix.toRadixString(16).padLeft(4, '0')}/${entry.imgId} '
+      'on slot ${entry.channelIndex}: mask '
+      '0x${mask.toRadixString(16)} of ${entry.totalChunks}',
+    );
     try {
       final resumed = await store.resumeReceiving(entry.streamId);
       await connector.sendChannelDataPacket(
@@ -254,20 +266,36 @@ class AeicHdRepairService {
     }
   }
 
+  /// The whole HD image a request on [slot] names, if this phone holds it.
+  /// Matched by sender and image id, and by the channel's ID rather than its
+  /// radio slot: two phones seldom keep a channel in the same slot, so the
+  /// sender's own copy, keyed by its slot, didn't match the asker's.
+  ReceivedImageEntry? _heldFor(int slot, AeicHdRepairPacket q) {
+    final channelId = connector.channelIdForSlot(slot);
+    ReceivedImageEntry? any;
+    for (final e in store.entries) {
+      if (e.senderPrefix != q.senderPrefix || e.imgId != q.imgId) continue;
+      if (e.rate != AeicRatePoint.ft2 || !e.bitstreamStored) continue;
+      if (e.totalChunks != q.total) continue;
+      if (channelId != null && e.channelId == channelId) return e;
+      if (e.channelId == null || channelId == null) any ??= e;
+    }
+    return any;
+  }
+
   Future<void> _answer(int slot, AeicHdRepairPacket q) async {
-    final entry = store.entryForKey(
-      ImageStreamKey(
-        senderPrefix: q.senderPrefix,
-        imgId: q.imgId,
-        channelIndex: slot,
-      ),
-    );
-    if (entry == null || entry.rate != AeicRatePoint.ft2) return;
-    if (!entry.bitstreamStored || entry.totalChunks != q.total) return;
+    final tag =
+        '${q.senderPrefix.toRadixString(16).padLeft(4, '0')}/${q.imgId}';
+    final entry = _heldFor(slot, q);
+    if (entry == null) {
+      _log('request for $tag on slot $slot: not held here');
+      return;
+    }
     final servedKey = '$slot:${q.senderPrefix}:${q.imgId}:${q.mask}';
     final last = _served[servedKey];
     final now = DateTime.now();
     if (last != null && now.difference(last) < const Duration(seconds: 20)) {
+      _log('request for $tag: answered under 20 s ago');
       return;
     }
     _served[servedKey] = now;
@@ -284,7 +312,10 @@ class AeicHdRepairService {
       ),
     );
     final bits = await store.blobs.readBitstream(entry.streamId);
-    if (bits == null) return;
+    if (bits == null) {
+      _log('request for $tag: its bytes are gone');
+      return;
+    }
     final ImageChunkSet set;
     try {
       set = buildImageChunks(
@@ -298,9 +329,13 @@ class AeicHdRepairService {
         imgId: entry.imgId,
       );
     } on ArgumentError {
+      _log('request for $tag: could not rebuild its chunks');
       return;
     }
-    if (set.dataChunkCount != q.total) return;
+    if (set.dataChunkCount != q.total) {
+      _log('request for $tag: ${set.dataChunkCount} chunks, asked for ${q.total}');
+      return;
+    }
     var mask = q.mask;
     if (!entry.isOutgoing) {
       for (var i = 0; i <= q.total; i++) {
@@ -310,9 +345,16 @@ class AeicHdRepairService {
       }
     }
     final blobs = aeicHdBlobsFor(set.blobs, q.total, mask);
-    if (blobs.isEmpty) return;
+    if (blobs.isEmpty) {
+      _log('request for $tag: others already sent them');
+      return;
+    }
     final release = await MediaMeshChannelHold.hold(connector, slot);
-    if (release == null) return;
+    if (release == null) {
+      _log('request for $tag: radio2 can\'t send, not answered');
+      return;
+    }
+    _log('answering $tag on slot $slot: ${blobs.length} chunk(s)');
     try {
       await connector.sendChannelDataBlobs(
         blobs,
