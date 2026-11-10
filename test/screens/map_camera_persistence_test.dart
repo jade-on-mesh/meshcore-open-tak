@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -43,6 +45,13 @@ void main() {
   late List<List<String>> cameraWrites;
 
   setUp(() async {
+    // The fork's voice service looks for its models in the support folder.
+    final support = Directory.systemTemp.createTempSync('map_camera');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('plugins.flutter.io/path_provider'),
+          (_) async => support.path,
+        );
     persisted = {};
     cameraWrites = [];
     SharedPreferences.resetStatic();
