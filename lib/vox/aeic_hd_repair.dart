@@ -8,9 +8,20 @@
 //   'N' announce  [0x4E][prefix:2][imgId][name utf-8, up to 32 bytes]
 //       sent by the sender just before an HD image's chunks: receivers show
 //       the name instead of "Node 8c41".
-//   'Q' request   [0x51][prefix:2][imgId][total][missing:2]
+//   'Q' request   [0x51][prefix:2][imgId][total][missing:2][salt]
 //       sent by a receiver whose copy is incomplete: `missing` has bit i set
 //       for each data chunk i it lacks, bit 15 for the parity chunk.
+//   0xC_ chunk    [0xC0 | salt:4][an image chunk, as sent the first time]
+//       an answer: one data chunk, wrapped.
+//
+// GRP_DATA carries no timestamp, so two sends of the same bytes are the same
+// packet to MeshCore, and every radio that saw the first (companions and
+// repeaters alike) drops the second as already seen. A request repeated for
+// the same chunks, and a chunk sent again exactly as before, never arrived.
+// The random salt makes each one new. An image chunk has no room for one, so
+// answers go wrapped in this data type (a data chunk is at most 162 bytes:
+// with the wrap byte, still within a packet) and the parity chunk, which
+// can't be wrapped, isn't resent: with every data chunk back it isn't needed.
 //
 // Anyone holding the whole image answers a request with just those chunks:
 // the sender at once, others after a few seconds and only with what nobody
@@ -42,6 +53,9 @@ const int _kAnnounce = 0x4E; // 'N'
 const int _kRequest = 0x51; // 'Q'
 const int _kMaxNameBytes = 32;
 const int _kParityBit = 1 << 15;
+const int _kWrapMask = 0xF0;
+const int _kWrap = 0xC0;
+final Random _saltRng = Random();
 
 Uint8List encodeAeicHdAnnounce(int senderPrefix, int imgId, String name) {
   var bytes = utf8.encode(name.trim());
@@ -75,7 +89,18 @@ Uint8List encodeAeicHdRequest({
   total & 0x0F,
   (missingMask >> 8) & 0xFF,
   missingMask & 0xFF,
+  _saltRng.nextInt(256),
 ]);
+
+/// One image chunk wrapped for an answer, with a fresh salt.
+Uint8List wrapAeicHdChunk(Uint8List blob) =>
+    Uint8List.fromList([_kWrap | _saltRng.nextInt(16), ...blob]);
+
+/// The image chunk inside an answer, or null when [p] isn't one.
+Uint8List? unwrapAeicHdChunk(Uint8List p) =>
+    p.length > 1 && (p[0] & _kWrapMask) == _kWrap
+    ? Uint8List.sublistView(p, 1)
+    : null;
 
 /// One decoded packet: an announce has [name], a request [total] and [mask].
 class AeicHdRepairPacket {
@@ -108,7 +133,8 @@ class AeicHdRepairPacket {
         name: name,
       );
     }
-    if (p[0] == _kRequest && p.length == 7) {
+    // 7 bytes: before the salt (still accepted).
+    if (p[0] == _kRequest && (p.length == 7 || p.length == 8)) {
       final total = p[4] & 0x0F;
       if (total == 0) return null;
       return AeicHdRepairPacket(
@@ -128,7 +154,6 @@ class AeicHdRepairPacket {
 List<Uint8List> aeicHdBlobsFor(List<Uint8List> blobs, int total, int mask) => [
   for (var i = 0; i < total && i < blobs.length; i++)
     if (mask & (1 << i) != 0) blobs[i],
-  if (mask & _kParityBit != 0 && blobs.length > total) blobs[total],
 ];
 
 /// Whether [entry] can be asked for the rest: an incomplete AI sketch HD, or
@@ -187,8 +212,40 @@ class AeicHdRepairService {
       return;
     }
     if (parsed.dataType != dataTypeAeicHdRepair) return;
+    final chunk = unwrapAeicHdChunk(parsed.payload);
+    if (chunk != null) {
+      // An answer: the chunk goes in as if it had come the first time.
+      final h = parseImageChunkHeader(chunk);
+      if (h != null) {
+        _heard[_chunkKey(
+              parsed.channelIndex,
+              h.senderPrefix,
+              h.imgId,
+              h.index,
+            )] =
+            DateTime.now();
+      }
+      _log(
+        'got chunk ${h?.index ?? '?'} of '
+        '${h == null ? '?' : '${h.senderPrefix.toRadixString(16).padLeft(4, '0')}/${h.imgId}'} '
+        'on slot ${parsed.channelIndex}',
+      );
+      reassembler.addChunk(
+        chunk,
+        channelIndex: parsed.channelIndex,
+        via: parsed.via,
+      );
+      return;
+    }
     final p = AeicHdRepairPacket.tryParse(parsed.payload);
     if (p == null) return;
+    if (p.isRequest) {
+      _log(
+        'request heard for '
+        '${p.senderPrefix.toRadixString(16).padLeft(4, '0')}/${p.imgId} '
+        'on slot ${parsed.channelIndex}: mask 0x${p.mask.toRadixString(16)}',
+      );
+    }
     if (!p.isRequest) {
       store.noteSenderName(p.senderPrefix, p.imgId, p.name!);
       return;
@@ -227,7 +284,7 @@ class AeicHdRepairService {
         mask |= 1 << i;
       }
     }
-    if (!reassembler.holdsParity(key)) mask |= _kParityBit;
+    // The parity chunk isn't resent (see the top): not asked for.
     reassembler.expectResend(key);
     final release = await MediaMeshChannelHold.hold(
       connector,
@@ -359,9 +416,9 @@ class AeicHdRepairService {
     _log('answering $tag on slot $slot: ${blobs.length} chunk(s)');
     try {
       await connector.sendChannelDataBlobs(
-        blobs,
+        [for (final b in blobs) wrapAeicHdChunk(b)],
         channelIndex: slot,
-        dataType: dataTypeAeicImage,
+        dataType: dataTypeAeicHdRepair,
         interChunkDelay: const Duration(milliseconds: 600),
       );
     } finally {
