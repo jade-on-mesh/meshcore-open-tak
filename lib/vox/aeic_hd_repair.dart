@@ -333,7 +333,9 @@ class AeicHdRepairService {
       return;
     }
     if (set.dataChunkCount != q.total) {
-      _log('request for $tag: ${set.dataChunkCount} chunks, asked for ${q.total}');
+      _log(
+        'request for $tag: ${set.dataChunkCount} chunks, asked for ${q.total}',
+      );
       return;
     }
     var mask = q.mask;
