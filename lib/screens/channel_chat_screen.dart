@@ -1003,7 +1003,10 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                           _holidayWatcher.onNewest(
                             context,
                             id: newest?.messageId,
-                            texts: [newest?.displayText, newest?.translatedText],
+                            texts: [
+                              newest?.displayText,
+                              newest?.translatedText,
+                            ],
                             receivedAt: newest?.receivedAt,
                             originOf: () => newestMessageOrigin(
                               _messageAreaKey,
@@ -1247,9 +1250,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
               : 'Show participant sync strip',
           icon: Icon(shown ? Icons.people : Icons.people_outline),
           onPressed: () {
-            context.read<AppSettingsService>().setChannelParticipantStripEnabled(
-              !shown,
-            );
+            context
+                .read<AppSettingsService>()
+                .setChannelParticipantStripEnabled(!shown);
           },
         );
       },

@@ -9482,7 +9482,7 @@ class AppLocalizationsPtPt extends AppLocalizationsPt {
   AppLocalizationsPtPt() : super('pt_PT');
 
   @override
-  String get appTitle => 'MeshCore Open';
+  String get appTitle => 'MeshCore Open TAK';
 
   @override
   String get nav_contacts => 'Contactos';
@@ -9834,20 +9834,6 @@ class AppLocalizationsPtPt extends AppLocalizationsPt {
 
   @override
   String get scanner_enableBluetooth => 'Ativar Bluetooth';
-
-  @override
-  String get scanner_getNodeTitle => 'Precisa de um novo nó?';
-
-  @override
-  String get scanner_getNodeBody =>
-      'Tamanho de carteira, corre MeshCore, GPS dual-band, à prova de água, bateria para 5 dias.';
-
-  @override
-  String get scanner_getNodeAction => 'Obtenha um aqui';
-
-  @override
-  String get scanner_getNodeDisclosure =>
-      'Ligação de afiliado: cada compra apoia o MeshCore Open.';
 
   @override
   String get scanner_bluetoothWebUnsupported =>

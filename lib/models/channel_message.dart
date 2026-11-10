@@ -67,6 +67,7 @@ class ChannelMessage {
   // chunked send on a channel (_OtpChannelChunkSend).
   final int? chunkIndex;
   final int? chunkTotal;
+
   /// Set when the message filter hid this message (a FilterReason JSON name).
   final String? filterReason;
 

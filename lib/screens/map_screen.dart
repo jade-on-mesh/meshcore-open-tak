@@ -3544,7 +3544,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                 onTap: () => Navigator.pop(sheetContext),
               ),
             ],
-        ),
+          ),
         ),
       ),
     );

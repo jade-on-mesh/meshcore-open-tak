@@ -9,7 +9,14 @@ class AppLocalizationsCs extends AppLocalizations {
   AppLocalizationsCs([String locale = 'cs']) : super(locale);
 
   @override
-  String get appTitle => 'MeshCore Open';
+  String get appSettings_advertAlerts => 'Sound and vibration for new nodes';
+
+  @override
+  String get appSettings_advertAlertsSubtitle =>
+      'Off: new nodes show quietly. On a busy mesh they come all the time.';
+
+  @override
+  String get appTitle => 'MeshCore Open TAK';
 
   @override
   String get nav_contacts => 'Kontakty';
@@ -132,6 +139,56 @@ class AppLocalizationsCs extends AppLocalizations {
   @override
   String get messageStatus_sentDirect =>
       'Odesláno. Čeká se na potvrzení od kontaktu.';
+
+  @override
+  String get mmRepeater_chip => 'MediaMesh';
+
+  @override
+  String get mmRepeater_legend => 'MediaMesh repeater';
+
+  @override
+  String get mmRepeater_meta => 'MediaMesh';
+
+  @override
+  String get mmRepeater_listens => 'listens';
+
+  @override
+  String get mmRepeater_sends => 'listens and sends';
+
+  @override
+  String mmRepeater_info(String profile, String mode, String ago) {
+    return '$profile, $mode, heard $ago';
+  }
+
+  @override
+  String get mmRepeater_noneKnown =>
+      'No MediaMesh repeaters known yet. Find MediaMesh or Discover nearby nodes asks the repeaters in reach; a repeater\'s MediaMesh settings also tell.';
+
+  @override
+  String get mosaic_show => 'Photos on the map';
+
+  @override
+  String mosaic_showHelp(int count) {
+    return 'Thumbnails where each photo was taken, grouped when zoomed out. $count photos have a place.';
+  }
+
+  @override
+  String get mosaic_tag => 'Tag my photos with where I am';
+
+  @override
+  String get mosaic_tagHelp =>
+      'Adds 📍 and your position to the caption of photos you send. Everyone who can see the photo sees it.';
+
+  @override
+  String get mosaic_all => 'All photos as a timeline';
+
+  @override
+  String mosaic_timelineTitle(int count) {
+    return '$count photos';
+  }
+
+  @override
+  String get mosaic_approx => 'About here: where the sender was then';
 
   @override
   String messageStatus_heardRepeatedCount(int count) {
@@ -305,6 +362,32 @@ class AppLocalizationsCs extends AppLocalizations {
   String get usbStatus_searching => 'Hledání zařízení USB...';
 
   @override
+  String get voiceMute_everyChannel => 'Play talks on every channel';
+
+  @override
+  String get voiceMute_everyChannelHelp =>
+      'Off: talks play live only in the channel you have open. On: talks on any channel play as they arrive, like a scanner.';
+
+  @override
+  String get voiceMute_channel => 'Mute voice in this channel';
+
+  @override
+  String get voiceMute_channelHelp =>
+      'Its talks don\'t play live and its voice messages don\'t play by themselves. They wait in the chat for a tap.';
+
+  @override
+  String get voiceMute_menuMute => 'Mute voice';
+
+  @override
+  String get voiceMute_menuUnmute => 'Unmute voice';
+
+  @override
+  String get voiceMute_mutedNote => 'Voice muted in this channel';
+
+  @override
+  String get voiceMute_unmutedNote => 'Voice unmuted in this channel';
+
+  @override
   String usbConnectionFailed(String error) {
     return 'Připojení USB se nezdařilo: $error';
   }
@@ -360,20 +443,6 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get scanner_enableBluetooth => 'Zapnout Bluetooth';
-
-  @override
-  String get scanner_getNodeTitle => 'Potřebujete nový uzel?';
-
-  @override
-  String get scanner_getNodeBody =>
-      'Velikost peněženky, běží na MeshCore, dvoupásmové GPS, vodotěsný, baterie na 5 dní.';
-
-  @override
-  String get scanner_getNodeAction => 'Pořídit zde';
-
-  @override
-  String get scanner_getNodeDisclosure =>
-      'Affiliate odkaz: každý nákup podporuje MeshCore Open.';
 
   @override
   String get scanner_bluetoothWebUnsupported =>
@@ -1577,6 +1646,19 @@ class AppLocalizationsCs extends AppLocalizations {
       'Zobrazit spojnice mezi uzly z online mapy';
 
   @override
+  String get appSettings_showRepeaterPath => 'Repeaters under hop count';
+
+  @override
+  String get appSettings_showRepeaterPathSubtitle =>
+      'Show the repeaters a message, voice clip or photo came through, in order from the sender to you, and which radio carried it. When off, voice and photos show only their MediaMesh hop count.';
+
+  @override
+  String get chat_repeaterPathMedia => 'Voice/photo packets';
+
+  @override
+  String get chat_repeaterPathUnknown => 'Unknown repeater';
+
+  @override
   String get appSettings_timeFilter => 'Časový filtr';
 
   @override
@@ -1608,6 +1690,13 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get appSettings_lastWeek => 'Poslední týden';
+
+  @override
+  String get appSettings_linkedImages => 'Download linked images on Wi-Fi';
+
+  @override
+  String get appSettings_linkedImagesSubtitle =>
+      'A link to a picture (.jpg, .png, .gif, .webp, .bmp) in any chat shows the picture while the phone is on Wi-Fi. The picture\'s server sees your address. Chats with URL images turned on show them on mobile data too.';
 
   @override
   String get appSettings_rasterTileSource => 'Zdroj rastrových dlaždic';
@@ -2100,6 +2189,41 @@ class AppLocalizationsCs extends AppLocalizations {
   String get channels_joinPrivateChannelDesc => 'Zadejte tajný klíč ručně.';
 
   @override
+  String get channels_shareQr => 'Share as QR code';
+
+  @override
+  String channels_shareQrTitle(String name) {
+    return 'Share $name';
+  }
+
+  @override
+  String get channels_shareQrInstructions =>
+      'Scan with MeshCore Open TAK (Add channel > Join a Private Channel > Scan QR code) to join this channel.';
+
+  @override
+  String get channels_shareQrWarning =>
+      'Anyone who scans this code can read and post in this channel. Only show it to people you trust.';
+
+  @override
+  String get channels_copyLink => 'Copy link';
+
+  @override
+  String get channels_linkCopied => 'Channel link copied';
+
+  @override
+  String get channels_scanChannelQr => 'Scan QR code';
+
+  @override
+  String get channels_scanChannelQrTitle => 'Scan Channel QR';
+
+  @override
+  String get channels_scanChannelQrInstructions =>
+      'Point the camera at a channel QR code';
+
+  @override
+  String get channels_invalidChannelQr => 'Not a MeshCore channel QR code';
+
+  @override
   String get channels_joinPublicChannel => 'Připojit se k veřejnému kanálu';
 
   @override
@@ -2351,6 +2475,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get chat_shareMyLocation => 'Sdílet mou polohu';
 
   @override
+  String get chat_showComposerButtons => 'Show photo and voice buttons';
+
+  @override
   String get chat_noRadioLocation => 'Vaše rádio nemá nastavenou polohu';
 
   @override
@@ -2422,6 +2549,12 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get emojiCategorySmileys => 'Smajlíci';
+
+  @override
+  String get emojiSearch_hint => 'Search emoji';
+
+  @override
+  String get emojiSearch_none => 'No emoji match';
 
   @override
   String get emojiCategoryGestures => 'Gesta';
@@ -2549,6 +2682,15 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get chat_removePath => 'Odebrat cestu';
+
+  @override
+  String get chat_repeaterPathMainMesh => 'Main mesh';
+
+  @override
+  String get chat_repeaterPathMediaMesh => 'MediaMesh';
+
+  @override
+  String get chat_repeaterPathRadioUnknown => 'Radio not reported';
 
   @override
   String get chat_noPathHistoryYet =>
@@ -3000,6 +3142,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get map_showOnlineLinks => 'Zobrazit online spojení na mapě';
 
   @override
+  String get map_rooms => 'Rooms';
+
+  @override
+  String get map_sensors => 'Sensors';
+
+  @override
   String get map_showOverlaps => 'Překryvy klíčů opakovačů';
 
   @override
@@ -3402,6 +3550,34 @@ class AppLocalizationsCs extends AppLocalizations {
   @override
   String get path_noRepeatersFound =>
       'Nenalezeny žádné opakovače ani room servery.';
+
+  @override
+  String get publicMedia_title => 'Photos and voice on Public';
+
+  @override
+  String get publicMedia_subtitle =>
+      'Photos, voice messages and push-to-talk on Public and #public. Everyone on the mesh shares these channels, so this is off by default.';
+
+  @override
+  String get publicMedia_warning => 'Only switch this on in an emergency.';
+
+  @override
+  String get publicMedia_offTitle => 'Photos and voice are off here';
+
+  @override
+  String get publicMedia_offBody =>
+      'Everyone on the mesh shares Public and #public, so photos, voice messages and push-to-talk are off on them. Please use another channel.';
+
+  @override
+  String get publicMedia_offTooltip => 'Photos and voice are off on Public';
+
+  @override
+  String get publicMedia_turnedOn =>
+      'Photos and voice are on for Public and #public. Switch them off when the emergency is over.';
+
+  @override
+  String get publicMedia_turnedOff =>
+      'Photos and voice are off on Public and #public';
 
   @override
   String get repeater_management => 'Správa opakovače';
@@ -4822,6 +4998,26 @@ class AppLocalizationsCs extends AppLocalizations {
   String get channelPath_viewMap => 'Zobrazit mapu';
 
   @override
+  String get channelSearch_menu => 'Search';
+
+  @override
+  String get channelSearch_hint => 'Search this channel';
+
+  @override
+  String get channelSearch_close => 'Close search';
+
+  @override
+  String get channelSearch_noResults => 'No messages match';
+
+  @override
+  String channelSearch_count(int count) {
+    return 'Messages found: $count';
+  }
+
+  @override
+  String get channelSearch_notFound => 'That message is no longer stored';
+
+  @override
   String get channelPath_otherObservedPaths => 'Další pozorované cesty';
 
   @override
@@ -5706,6 +5902,16 @@ class AppLocalizationsCs extends AppLocalizations {
   String get discoveredContacts_searchHint => 'Hledat objevené kontakty';
 
   @override
+  String dmWalkie_routed(String name) {
+    return 'Goes to $name alone, along the route to them. They hear it as you speak; it\'s also sent as a voice message.';
+  }
+
+  @override
+  String dmWalkie_noRoute(String name) {
+    return 'No route to $name yet: they hear it live only if they\'re in range of your radio. It\'s sent as a voice message either way.';
+  }
+
+  @override
   String get discoveredContacts_contactAdded => 'Kontakt přidán';
 
   @override
@@ -5784,6 +5990,13 @@ class AppLocalizationsCs extends AppLocalizations {
   @override
   String get appSettings_jumpToOldestUnreadSubtitle =>
       'Při otevření chatu s nepřečtenými zprávami se posunout na první nepřečtenou místo na nejnovější.';
+
+  @override
+  String get appSettings_keepScreenOn => 'Keep screen on';
+
+  @override
+  String get appSettings_keepScreenOnSubtitle =>
+      'Don\'t let the screen sleep or lock while the app is open. Uses more battery.';
 
   @override
   String get appSettings_autoFetchRepeaterSettings =>
@@ -7193,6 +7406,1795 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get networkMap_unnamed => 'Nepojmenovaný opakovač';
+
+  @override
+  String get mediaMesh_title => 'MediaMesh Settings';
+
+  @override
+  String get mediaMesh_settingsSubtitle =>
+      'Photos and voice on a second frequency';
+
+  @override
+  String get mediaMesh_noFirmware =>
+      'This radio\'s firmware has no MediaMesh (radio2). Use Wadamesh, or MeshCore firmware with radio2 and media routing.';
+
+  @override
+  String get mediaMesh_cantRun => 'This radio can\'t run MediaMesh.';
+
+  @override
+  String get mediaMesh_noMediaRouting =>
+      'This firmware has radio2 but cannot route media to it yet. Saving with radio2 on will fail until the radio is updated.';
+
+  @override
+  String get mediaMesh_mode => 'radio2';
+
+  @override
+  String get mediaMesh_modeOff => 'Off';
+
+  @override
+  String get mediaMesh_modeListen => 'Listen';
+
+  @override
+  String get mediaMesh_modeListenSend => 'Listen + send';
+
+  @override
+  String get mediaMesh_modeHelp =>
+      'Listen hears photos and voice sent on radio2 but never sends there. Listen + send also sends. The main mesh is always heard.';
+
+  @override
+  String get mediaMesh_sentOn => 'Sent on radio2';
+
+  @override
+  String get mediaMesh_photosVoice => 'Photos & voice';
+
+  @override
+  String get mediaMesh_everything => 'Everything';
+
+  @override
+  String get mediaMesh_custom => 'Custom';
+
+  @override
+  String get mediaMesh_photosVoiceHelp =>
+      'Photos and voice clips go on radio2. Text, adverts and ACKs stay on the main mesh.';
+
+  @override
+  String get mediaMesh_everythingHelp =>
+      'Messages go on both radios and media follows each contact or channel, so radio2-only nodes hear everything.';
+
+  @override
+  String get mediaMesh_customHelp =>
+      'Set from the radio console. Saving leaves it as it is.';
+
+  @override
+  String get mediaMesh_frequency => 'radio2 frequency (MHz)';
+
+  @override
+  String get mediaMesh_frequencyRange =>
+      'Enter a frequency between 150 and 960 MHz';
+
+  @override
+  String get mediaMesh_frequencyMain => 'Must differ from the main radio';
+
+  @override
+  String get mediaMesh_footer =>
+      'Everyone sharing photos must use the same radio2 settings. The radio switches between both frequencies, so heavy media traffic costs some main-mesh reception.';
+
+  @override
+  String get mediaMesh_forceRoute =>
+      'Send photos and voice through repeaters (for testing only)';
+
+  @override
+  String get mediaMesh_forceRouteHelp =>
+      'Photos and voice you send in DMs, and those you download, go through the repeaters you pick, even when the other device is in direct range. The other device needs nothing set.';
+
+  @override
+  String mediaMesh_forceRouteOnVia(String route) {
+    return 'On · via $route';
+  }
+
+  @override
+  String mediaMesh_forceRouteOffVia(String route) {
+    return 'Off · via $route';
+  }
+
+  @override
+  String get mediaMesh_forceRouteChoose => 'Choose repeaters';
+
+  @override
+  String get mediaMesh_saved => 'radio2 settings saved';
+
+  @override
+  String get mediaMesh_turnedOff => 'MediaMesh off';
+
+  @override
+  String get mediaMesh_status => 'Right now';
+
+  @override
+  String mediaMesh_packets(int rxMain, int rxRadio2, int txMain, int txRadio2) {
+    return 'Received $rxMain main, $rxRadio2 radio2 · Sent $txMain main, $txRadio2 radio2';
+  }
+
+  @override
+  String mediaMesh_switchTime(int micros) {
+    return 'Switch time $micros µs';
+  }
+
+  @override
+  String get mediaMesh_switchMeasuring => 'Switch time: measuring';
+
+  @override
+  String mediaMesh_warning(String text) {
+    return 'Warning: $text';
+  }
+
+  @override
+  String get mediaMesh_temporary => 'Temporary radio2';
+
+  @override
+  String get mediaMesh_temporaryHelp =>
+      'Try the profile above for a while without saving it. The saved radio2 comes back afterwards, or on a reboot.';
+
+  @override
+  String get mediaMesh_temp15 => '15 min';
+
+  @override
+  String get mediaMesh_temp60 => '1 hour';
+
+  @override
+  String get mediaMesh_temp120 => '2 hours';
+
+  @override
+  String get mediaMesh_tempStop => 'Stop';
+
+  @override
+  String mediaMesh_tempRunning(String frequency, int minutes) {
+    return 'Running: $frequency MHz, $minutes min left';
+  }
+
+  @override
+  String get mediaMesh_tempStarted => 'Temporary radio2 started';
+
+  @override
+  String get mediaMesh_tempStopped => 'Saved radio2 restored';
+
+  @override
+  String get mediaMesh_openConsole => 'Radio console';
+
+  @override
+  String get mediaMesh_openConsoleSubtitle =>
+      'Schedules, tempradio, diagnostics';
+
+  @override
+  String get txRoute_menu => 'Send on…';
+
+  @override
+  String txRoute_title(String name) {
+    return 'Send $name on';
+  }
+
+  @override
+  String get txRoute_auto => 'Auto';
+
+  @override
+  String get txRoute_radio => 'Main only';
+
+  @override
+  String get txRoute_radio2 => 'radio2 only';
+
+  @override
+  String get txRoute_both => 'Both';
+
+  @override
+  String get txRoute_off => 'Don\'t send';
+
+  @override
+  String get txRoute_help =>
+      'Auto follows the MediaMesh settings. Only sending changes; this radio still hears both.';
+
+  @override
+  String get txRoute_boundByName =>
+      'This #r2- channel always uses radio2. Rename it to change that.';
+
+  @override
+  String get txRoute_unsupported =>
+      'This radio\'s firmware can\'t choose a radio per contact or channel.';
+
+  @override
+  String get txRoute_radio2Unavailable =>
+      'radio2 can\'t send right now (off or listen only).';
+
+  @override
+  String txRoute_active(String where) {
+    return 'Next message goes on: $where';
+  }
+
+  @override
+  String get txRoute_none => 'nothing';
+
+  @override
+  String get radioConsole_title => 'Radio console';
+
+  @override
+  String get radioImport_title => 'Import';
+
+  @override
+  String get radioImport_tile => 'Import from another app or firmware';
+
+  @override
+  String get radioImport_tileSubtitle =>
+      'Identity, channels and contacts from a MeshCore app or Wadamesh (TAK) backup, MeshCore Open\'s contacts export, or Squatch Mesh\'s or MeshPunk\'s files from the SD card';
+
+  @override
+  String get radioImport_sourceBackup =>
+      'MeshCore backup (MeshCore app, Wadamesh TAK, Squatch Mesh)';
+
+  @override
+  String get radioImport_sourceMeshCoreOne => 'MeshCore One backup';
+
+  @override
+  String get radioImport_sourceOpenContacts => 'MeshCore Open contacts';
+
+  @override
+  String get radioImport_sourceSquatch => 'Squatch Mesh files';
+
+  @override
+  String get radioImport_sourceMeshPunk => 'MeshPunk files';
+
+  @override
+  String radioImport_found(String source) {
+    return 'Import: $source';
+  }
+
+  @override
+  String get radioImport_identity => 'Identity (its key)';
+
+  @override
+  String radioImport_identityNamed(String name) {
+    return 'Identity: $name';
+  }
+
+  @override
+  String get radioImport_identityHelp =>
+      'This radio becomes that node: the mesh and your contacts know it by that key. Needs firmware that allows key import.';
+
+  @override
+  String radioImport_channels(int count) {
+    return '$count channels';
+  }
+
+  @override
+  String get radioImport_channelsHelp =>
+      'Set in the same slots; other slots stay as they are.';
+
+  @override
+  String radioImport_contacts(int count) {
+    return '$count contacts';
+  }
+
+  @override
+  String get radioImport_contactsHelp =>
+      'Added, or updated if already here. Routes are found again as they talk.';
+
+  @override
+  String get radioImport_import => 'Import';
+
+  @override
+  String get radioImport_importing => 'Importing…';
+
+  @override
+  String get radioImport_notKnown =>
+      'Not a file this can import. Pick a meshcore-backup.json, MeshCore Open\'s contacts export, or the files from Squatch Mesh\'s /inw or MeshPunk\'s /meshpunk folder.';
+
+  @override
+  String radioImport_tooLarge(String name) {
+    return '$name is too large to import';
+  }
+
+  @override
+  String get radioImport_notConnected => 'Connect to a radio first';
+
+  @override
+  String radioImport_failed(String error) {
+    return 'Import failed: $error';
+  }
+
+  @override
+  String get radioImport_doneIdentity => 'Identity imported.';
+
+  @override
+  String get radioImport_identityRefused =>
+      'The radio refused the identity (its firmware may not allow key import).';
+
+  @override
+  String radioImport_doneCounts(int channels, int contacts) {
+    return '$channels channels and $contacts contacts imported.';
+  }
+
+  @override
+  String radioImport_contactsRefused(int count) {
+    return '$count contacts the radio refused (is its contact list full?).';
+  }
+
+  @override
+  String get radioConsole_hint => 'e.g. get radio2.status';
+
+  @override
+  String get radioConsole_send => 'Send';
+
+  @override
+  String get radioConsole_intro =>
+      'Commands run on the connected radio. Try: get mediamesh, get radio2.status, get radio2.timing, set tempradio2 off, tempradio, normalradio, get radioat2, get tx.media.';
+
+  @override
+  String get radioConsole_noReply => '(no reply)';
+
+  @override
+  String get radioConsole_failed => 'No answer from the radio';
+
+  @override
+  String get channels_scannedPrivateChannel =>
+      'That code is for a private channel, so it is filled in under Join a Private Channel.';
+
+  @override
+  String get appUpdate_title => 'App update';
+
+  @override
+  String get appUpdate_settingsTile => 'App updates';
+
+  @override
+  String appUpdate_installed(String version, int build) {
+    return 'Installed: $version (build $build)';
+  }
+
+  @override
+  String appUpdate_available(String version, int build) {
+    return 'Update available: $version (build $build)';
+  }
+
+  @override
+  String get appUpdate_upToDate => 'You have the latest build';
+
+  @override
+  String get appUpdate_checking => 'Checking for updates…';
+
+  @override
+  String get appUpdate_notChecked => 'Not checked yet';
+
+  @override
+  String get appUpdate_localBuild =>
+      'This is a local build, so updates are only checked when you ask. Installing a published build may need the app uninstalled first.';
+
+  @override
+  String get appUpdate_checkNow => 'Check now';
+
+  @override
+  String get appUpdate_install => 'Download and install';
+
+  @override
+  String get appUpdate_downloading => 'Downloading…';
+
+  @override
+  String appUpdate_downloadingPercent(int percent) {
+    return 'Downloading… $percent%';
+  }
+
+  @override
+  String get appUpdate_installing => 'Opening the installer…';
+
+  @override
+  String get appUpdate_installerHint =>
+      'Android asks you to confirm the install. Your messages and settings stay.';
+
+  @override
+  String get appUpdate_permissionNeeded =>
+      'Android needs your permission for MeshCore Open TAK to install updates. Turn on \"Allow from this source\", then come back and tap Download and install again.';
+
+  @override
+  String get appUpdate_openPermission => 'Open settings';
+
+  @override
+  String get appUpdate_debugSigned =>
+      'This build is signed with a debug key, so Android will refuse to install it over the app you have. Uninstall first, or wait for a release-signed build.';
+
+  @override
+  String get appUpdate_changes => 'Recent changes';
+
+  @override
+  String get appUpdate_autoCheck => 'Check automatically';
+
+  @override
+  String get appUpdate_autoCheckHint =>
+      'Every few hours, from the Latest build on GitHub';
+
+  @override
+  String appUpdate_checkFailed(String reason) {
+    return 'Couldn\'t check for updates: $reason';
+  }
+
+  @override
+  String appUpdate_installFailed(String reason) {
+    return 'Update didn\'t install: $reason';
+  }
+
+  @override
+  String get appUpdate_later => 'Later';
+
+  @override
+  String get appUpdate_view => 'Update';
+
+  @override
+  String get ar_chime => 'Chime as a teammate or report comes into view';
+
+  @override
+  String ar_downloading(String name) {
+    return 'Downloading from $name...';
+  }
+
+  @override
+  String get ar_title => 'AR view';
+
+  @override
+  String get ar_noPosition =>
+      'Waiting for your position: labels appear once the phone has a GPS fix.';
+
+  @override
+  String ar_noCompass(String reason) {
+    return 'The compass isn\'t available ($reason), so labels can\'t be placed.';
+  }
+
+  @override
+  String ar_hounding(String name) {
+    return 'Bloodhound: $name';
+  }
+
+  @override
+  String get appUpdate_bannerTitle =>
+      'A new version of MeshCore Open TAK is ready';
+
+  @override
+  String appUpdate_bannerSubtitle(String version, int build) {
+    return '$version (build $build)';
+  }
+
+  @override
+  String get vox_receivedViaMediaMesh => 'Received via MediaMesh';
+
+  @override
+  String get vox_receivedViaMainMesh => 'Received via main mesh';
+
+  @override
+  String get vox_receivedViaBoth => 'Received via MediaMesh and main mesh';
+
+  @override
+  String get appUpdate_installerHintWindows =>
+      'The installer runs by itself: MeshCore Open TAK closes, updates and opens again. Your messages and settings stay.';
+
+  @override
+  String get appUpdate_installerHintMacos =>
+      'The disk image opens. Drag MeshCore Open TAK to Applications, replace the old one, then open it again. Your messages and settings stay.';
+
+  @override
+  String get appUpdate_installerHintLinux =>
+      'The AppImage replaces itself and MeshCore Open TAK restarts. Your messages and settings stay.';
+
+  @override
+  String get appUpdate_manualDownload =>
+      'Updates install themselves only when you run the AppImage. Download the new build from GitHub.';
+
+  @override
+  String get appUpdate_noFileForPlatform =>
+      'This build has no download for this computer yet. Check again later, or open the download page.';
+
+  @override
+  String get appUpdate_openDownloadPage => 'Open download page';
+
+  @override
+  String get rr2_hubTitle => 'MediaMesh (radio2)';
+
+  @override
+  String get rr2_hubSubtitle => 'Second frequency, bridging and live figures';
+
+  @override
+  String get rr2_title => 'MediaMesh';
+
+  @override
+  String get rr2_reload => 'Reload';
+
+  @override
+  String get rr2_asking => 'Asking the repeater…';
+
+  @override
+  String get rr2_loadFailed =>
+      'The repeater didn\'t answer. Check that you\'re still logged in and in range.';
+
+  @override
+  String get rr2_noAnswer => 'No answer from the repeater';
+
+  @override
+  String rr2_refused(String reason) {
+    return 'The repeater refused: $reason';
+  }
+
+  @override
+  String rr2_applied(String reply) {
+    return 'Applied: $reply';
+  }
+
+  @override
+  String get rr2_turnedOff => 'radio2 turned off on the repeater';
+
+  @override
+  String get rr2_saved => 'Saved on the repeater';
+
+  @override
+  String get rr2_tempStarted => 'Temporary radio2 started';
+
+  @override
+  String get rr2_tempStopped =>
+      'Temporary radio2 stopped; the saved radio2 is back';
+
+  @override
+  String get rr2_usbOnlyTitle => 'Needs USB';
+
+  @override
+  String get rr2_usbOnly =>
+      'This repeater\'s firmware only takes radio2 changes over a USB cable. Bridging and replies can still be changed from here.';
+
+  @override
+  String get rr2_now => 'NOW';
+
+  @override
+  String get rr2_new => 'NEW';
+
+  @override
+  String get rr2_confirmTitle => 'Change radio2 on the repeater?';
+
+  @override
+  String get rr2_confirmOffTitle => 'Turn radio2 off?';
+
+  @override
+  String get rr2_confirmBody =>
+      'The repeater answers first, then switches. If you reach it over radio2, you may lose contact until your radio uses the same settings.';
+
+  @override
+  String get rr2_confirmShared =>
+      'Every node on this MediaMesh must use the same radio2 settings.';
+
+  @override
+  String get rr2_apply => 'Apply';
+
+  @override
+  String get rr2_turnOff => 'Turn off';
+
+  @override
+  String get rr2_unsupportedTitle => 'No radio2 on this repeater';
+
+  @override
+  String get rr2_unsupported =>
+      'Its firmware doesn\'t know the radio2 commands. MediaMesh on a repeater needs MeshCore firmware with radio profiles (mikecarper/MeshCore).';
+
+  @override
+  String get rr2_unsupportedStock =>
+      'It still forwards photos and voice heard on the main mesh, just never on radio2.';
+
+  @override
+  String get rr2_main => 'MAIN';
+
+  @override
+  String get rr2_linkBridged => 'BRIDGED';
+
+  @override
+  String get rr2_linkSeparate => 'SEPARATE';
+
+  @override
+  String get rr2_linkAuto => 'AUTO';
+
+  @override
+  String get rr2_chipOff => 'Off';
+
+  @override
+  String get rr2_chipListening => 'Listening on radio2';
+
+  @override
+  String get rr2_chipActive => 'Listening and sending';
+
+  @override
+  String rr2_chipTemp(int minutes) {
+    return 'Temporary · $minutes min left';
+  }
+
+  @override
+  String get rr2_chipPending => 'Change pending';
+
+  @override
+  String get rr2_liveSection => 'Live';
+
+  @override
+  String get rr2_refreshLive => 'Refresh live figures';
+
+  @override
+  String rr2_updatedSeconds(int seconds) {
+    return '$seconds s ago';
+  }
+
+  @override
+  String rr2_updatedMinutes(int minutes) {
+    return '$minutes min ago';
+  }
+
+  @override
+  String get rr2_noLive => 'No live figures from this repeater.';
+
+  @override
+  String get rr2_liveOff => 'radio2 is off, so there\'s nothing to count.';
+
+  @override
+  String get rr2_pending =>
+      'A radio2 change is waiting for the repeater\'s reply to go out. It still uses the previous channel.';
+
+  @override
+  String get rr2_heardMain => 'Heard main';
+
+  @override
+  String get rr2_heardRadio2 => 'Heard radio2';
+
+  @override
+  String get rr2_sentMain => 'Sent main';
+
+  @override
+  String get rr2_sentRadio2 => 'Sent radio2';
+
+  @override
+  String rr2_heardShare(int percent) {
+    return '$percent% of packets heard came in on radio2';
+  }
+
+  @override
+  String get rr2_switchTime => 'Switch time';
+
+  @override
+  String get rr2_measuring => 'measuring';
+
+  @override
+  String get rr2_preambles => 'Preamble main / radio2 (symbols)';
+
+  @override
+  String get rr2_switches => 'Profile switches';
+
+  @override
+  String rr2_switchesErrors(int switches, int errors) {
+    return '$switches ($errors failed)';
+  }
+
+  @override
+  String get rr2_profileSection => 'radio2 profile';
+
+  @override
+  String get rr2_modeOffHelp => 'The repeater uses its main radio only.';
+
+  @override
+  String get rr2_modeRxHelp =>
+      'The repeater also listens on radio2 but never sends there, unless replies are forced below.';
+
+  @override
+  String get rr2_modeRxtxHelp =>
+      'The repeater listens and sends on radio2. Bridging below decides what crosses between the two.';
+
+  @override
+  String get rr2_frequency => 'Frequency';
+
+  @override
+  String get rr2_bw => 'Bandwidth';
+
+  @override
+  String get rr2_sf => 'SF';
+
+  @override
+  String get rr2_cr => 'CR';
+
+  @override
+  String rr2_faster(String times) {
+    return 'About $times× faster on air than the main mesh';
+  }
+
+  @override
+  String rr2_slower(String times) {
+    return 'About $times× slower on air than the main mesh';
+  }
+
+  @override
+  String get rr2_sameSpeed => 'About as fast on air as the main mesh';
+
+  @override
+  String get rr2_preambleAuto => 'Automatic preamble';
+
+  @override
+  String get rr2_preambleAutoHelp =>
+      'Recommended. The repeater measures its switch time and picks the preamble.';
+
+  @override
+  String get rr2_preamble => 'Preamble';
+
+  @override
+  String get rr2_symbols => 'symbols';
+
+  @override
+  String get rr2_preambleRange => '8 to 512 symbols';
+
+  @override
+  String get rr2_sharedNote =>
+      'The radio switches between both frequencies, so heavy radio2 traffic costs some main-mesh reception.';
+
+  @override
+  String get rr2_reset => 'Reset';
+
+  @override
+  String get rr2_applyToRepeater => 'Apply';
+
+  @override
+  String get rr2_crossSection => 'Bridging';
+
+  @override
+  String get rr2_crossOn => 'Bridge both ways';
+
+  @override
+  String get rr2_crossOnHelp =>
+      'Forward what it hears on either radio onto the other.';
+
+  @override
+  String get rr2_crossAuto => 'Automatic';
+
+  @override
+  String get rr2_crossAutoHelp =>
+      'Bridge the saved radio2; keep a temporary radio2 separate. The default.';
+
+  @override
+  String get rr2_crossOff => 'Keep separate';
+
+  @override
+  String get rr2_crossOffHelp => 'Each radio only forwards its own traffic.';
+
+  @override
+  String get rr2_notReported => 'This repeater doesn\'t report bridging.';
+
+  @override
+  String get rr2_replySection => 'Replies to admins';
+
+  @override
+  String get rr2_replyBoth => 'Both radios';
+
+  @override
+  String get rr2_replyBothHelp =>
+      'Logins, CLI answers and ACKs go out on the main radio and radio2. The default.';
+
+  @override
+  String get rr2_replyMain => 'Main radio only';
+
+  @override
+  String get rr2_replyMainHelp => 'Keeps radio2 for media.';
+
+  @override
+  String get rr2_replyRadio2 => 'radio2 only';
+
+  @override
+  String get rr2_replyRadio2Help =>
+      'No copy on the main radio. Only if you always admin it over radio2.';
+
+  @override
+  String get rr2_replyAuto => 'Follow bridging';
+
+  @override
+  String get rr2_replyAutoHelp => 'Replies follow the bridging setting above.';
+
+  @override
+  String get rr2_replyMissing => 'This firmware has no reply setting.';
+
+  @override
+  String get rr2_force => 'Also on a listen-only radio2';
+
+  @override
+  String get rr2_forceHelp =>
+      'Lets replies go out on radio2 while it is set to Listen.';
+
+  @override
+  String get rr2_replyUnavailable =>
+      'radio2 can\'t send right now, so these replies only go out on the main radio.';
+
+  @override
+  String get rr2_tempSection => 'Temporary radio2';
+
+  @override
+  String get rr2_tempHelp =>
+      'Run the profile above for a while without saving it, for example to meet another group. The saved radio2 comes back afterwards, or on a reboot.';
+
+  @override
+  String get rr2_tempUses => 'USES';
+
+  @override
+  String rr2_tempRunning(String frequency) {
+    return 'Temporary radio2 on $frequency MHz';
+  }
+
+  @override
+  String get rr2_tempStop => 'Stop';
+
+  @override
+  String rr2_minutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String rr2_hours(int hours) {
+    return '$hours h';
+  }
+
+  @override
+  String rr2_hoursMinutes(int hours, int minutes) {
+    return '$hours h $minutes min';
+  }
+
+  @override
+  String rr2_left(String time) {
+    return '$time left';
+  }
+
+  @override
+  String get rr2_cli => 'Command line';
+
+  @override
+  String get rr2_cliSubtitle => 'Schedules, timing and every radio2 command';
+
+  @override
+  String get rr2_cliSection => 'MediaMesh (radio2)';
+
+  @override
+  String get rr2_cliNote =>
+      'Needs repeater firmware with radio profiles. A remote radio2 change takes effect after the reply goes out.';
+
+  @override
+  String get rr2_cliGetRadio2 => 'Show the second radio profile';
+
+  @override
+  String get rr2_cliSetRadio2 =>
+      'Set radio2: MHz, kHz, SF, CR, listen or listen+send';
+
+  @override
+  String get rr2_cliRadio2Off => 'Turn radio2 off';
+
+  @override
+  String get rr2_cliStatus => 'Packet counts, switch time and warnings';
+
+  @override
+  String get rr2_cliGetCross => 'Show bridging between the two radios';
+
+  @override
+  String get rr2_cliSetCross =>
+      'Bridging: auto, on (both ways) or off (separate)';
+
+  @override
+  String get rr2_cliGetReply => 'Show where the repeater\'s replies go';
+
+  @override
+  String get rr2_cliSetReply =>
+      'Where replies go; force allows a listen-only radio2';
+
+  @override
+  String get rr2_cliGetTemp => 'Show a running temporary radio2';
+
+  @override
+  String get rr2_cliSetTemp => 'Use other radio2 settings for some minutes';
+
+  @override
+  String get rr2_cliTempOff => 'End the temporary radio2';
+
+  @override
+  String get rr2_cliTiming => 'Preamble and switch timing details';
+
+  @override
+  String get settings_aboutRadioFirmware => 'Radio firmware';
+
+  @override
+  String get settings_aboutRadioNotConnected => 'No radio connected';
+
+  @override
+  String settings_aboutRadioFirmwareOn(String firmware, String board) {
+    return '$firmware on $board';
+  }
+
+  @override
+  String settings_aboutRadioBuild(String date) {
+    return 'Built $date';
+  }
+
+  @override
+  String settings_aboutRadioBoard(String board) {
+    return 'Board: $board';
+  }
+
+  @override
+  String settings_aboutRadioProtocol(int code) {
+    return 'Companion protocol v$code';
+  }
+
+  @override
+  String startup_stalled(String steps) {
+    return 'Startup skipped a step that didn\'t finish: $steps. The app may be missing something until it restarts.';
+  }
+
+  @override
+  String get mediaMesh_shareMain => 'Share with main-mesh nodes';
+
+  @override
+  String get mediaMesh_shareMainOff =>
+      'Off: photo and voice requests and answers stay on radio2, so nodes without it can\'t swap them with you.';
+
+  @override
+  String get mediaMesh_shareMainOn =>
+      'On: requests go out on both radios, and a photo or clip asked for on the main mesh is answered there.';
+
+  @override
+  String get mediaMesh_preset => 'Preset';
+
+  @override
+  String get mediaMesh_presetFast => '250 kHz · fast';
+
+  @override
+  String get mediaMesh_presetRange => '125 kHz · range';
+
+  @override
+  String get mediaMesh_presetHelp =>
+      '250 kHz sends photos and voice about twice as fast; 125 kHz reaches about 40% farther. Every radio on MediaMesh must use the same settings.';
+
+  @override
+  String mediaMesh_conflictsWith(String name) {
+    return 'Conflicts with $name';
+  }
+
+  @override
+  String get mediaMeshNearby_heardNow => 'MediaMesh nearby: heard just now';
+
+  @override
+  String mediaMeshNearby_heardAgo(int minutes) {
+    return 'MediaMesh nearby: heard $minutes min ago';
+  }
+
+  @override
+  String get mediaMeshNearby_listening =>
+      'Listening for a MediaMesh: none heard in the last 2 hours';
+
+  @override
+  String get mediaMeshNearby_off =>
+      'MediaMesh is off on this radio. Tap to set it up.';
+
+  @override
+  String get mapHighlight_title => 'Highlight new map points';
+
+  @override
+  String get mapHighlight_help =>
+      'A teammate, pin, report or watched-channel point that appears on the map flashes with a ring for this long.';
+
+  @override
+  String get mapHighlight_off => 'Off';
+
+  @override
+  String mapHighlight_minutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get mediaMesh_modeOn => 'On';
+
+  @override
+  String get mediaMesh_modeOnHelp =>
+      'On listens and sends on radio2 (MediaMesh). The main mesh is always heard.';
+
+  @override
+  String get mediaMesh_listenOnlyNote =>
+      'Set to listen only (from the console): it hears radio2 but never sends there. Tap On to send too.';
+
+  @override
+  String get sound_title => 'Sound link';
+
+  @override
+  String get sound_settingsSubtitle =>
+      'Messages and share links over sound, Wavest-compatible';
+
+  @override
+  String get sound_unavailable => 'This build has no sound link.';
+
+  @override
+  String get sound_intro =>
+      'Sends short messages as tones from the speaker and hears them on the microphone (ggwave), in the same format as Wavest (bennjordan.github.io/Wavest), so a T-Deck, another phone or a Wavest page in a browser can join in. A message is a few seconds of sound, up to about 120 characters.';
+
+  @override
+  String get sound_settings => 'Callsign, passkey and sound';
+
+  @override
+  String get sound_callsign => 'Callsign';
+
+  @override
+  String get sound_passkey => 'Passkey (optional)';
+
+  @override
+  String get sound_passkeyHelp =>
+      'Encrypts what you send and opens what others send with the same passkey, as Wavest does (AES-GCM). It keeps a chat from bystanders; it is not the mesh\'s own encryption.';
+
+  @override
+  String get sound_mode => 'Sound';
+
+  @override
+  String get sound_volume => 'Volume';
+
+  @override
+  String get sound_modeAudibleNormal => 'Audible: normal (most robust)';
+
+  @override
+  String get sound_modeAudibleFast => 'Audible: fast (Wavest\'s default)';
+
+  @override
+  String get sound_modeAudibleFastest => 'Audible: fastest';
+
+  @override
+  String get sound_modeUltraNormal => 'Ultrasound: normal (phones only)';
+
+  @override
+  String get sound_modeUltraFast => 'Ultrasound: fast (phones only)';
+
+  @override
+  String get sound_modeUltraFastest => 'Ultrasound: fastest (phones only)';
+
+  @override
+  String get sound_bridge => 'Bridge to a channel';
+
+  @override
+  String get sound_bridgeOff => 'Off';
+
+  @override
+  String get sound_bridgeChannel => 'Channel';
+
+  @override
+  String get sound_bridgePlay => 'Play this channel\'s new messages as sound';
+
+  @override
+  String get sound_bridgeHelp =>
+      'What is heard is posted to the channel as \"[Wavest] callsign: text\". With this on, the channel\'s new messages are played too, so people nearby without a radio can follow and reply.';
+
+  @override
+  String get sound_shareContact => 'Play my contact';
+
+  @override
+  String get sound_shareChannel => 'Play a channel';
+
+  @override
+  String get sound_messageHint => 'Message to play';
+
+  @override
+  String get sound_send => 'Play';
+
+  @override
+  String get sound_tooLong =>
+      'Too long for one sound message. Shorten it (a passkey makes it longer).';
+
+  @override
+  String get sound_listen => 'Listen for it by sound';
+
+  @override
+  String get sound_listening => 'Listening…';
+
+  @override
+  String get sound_listeningHelp =>
+      'Hold this phone near the other device and play the contact or channel there (Play by sound).';
+
+  @override
+  String get sound_notListening =>
+      'Turn on listening (top right) to hear messages.';
+
+  @override
+  String sound_heardOther(String text) {
+    return 'Heard something else: $text';
+  }
+
+  @override
+  String get sound_heardRaw => 'Heard';
+
+  @override
+  String get sound_locked => 'Encrypted: set the same passkey to read it';
+
+  @override
+  String get sound_linkHint =>
+      'A share link. Add it from Contacts or Channels: Scan, then Listen.';
+
+  @override
+  String get sound_playByShare => 'Play by sound';
+
+  @override
+  String get sound_playing => 'Playing…';
+
+  @override
+  String get sound_playByShareHelp =>
+      'For a T-Deck or another phone: they listen (Scan, then Listen) while this plays.';
+
+  @override
+  String sound_playFailed(String error) {
+    return 'Couldn\'t play it: $error';
+  }
+
+  @override
+  String get otpCheck_title => 'Check code';
+
+  @override
+  String get otpCheck_subtitle =>
+      'The same code on both devices means the same pad. Read it out, or play it by sound; it reveals nothing about the pad.';
+
+  @override
+  String get otpCheck_play => 'Play the check code';
+
+  @override
+  String get otpCheck_listen => 'Listen for a check code';
+
+  @override
+  String get otpCheck_same => 'Same pad on both devices.';
+
+  @override
+  String get otpCheck_different =>
+      'Different pad bytes. Share the pad again before using it.';
+
+  @override
+  String otpCheck_differentLength(int theirs, int mine) {
+    return 'Different pad: theirs is $theirs bytes, this one $mine. Share it again before using it.';
+  }
+
+  @override
+  String get otpCheck_heard => 'Pad check';
+
+  @override
+  String otpCheck_matches(String name) {
+    return 'Same pad as $name.';
+  }
+
+  @override
+  String get otpCheck_noMatch => 'No pad here matches this check code.';
+
+  @override
+  String get otpCheck_locked => 'Unlock OTP to compare this check code.';
+
+  @override
+  String get road_directions => 'Directions';
+
+  @override
+  String road_directionsTo(String target) {
+    return 'Directions to $target';
+  }
+
+  @override
+  String get road_drive => 'Drive';
+
+  @override
+  String get road_walk => 'Walk';
+
+  @override
+  String get road_bike => 'Bike';
+
+  @override
+  String get road_help =>
+      'Turn-by-turn along roads and paths, from OpenStreetMap. Needs the internet; Bloodhound keeps range and bearing without it. It finds a new route if you leave this one or your teammate moves.';
+
+  @override
+  String get road_server => 'Routing server (Valhalla)';
+
+  @override
+  String get road_serverHelp =>
+      'Empty: the public FOSSGIS server, for light use. Put your own Valhalla server here for a team.';
+
+  @override
+  String get road_finding => 'Finding a route...';
+
+  @override
+  String road_then(String distance) {
+    return 'In $distance';
+  }
+
+  @override
+  String road_left(String distance, String time) {
+    return '$distance · $time to go';
+  }
+
+  @override
+  String get road_arrived => 'You have arrived';
+
+  @override
+  String get road_share => 'Share with team';
+
+  @override
+  String get road_shared =>
+      'Route shared with the team: phones and standalone radios can follow it';
+
+  @override
+  String get road_stop => 'Stop directions';
+
+  @override
+  String get road_retry => 'Try again';
+
+  @override
+  String get road_turnSlightLeft => 'Slight left';
+
+  @override
+  String get road_turnLeft => 'Turn left';
+
+  @override
+  String get road_turnSharpLeft => 'Sharp left';
+
+  @override
+  String get road_turnSlightRight => 'Slight right';
+
+  @override
+  String get road_turnRight => 'Turn right';
+
+  @override
+  String get road_turnSharpRight => 'Sharp right';
+
+  @override
+  String get road_uTurn => 'U-turn';
+
+  @override
+  String road_turnIn(String turn, String distance, String left) {
+    return '$turn in $distance · $left left';
+  }
+
+  @override
+  String road_arriveIn(String distance) {
+    return 'Arrive in $distance';
+  }
+
+  @override
+  String get hound_title => 'Bloodhound';
+
+  @override
+  String get hound_help =>
+      'Live range and bearing to a target, and directions to it.';
+
+  @override
+  String get hound_teammates => 'Teammates';
+
+  @override
+  String get hound_nodes => 'Nodes with a position (nearest first)';
+
+  @override
+  String get hound_watched => 'Watched reports on the map';
+
+  @override
+  String get hound_mapCentre => 'Centre of the map';
+
+  @override
+  String get hound_noTeammates => 'No teammates heard yet';
+
+  @override
+  String get hound_noNodes => 'No nodes with a position yet';
+
+  @override
+  String hound_away(String distance) {
+    return '$distance away';
+  }
+
+  @override
+  String road_sayIn(String distance, String what) {
+    return 'In $distance, $what';
+  }
+
+  @override
+  String road_sayMeters(String n) {
+    return '$n meters';
+  }
+
+  @override
+  String road_sayKilometers(String n) {
+    return '$n kilometers';
+  }
+
+  @override
+  String get road_sayTurnLeft => 'Turn left';
+
+  @override
+  String get road_sayTurnRight => 'Turn right';
+
+  @override
+  String get road_sayBearLeft => 'Bear left';
+
+  @override
+  String get road_sayBearRight => 'Bear right';
+
+  @override
+  String get road_saySharpLeft => 'Turn sharp left';
+
+  @override
+  String get road_saySharpRight => 'Turn sharp right';
+
+  @override
+  String get road_sayUTurn => 'Make a U-turn';
+
+  @override
+  String get road_sayArrived => 'You have arrived.';
+
+  @override
+  String get road_sayRerouting => 'Rerouting.';
+
+  @override
+  String get road_voiceOn => 'Spoken directions on';
+
+  @override
+  String get road_voiceOff => 'Spoken directions off';
+
+  @override
+  String get mediaMesh_find => 'Find MediaMesh';
+
+  @override
+  String get mediaMesh_findHelp =>
+      'Asks the repeaters in range which radio2 profile they run, like Discover Repeaters. If none can say, radio2 listens on each preset for about 10 seconds instead.';
+
+  @override
+  String mediaMesh_findListening(String preset, int step) {
+    return 'Listening on $preset ($step/2)…';
+  }
+
+  @override
+  String mediaMesh_findFound(String preset, int count) {
+    return 'MediaMesh found on $preset: $count packets heard on radio2. Use this preset?';
+  }
+
+  @override
+  String mediaMesh_findNone(String frequency) {
+    return 'No MediaMesh answered on 250 or 125 kHz at $frequency MHz.';
+  }
+
+  @override
+  String get mediaMesh_findNoneOnRadio2 =>
+      'Repeaters nearby answered on the main mesh, but none on radio2.';
+
+  @override
+  String get mediaMesh_findNoRepeaters =>
+      'No repeaters answered at all: out of range, or asked too often. Repeaters answer at most four times in two minutes, so try again shortly.';
+
+  @override
+  String get mediaMesh_findUse => 'Use it';
+
+  @override
+  String get walkie_title => 'Walkie-talkie';
+
+  @override
+  String get walkie_tooltip => 'Walkie-talkie (push to talk)';
+
+  @override
+  String get walkie_holdToTalk => 'Hold to talk';
+
+  @override
+  String get walkie_onAir => 'On air';
+
+  @override
+  String get walkie_releaseToSend => 'Let go to finish';
+
+  @override
+  String get walkie_starting => 'Starting…';
+
+  @override
+  String get walkie_finishing => 'Finishing…';
+
+  @override
+  String get walkie_clear => 'Channel clear';
+
+  @override
+  String get walkie_someoneTalking => 'Someone is talking';
+
+  @override
+  String walkie_nameTalking(String name) {
+    return '$name is talking';
+  }
+
+  @override
+  String walkie_lastTalk(String name) {
+    return 'Last talk: $name';
+  }
+
+  @override
+  String get walkie_reach => 'Reach';
+
+  @override
+  String get walkie_viaRepeaters => 'Repeaters';
+
+  @override
+  String get walkie_direct => 'Direct';
+
+  @override
+  String get walkie_repeatersHelp =>
+      'Through repeaters: reaches the whole MediaMesh, with about 2–3 seconds of delay.';
+
+  @override
+  String get walkie_directHelp =>
+      'Radio to radio: only radios in range hear it. A little faster, and no repeater traffic.';
+
+  @override
+  String get walkie_listenLive => 'Play this channel\'s talks live';
+
+  @override
+  String get walkie_listenLiveHelp =>
+      'Off mutes this channel: its talks wait in the chat as voice messages.';
+
+  @override
+  String walkie_footer(int seconds) {
+    return 'Up to $seconds seconds a talk. Talks go out on MediaMesh only, and each one is saved in the chat as a voice message. On a computer, hold Space to talk.';
+  }
+
+  @override
+  String get drones_title => 'Drone detector';
+
+  @override
+  String get drones_chip => 'Drones';
+
+  @override
+  String get drones_listen => 'Listen for drones';
+
+  @override
+  String get drones_listenHelp =>
+      'Hears drones that broadcast Remote ID over Bluetooth: their ID, position, height, speed and where the operator is. Drones without Remote ID aren\'t detected.';
+
+  @override
+  String get drones_scanning => 'Listening';
+
+  @override
+  String get drones_paused => 'Paused while the app searches for radios';
+
+  @override
+  String get drones_none => 'No drones heard yet.';
+
+  @override
+  String get drones_noPosition => 'no position yet';
+
+  @override
+  String get drones_stale => 'not heard for a minute';
+
+  @override
+  String get drones_type => 'Type';
+
+  @override
+  String get drones_height => 'Height';
+
+  @override
+  String get drones_altitude => 'Altitude';
+
+  @override
+  String get drones_speed => 'Speed';
+
+  @override
+  String get drones_heading => 'Heading';
+
+  @override
+  String get drones_operator => 'Operator';
+
+  @override
+  String get drones_operatorId => 'Operator ID';
+
+  @override
+  String get drones_description => 'Description';
+
+  @override
+  String get drones_signal => 'Signal';
+
+  @override
+  String get drones_lastHeard => 'Last heard';
+
+  @override
+  String get drones_showOnMap => 'Show on map';
+
+  @override
+  String get drones_post => 'Post to the alert channel';
+
+  @override
+  String get drones_posted => 'Posted';
+
+  @override
+  String get drones_alertChannel => 'Alert channel';
+
+  @override
+  String get drones_noChannel => 'None';
+
+  @override
+  String get drones_share => 'Post drones there';
+
+  @override
+  String get drones_shareHelp =>
+      'Each drone at most once a minute, and again after it moves 200 m. Never on Public. Others watching the channel see them on their map, with the operator.';
+
+  @override
+  String get drones_sound => 'Sound when a new drone appears';
+
+  @override
+  String get drones_clear => 'Clear the list';
+
+  @override
+  String drones_counts(int heard, int posted) {
+    return '$heard broadcasts heard · $posted posted';
+  }
+
+  @override
+  String drones_secondsAgo(int n) {
+    return '$n s ago';
+  }
+
+  @override
+  String drones_minutesAgo(int n) {
+    return '$n min ago';
+  }
+
+  @override
+  String get mediaMesh_findAsking => 'Asking repeaters nearby…';
+
+  @override
+  String mediaMesh_findReported(int count, int total, String profile) {
+    return '$count of $total repeaters nearby run radio2 on $profile.';
+  }
+
+  @override
+  String get mediaMesh_findReportedNone =>
+      'Repeaters nearby answered, but none has radio2 on.';
+
+  @override
+  String get mediaMesh_findRadio2Off => 'radio2 off';
+
+  @override
+  String get mediaMesh_findNotSaid => 'didn\'t say';
+
+  @override
+  String get mediaMesh_findListenOnly => 'listen only';
+
+  @override
+  String get mediaMesh_findTemporary => 'temporary';
+
+  @override
+  String drones_joinDefault(String channel) {
+    return 'Join $channel';
+  }
+
+  @override
+  String drones_notJoined(String channel) {
+    return '$channel (not joined)';
+  }
+
+  @override
+  String get walkie_liveAll => 'Play talks live';
+
+  @override
+  String get walkie_liveAllHelp =>
+      'Talks on any channel play as they arrive, while the app is running, walkie-talkie open or not.';
+
+  @override
+  String get coverage_title => 'Coverage map';
+
+  @override
+  String get coverage_record => 'Map MediaMesh coverage';
+
+  @override
+  String get coverage_recordHelp =>
+      'As you move, asks the MediaMesh repeaters in range every 150 m and marks the map with how well MediaMesh reaches there.';
+
+  @override
+  String get coverage_asking => 'Asking the MediaMesh repeaters…';
+
+  @override
+  String get coverage_show => 'Show on the map';
+
+  @override
+  String coverage_points(int count) {
+    return '$count points';
+  }
+
+  @override
+  String get coverage_good => 'Good';
+
+  @override
+  String get coverage_marginal => 'Marginal';
+
+  @override
+  String get coverage_out => 'Out';
+
+  @override
+  String get coverage_none => 'None';
+
+  @override
+  String get coverage_help =>
+      'Only repeaters with MediaMesh (radio2 on) count. Good: 5 dB or more to spare on radio2; Marginal: 0–5 dB; Out: heard, but radio2 wouldn\'t reach; None: no MediaMesh repeater answered.';
+
+  @override
+  String get coverage_export => 'Export (GeoJSON)';
+
+  @override
+  String get coverage_clear => 'Clear';
+
+  @override
+  String get teamSetup_noTeam => 'Pick a team channel first';
+
+  @override
+  String get teamSetup_share => 'Share team setup';
+
+  @override
+  String get teamSetup_shareTitle => 'Share this team';
+
+  @override
+  String teamSetup_playingPart(int part, int parts) {
+    return 'Playing part $part of $parts…';
+  }
+
+  @override
+  String teamSetup_soundHelp(int parts) {
+    return 'For a standalone without a camera: Sound link hears it, in $parts part(s) of a few seconds each.';
+  }
+
+  @override
+  String get teamSetup_shareWarning =>
+      'Anyone who scans or hears this can join your team channel and see your positions.';
+
+  @override
+  String teamSetup_teamChannel(String name) {
+    return 'Team channel: $name';
+  }
+
+  @override
+  String get teamSetup_teamChannelHelp =>
+      'Added if this radio hasn\'t it, and team mode turned on with it.';
+
+  @override
+  String teamSetup_watch(String names) {
+    return 'Watch: $names';
+  }
+
+  @override
+  String get teamSetup_watchHelp =>
+      'Added if needed, and their reports shown on the map.';
+
+  @override
+  String teamSetup_mediaMesh(String profile) {
+    return 'MediaMesh: $profile';
+  }
+
+  @override
+  String get teamSetup_mediaMeshHelp =>
+      'This radio\'s radio2 set to the team\'s MediaMesh, for photos, voice and push-to-talk.';
+
+  @override
+  String get teamSetup_joinTitle => 'Join a team';
+
+  @override
+  String get teamSetup_join => 'Join';
+
+  @override
+  String get teamSetup_notATeam => 'That isn\'t a team setup code';
+
+  @override
+  String get teamSetup_scanHelp =>
+      'Scan the team code on a teammate\'s phone or standalone';
+
+  @override
+  String get teamSetup_listenHelp => 'Waiting for the team setup to be played…';
+
+  @override
+  String teamSetup_heardParts(int got, int total) {
+    return 'Heard $got of $total parts…';
+  }
+
+  @override
+  String get teamSetup_notConnected => 'Connect to your radio first';
+
+  @override
+  String teamSetup_noSlot(String name) {
+    return 'No free channel slot for $name';
+  }
+
+  @override
+  String get teamSetup_noMediaMesh => 'This radio has no MediaMesh (radio2)';
+
+  @override
+  String teamSetup_joined(String name) {
+    return 'Joined $name';
+  }
+
+  @override
+  String get appSettings_redLight => 'Red light (night vision)';
+
+  @override
+  String get appSettings_redLightHelp =>
+      'Everything in dim red, the map and photos too, to keep your eyes used to the dark.';
+
+  @override
+  String get quickReply_copy => 'Copy';
+
+  @override
+  String get quickReply_onMyWay => 'On my way';
+
+  @override
+  String get quickReply_eta => 'ETA…';
+
+  @override
+  String quickReply_etaMin(int minutes) {
+    return 'ETA $minutes min';
+  }
+
+  @override
+  String get quickReply_etaPick => 'How long until you\'re there?';
+
+  @override
+  String get quickReply_cantHelp => 'Can\'t help';
+
+  @override
+  String get quickReply_seenIt => 'Seen it';
+
+  @override
+  String get quickReply_needBackup => 'Need backup';
+
+  @override
+  String get quickReply_allClear => 'All clear';
+
+  @override
+  String get quickReply_you => 'You';
+
+  @override
+  String get quickReply_now => 'now';
+
+  @override
+  String get quickReply_answers => 'Answers';
+
+  @override
+  String get quickReply_answerAlert => 'Answer (also acknowledges)';
+
+  @override
+  String quickReply_summary(int count, String who) {
+    return '$count answered: $who';
+  }
+
+  @override
+  String get reach_title => 'Who got it';
+
+  @override
+  String get reach_action => 'Who got it (map)';
+
+  @override
+  String get reach_noPosition =>
+      'This radio has no position, so there\'s nothing to draw from. The lists below still show who got it.';
+
+  @override
+  String reach_summary(int repeaters, int teammates) {
+    return '$repeaters repeaters re-sent it · $teammates teammates heard it';
+  }
+
+  @override
+  String get reach_noRepeats =>
+      'No repeater has been heard re-sending it yet. Echoes show up here as they come in.';
+
+  @override
+  String get reach_direct => 'Heard you directly';
+
+  @override
+  String reach_hops(int hops) {
+    return '$hops hops out';
+  }
+
+  @override
+  String get reach_noLocation => 'location unknown';
+
+  @override
+  String get reach_teammates => 'Teammates';
+
+  @override
+  String reach_heardAgo(String ago) {
+    return 'Heard it · $ago';
+  }
+
+  @override
+  String get reach_notYet => 'Not heard yet';
+
+  @override
+  String get reach_teamHelp =>
+      'Teammates say what they heard in their next position beacon, usually within a minute. Older app and firmware versions don\'t, so they stay \"Not heard yet\".';
+
+  @override
+  String get reach_now => 'just now';
 
   @override
   String get holidayGreeting_halloween => 'Veselé Halloween';
