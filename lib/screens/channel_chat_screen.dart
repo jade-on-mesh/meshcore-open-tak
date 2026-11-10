@@ -2276,7 +2276,11 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     });
     try {
       // AI sketch HD: its sender's name first, so receivers can show it.
-      await repair?.announce(widget.channel.index, senderPrefix, chunkSet.imgId);
+      await repair?.announce(
+        widget.channel.index,
+        senderPrefix,
+        chunkSet.imgId,
+      );
       final sent = await connector.sendImageChunks(
         chunkSet.blobs,
         channelIndex: widget.channel.index,

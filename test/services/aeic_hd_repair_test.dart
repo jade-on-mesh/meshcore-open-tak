@@ -65,7 +65,11 @@ void main() {
       t = t.add(kImageReassemblyTtl + const Duration(seconds: 1));
       r.evictExpired();
       expect(r.pendingCount, 0);
-      final key = ImageStreamKey(senderPrefix: 0x8c41, imgId: 9, channelIndex: 0);
+      final key = ImageStreamKey(
+        senderPrefix: 0x8c41,
+        imgId: 9,
+        channelIndex: 0,
+      );
       final missing = r.missingDataChunks(key)!;
       expect(missing, [for (var i = 1; i < total; i += 2) i]);
       // Minutes later only the missing ones come back.

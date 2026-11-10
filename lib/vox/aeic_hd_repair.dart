@@ -243,7 +243,10 @@ class AeicHdRepairService {
         ),
       );
       final at = resumed?.receivedChunks ?? entry.receivedChunks;
-      Timer(answerWait, () => unawaited(store.resumeGaveUp(entry.streamId, at)));
+      Timer(
+        answerWait,
+        () => unawaited(store.resumeGaveUp(entry.streamId, at)),
+      );
       return true;
     } finally {
       await release();
@@ -301,8 +304,7 @@ class AeicHdRepairService {
     if (!entry.isOutgoing) {
       for (var i = 0; i <= q.total; i++) {
         final bit = i == q.total ? _kParityBit : 1 << i;
-        final heard =
-            _heard[_chunkKey(slot, q.senderPrefix, q.imgId, i)];
+        final heard = _heard[_chunkKey(slot, q.senderPrefix, q.imgId, i)];
         if (heard != null && heard.isAfter(asked)) mask &= ~bit;
       }
     }
