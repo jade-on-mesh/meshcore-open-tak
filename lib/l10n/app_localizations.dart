@@ -13105,12 +13105,7 @@ abstract class AppLocalizations {
   /// No description provided for @appUpdate_earlierAndroid.
   ///
   /// In en, this message translates to:
-  /// **'Android can\'t install an older build over a newer one, so this takes a few steps:
-
-1. Back up first (Backup & Restore): uninstalling deletes the app\'s messages and settings.
-2. Build {build} is saved to your Downloads.
-3. Uninstall MeshCore Open TAK.
-4. Open the file from Downloads to install build {build}, then restore your backup.'**
+  /// **'Android can\'t install an older build over a newer one, so this takes a few steps:\n\n1. Back up first (Backup & Restore): uninstalling deletes the app\'s messages and settings.\n2. Build {build} is saved to your Downloads.\n3. Uninstall MeshCore Open TAK.\n4. Open the file from Downloads to install build {build}, then restore your backup.'**
   String appUpdate_earlierAndroid(int build);
 
   /// No description provided for @appUpdate_earlierBackUp.

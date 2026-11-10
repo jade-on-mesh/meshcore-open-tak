@@ -148,6 +148,7 @@ class AppUpdateService extends ChangeNotifier {
       'https://github.com/jade-on-mesh/meshcore-open-tak/releases/tag/latest-build';
   static const _releaseApi =
       'https://api.github.com/repos/jade-on-mesh/meshcore-open-tak/releases/tags/latest-build';
+
   /// The last few builds, under numbered names, listed in builds.json
   /// (build.yml's "Keep this build among the previous builds").
   static const _archiveApi =
@@ -358,11 +359,18 @@ class AppUpdateService extends ChangeNotifier {
     }
     final list = jsonDecode(res.body);
     if (list is! List) return const [];
-    final builds = [
-      for (final entry in list)
-        ?AppUpdateInfo.fromVersionJson(entry, assetUrls: urls, platform: key),
-    ].where((b) => b.build < _installedBuild && b.downloadUrl != null).toList()
-      ..sort((a, b) => b.build.compareTo(a.build));
+    final builds =
+        [
+              for (final entry in list)
+                ?AppUpdateInfo.fromVersionJson(
+                  entry,
+                  assetUrls: urls,
+                  platform: key,
+                ),
+            ]
+            .where((b) => b.build < _installedBuild && b.downloadUrl != null)
+            .toList()
+          ..sort((a, b) => b.build.compareTo(a.build));
     return builds.take(max).toList();
   }
 
@@ -400,8 +408,7 @@ class AppUpdateService extends ChangeNotifier {
   }
 
   /// Android's own "Uninstall this app?" prompt.
-  Future<void> uninstallSelf() =>
-      _channel.invokeMethod<void>('uninstallSelf');
+  Future<void> uninstallSelf() => _channel.invokeMethod<void>('uninstallSelf');
 
   Future<AppUpdateInfo?> _fetchLatest() async {
     final res = await http

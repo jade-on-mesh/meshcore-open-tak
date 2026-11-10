@@ -7813,7 +7813,8 @@ class AppLocalizationsBg extends AppLocalizations {
   String get appUpdate_earlierLoading => 'Looking for earlier builds…';
 
   @override
-  String get appUpdate_earlierNone => 'No earlier builds are kept yet. The last few builds are kept from now on.';
+  String get appUpdate_earlierNone =>
+      'No earlier builds are kept yet. The last few builds are kept from now on.';
 
   @override
   String appUpdate_earlierFailed(String reason) {
@@ -7832,12 +7833,7 @@ class AppLocalizationsBg extends AppLocalizations {
 
   @override
   String appUpdate_earlierAndroid(int build) {
-    return 'Android can\'t install an older build over a newer one, so this takes a few steps:
-
-1. Back up first (Backup & Restore): uninstalling deletes the app\'s messages and settings.
-2. Build $build is saved to your Downloads.
-3. Uninstall MeshCore Open TAK.
-4. Open the file from Downloads to install build $build, then restore your backup.';
+    return 'Android can\'t install an older build over a newer one, so this takes a few steps:\n\n1. Back up first (Backup & Restore): uninstalling deletes the app\'s messages and settings.\n2. Build $build is saved to your Downloads.\n3. Uninstall MeshCore Open TAK.\n4. Open the file from Downloads to install build $build, then restore your backup.';
   }
 
   @override
