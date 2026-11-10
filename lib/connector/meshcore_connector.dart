@@ -4437,7 +4437,6 @@ class MeshCoreConnector extends ChangeNotifier {
     }
   }
 
-
   void setActiveChannel(int? channelIndex) {
     _activeChannelIndex = channelIndex;
     if (channelIndex != null) {
