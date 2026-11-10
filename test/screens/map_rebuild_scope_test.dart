@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'dart:typed_data';
 
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -78,6 +81,13 @@ void main() {
   late UiViewStateService viewState;
 
   setUp(() async {
+    // The fork's voice service looks for its models in the support folder.
+    final support = Directory.systemTemp.createTempSync('map_rebuild');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('plugins.flutter.io/path_provider'),
+          (_) async => support.path,
+        );
     SharedPreferences.setMockInitialValues({});
     PrefsManager.reset();
     await PrefsManager.initialize();
