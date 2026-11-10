@@ -7825,6 +7825,60 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get appUpdate_earlier => 'Install an earlier version';
+
+  @override
+  String get appUpdate_earlierTitle => 'Install an earlier version';
+
+  @override
+  String get appUpdate_earlierLoading => 'Looking for earlier builds…';
+
+  @override
+  String get appUpdate_earlierNone => 'No earlier builds are kept yet. The last few builds are kept from now on.';
+
+  @override
+  String appUpdate_earlierFailed(String reason) {
+    return 'Couldn\'t list earlier builds: $reason';
+  }
+
+  @override
+  String appUpdate_earlierBuild(String version, int build) {
+    return '$version (build $build)';
+  }
+
+  @override
+  String appUpdate_earlierConfirm(int build, int current) {
+    return 'Install build $build? It replaces build $current, the one you have now. Your messages and settings stay.';
+  }
+
+  @override
+  String appUpdate_earlierAndroid(int build) {
+    return 'Android can\'t install an older build over a newer one, so this takes a few steps:
+
+1. Back up first (Backup & Restore): uninstalling deletes the app\'s messages and settings.
+2. Build $build is saved to your Downloads.
+3. Uninstall MeshCore Open TAK.
+4. Open the file from Downloads to install build $build, then restore your backup.';
+  }
+
+  @override
+  String get appUpdate_earlierBackUp => 'Back up first';
+
+  @override
+  String get appUpdate_earlierSave => 'Save to Downloads';
+
+  @override
+  String appUpdate_earlierSaved(String file) {
+    return 'Saved to Downloads as $file. Uninstall this app now, then open that file (in your Files app, under Downloads) to install it, and restore your backup.';
+  }
+
+  @override
+  String get appUpdate_earlierUninstall => 'Uninstall now';
+
+  @override
+  String get appUpdate_earlierInstall => 'Install';
+
+  @override
   String get appUpdate_installing => 'Opening the installer…';
 
   @override

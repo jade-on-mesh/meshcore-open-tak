@@ -700,3 +700,59 @@ jobs:
             [ "$(basename "$f")" = version.json ] || gh release upload latest-build "$f" --clobber
           done
           gh release upload latest-build dist/version.json --clobber
+      # The app's "Install an earlier version" (AppUpdateService): the
+      # "previous-builds" pre-release keeps the last few builds' files under
+      # numbered names, listed newest first in builds.json. A pre-release, so
+      # Obtainium (pre-releases off) and GitHub's "Latest" ignore it.
+      - name: Keep this build among the previous builds
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          if ! gh release view previous-builds >/dev/null 2>&1; then
+            gh release create previous-builds --target "$GITHUB_SHA" --prerelease --latest=false \
+              --title "MeshCore Open TAK: previous builds" \
+              --notes "The last few builds, for the app's Settings → App updates → Install an earlier version. The current build is on the latest-build release."
+          fi
+          mkdir -p archive
+          gh release download previous-builds -p builds.json -D archive 2>/dev/null || echo '[]' > archive/builds.json
+          KEEP=4 python3 - <<'PY'
+          import json, os, shutil
+          cur = json.load(open("dist/version.json"))
+          b = cur["build"]
+          def numbered(name):
+              stem = "meshcore-open-tak"
+              return name.replace(stem, f"{stem}-{b}", 1) if name.startswith(stem) else None
+          assets = {}
+          for platform, a in cur.get("assets", {}).items():
+              new = numbered(a["name"])
+              if not new:
+                  continue
+              shutil.copy(os.path.join("dist", a["name"]), os.path.join("archive", new))
+              assets[platform] = dict(a, name=new)
+          entry = {k: cur[k] for k in ("version", "build", "commit", "signed", "changes") if k in cur}
+          entry["assets"] = assets
+          try:
+              old = json.load(open("archive/builds.json"))
+              if not isinstance(old, list):
+                  old = []
+          except Exception:
+              old = []
+          builds = [entry] + [e for e in old if isinstance(e, dict) and e.get("build") != b]
+          keep, drop = builds[: int(os.environ["KEEP"])], builds[int(os.environ["KEEP"]):]
+          with open("archive/builds.json", "w") as f:
+              json.dump(keep, f, indent=2)
+          with open("archive/drop.txt", "w") as f:
+              for e in drop:
+                  for a in e.get("assets", {}).values():
+                      f.write(a["name"] + "\n")
+          PY
+          # builds.json goes first and comes back last, as with version.json.
+          gh release delete-asset previous-builds builds.json -y 2>/dev/null || true
+          for f in archive/meshcore-open-tak-*; do
+            gh release upload previous-builds "$f" --clobber
+          done
+          while read -r old; do
+            [ -n "$old" ] && gh release delete-asset previous-builds "$old" -y 2>/dev/null || true
+          done < archive/drop.txt
+          gh release upload previous-builds archive/builds.json --clobber

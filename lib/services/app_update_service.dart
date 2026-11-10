@@ -148,6 +148,10 @@ class AppUpdateService extends ChangeNotifier {
       'https://github.com/jade-on-mesh/meshcore-open-tak/releases/tag/latest-build';
   static const _releaseApi =
       'https://api.github.com/repos/jade-on-mesh/meshcore-open-tak/releases/tags/latest-build';
+  /// The last few builds, under numbered names, listed in builds.json
+  /// (build.yml's "Keep this build among the previous builds").
+  static const _archiveApi =
+      'https://api.github.com/repos/jade-on-mesh/meshcore-open-tak/releases/tags/previous-builds';
   static const _checkEvery = Duration(hours: 6);
   static const _channel = MethodChannel('meshcore_open/app_update');
   static const _prefLastCheck = 'app_update_last_check_ms';
@@ -314,6 +318,91 @@ class AppUpdateService extends ChangeNotifier {
     }
   }
 
+  /// The release's file names and download URLs, and the release itself.
+  static Future<(Map<String, String>, Map)> _readRelease(String api) async {
+    final res = await http
+        .get(Uri.parse(api), headers: {'Accept': 'application/vnd.github+json'})
+        .timeout(const Duration(seconds: 20));
+    if (res.statusCode == 404) return (const <String, String>{}, const {});
+    if (res.statusCode != 200) {
+      throw HttpException('GitHub answered ${res.statusCode}');
+    }
+    final release = jsonDecode(res.body);
+    final urls = <String, String>{};
+    if (release is! Map) return (urls, const {});
+    final assets = release['assets'];
+    if (assets is List) {
+      for (final a in assets) {
+        if (a is! Map) continue;
+        final name = a['name'];
+        final url = a['browser_download_url'];
+        if (name is String && url is String) urls[name] = url;
+      }
+    }
+    return (urls, release);
+  }
+
+  /// Builds older than the installed one that can be installed on this
+  /// platform, newest first: at most [max].
+  Future<List<AppUpdateInfo>> fetchEarlierBuilds({int max = 3}) async {
+    final key = platform;
+    if (key == null) return const [];
+    final (urls, _) = await _readRelease(_archiveApi);
+    final listUrl = urls['builds.json'];
+    if (listUrl == null) return const [];
+    final res = await http
+        .get(Uri.parse(listUrl))
+        .timeout(const Duration(seconds: 20));
+    if (res.statusCode != 200) {
+      throw HttpException('GitHub answered ${res.statusCode}');
+    }
+    final list = jsonDecode(res.body);
+    if (list is! List) return const [];
+    final builds = [
+      for (final entry in list)
+        ?AppUpdateInfo.fromVersionJson(entry, assetUrls: urls, platform: key),
+    ].where((b) => b.build < _installedBuild && b.downloadUrl != null).toList()
+      ..sort((a, b) => b.build.compareTo(a.build));
+    return builds.take(max).toList();
+  }
+
+  /// Installs [earlier], an older build from [fetchEarlierBuilds]. Windows,
+  /// macOS and Linux install it like an update. Android can't install an
+  /// older build over a newer one, so the APK is saved to Downloads instead
+  /// and its file name returned: the person uninstalls this app
+  /// ([uninstallSelf]) and opens the file.
+  Future<String?> installEarlier(AppUpdateInfo earlier) async {
+    if (_status == AppUpdateStatus.downloading) return null;
+    final before = _status;
+    _progress = 0;
+    _set(AppUpdateStatus.downloading);
+    try {
+      final file = await _download(earlier);
+      _progress = 1;
+      if (PlatformInfo.isAndroid) {
+        final name = await _channel.invokeMethod<String>('saveToDownloads', {
+          'path': file.path,
+        });
+        _set(before == AppUpdateStatus.error ? AppUpdateStatus.idle : before);
+        return name;
+      }
+      _set(AppUpdateStatus.installing);
+      await _install(file);
+      _set(before == AppUpdateStatus.error ? AppUpdateStatus.idle : before);
+      return null;
+    } catch (e) {
+      _fail(
+        AppUpdateStatus.available,
+        '${e is PlatformException ? e.message : e}',
+      );
+      rethrow;
+    }
+  }
+
+  /// Android's own "Uninstall this app?" prompt.
+  Future<void> uninstallSelf() =>
+      _channel.invokeMethod<void>('uninstallSelf');
+
   Future<AppUpdateInfo?> _fetchLatest() async {
     final res = await http
         .get(
@@ -395,6 +484,40 @@ class AppUpdateService extends ChangeNotifier {
     if (_status == AppUpdateStatus.downloading) return;
     _progress = 0;
     _set(AppUpdateStatus.downloading);
+    try {
+      final file = await _download(latest);
+      _progress = 1;
+      _set(AppUpdateStatus.installing);
+      await _install(file);
+      // The installer (or the disk image) is now open; if the person backs
+      // out, the update is still available.
+      _set(AppUpdateStatus.available);
+    } catch (e) {
+      if (!afterRecheck &&
+          e is FormatException &&
+          e.message.contains('checksum')) {
+        _status = AppUpdateStatus.available;
+        await check();
+        final again = _latest;
+        if (again != null &&
+            again.downloadUrl != null &&
+            again.isNewerThan(_installedBuild) &&
+            (again.build != latest.build || again.sha256 != latest.sha256)) {
+          return downloadAndInstall(afterRecheck: true);
+        }
+      }
+      _fail(
+        AppUpdateStatus.available,
+        '${e is PlatformException ? e.message : e}',
+      );
+    }
+  }
+
+  /// Downloads [target]'s file for this platform into the update folder,
+  /// checking its SHA-256 when published. Deletes it again on failure.
+  Future<File> _download(AppUpdateInfo target) async {
+    final url = target.downloadUrl!;
+    final latest = target;
     final client = http.Client();
     File? file;
     try {
@@ -440,33 +563,12 @@ class AppUpdateService extends ChangeNotifier {
           'the download is damaged (checksum mismatch)',
         );
       }
-      _progress = 1;
-      _set(AppUpdateStatus.installing);
-      await _install(file);
-      // The installer (or the disk image) is now open; if the person backs
-      // out, the update is still available.
-      _set(AppUpdateStatus.available);
-    } catch (e) {
+      return file;
+    } catch (_) {
       try {
         if (file != null && file.existsSync()) file.deleteSync();
       } catch (_) {}
-      if (!afterRecheck &&
-          e is FormatException &&
-          e.message.contains('checksum')) {
-        _status = AppUpdateStatus.available;
-        await check();
-        final again = _latest;
-        if (again != null &&
-            again.downloadUrl != null &&
-            again.isNewerThan(_installedBuild) &&
-            (again.build != latest.build || again.sha256 != latest.sha256)) {
-          return downloadAndInstall(afterRecheck: true);
-        }
-      }
-      _fail(
-        AppUpdateStatus.available,
-        '${e is PlatformException ? e.message : e}',
-      );
+      rethrow;
     } finally {
       client.close();
     }

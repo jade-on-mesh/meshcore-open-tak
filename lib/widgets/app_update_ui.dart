@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/l10n.dart';
+import '../screens/backup_restore_screen.dart';
 import '../services/app_update_service.dart';
+import '../utils/platform_info.dart';
 
 /// The app's navigator, so the update banner (which sits above it in
 /// MaterialApp.builder) can open the update dialog.
@@ -305,6 +307,20 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
                       ? null
                       : (on) => _updates.setAutoCheck(on),
                 ),
+                if (!_updates.isLocalBuild)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      icon: const Icon(Icons.history),
+                      label: Text(l10n.appUpdate_earlier),
+                      onPressed: busy
+                          ? null
+                          : () => showDialog<void>(
+                              context: context,
+                              builder: (_) => const _EarlierBuildsDialog(),
+                            ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -328,6 +344,195 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
                 onPressed: busy ? null : _install,
                 child: Text(l10n.appUpdate_install),
               ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// "Install an earlier version": the last few builds from the
+/// previous-builds release (AppUpdateService.fetchEarlierBuilds).
+class _EarlierBuildsDialog extends StatefulWidget {
+  const _EarlierBuildsDialog();
+
+  @override
+  State<_EarlierBuildsDialog> createState() => _EarlierBuildsDialogState();
+}
+
+class _EarlierBuildsDialogState extends State<_EarlierBuildsDialog> {
+  final _updates = AppUpdateService.instance;
+  late final Future<List<AppUpdateInfo>> _builds = _updates
+      .fetchEarlierBuilds();
+  String? _error;
+
+  Future<void> _pick(AppUpdateInfo build) async {
+    final l10n = context.l10n;
+    if (!await _updates.canInstall()) {
+      await _updates.openInstallPermission();
+      return;
+    }
+    if (!mounted) return;
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.appUpdate_earlierBuild(build.version, build.build)),
+        content: SingleChildScrollView(
+          child: Text(
+            PlatformInfo.isAndroid
+                ? l10n.appUpdate_earlierAndroid(build.build)
+                : l10n.appUpdate_earlierConfirm(
+                    build.build,
+                    _updates.installedBuild,
+                  ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(l10n.common_cancel),
+          ),
+          if (PlatformInfo.isAndroid)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const BackupRestoreScreen(),
+                  ),
+                );
+              },
+              child: Text(l10n.appUpdate_earlierBackUp),
+            ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(
+              PlatformInfo.isAndroid
+                  ? l10n.appUpdate_earlierSave
+                  : l10n.appUpdate_earlierInstall,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (go != true || !mounted) return;
+    setState(() => _error = null);
+    final String? saved;
+    try {
+      saved = await _updates.installEarlier(build);
+    } catch (e) {
+      if (mounted) setState(() => _error = _updates.error ?? '$e');
+      return;
+    }
+    if (saved == null || !mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.appUpdate_earlierBuild(build.version, build.build)),
+        content: Text(l10n.appUpdate_earlierSaved(saved)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(l10n.common_close),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _updates.uninstallSelf();
+            },
+            child: Text(l10n.appUpdate_earlierUninstall),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final small = theme.textTheme.bodySmall;
+    return ListenableBuilder(
+      listenable: _updates,
+      builder: (context, _) {
+        final downloading = _updates.status == AppUpdateStatus.downloading;
+        final progress = _updates.progress;
+        return AlertDialog(
+          title: Text(l10n.appUpdate_earlierTitle),
+          content: SizedBox(
+            width: 360,
+            child: FutureBuilder<List<AppUpdateInfo>>(
+              future: _builds,
+              builder: (context, snap) {
+                if (snap.connectionState != ConnectionState.done) {
+                  return Text(l10n.appUpdate_earlierLoading, style: small);
+                }
+                if (snap.hasError) {
+                  return Text(
+                    l10n.appUpdate_earlierFailed('${snap.error}'),
+                    style: small?.copyWith(color: theme.colorScheme.error),
+                  );
+                }
+                final builds = snap.data ?? const <AppUpdateInfo>[];
+                if (builds.isEmpty) {
+                  return Text(l10n.appUpdate_earlierNone, style: small);
+                }
+                return SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final b in builds)
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.history),
+                          title: Text(
+                            l10n.appUpdate_earlierBuild(b.version, b.build),
+                          ),
+                          subtitle: b.changes.isEmpty
+                              ? null
+                              : Text(
+                                  b.changes.first,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                          enabled: !downloading,
+                          onTap: () => _pick(b),
+                        ),
+                      if (downloading) ...[
+                        const SizedBox(height: 8),
+                        LinearProgressIndicator(value: progress),
+                        const SizedBox(height: 4),
+                        Text(
+                          progress == null
+                              ? l10n.appUpdate_downloading
+                              : l10n.appUpdate_downloadingPercent(
+                                  (progress * 100).round(),
+                                ),
+                          style: small,
+                        ),
+                      ],
+                      if (_error != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          l10n.appUpdate_installFailed(_error!),
+                          style: small?.copyWith(
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(l10n.common_close),
+            ),
           ],
         );
       },

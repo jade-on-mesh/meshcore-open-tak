@@ -15,6 +15,8 @@ It needs **Keymind Cascade 1.18 or later** on the companion radio: voice and pho
 | Android (arm64) | [Add to Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.jadeonmesh.meshcore_open_vox%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fjade-on-mesh%2Fmeshcore-open-tak%22%2C%22author%22%3A%22jade-on-mesh%22%2C%22name%22%3A%22MeshCore%20Open%20TAK%22%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Afalse%2C%5C%22fallbackToOlderReleases%5C%22%3Atrue%2C%5C%22verifyLatestTag%5C%22%3Atrue%2C%5C%22useLatestAssetDateAsReleaseDate%5C%22%3Atrue%2C%5C%22releaseDateAsVersion%5C%22%3Atrue%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5Emeshcore-open-tak%5C%5C%5C%5C.apk%24%5C%22%7D%22%7D) to get every build as an update, or download [meshcore-open-tak.apk](https://github.com/jade-on-mesh/meshcore-open-tak/releases/download/latest-build/meshcore-open-tak.apk). |
 | Windows, macOS, Linux | Installers on the [latest release](https://github.com/jade-on-mesh/meshcore-open-tak/releases/latest), which also has the iPhone `.ipa` for AltStore or SideStore. |
 
+To go back to an earlier build, open Settings → App updates → *Install an earlier version*; the last three builds are kept on the [previous builds](https://github.com/jade-on-mesh/meshcore-open-tak/releases/tag/previous-builds) release. Windows, macOS and Linux install it like an update. Android can't install an older build over a newer one, so the app saves it to Downloads and walks you through backing up, uninstalling and reinstalling. On iPhone, TestFlight lists earlier builds itself.
+
 Flash the companion radio with Keymind Cascade from the [MediaMesh Flasher](https://cascadiamesh.org/mediamesh-flasher/).
 
 ### What it adds

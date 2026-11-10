@@ -13060,6 +13060,89 @@ abstract class AppLocalizations {
   /// **'Downloading… {percent}%'**
   String appUpdate_downloadingPercent(int percent);
 
+  /// No description provided for @appUpdate_earlier.
+  ///
+  /// In en, this message translates to:
+  /// **'Install an earlier version'**
+  String get appUpdate_earlier;
+
+  /// No description provided for @appUpdate_earlierTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Install an earlier version'**
+  String get appUpdate_earlierTitle;
+
+  /// No description provided for @appUpdate_earlierLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Looking for earlier builds…'**
+  String get appUpdate_earlierLoading;
+
+  /// No description provided for @appUpdate_earlierNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No earlier builds are kept yet. The last few builds are kept from now on.'**
+  String get appUpdate_earlierNone;
+
+  /// No description provided for @appUpdate_earlierFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t list earlier builds: {reason}'**
+  String appUpdate_earlierFailed(String reason);
+
+  /// No description provided for @appUpdate_earlierBuild.
+  ///
+  /// In en, this message translates to:
+  /// **'{version} (build {build})'**
+  String appUpdate_earlierBuild(String version, int build);
+
+  /// No description provided for @appUpdate_earlierConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Install build {build}? It replaces build {current}, the one you have now. Your messages and settings stay.'**
+  String appUpdate_earlierConfirm(int build, int current);
+
+  /// No description provided for @appUpdate_earlierAndroid.
+  ///
+  /// In en, this message translates to:
+  /// **'Android can\'t install an older build over a newer one, so this takes a few steps:
+
+1. Back up first (Backup & Restore): uninstalling deletes the app\'s messages and settings.
+2. Build {build} is saved to your Downloads.
+3. Uninstall MeshCore Open TAK.
+4. Open the file from Downloads to install build {build}, then restore your backup.'**
+  String appUpdate_earlierAndroid(int build);
+
+  /// No description provided for @appUpdate_earlierBackUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Back up first'**
+  String get appUpdate_earlierBackUp;
+
+  /// No description provided for @appUpdate_earlierSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to Downloads'**
+  String get appUpdate_earlierSave;
+
+  /// No description provided for @appUpdate_earlierSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to Downloads as {file}. Uninstall this app now, then open that file (in your Files app, under Downloads) to install it, and restore your backup.'**
+  String appUpdate_earlierSaved(String file);
+
+  /// No description provided for @appUpdate_earlierUninstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Uninstall now'**
+  String get appUpdate_earlierUninstall;
+
+  /// No description provided for @appUpdate_earlierInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Install'**
+  String get appUpdate_earlierInstall;
+
   /// No description provided for @appUpdate_installing.
   ///
   /// In en, this message translates to:
