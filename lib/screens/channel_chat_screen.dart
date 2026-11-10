@@ -27,6 +27,7 @@ import '../helpers/snack_bar_builder.dart';
 import '../l10n/l10n.dart';
 import '../models/channel.dart';
 import '../models/channel_message.dart';
+import '../models/contact.dart';
 import '../models/image_codec_support.dart' show aeicRatePointForUi;
 import '../models/otp_theme.dart';
 import '../services/app_settings_service.dart'
@@ -34,6 +35,8 @@ import '../services/app_settings_service.dart'
 import '../services/chat_text_scale_service.dart';
 import '../services/image_chunk_transport.dart';
 import '../services/image_codec_service.dart';
+import '../services/media_lockdown.dart';
+import '../services/media_mesh.dart';
 import '../services/otp_service.dart';
 import '../services/received_image_store.dart';
 import '../services/translation_service.dart';
@@ -74,6 +77,7 @@ import 'channel_message_path_screen.dart';
 import 'map_screen.dart';
 import 'region_management_screen.dart';
 import '../storage/region_store.dart';
+import '../vox/aeic_hd_repair.dart';
 import '../vox/aeic_hd_screens.dart';
 import '../vox/caption_field.dart';
 import '../vox/image_send_sheet.dart';
@@ -2137,14 +2141,55 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   }
 
   /// AI sketch HD (lib/vox/aeic_hd_service.dart): encoded by the ncnn codec,
-  /// then chunked onto the channel like any image message.
+  /// then chunked onto the channel like any image message, on MediaMesh
+  /// (radio2) like the app's own photos: the channel's traffic is put on
+  /// radio2 for the burst and back after. Where radio2 can't take it, it isn't
+  /// sent (the main-mesh developer switch aside). The regular AI sketch is
+  /// MeshCore Open's own and stays as it is.
   Future<void> _sendAiSketchHd(Uint8List sourceBytes) async {
     final result = await showAeicHdSendSheet(context, imageBytes: sourceBytes);
     if (result == null || !mounted) return;
-    await _sendImage(
-      context.read<MeshCoreConnector>(),
-      result,
-      sourceBytes: sourceBytes,
+    final connector = context.read<MeshCoreConnector>();
+    final release = await MediaMeshChannelHold.hold(
+      connector,
+      widget.channel.index,
+    );
+    if (!mounted) {
+      await release?.call();
+      return;
+    }
+    if (release == null && !MediaLockdown.devAllowMain.value) {
+      showDismissibleSnackBar(
+        context,
+        content: const Text(MediaLockdown.blockedMessage),
+      );
+      return;
+    }
+    try {
+      await _sendImage(connector, result, sourceBytes: sourceBytes, hd: true);
+    } finally {
+      await release?.call();
+    }
+  }
+
+  /// "Ask for the rest" of an incomplete AI sketch HD (aeic_hd_repair.dart).
+  Future<void> _askForRest(ReceivedImageEntry entry) async {
+    final AeicHdRepairService repair;
+    try {
+      repair = context.read<AeicHdRepairService>();
+    } on ProviderNotFoundException {
+      return;
+    }
+    final ok = await repair.requestRest(entry);
+    if (!mounted) return;
+    showDismissibleSnackBar(
+      context,
+      content: Text(
+        ok
+            ? 'Asked for the missing packets. Whoever has the picture sends '
+                  'them on MediaMesh.'
+            : MediaLockdown.blockedMessage,
+      ),
     );
   }
 
@@ -2161,8 +2206,17 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     MeshCoreConnector connector,
     ImageSendPreviewResult result, {
     required Uint8List sourceBytes,
+    bool hd = false,
   }) async {
     final l10n = context.l10n;
+    AeicHdRepairService? repair;
+    if (hd) {
+      try {
+        repair = context.read<AeicHdRepairService>();
+      } on ProviderNotFoundException {
+        repair = null;
+      }
+    }
 
     if (!connector.supportsChannelData) {
       showDismissibleSnackBar(
@@ -2221,6 +2275,12 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       _imageSendSent = 0;
     });
     try {
+      // AI sketch HD: its sender's name first, so receivers can show it.
+      await repair?.announce(
+        widget.channel.index,
+        senderPrefix,
+        chunkSet.imgId,
+      );
       final sent = await connector.sendImageChunks(
         chunkSet.blobs,
         channelIndex: widget.channel.index,
@@ -2238,6 +2298,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           chunkSet: chunkSet,
           senderPrefix: senderPrefix,
           sourceBytes: sourceBytes,
+          // Kept for AI sketch HD, so a receiver can ask for missing chunks.
+          bitstream: hd ? result.payload : null,
         );
       }
       if (!mounted) return;
@@ -2281,6 +2343,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     required ImageChunkSet chunkSet,
     required int senderPrefix,
     required Uint8List sourceBytes,
+    Uint8List? bitstream,
   }) async {
     final ReceivedImageStore store;
     try {
@@ -2302,6 +2365,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         rate: aeicRatePointForUi(result.rate),
         chunkCount: chunkSet.dataChunkCount,
         aspectCode: await _aspectCodeOf(sourceBytes),
+        bitstream: bitstream,
       );
     } on Exception catch (error) {
       debugPrint('outgoing image registration failed: $error');
@@ -2534,6 +2598,15 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                       ),
                     ),
                   ),
+                  if (aeicHdResumable(entry))
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4, top: 2),
+                      child: TextButton.icon(
+                        onPressed: () => _askForRest(entry),
+                        icon: const Icon(Icons.download_outlined, size: 18),
+                        label: const Text('Ask for the rest'),
+                      ),
+                    ),
                   Padding(
                     padding: const EdgeInsets.only(
                       left: 8,
@@ -2592,6 +2665,19 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                 ),
                 subtitle: _imageSenderLabel(entry),
               ),
+              if (aeicHdResumable(entry))
+                ListTile(
+                  leading: const Icon(Icons.download_outlined),
+                  title: const Text('Ask for the rest'),
+                  subtitle: const Text(
+                    'Ask whoever has this picture for the packets that '
+                    'didn\'t arrive.',
+                  ),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _askForRest(entry);
+                  },
+                ),
               // Can't react to your own photo
               if (!entry.isOutgoing)
                 ListTile(
@@ -2748,10 +2834,24 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     if (entry.isOutgoing) {
       return connector.selfName ?? context.l10n.receivedImage_senderPrefix(hex);
     }
-    final matches = connector.contacts
-        .where((c) => c.publicKeyHex.toLowerCase().startsWith(hex))
-        .toList();
-    if (matches.length == 1) return matches.single.name;
+    // The name its app announced (AI sketch HD), when it did.
+    String? announced;
+    try {
+      announced = context.read<ReceivedImageStore>().senderNameFor(entry);
+    } on ProviderNotFoundException {
+      announced = null;
+    }
+    if (announced != null && announced.isNotEmpty) return announced;
+    // Else a node whose key starts with the prefix: contacts first, then
+    // every node heard advertising; among several, the chat nodes (phones
+    // and standalones send pictures, repeaters don't).
+    bool matches(Contact c) => c.publicKeyHex.toLowerCase().startsWith(hex);
+    for (final pool in [connector.contacts, connector.allContactsUnfiltered]) {
+      final found = pool.where(matches).toList();
+      if (found.length == 1) return found.single.name;
+      final chats = found.where((c) => c.type == advTypeChat).toList();
+      if (chats.length == 1) return chats.single.name;
+    }
     return context.l10n.receivedImage_senderPrefix(hex);
   }
 

@@ -56,6 +56,7 @@ import 'team/team_alert_host.dart';
 import 'widgets/app_update_ui.dart';
 import 'team/team_service.dart';
 import 'team/watch_feed.dart';
+import 'vox/aeic_hd_repair.dart';
 import 'vox/aeic_hd_service.dart';
 import 'vox/vox_upscale.dart';
 import 'vox/vox_voice_enhance.dart';
@@ -170,6 +171,12 @@ void main() async {
   final imageReassembler = ImageStreamReassembler(
     store: receivedImageStore,
     channelIdForSlot: connector.channelIdForSlot,
+  );
+  // AI sketch HD: sender names and "ask for the rest" (aeic_hd_repair.dart).
+  final aeicHdRepair = AeicHdRepairService(
+    connector: connector,
+    store: receivedImageStore,
+    reassembler: imageReassembler,
   );
   final imageTransport = ImageChunkTransport(
     reassembler: imageReassembler,
@@ -301,6 +308,7 @@ void main() async {
       imageCodecService: imageCodecService,
       receivedImageStore: receivedImageStore,
       imageReassembler: imageReassembler,
+      aeicHdRepair: aeicHdRepair,
       voxVoiceService: voxVoiceService,
       networkMapUploadService: networkMapUploadService,
       chatBackgroundService: chatBackgroundService,
@@ -464,6 +472,7 @@ class MeshCoreApp extends StatefulWidget {
   final ImageCodecService imageCodecService;
   final ReceivedImageStore receivedImageStore;
   final ImageStreamReassembler imageReassembler;
+  final AeicHdRepairService aeicHdRepair;
   final VoxVoiceService? voxVoiceService;
   final NetworkMapUploadService networkMapUploadService;
   final ChatBackgroundService chatBackgroundService;
@@ -485,6 +494,7 @@ class MeshCoreApp extends StatefulWidget {
     required this.imageCodecService,
     required this.receivedImageStore,
     required this.imageReassembler,
+    required this.aeicHdRepair,
     this.voxVoiceService,
     required this.networkMapUploadService,
     required this.chatBackgroundService,
@@ -675,6 +685,7 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
         ChangeNotifierProvider.value(value: widget.timeoutPredictionService),
         ChangeNotifierProvider.value(value: widget.imageCodecService),
         ChangeNotifierProvider.value(value: widget.receivedImageStore),
+        Provider.value(value: widget.aeicHdRepair),
         ChangeNotifierProvider<VoxVoiceService>.value(value: _voxVoiceService),
         ChangeNotifierProvider<WalkieService>.value(value: _walkie),
         ChangeNotifierProvider<TeamService>.value(value: _teamService),

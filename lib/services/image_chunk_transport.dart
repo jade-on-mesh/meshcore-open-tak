@@ -849,6 +849,29 @@ class ImageReassembler {
   final Map<ImageStreamKey, _CompletedImage> _recentlyCompleted =
       <ImageStreamKey, _CompletedImage>{};
 
+  /// Partial images that ran out of time, overflowed or were cut off by a
+  /// disconnect, kept so that a resend of just their missing chunks (AI sketch
+  /// HD's "ask for the rest", lib/vox/aeic_hd_repair.dart) finishes them
+  /// rather than starting over. In memory only; the oldest go past
+  /// [maxParkedStreams].
+  final Map<ImageStreamKey, _PendingImage> _parked =
+      <ImageStreamKey, _PendingImage>{};
+
+  static const int maxParkedStreams = 16;
+
+  /// Parked images a resend was asked for: only these carry on from what they
+  /// had. Any other chunk after the timeout starts afresh, as before.
+  final Set<ImageStreamKey> _resuming = <ImageStreamKey>{};
+
+  /// A resend of [key]'s missing chunks was asked for: when they come, the
+  /// parked chunks are used again.
+  void expectResend(ImageStreamKey key) {
+    _resuming.add(key);
+    while (_resuming.length > maxParkedStreams) {
+      _resuming.remove(_resuming.first);
+    }
+  }
+
   ImageReassembler({
     this.selfPrefix,
     this.ttl = kImageReassemblyTtl,
@@ -861,6 +884,30 @@ class ImageReassembler {
 
   /// Number of images currently being reassembled.
   int get pendingCount => _pending.length;
+
+  /// The data chunk indices [key] still lacks, from the stream in progress or
+  /// a parked one; null when nothing of it is held (ask for all of them).
+  List<int>? missingDataChunks(ImageStreamKey key) {
+    final e = _pending[key] ?? _parked[key];
+    if (e == null) return null;
+    return [
+      for (var i = 0; i < e.total; i++)
+        if (!e.bodies.containsKey(i)) i,
+    ];
+  }
+
+  /// Whether the parity chunk of [key] is held (in progress or parked).
+  bool holdsParity(ImageStreamKey key) =>
+      (_pending[key] ?? _parked[key])?.hasParity ?? false;
+
+  void _park(_PendingImage e) {
+    if (e.bodies.isEmpty && e.parityBody == null) return;
+    _parked.remove(e.key);
+    _parked[e.key] = e;
+    while (_parked.length > maxParkedStreams) {
+      _parked.remove(_parked.keys.first);
+    }
+  }
 
   /// Keys of the images currently being reassembled (test/debug aid).
   Iterable<ImageStreamKey> get pendingKeys => _pending.keys;
@@ -880,6 +927,7 @@ class ImageReassembler {
     _pending.clear();
     _recentlyCompleted.clear();
     for (final entry in dropped) {
+      _park(entry);
       onFailed?.call(
         ImageReassemblyFailure(
           key: entry.key,
@@ -903,6 +951,7 @@ class ImageReassembler {
     _recentlyCompleted.removeWhere(
       (key, _) => key.channelIndex == channelIndex,
     );
+    _parked.removeWhere((key, _) => key.channelIndex == channelIndex);
     final dropped = _pending.values
         .where((entry) => entry.key.channelIndex == channelIndex)
         .toList();
@@ -987,6 +1036,12 @@ class ImageReassembler {
     }
     if (entry == null) {
       entry = _PendingImage(key: key, total: header.total, firstSeen: at);
+      // A resend asked for a parked partial image: carry on from what it had.
+      final parked = _resuming.remove(key) ? _parked.remove(key) : null;
+      if (parked != null && parked.total == header.total) {
+        entry.bodies.addAll(parked.bodies);
+        entry.parityBody = parked.parityBody;
+      }
       _pending[key] = entry;
       _evictOverflow(at);
     }
@@ -1057,6 +1112,7 @@ class ImageReassembler {
     final expired = <ImageReassemblyFailure>[];
     _pending.removeWhere((key, entry) {
       if (at.difference(entry.firstSeen) < ttl) return false;
+      _park(entry);
       expired.add(
         ImageReassemblyFailure(
           key: key,
@@ -1111,6 +1167,7 @@ class ImageReassembler {
       });
       if (oldestKey == null) return;
       final victim = _pending.remove(oldestKey)!;
+      _park(victim);
       onFailed?.call(
         ImageReassemblyFailure(
           key: victim.key,
