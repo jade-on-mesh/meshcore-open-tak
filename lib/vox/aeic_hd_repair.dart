@@ -34,6 +34,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 
@@ -166,6 +167,58 @@ List<Uint8List> aeicHdBlobsFor(List<Uint8List> blobs, int total, int mask) => [
 
 /// Whether [entry] can be asked for the rest: an incomplete AI sketch HD, or
 /// one whose first chunk (which names the kind) never came.
+/// A partial image's chunks as saved to disk:
+/// `[0x50][1][total][hasParity][n]`, then n × `[index][len:2][body]`, then
+/// `[len:2][parity body]` when there is one.
+Uint8List encodeAeicHdPartial({
+  required int total,
+  required Map<int, Uint8List> bodies,
+  Uint8List? parity,
+}) {
+  final b = BytesBuilder(copy: false)
+    ..add([0x50, 1, total & 0xFF, parity == null ? 0 : 1, bodies.length]);
+  final keys = bodies.keys.toList()..sort();
+  for (final i in keys) {
+    final body = bodies[i]!;
+    b.add([i & 0xFF, (body.length >> 8) & 0xFF, body.length & 0xFF]);
+    b.add(body);
+  }
+  if (parity != null) {
+    b.add([(parity.length >> 8) & 0xFF, parity.length & 0xFF]);
+    b.add(parity);
+  }
+  return b.toBytes();
+}
+
+/// [encodeAeicHdPartial] read back; null when [p] isn't one.
+({int total, Map<int, Uint8List> bodies, Uint8List? parity})?
+decodeAeicHdPartial(Uint8List p) {
+  if (p.length < 5 || p[0] != 0x50 || p[1] != 1) return null;
+  final total = p[2];
+  final hasParity = p[3] == 1;
+  final n = p[4];
+  var o = 5;
+  final bodies = <int, Uint8List>{};
+  for (var k = 0; k < n; k++) {
+    if (o + 3 > p.length) return null;
+    final i = p[o];
+    final len = (p[o + 1] << 8) | p[o + 2];
+    o += 3;
+    if (o + len > p.length || i >= total) return null;
+    bodies[i] = Uint8List.fromList(p.sublist(o, o + len));
+    o += len;
+  }
+  Uint8List? parity;
+  if (hasParity) {
+    if (o + 2 > p.length) return null;
+    final len = (p[o] << 8) | p[o + 1];
+    o += 2;
+    if (o + len > p.length) return null;
+    parity = Uint8List.fromList(p.sublist(o, o + len));
+  }
+  return (total: total, bodies: bodies, parity: parity);
+}
+
 bool aeicHdResumable(ReceivedImageEntry entry) =>
     !entry.isOutgoing &&
     entry.state == ReceivedImageState.failedIncomplete &&
@@ -207,9 +260,73 @@ class AeicHdRepairService {
     required this.reassembler,
   }) {
     _sub = connector.receivedFrames.listen(_onFrame);
+    store.addListener(_keepPartials);
   }
 
-  void dispose() => _sub?.cancel();
+  void dispose() {
+    _sub?.cancel();
+    store.removeListener(_keepPartials);
+  }
+
+  /// Chunk counts of the partial images saved to disk, by stream.
+  final Map<String, int> _savedPartials = <String, int>{};
+
+  /// Saves the chunks of each incomplete HD image, so a restart doesn't lose
+  /// them (the reassembler only holds them in memory), and drops the file
+  /// once the image is done or gone.
+  void _keepPartials() {
+    for (final e in store.entries) {
+      // Incomplete HD images, and ones receiving a resend after being saved.
+      final resending =
+          e.state == ReceivedImageState.receiving &&
+          _savedPartials.containsKey(e.streamId);
+      if (!aeicHdResumable(e) && !resending) continue;
+      final held = reassembler.heldChunks(e.key);
+      if (held == null) continue;
+      final count = held.bodies.length + (held.parity == null ? 0 : 1);
+      if (_savedPartials[e.streamId] == count) continue;
+      _savedPartials[e.streamId] = count;
+      unawaited(
+        store.blobs.writePartial(
+          e.streamId,
+          encodeAeicHdPartial(
+            total: held.total,
+            bodies: held.bodies,
+            parity: held.parity,
+          ),
+        ),
+      );
+    }
+    for (final id in _savedPartials.keys.toList()) {
+      final e = store.entryFor(id);
+      if (e != null &&
+          (e.state == ReceivedImageState.receiving ||
+              e.state == ReceivedImageState.failedIncomplete)) {
+        continue;
+      }
+      _savedPartials.remove(id);
+      unawaited(store.blobs.deletePartial(id));
+    }
+  }
+
+  /// Puts [entry]'s saved chunks back in the reassembler, if it holds none
+  /// of them (the app restarted since they came).
+  Future<void> _restorePartial(ReceivedImageEntry entry) async {
+    if (reassembler.heldChunks(entry.key) != null) return;
+    final bytes = await store.blobs.readPartial(entry.streamId);
+    if (bytes == null) return;
+    final saved = decodeAeicHdPartial(bytes);
+    if (saved == null || saved.total != entry.totalChunks) return;
+    reassembler.restoreParked(
+      entry.key,
+      total: saved.total,
+      bodies: saved.bodies,
+      parity: saved.parity,
+    );
+    _savedPartials[entry.streamId] =
+        saved.bodies.length + (saved.parity == null ? 0 : 1);
+    _log('restored ${saved.bodies.length} saved chunk(s) of ${entry.streamId}');
+  }
 
   static String _chunkKey(int ch, int prefix, int imgId, int index) =>
       '$ch:$prefix:$imgId:$index';
@@ -299,6 +416,7 @@ class AeicHdRepairService {
   Future<bool> requestRest(ReceivedImageEntry entry, {int round = 1}) async {
     final key = entry.key;
     final total = entry.totalChunks.clamp(1, 15).toInt();
+    await _restorePartial(entry);
     final missing = reassembler.missingDataChunks(key);
     if (missing != null && missing.isEmpty) return true;
     if (round == 1)

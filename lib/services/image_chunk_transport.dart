@@ -896,6 +896,37 @@ class ImageReassembler {
     ];
   }
 
+  /// The chunks held for [key] (in progress or parked), for saving a partial
+  /// image to disk; null when none are.
+  ({int total, Map<int, Uint8List> bodies, Uint8List? parity})? heldChunks(
+    ImageStreamKey key,
+  ) {
+    final e = _pending[key] ?? _parked[key];
+    if (e == null || (e.bodies.isEmpty && e.parityBody == null)) return null;
+    return (
+      total: e.total,
+      bodies: Map<int, Uint8List>.of(e.bodies),
+      parity: e.parityBody,
+    );
+  }
+
+  /// Puts a partial image saved by [heldChunks] back, parked, unless [key] is
+  /// already held. Only the resend [expectResend] asks for carries on from it.
+  void restoreParked(
+    ImageStreamKey key, {
+    required int total,
+    required Map<int, Uint8List> bodies,
+    Uint8List? parity,
+  }) {
+    if (_pending.containsKey(key) || _parked.containsKey(key)) return;
+    final e = _PendingImage(key: key, total: total, firstSeen: _clock());
+    for (final b in bodies.entries) {
+      if (b.key >= 0 && b.key < total) e.bodies[b.key] = b.value;
+    }
+    e.parityBody = parity;
+    _park(e);
+  }
+
   /// Whether the parity chunk of [key] is held (in progress or parked).
   bool holdsParity(ImageStreamKey key) =>
       (_pending[key] ?? _parked[key])?.hasParity ?? false;

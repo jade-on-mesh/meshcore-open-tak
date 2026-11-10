@@ -462,6 +462,13 @@ abstract class ReceivedImageBlobStore {
 
   /// Absolute path of the PNG, or null where the platform has no file system.
   String? pngPath(String streamId);
+
+  /// The chunks of an incomplete AI sketch HD image, kept so "ask for the
+  /// rest" still knows what it has after the app restarts
+  /// (lib/vox/aeic_hd_repair.dart). Same contract as [writeBitstream].
+  Future<bool> writePartial(String streamId, Uint8List bytes);
+  Future<Uint8List?> readPartial(String streamId);
+  Future<void> deletePartial(String streamId);
 }
 
 /// Default implementation: keeps everything in RAM.
@@ -526,6 +533,22 @@ class InMemoryReceivedImageBlobStore implements ReceivedImageBlobStore {
 
   @override
   String? pngPath(String streamId) => null;
+
+  final Map<String, Uint8List> _partials = <String, Uint8List>{};
+
+  @override
+  Future<bool> writePartial(String streamId, Uint8List bytes) async {
+    _partials[streamId] = bytes;
+    return true;
+  }
+
+  @override
+  Future<Uint8List?> readPartial(String streamId) async => _partials[streamId];
+
+  @override
+  Future<void> deletePartial(String streamId) async {
+    _partials.remove(streamId);
+  }
 
   // Test/debug helpers.
   bool hasBitstream(String streamId) => _bitstreams.containsKey(streamId);
@@ -1594,6 +1617,7 @@ class ReceivedImageStore extends ChangeNotifier {
     }
     await blobs.deletePng(streamId);
     await blobs.deleteBitstream(streamId);
+    await blobs.deletePartial(streamId);
     await blobs.deleteSidecar(streamId);
     final listenable = _listenables[streamId];
     if (listenable != null) {
