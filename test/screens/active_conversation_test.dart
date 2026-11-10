@@ -104,7 +104,8 @@ void main() {
   testWidgets('tapping a search result closes search and shows the message', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(400, 700);
+    // Wide enough for the search button in the bar (narrower: a ⋮ item).
+    tester.view.physicalSize = const Size(480, 700);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
