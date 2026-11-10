@@ -81,6 +81,7 @@ Uint8List encodeAeicHdRequest({
   required int imgId,
   required int total,
   required int missingMask,
+  int copiesAfter = 0,
 }) => Uint8List.fromList([
   _kRequest,
   (senderPrefix >> 8) & 0xFF,
@@ -89,7 +90,9 @@ Uint8List encodeAeicHdRequest({
   total & 0x0F,
   (missingMask >> 8) & 0xFF,
   missingMask & 0xFF,
-  _saltRng.nextInt(256),
+  // Top two bits: how many more copies of this request follow, so the
+  // holder can wait them out instead of answering over them. The rest: salt.
+  ((copiesAfter.clamp(0, 3)) << 6) | _saltRng.nextInt(64),
 ]);
 
 /// One image chunk wrapped for an answer, with a fresh salt.
@@ -110,6 +113,9 @@ class AeicHdRepairPacket {
   final String? name;
   final int total;
   final int mask;
+
+  /// For a request: how many more copies of it the asker is still sending.
+  final int copiesAfter;
   const AeicHdRepairPacket({
     required this.isRequest,
     required this.senderPrefix,
@@ -117,6 +123,7 @@ class AeicHdRepairPacket {
     this.name,
     this.total = 0,
     this.mask = 0,
+    this.copiesAfter = 0,
   });
 
   static AeicHdRepairPacket? tryParse(Uint8List p) {
@@ -143,6 +150,7 @@ class AeicHdRepairPacket {
         imgId: p[3],
         total: total,
         mask: (p[5] << 8) | p[6],
+        copiesAfter: p.length == 8 ? p[7] >> 6 : 0,
       );
     }
     return null;
@@ -180,6 +188,11 @@ class AeicHdRepairService {
   /// How long a resumed image waits for an answer before it is incomplete
   /// again.
   static const Duration answerWait = Duration(seconds: 45);
+
+  /// How many times one "Ask for the rest" sends its request, and how far
+  /// apart.
+  static const int requestCopies = 3;
+  static const Duration requestSpacing = Duration(seconds: 3);
 
   AeicHdRepairService({
     required this.connector,
@@ -302,16 +315,26 @@ class AeicHdRepairService {
     );
     try {
       final resumed = await store.resumeReceiving(entry.streamId);
-      await connector.sendChannelDataPacket(
-        channelIndex: entry.channelIndex,
-        dataType: dataTypeAeicHdRepair,
-        payload: encodeAeicHdRequest(
-          senderPrefix: entry.senderPrefix,
-          imgId: entry.imgId,
-          total: total,
-          missingMask: mask,
-        ),
-      );
+      // A single request is easily missed: the holder's radio only visits
+      // radio2 part of the time, and the original image already lost
+      // packets on the way. So it goes out [requestCopies] times, a few
+      // seconds apart, each with its own salt. The holder answers the first
+      // it hears and skips the rest (the 20 s guard in [_answer]).
+      for (var copy = 0; copy < requestCopies; copy++) {
+        if (copy > 0) await Future<void>.delayed(requestSpacing);
+        await connector.sendChannelDataPacket(
+          channelIndex: entry.channelIndex,
+          dataType: dataTypeAeicHdRepair,
+          payload: encodeAeicHdRequest(
+            senderPrefix: entry.senderPrefix,
+            imgId: entry.imgId,
+            total: total,
+            missingMask: mask,
+            copiesAfter: requestCopies - 1 - copy,
+          ),
+        );
+        _log('request ${copy + 1} of $requestCopies sent');
+      }
       final at = resumed?.receivedChunks ?? entry.receivedChunks;
       Timer(
         answerWait,
@@ -358,15 +381,18 @@ class AeicHdRepairService {
     _served[servedKey] = now;
     if (_served.length > 32) _served.remove(_served.keys.first);
 
-    // The sender answers at once; anyone else waits and leaves out what the
-    // sender (or another holder) sends meanwhile.
+    // First the asker's remaining copies of the request go by (an answer
+    // sent over them would be lost: the asker can't hear while it sends).
+    // Then the sender answers at once; anyone else waits and leaves out
+    // what the sender (or another holder) sends meanwhile.
     final asked = DateTime.now();
     await Future<void>.delayed(
-      Duration(
-        milliseconds: entry.isOutgoing
-            ? 300 + _rng.nextInt(500)
-            : 2500 + _rng.nextInt(2500),
-      ),
+      requestSpacing * q.copiesAfter +
+          Duration(
+            milliseconds: entry.isOutgoing
+                ? 800 + _rng.nextInt(500)
+                : 3000 + _rng.nextInt(2500),
+          ),
     );
     final bits = await store.blobs.readBitstream(entry.streamId);
     if (bits == null) {
@@ -420,6 +446,7 @@ class AeicHdRepairService {
         channelIndex: slot,
         dataType: dataTypeAeicHdRepair,
         interChunkDelay: const Duration(milliseconds: 600),
+        mainMeshQuiet: false,
       );
     } finally {
       await release();

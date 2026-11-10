@@ -50,6 +50,28 @@ void main() {
       expect(picked, [set.blobs[1]]);
     });
 
+    test('a request says how many copies follow it', () {
+      for (final after in [0, 1, 2]) {
+        final q = AeicHdRepairPacket.tryParse(
+          encodeAeicHdRequest(
+            senderPrefix: 0x8c41,
+            imgId: 9,
+            total: 8,
+            missingMask: 0x0C,
+            copiesAfter: after,
+          ),
+        )!;
+        expect(q.isRequest, isTrue);
+        expect(q.copiesAfter, after);
+        expect(q.mask, 0x0C);
+      }
+      // An old 7-byte request: none follow.
+      final old = AeicHdRepairPacket.tryParse(
+        Uint8List.fromList([0x51, 0x8c, 0x41, 9, 8, 0, 0x0C]),
+      )!;
+      expect(old.copiesAfter, 0);
+    });
+
     test('requests and wrapped chunks differ every time (salt)', () {
       Uint8List req() => encodeAeicHdRequest(
         senderPrefix: 0x8c41,

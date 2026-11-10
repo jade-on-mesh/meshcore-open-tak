@@ -2166,9 +2166,47 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       return;
     }
     try {
-      await _sendImage(connector, result, sourceBytes: sourceBytes, hd: true);
+      await _sendImage(
+        connector,
+        result,
+        sourceBytes: sourceBytes,
+        hd: true,
+        onRadio2: release != null,
+        packetAirtime: release == null
+            ? null
+            : await _radio2PacketAirtime(connector),
+      );
     } finally {
       await release?.call();
+    }
+  }
+
+  /// Airtime of one full image chunk on radio2, or null when radio2 doesn't
+  /// say its profile. The send sheet times packets for the main radio, which
+  /// is far slower than radio2: paced for it, an HD image on radio2 left the
+  /// air empty most of the time between packets.
+  Future<Duration?> _radio2PacketAirtime(MeshCoreConnector connector) async {
+    try {
+      final reply = await connector
+          .runLocalCliCommand('get radio2')
+          .timeout(const Duration(seconds: 4));
+      final r2 = Radio2Reply.tryParse(reply);
+      final sf = r2?.spreadingFactor;
+      final bw = r2?.bandwidth;
+      final cr = r2?.codingRate;
+      if (r2 == null || !r2.canTransmit || sf == null || bw == null) {
+        return null;
+      }
+      if (cr == null) return null;
+      return loraTimeOnAir(
+        payloadBytes: kImageChunkBlobBytes + kMeshCoreOnAirOverheadBytes,
+        spreadingFactor: sf.value,
+        bandwidthHz: bw.hz,
+        codingRate: cr.value,
+        preambleSymbols: r2.preamble ?? meshCorePreambleSymbols(sf.value),
+      );
+    } catch (_) {
+      return null;
     }
   }
 
@@ -2207,6 +2245,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     ImageSendPreviewResult result, {
     required Uint8List sourceBytes,
     bool hd = false,
+    bool onRadio2 = false,
+    Duration? packetAirtime,
   }) async {
     final l10n = context.l10n;
     AeicHdRepairService? repair;
@@ -2261,14 +2301,17 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     // Pace on the measured per-packet airtime when the radio parameters are
     // known; fall back to the base gap when they are not, rather than
     // hammering the channel back-to-back.
+    // An HD image on radio2 is paced for radio2 ([packetAirtime]).
     final total = result.airtime;
-    final perPacket = total == null
-        ? Duration.zero
-        : Duration(
-            microseconds:
-                total.inMicroseconds ~/
-                (result.packetCount == 0 ? 1 : result.packetCount),
-          );
+    final perPacket =
+        packetAirtime ??
+        (total == null
+            ? Duration.zero
+            : Duration(
+                microseconds:
+                    total.inMicroseconds ~/
+                    (result.packetCount == 0 ? 1 : result.packetCount),
+              ));
 
     setState(() {
       _imageSendTotal = chunkSet.blobs.length;
@@ -2285,6 +2328,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         chunkSet.blobs,
         channelIndex: widget.channel.index,
         interChunkDelay: imageSendChunkGap(perPacket),
+        // Held on radio2: the main mesh's traffic doesn't hold it up.
+        mainMeshQuiet: !onRadio2,
         onProgress: (sentChunks, totalChunks) {
           if (!mounted) return;
           setState(() => _imageSendSent = sentChunks);
