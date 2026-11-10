@@ -504,9 +504,9 @@ class AeicHdRunner {
   /// directory failed", and the download stopped.
   Future<Directory> _workDir() async {
     final tmp = await getTemporaryDirectory();
-    final parent = await Directory('${tmp.path}/aeic_hd').create(
-      recursive: true,
-    );
+    final parent = await Directory(
+      '${tmp.path}/aeic_hd',
+    ).create(recursive: true);
     return parent.createTemp('job');
   }
 
