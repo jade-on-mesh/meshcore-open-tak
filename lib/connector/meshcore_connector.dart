@@ -8435,22 +8435,31 @@ class MeshCoreConnector extends ChangeNotifier {
     required int channelIndex,
     required Duration interChunkDelay,
     void Function(int sent, int total)? onProgress,
+    bool mainMeshQuiet = true,
   }) => sendChannelDataBlobs(
     blobs,
     channelIndex: channelIndex,
     dataType: dataTypeAeicImage,
     interChunkDelay: interChunkDelay,
     onProgress: onProgress,
+    mainMeshQuiet: mainMeshQuiet,
   );
 
   /// Sends [blobs] as GRP_DATA packets of [dataType] on [channelIndex], with
   /// the same pacing, collision avoidance and region scoping as images.
+  ///
+  /// [mainMeshQuiet] false skips waiting for the main mesh to go quiet before
+  /// each packet: for a burst held on radio2, where main-mesh traffic doesn't
+  /// collide with it and the radio does its own listen-before-talk on radio2.
+  /// Waited for, every packet sat out seconds of other people's main-mesh
+  /// traffic and of the backoff after its own previous packet.
   Future<bool> sendChannelDataBlobs(
     List<Uint8List> blobs, {
     required int channelIndex,
     required int dataType,
     required Duration interChunkDelay,
     void Function(int sent, int total)? onProgress,
+    bool mainMeshQuiet = true,
   }) async {
     if (blobs.isEmpty) return false;
     if (!supportsChannelData) return false;
@@ -8469,7 +8478,9 @@ class MeshCoreConnector extends ChangeNotifier {
         // Same collision avoidance as every other channel send. On a quiet mesh
         // this returns almost immediately; interChunkDelay is what actually
         // paces the chunks so we do not talk over our own previous packet.
-        await _waitForRadioQuiet(lastInboundRxTime: _lastChannelMsgRxTime);
+        if (mainMeshQuiet) {
+          await _waitForRadioQuiet(lastInboundRxTime: _lastChannelMsgRxTime);
+        }
         await _sendFrameAndWaitForCommandAck(
           buildSendChannelDataFrame(
             channelIndex: channelIndex,
