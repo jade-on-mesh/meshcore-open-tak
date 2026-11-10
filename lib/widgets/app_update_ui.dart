@@ -430,7 +430,7 @@ class _EarlierBuildsDialogState extends State<_EarlierBuildsDialog> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(l10n.appUpdate_earlierBuild(build.version, build.build)),
-        content: Text(l10n.appUpdate_earlierSaved(saved)),
+        content: Text(l10n.appUpdate_earlierSaved(saved!)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
