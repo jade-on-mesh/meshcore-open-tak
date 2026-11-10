@@ -43,11 +43,37 @@ void main() {
       expect(p.mask, 0x80F0);
     });
 
-    test('a request picks those chunks, parity last', () {
+    test('a request picks those data chunks, never parity', () {
       final set = hdImage();
       final total = set.dataChunkCount;
       final picked = aeicHdBlobsFor(set.blobs, total, (1 << 1) | 0x8000);
-      expect(picked, [set.blobs[1], set.blobs[total]]);
+      expect(picked, [set.blobs[1]]);
+    });
+
+    test('requests and wrapped chunks differ every time (salt)', () {
+      Uint8List req() => encodeAeicHdRequest(
+        senderPrefix: 0x8c41,
+        imgId: 9,
+        total: 8,
+        missingMask: 0xFF,
+      );
+      final seen = {for (var i = 0; i < 20; i++) req()[7]};
+      expect(seen.length, greaterThan(1));
+      final set = hdImage();
+      final w = wrapAeicHdChunk(set.blobs[0]);
+      expect(w.length, set.blobs[0].length + 1);
+      expect(w.length, lessThanOrEqualTo(kImageChunkBlobBytes));
+      expect(unwrapAeicHdChunk(w), set.blobs[0]);
+      // Announces and requests aren't taken for chunks.
+      expect(unwrapAeicHdChunk(req()), isNull);
+      expect(unwrapAeicHdChunk(encodeAeicHdAnnounce(1, 2, 'x')), isNull);
+      // Every data chunk still fits once wrapped.
+      for (var i = 0; i < set.dataChunkCount; i++) {
+        expect(
+          wrapAeicHdChunk(set.blobs[i]).length,
+          lessThanOrEqualTo(kImageChunkBlobBytes),
+        );
+      }
     });
   });
 
