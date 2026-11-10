@@ -37,9 +37,7 @@ class EmojiPicker extends StatefulWidget {
       final keywords = emojiKeywords[emoji];
       if (keywords == null) continue;
       final theirs = keywords.split(' ');
-      final all = words.every(
-        (w) => theirs.any((k) => k.startsWith(w)),
-      );
+      final all = words.every((w) => theirs.any((k) => k.startsWith(w)));
       if (!all) continue;
       (keywords.startsWith(words.first) ? first : rest).add(emoji);
     }
@@ -237,7 +235,6 @@ class EmojiPicker extends StatefulWidget {
     '🎶',
     '🚀',
   ];
-
 }
 
 class _EmojiPickerState extends State<EmojiPicker> {
@@ -292,9 +289,7 @@ class _EmojiPickerState extends State<EmojiPicker> {
     final l10n = context.l10n;
     final emojiCategories = _emojiCategories(l10n);
     final searching = _query.trim().isNotEmpty;
-    final results = searching
-        ? EmojiPicker.search(_query)
-        : const <String>[];
+    final results = searching ? EmojiPicker.search(_query) : const <String>[];
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.5,
       child: Column(
@@ -384,26 +379,26 @@ class _EmojiPickerState extends State<EmojiPicker> {
                   : _grid(results),
             )
           else
-          Expanded(
-            child: DefaultTabController(
-              length: emojiCategories.length,
-              child: Column(
-                children: [
-                  TabBar(
-                    isScrollable: true,
-                    tabs: emojiCategories.keys
-                        .map((cat) => Tab(text: cat))
-                        .toList(),
-                  ),
-                  Expanded(
-                    child: TabBarView(
-                      children: emojiCategories.values.map(_grid).toList(),
+            Expanded(
+              child: DefaultTabController(
+                length: emojiCategories.length,
+                child: Column(
+                  children: [
+                    TabBar(
+                      isScrollable: true,
+                      tabs: emojiCategories.keys
+                          .map((cat) => Tab(text: cat))
+                          .toList(),
                     ),
-                  ),
-                ],
+                    Expanded(
+                      child: TabBarView(
+                        children: emojiCategories.values.map(_grid).toList(),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
