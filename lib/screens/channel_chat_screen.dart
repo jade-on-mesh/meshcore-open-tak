@@ -695,6 +695,13 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         switch (value) {
           case 'search':
             _openSearch();
+          case 'otpPad':
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => OtpPadScreen.forChannel(widget.channel),
+              ),
+            );
           case 'messageFilter':
             _toggleChannelFiltering();
           case 'notifications':
@@ -734,11 +741,23 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             .getChannelNotificationMode(muteKey);
         final readOnly = isRadioReadOnly(context.read<MeshCoreConnector>());
         return [
-          if (_searchInMenu(context))
+          if (_narrowBar(context)) ...[
             PopupMenuItem(
               value: 'search',
               child: _menuRow(Icons.search, context.l10n.chatSearch_tooltip),
             ),
+            PopupMenuItem(
+              value: 'otpPad',
+              child: _menuRow(
+                context.read<MeshCoreConnector>().isChannelOtpEnabled(
+                      widget.channel.index,
+                    )
+                    ? Icons.lock
+                    : Icons.lock_open,
+                'OTP Pad',
+              ),
+            ),
+          ],
           if (_messageFilter case final filter? when filter.settings.enabled)
             PopupMenuItem(
               value: 'messageFilter',
@@ -864,8 +883,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     );
   }
 
-  /// Search sits in the ⋮ menu instead of the bar below this width.
-  static bool _searchInMenu(BuildContext context) =>
+  /// Below this width search and the OTP pad sit in the ⋮ menu instead of
+  /// the bar, so the fork's extra buttons still fit.
+  static bool _narrowBar(BuildContext context) =>
       MediaQuery.sizeOf(context).width < 400;
 
   Widget _buildScaffold(BuildContext context) {
@@ -981,7 +1001,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                       const RadioStatsIconButton(),
                       // On a narrow phone search moves into the ⋮ menu, so
                       // the fork's extra buttons still fit the bar.
-                      if (!_searchInMenu(context))
+                      if (!_narrowBar(context))
                         IconButton(
                           tooltip: context.l10n.chatSearch_tooltip,
                           icon: const Icon(Icons.search),
@@ -1271,7 +1291,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         );
       },
     ),
-    Consumer<MeshCoreConnector>(
+    if (!_narrowBar(context))
+      Consumer<MeshCoreConnector>(
       builder: (context, connector, _) {
         final otpEnabled = connector.isChannelOtpEnabled(widget.channel.index);
         return IconButton(

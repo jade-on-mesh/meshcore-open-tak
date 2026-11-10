@@ -432,8 +432,9 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  /// Search sits in the ⋮ menu instead of the bar below this width.
-  static bool _searchInMenu(BuildContext context) =>
+  /// Below this width search and the OTP pad sit in the ⋮ menu instead of
+  /// the bar, so the fork's extra buttons still fit.
+  static bool _narrowBar(BuildContext context) =>
       MediaQuery.sizeOf(context).width < 400;
 
   Widget _buildScaffold(BuildContext context) {
@@ -508,7 +509,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 const RadioStatsIconButton(),
                 // On a narrow phone search moves into the ⋮ menu, so the
                 // fork's extra buttons still fit the bar.
-                if (!_searchInMenu(context))
+                if (!_narrowBar(context))
                   IconButton(
                     tooltip: context.l10n.chatSearch_tooltip,
                     icon: const Icon(Icons.search),
@@ -545,7 +546,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     );
                   },
                 ),
-                Consumer<MeshCoreConnector>(
+                if (!_narrowBar(context))
+                  Consumer<MeshCoreConnector>(
                   builder: (context, connector, _) {
                     final contact = _resolveContact(connector);
                     final otpEnabled = connector.isContactOtpEnabled(
@@ -578,6 +580,14 @@ class _ChatScreenState extends State<ChatScreen> {
                         switch (value) {
                           case 'search':
                             _openSearch();
+                          case 'otpPad':
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    OtpPadScreen.forContact(contact),
+                              ),
+                            );
                           case 'routing':
                             ContactRoutingSheet.show(context, contact: contact);
                           case 'info':
@@ -613,7 +623,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         }
                       },
                       itemBuilder: (context) => [
-                        if (_searchInMenu(context))
+                        if (_narrowBar(context)) ...[
                           PopupMenuItem(
                             value: 'search',
                             child: MeshMenuItemRow(
@@ -621,6 +631,19 @@ class _ChatScreenState extends State<ChatScreen> {
                               label: context.l10n.chatSearch_tooltip,
                             ),
                           ),
+                          PopupMenuItem(
+                            value: 'otpPad',
+                            child: MeshMenuItemRow(
+                              icon:
+                                  connector.isContactOtpEnabled(
+                                    contact.publicKeyHex,
+                                  )
+                                  ? Icons.lock
+                                  : Icons.lock_open,
+                              label: 'OTP Pad',
+                            ),
+                          ),
+                        ],
                         PopupMenuItem(
                           value: 'routing',
                           child: MeshMenuItemRow(

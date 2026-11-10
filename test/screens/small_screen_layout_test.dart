@@ -88,12 +88,13 @@ Future<_Env> _connect(WidgetTester tester) async {
   final translation = TranslationService(settings);
   // The fork's services the chat and map screens read (see main.dart).
   final voice = VoxVoiceService(connector);
+  // The connector first: the offline variants swap out providers[0].
   final env = _Env(connector, [
+    ChangeNotifierProvider.value(value: connector),
     ChangeNotifierProvider<VoxVoiceService>.value(value: voice),
     ChangeNotifierProvider<WalkieService>.value(
       value: WalkieService(connector, voice),
     ),
-    ChangeNotifierProvider.value(value: connector),
     ChangeNotifierProvider.value(value: retry),
     ChangeNotifierProvider.value(value: PathHistoryService(storage)),
     ChangeNotifierProvider.value(value: settings),
