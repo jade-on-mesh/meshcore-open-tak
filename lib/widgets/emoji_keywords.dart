@@ -1,0 +1,279 @@
+// Search words for the reaction picker's emoji (emoji_picker.dart): the
+// Unicode name, then emojilib's keywords. Generated from unicode-emoji-json
+// 0.9.0 and emojilib 4.0.3 (both MIT).
+//
+// Only the picker's own emoji: a reaction goes on the wire as its place in
+// that list (ReactionHelper.emojiToIndex), so others couldn't be sent.
+
+const Map<String, String> emojiKeywords = <String, String>{
+  '👍':
+      'thumbs up thumbsup yes awesome good agree accept cool hand like +1 approve body ok sign thumb',
+  '❤️': 'red heart love like valentines black heavy',
+  '😂':
+      'face with tears of joy face cry tears weep happy happytears haha crying laugh laughing lol tear',
+  '🎉':
+      'party popper party congratulations birthday magic circus celebration tada activity entertainment hat hooray',
+  '👏':
+      'clapping hands hands praise applause congrats yay body clap golf hand round sign',
+  '😀': 'grinning face face smile happy joy :d grin smiley',
+  '😃':
+      'grinning face with big eyes face happy joy haha :d :) smile funny mouth open smiley smiling',
+  '😄':
+      'grinning face with smiling eyes face happy joy funny haha laugh like :d :) smile eye grin mouth open pleased smiley',
+  '😁':
+      'beaming face with smiling eyes face happy smile joy kawaii eye grin grinning',
+  '😅':
+      'grinning face with sweat face hot happy laugh sweat smile relief cold exercise mouth open smiling',
+  '🤣':
+      'rolling on the floor laughing face rolling floor laughing lol haha rofl laugh rotfl',
+  '😊':
+      'smiling face with smiling eyes face smile happy flushed crush embarrassed shy joy ^^ blush eye proud smiley',
+  '😇':
+      'smiling face with halo face angel heaven halo innocent fairy fantasy smile tale',
+  '🙂': 'slightly smiling face face smile fine happy this',
+  '🙃': 'upside-down face upside down face face flipped silly smile sarcasm',
+  '😉':
+      'winking face face happy mischievous secret ;) smile eye flirt wink winky',
+  '😌':
+      'relieved face face relaxed phew massage happiness content pleased whew',
+  '😍':
+      'smiling face with heart-eyes smiling face with heart eyes face love like affection valentines infatuation crush heart eye shaped smile',
+  '🥰':
+      'smiling face with hearts face love like affection valentines infatuation crush hearts adore eyes three',
+  '😘':
+      'face blowing a kiss face love like affection valentines infatuation kiss blow flirt heart kissing throwing',
+  '😗':
+      'kissing face love like face 3 valentines infatuation kiss duck kissy whistling',
+  '😙':
+      'kissing face with smiling eyes face affection valentines infatuation kiss eye kissy smile whistle whistling',
+  '😚':
+      'kissing face with closed eyes face love like affection valentines infatuation kiss eye kissy',
+  '😋':
+      'face savoring food happy joy tongue smile face silly yummy nom delicious savouring goofy hungry lick licking lips smiling um yum',
+  '😛':
+      'face with tongue face prank childish playful mischievous smile tongue cheeky out stuck',
+  '😝':
+      'squinting face with tongue face prank playful mischievous smile tongue closed eye eyes horrible out stuck taste tightly',
+  '😜':
+      'winking face with tongue face prank childish playful mischievous smile wink tongue crazy eye joke out silly stuck',
+  '🤪':
+      'zany face face goofy crazy excited eye eyes grinning large one small wacky wild',
+  '🤨':
+      'face with raised eyebrow face distrust scepticism disapproval disbelief surprise suspicious colbert mild one rock skeptic',
+  '🧐': 'face with monocle face stuffy wealthy rich exploration inspection',
+  '🤓': 'nerd face face nerdy geek dork glasses smiling',
+  '😎':
+      'smiling face with sunglasses face cool smile summer beach sunglass best bright eye eyewear friends glasses mutual snapchat sun weather',
+  '🥸':
+      'disguised face pretent brows glasses moustache disguise incognito nose',
+  '🤩':
+      'star-struck star struck face smile starry eyes grinning excited eyed wow',
+  '🥳': 'partying face face celebration woohoo birthday hat horn party',
+  '😏':
+      'smirking face face smile mean prank smug sarcasm flirting sexual smirk suggestive',
+  '😒':
+      'unamused face indifference bored straight face serious sarcasm unimpressed skeptical dubious ugh side eye dissatisfied meh unhappy',
+  '😞': 'disappointed face face sad upset depressed :( sadface',
+  '😔': 'pensive face face sad depressed upset dejected sadface sorrowful',
+  '😟': 'worried face face concern nervous :( sad sadface',
+  '😕':
+      'confused face face indifference huh weird hmmm :/ meh nonplussed puzzled s',
+  '🙁':
+      'slightly frowning face face frowning disappointed sad upset frown unhappy',
+  '😣':
+      'persevering face face sick no upset oops eyes helpless persevere scrunched struggling',
+  '😖':
+      'confounded face face confused sick unwell oops :s mouth quivering scrunched',
+  '😫': 'tired face sick whine upset frustrated distraught exhausted fed up',
+  '😩': 'weary face face tired sleepy sad frustrated upset distraught wailing',
+  '🥺':
+      'pleading face face begging mercy cry tears sad grievance eyes glossy puppy simp',
+  '😢': 'crying face face tears sad depressed upset :\'( cry tear',
+  '😭':
+      'loudly crying face sobbing face cry tears sad upset depressed bawling sob tear',
+  '😤':
+      'face with steam from nose face gas phew proud pride triumph airing frustrated grievances look mad smug steaming won',
+  '😠': 'angry face mad face annoyed frustrated anger grumpy',
+  '😡':
+      'enraged face pouting face angry mad hate despise enraged grumpy pout rage red',
+  '🤬':
+      'face with symbols on mouth face swearing cursing cussing profanity expletive covering foul grawlix over serious',
+  '🤯': 'exploding head face shocked mind blown blowing explosion mad',
+  '😳':
+      'flushed face face blush shy flattered blushing dazed embarrassed eyes open shame wide',
+  '🥵': 'hot face face feverish heat red sweating overheated stroke',
+  '🥶': 'cold face face blue freezing frozen frostbite icicles ice',
+  '😱':
+      'face screaming in fear face munch scared omg alone fearful home horror scream shocked',
+  '😨':
+      'fearful face face scared terrified nervous fear oops shocked surprised',
+  '😰':
+      'anxious face with sweat face nervous sweat blue cold concerned face mouth open rushed',
+  '😥':
+      'sad but relieved face face phew sweat nervous disappointed eyebrow whew',
+  '😓': 'downcast face with sweat face hot sad tired exercise cold hard work',
+  '🤗':
+      'smiling face with open hands hugging face face smile hug hands hugs open smiling',
+  '🤔':
+      'thinking face face hmmm think consider chin shade thinker throwing thumb',
+  '🤭':
+      'face with hand over mouth face whoops shock surprise blushing covering eyes quiet smiling',
+  '🤫':
+      'shushing face face quiet shhh closed covering finger hush lips shh shush silence',
+  '🤥': 'lying face face lie pinocchio liar long nose',
+  '😶': 'face without mouth face blank mouthless mute no quiet silence silent',
+  '👎':
+      'thumbs down thumbsdown no dislike hand -1 bad body bury disapprove sign thumb',
+  '👊':
+      'oncoming fist angry violence fist hit attack hand body bro brofist bump clenched closed facepunch fisted punch sign',
+  '✊': 'raised fist fingers hand grasp body clenched power pump punch',
+  '🤛': 'left-facing fist left facing fist hand fistbump body bump leftwards',
+  '🤜':
+      'right-facing fist right facing fist hand fistbump body bump rightwards right fist',
+  '🤞':
+      'crossed fingers good lucky body cross finger hand hopeful index luck middle',
+  '✌️':
+      'victory hand fingers ohyeah hand peace victory two air body quotes sign v',
+  '🤟':
+      'love-you gesture love you gesture hand fingers gesture body i ily sign',
+  '🤘':
+      'sign of the horns hand fingers evil eye sign of horns rock on body devil finger heavy metal',
+  '👌': 'ok hand ok hand fingers limbs perfect ok okay body sign',
+  '🤌':
+      'pinched fingers size tiny small che finger gesture hand interrogation ma purse sarcastic vuoi',
+  '🤏': 'pinching hand tiny small size amount body little',
+  '👈':
+      'backhand index pointing left direction fingers hand left body finger point white',
+  '👉':
+      'backhand index pointing right fingers hand direction right body finger point white',
+  '👆':
+      'backhand index pointing up fingers hand direction up body finger middle point white',
+  '👇':
+      'backhand index pointing down fingers hand direction down body finger point white',
+  '☝️':
+      'index pointing up hand fingers direction up body finger point secret white',
+  '👋':
+      'waving hand wave hands gesture goodbye solong farewell hello hi palm body sign',
+  '🤚': 'raised back of hand fingers raised backhand body',
+  '🖐️': 'hand with fingers splayed hand fingers palm body finger five raised',
+  '✋': 'raised hand fingers stop highfive palm ban body five high',
+  '🖖':
+      'vulcan salute hand fingers spock star trek between body finger middle part prosper raised ring split',
+  '🙌':
+      'raising hands gesture hooray yea celebration hands air arms banzai body both festivus hallelujah hand miracle person praise raised two',
+  '👐': 'open hands fingers butterfly hands open body hand hug jazz sign',
+  '🤲': 'palms up together hands gesture cupped prayer body dua facing',
+  '🤝': 'handshake agreement shake deal hand hands meeting shaking',
+  '🙏':
+      'folded hands please hope wish namaste highfive pray thank you thanks appreciate ask body bow five gesture hand high person prayer pressed together',
+  '✍️': 'writing hand lower left ballpoint pen stationery write compose body',
+  '💅':
+      'nail polish nail care beauty manicure finger fashion nail slay body cosmetics fingers nonchalant',
+  '🤳': 'selfie camera phone arm hand',
+  '💪':
+      'flexed biceps arm flex hand summer strong biceps bicep body comic feats flexing muscle muscles strength workout',
+  '🧡': 'orange heart love like affection valentines',
+  '💛': 'yellow heart love like affection valentines bf gold snapchat',
+  '💚': 'green heart love like affection valentines nct',
+  '💙': 'blue heart love like affection valentines brand neutral',
+  '💜': 'purple heart love like affection valentines bts emoji',
+  '🖤': 'black heart evil dark wicked',
+  '🤍': 'white heart pure',
+  '🤎': 'brown heart coffee',
+  '💔': 'broken heart sad sorry break heart heartbreak breaking brokenhearted',
+  '❤️‍🔥': 'heart on fire passionate enthusiastic burn love lust sacred',
+  '❤️‍🩹':
+      'mending heart broken heart bandage wounded bandaged healing healthier improving recovering recuperating unbroken well',
+  '💕': 'two hearts love like affection valentines heart pink small',
+  '💞': 'revolving hearts love like affection valentines heart two',
+  '💓':
+      'beating heart love like affection valentines pink heart alarm heartbeat pulsating wifi',
+  '💗':
+      'growing heart like love affection valentines pink excited heartpulse multiple nervous pulse triple',
+  '💖':
+      'sparkling heart love like affection valentines excited sparkle sparkly stars heart',
+  '💘':
+      'heart with arrow love like heart affection valentines cupid lovestruck romance',
+  '💝':
+      'heart with ribbon love valentines box chocolate chocolates gift valentine',
+  '💟': 'heart decoration purple-square love like',
+  '💌':
+      'love letter email like affection envelope valentines heart mail note romance',
+  '💢': 'anger symbol angry mad comic pop sign vein',
+  '💥':
+      'collision bomb explode explosion blown bang boom comic impact red spark symbol break',
+  '💫':
+      'dizzy star sparkle shoot magic circle comic symbol animations transitions',
+  '💦':
+      'sweat droplets water drip oops comic drops plewds splashing symbol workout',
+  '💨':
+      'dashing away wind air fast shoo fart smoke puff blow comic dash gust running steam symbol vaping',
+  '🕳️': 'hole embarrassing',
+  '💬':
+      'speech balloon bubble words message talk chatting chat comic comment dialog text literals',
+  '👁️‍🗨️': 'eye in speech bubble info am i witness',
+  '🗨️': 'left speech bubble words message talk chatting dialog',
+  '🗯️': 'right anger bubble caption speech thinking mad angry balloon zag zig',
+  '💭': 'thought balloon bubble cloud speech thinking dream comic',
+  '🎊':
+      'confetti ball festival party birthday circus activity celebration entertainment',
+  '🎈': 'balloon party celebration birthday circus activity entertainment red',
+  '🎁':
+      'wrapped gift present birthday christmas xmas box celebration entertainment',
+  '🎀': 'ribbon decoration pink girl bowtie bow celebration',
+  '🪅': 'piñata pinata mexico candy celebration party',
+  '🪆': 'nesting dolls matryoshka toy doll russia russian',
+  '🏆':
+      'trophy win award contest place ftw ceremony championship prize winner winners',
+  '🥇': '1st place medal award winning first gold',
+  '🥈': '2nd place medal award second silver',
+  '🥉': '3rd place medal award third bronze',
+  '⚽': 'soccer ball sports football',
+  '⚾': 'baseball sports balls ball softball',
+  '🥎': 'softball sports balls ball game glove sport underarm',
+  '🏀': 'basketball sports balls nba ball hoop orange',
+  '🏐': 'volleyball sports balls ball game',
+  '🏈': 'american football sports balls nfl ball gridiron superbowl',
+  '🏉': 'rugby football sports team ball league union',
+  '🎾': 'tennis sports balls green ball racket racquet',
+  '🥏': 'flying disc sports frisbee ultimate game golf sport',
+  '🎳': 'bowling sports fun play ball game pin pins skittles ten',
+  '🏏': 'cricket game sports ball bat field',
+  '🏑': 'field hockey sports ball game stick',
+  '🏒': 'ice hockey sports game puck stick',
+  '🥍': 'lacrosse sports ball stick game goal sport',
+  '🏓': 'ping pong sports pingpong ball bat game paddle table tennis',
+  '🏸': 'badminton sports birdie game racquet shuttlecock',
+  '🥊': 'boxing glove sports fighting',
+  '🥋': 'martial arts uniform judo karate taekwondo',
+  '🥅': 'goal net sports catch',
+  '⛳': 'flag in hole sports business flag hole summer golf',
+  '🔥': 'fire hot cook flame burn lit snapstreak tool remove',
+  '⭐': 'star night yellow gold medium white',
+  '🌟':
+      'glowing star night sparkle awesome good magic glittery glow shining star2',
+  '✨':
+      'sparkles stars shine shiny cool awesome good magic entertainment glitter sparkle star',
+  '⚡':
+      'high voltage thunder weather lightning bolt fast zap danger electric electricity sign thunderbolt speed',
+  '💡': 'light bulb light electricity idea comic electric',
+  '🔦': 'flashlight dark camping sight night electric light tool torch',
+  '🏮':
+      'red paper lantern light paper halloween spooky asian bar izakaya japanese',
+  '🪔': 'diya lamp lighting oil',
+  '📱':
+      'mobile phone technology apple gadgets dial cell communication iphone smartphone telephone responsive design',
+  '💻':
+      'laptop technology screen display monitor computer desktop notebook pc personal',
+  '⌚': 'watch time accessories apple clock timepiece wrist wristwatch',
+  '📷': 'camera gadgets photography digital entertainment photo video',
+  '📺': 'television technology program oldschool show entertainment tv video',
+  '📻':
+      'radio communication music podcast program digital entertainment video wireless',
+  '🎵':
+      'musical note score tone sound activity beamed eighth entertainment music notes pair quavers',
+  '🎶':
+      'musical notes music score activity entertainment multiple note singing',
+  '🚀':
+      'rocket launch ship staffmode nasa outer space fly shuttle vehicle deploy',
+};

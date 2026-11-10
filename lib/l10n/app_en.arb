@@ -1158,6 +1158,8 @@
   "chat_me": "Me",
   "reaction_report": "Emoji Reactions",
   "emojiCategorySmileys": "Smileys",
+  "emojiSearch_hint": "Search emoji",
+  "emojiSearch_none": "No emoji match",
   "emojiCategoryGestures": "Gestures",
   "emojiCategoryHearts": "Hearts",
   "emojiCategoryObjects": "Objects",
