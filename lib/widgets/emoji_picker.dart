@@ -7,10 +7,20 @@ import 'emoji_keywords.dart';
 class EmojiPicker extends StatefulWidget {
   final Function(String) onEmojiSelected;
 
-  const EmojiPicker({super.key, required this.onEmojiSelected});
+  /// Only the [classicEmojis]: for reactions that can only carry those (an
+  /// image's, whose reaction has no MeshCore One form).
+  final bool classicOnly;
 
-  /// Every emoji the picker offers, once each, in picker order.
-  static List<String> get allEmojis => <String>{
+  const EmojiPicker({
+    super.key,
+    required this.onEmojiSelected,
+    this.classicOnly = false,
+  });
+
+  /// The original picker's emoji, once each. A reaction to one of these goes
+  /// as its place in this list (ReactionHelper.emojiToIndex), which every
+  /// MeshCore Open reads; any other emoji goes in MeshCore One's format.
+  static List<String> get classicEmojis => <String>{
     ...quickEmojis,
     ...smileys,
     ...gestures,
@@ -20,7 +30,7 @@ class EmojiPicker extends StatefulWidget {
 
   /// The picker's emoji whose name or keywords match [query]: every word of
   /// it starts a word of theirs. Ones whose name starts with it come first.
-  static List<String> search(String query) {
+  static List<String> search(String query, {bool classicOnly = false}) {
     final words = query
         .toLowerCase()
         .split(RegExp(r'\s+'))
@@ -29,7 +39,10 @@ class EmojiPicker extends StatefulWidget {
     if (words.isEmpty) return const <String>[];
     final first = <String>[];
     final rest = <String>[];
-    for (final emoji in allEmojis) {
+    final pool = classicOnly
+        ? classicEmojis
+        : [for (final (_, emojis) in emojiGroups) ...emojis];
+    for (final emoji in pool) {
       if (emoji == query.trim()) {
         first.add(emoji);
         continue;
@@ -248,12 +261,27 @@ class _EmojiPickerState extends State<EmojiPicker> {
   }
 
   Map<String, List<String>> _emojiCategories(AppLocalizations l10n) {
-    return {
-      l10n.emojiCategorySmileys: EmojiPicker.smileys,
-      l10n.emojiCategoryGestures: EmojiPicker.gestures,
-      l10n.emojiCategoryHearts: EmojiPicker.hearts,
-      l10n.emojiCategoryObjects: EmojiPicker.objects,
+    if (widget.classicOnly) {
+      return {
+        l10n.emojiCategorySmileys: EmojiPicker.smileys,
+        l10n.emojiCategoryGestures: EmojiPicker.gestures,
+        l10n.emojiCategoryHearts: EmojiPicker.hearts,
+        l10n.emojiCategoryObjects: EmojiPicker.objects,
+      };
+    }
+    String label(String slug) => switch (slug) {
+      'smileys_emotion' => l10n.emojiCategorySmileys,
+      'people_body' => l10n.emojiGroup_people,
+      'animals_nature' => l10n.emojiGroup_animals,
+      'food_drink' => l10n.emojiGroup_food,
+      'travel_places' => l10n.emojiGroup_travel,
+      'activities' => l10n.emojiGroup_activities,
+      'objects' => l10n.emojiCategoryObjects,
+      'symbols' => l10n.emojiGroup_symbols,
+      'flags' => l10n.emojiGroup_flags,
+      _ => slug,
     };
+    return {for (final (slug, emojis) in emojiGroups) label(slug): emojis};
   }
 
   void _pick(String emoji) {
@@ -289,7 +317,9 @@ class _EmojiPickerState extends State<EmojiPicker> {
     final l10n = context.l10n;
     final emojiCategories = _emojiCategories(l10n);
     final searching = _query.trim().isNotEmpty;
-    final results = searching ? EmojiPicker.search(_query) : const <String>[];
+    final results = searching
+        ? EmojiPicker.search(_query, classicOnly: widget.classicOnly)
+        : const <String>[];
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.5,
       child: Column(

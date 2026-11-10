@@ -279,4 +279,21 @@ class ReactionHelper {
   static String encodeReaction(String hash, String emojiIndex) {
     return 'r:$hash:$emojiIndex';
   }
+
+  /// A reaction in MeshCore One's format, for an emoji outside
+  /// [reactionEmojis] (which our own format can only carry by index): the
+  /// emoji, a newline and the 8-character hash of [text] and its sender's
+  /// [timestampSecs]. On a channel (and a room) [senderName] is the reacted
+  /// message's sender, written first as `@[name]`; a DM leaves it out.
+  /// MeshCore Open and MeshCore One both read it ([parseReactionMC1]).
+  static String encodeReactionMC1({
+    required String emoji,
+    required int timestampSecs,
+    required String text,
+    String? senderName,
+  }) {
+    final hash = computeReactionHashMC1(timestampSecs, senderName, text);
+    final who = senderName == null ? '' : '@[$senderName]';
+    return '$who$emoji\n$hash';
+  }
 }

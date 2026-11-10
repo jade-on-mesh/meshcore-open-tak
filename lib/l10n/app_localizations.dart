@@ -4471,6 +4471,48 @@ abstract class AppLocalizations {
   /// **'Smileys'**
   String get emojiCategorySmileys;
 
+  /// No description provided for @emojiGroup_people.
+  ///
+  /// In en, this message translates to:
+  /// **'People'**
+  String get emojiGroup_people;
+
+  /// No description provided for @emojiGroup_animals.
+  ///
+  /// In en, this message translates to:
+  /// **'Animals & nature'**
+  String get emojiGroup_animals;
+
+  /// No description provided for @emojiGroup_food.
+  ///
+  /// In en, this message translates to:
+  /// **'Food & drink'**
+  String get emojiGroup_food;
+
+  /// No description provided for @emojiGroup_travel.
+  ///
+  /// In en, this message translates to:
+  /// **'Travel & places'**
+  String get emojiGroup_travel;
+
+  /// No description provided for @emojiGroup_activities.
+  ///
+  /// In en, this message translates to:
+  /// **'Activities'**
+  String get emojiGroup_activities;
+
+  /// No description provided for @emojiGroup_symbols.
+  ///
+  /// In en, this message translates to:
+  /// **'Symbols'**
+  String get emojiGroup_symbols;
+
+  /// No description provided for @emojiGroup_flags.
+  ///
+  /// In en, this message translates to:
+  /// **'Flags'**
+  String get emojiGroup_flags;
+
   /// No description provided for @emojiSearch_hint.
   ///
   /// In en, this message translates to:

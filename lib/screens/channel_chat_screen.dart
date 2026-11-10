@@ -3219,6 +3219,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     showMeshSheet(
       context,
       builder: (_) => EmojiPicker(
+        // An image's reaction has no MeshCore One form.
+        classicOnly: true,
         onEmojiSelected: (emoji) {
           final index = ReactionHelper.emojiToIndex(emoji);
           if (index == null) return; // Unknown emoji, skip
@@ -4337,7 +4339,19 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     if (!ensureRadioConnected(context)) return;
     final connector = context.read<MeshCoreConnector>();
     final emojiIndex = ReactionHelper.emojiToIndex(emoji);
-    if (emojiIndex == null) return; // Unknown emoji, skip
+    if (emojiIndex == null) {
+      // Outside the classic set: MeshCore One's format carries any emoji.
+      connector.sendChannelMessage(
+        widget.channel,
+        ReactionHelper.encodeReactionMC1(
+          emoji: emoji,
+          timestampSecs: message.timestamp.millisecondsSinceEpoch ~/ 1000,
+          text: message.text,
+          senderName: message.senderName,
+        ),
+      );
+      return;
+    }
     final hash = message.computeReactionHash();
     final reactionText = ReactionHelper.encodeReaction(hash, emojiIndex);
     connector.sendChannelMessage(widget.channel, reactionText);
