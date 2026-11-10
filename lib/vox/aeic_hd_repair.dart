@@ -225,6 +225,7 @@ class AeicHdRepairService {
       }
     }
     if (!reassembler.holdsParity(key)) mask |= _kParityBit;
+    reassembler.expectResend(key);
     final release = await MediaMeshChannelHold.hold(
       connector,
       entry.channelIndex,

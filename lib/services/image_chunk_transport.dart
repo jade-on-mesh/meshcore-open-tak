@@ -859,6 +859,19 @@ class ImageReassembler {
 
   static const int maxParkedStreams = 16;
 
+  /// Parked images a resend was asked for: only these carry on from what they
+  /// had. Any other chunk after the timeout starts afresh, as before.
+  final Set<ImageStreamKey> _resuming = <ImageStreamKey>{};
+
+  /// A resend of [key]'s missing chunks was asked for: when they come, the
+  /// parked chunks are used again.
+  void expectResend(ImageStreamKey key) {
+    _resuming.add(key);
+    while (_resuming.length > maxParkedStreams) {
+      _resuming.remove(_resuming.first);
+    }
+  }
+
   ImageReassembler({
     this.selfPrefix,
     this.ttl = kImageReassemblyTtl,
@@ -1023,8 +1036,8 @@ class ImageReassembler {
     }
     if (entry == null) {
       entry = _PendingImage(key: key, total: header.total, firstSeen: at);
-      // A resend for a parked partial image: carry on from what it had.
-      final parked = _parked.remove(key);
+      // A resend asked for a parked partial image: carry on from what it had.
+      final parked = _resuming.remove(key) ? _parked.remove(key) : null;
       if (parked != null && parked.total == header.total) {
         entry.bodies.addAll(parked.bodies);
         entry.parityBody = parked.parityBody;

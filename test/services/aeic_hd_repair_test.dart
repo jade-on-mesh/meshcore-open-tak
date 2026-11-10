@@ -72,13 +72,27 @@ void main() {
       );
       final missing = r.missingDataChunks(key)!;
       expect(missing, [for (var i = 1; i < total; i += 2) i]);
-      // Minutes later only the missing ones come back.
+      // Asked for, minutes later only the missing ones come back.
+      r.expectResend(key);
       t = t.add(const Duration(minutes: 10));
       for (final i in missing) {
         r.addChunk(set.blobs[i]);
       }
       expect(done, isNotNull);
       expect(r.missingDataChunks(key), isNull);
+    });
+
+    test('without asking, a late chunk starts afresh (as before)', () {
+      final set = hdImage();
+      var t = DateTime(2026, 11, 10);
+      final r = ImageReassembler(clock: () => t);
+      for (var i = 0; i < set.dataChunkCount - 1; i++) {
+        r.addChunk(set.blobs[i]);
+      }
+      t = t.add(kImageReassemblyTtl + const Duration(seconds: 1));
+      r.evictExpired();
+      final out = r.addChunk(set.blobs[set.dataChunkCount - 1]);
+      expect(out.status, ImageChunkStatus.accepted);
     });
 
     test('a different image reusing the id starts over', () {
