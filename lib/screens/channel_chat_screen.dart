@@ -34,6 +34,8 @@ import '../services/app_settings_service.dart'
 import '../services/chat_text_scale_service.dart';
 import '../services/image_chunk_transport.dart';
 import '../services/image_codec_service.dart';
+import '../services/media_lockdown.dart';
+import '../services/media_mesh.dart';
 import '../services/otp_service.dart';
 import '../services/received_image_store.dart';
 import '../services/translation_service.dart';
@@ -2137,15 +2139,59 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   }
 
   /// AI sketch HD (lib/vox/aeic_hd_service.dart): encoded by the ncnn codec,
-  /// then chunked onto the channel like any image message.
+  /// then chunked onto the channel like any image message, on MediaMesh
+  /// (radio2) like the app's own photos: the channel's traffic is put on
+  /// radio2 for the burst and back after. Where radio2 can't take it, it isn't
+  /// sent (the main-mesh developer switch aside). The regular AI sketch is
+  /// MeshCore Open's own and stays as it is.
   Future<void> _sendAiSketchHd(Uint8List sourceBytes) async {
     final result = await showAeicHdSendSheet(context, imageBytes: sourceBytes);
     if (result == null || !mounted) return;
-    await _sendImage(
-      context.read<MeshCoreConnector>(),
-      result,
-      sourceBytes: sourceBytes,
-    );
+    final connector = context.read<MeshCoreConnector>();
+    final restore = await _channelOnRadio2(connector);
+    if (!mounted) return;
+    if (restore == null && !MediaLockdown.devAllowMain.value) {
+      showDismissibleSnackBar(
+        context,
+        content: const Text(MediaLockdown.blockedMessage),
+      );
+      return;
+    }
+    try {
+      await _sendImage(connector, result, sourceBytes: sourceBytes);
+    } finally {
+      await restore?.call();
+    }
+  }
+
+  /// Puts this channel's traffic on radio2 (MediaMesh's `tx.channel`) and
+  /// returns what puts the old choice back; a no-op when it is on radio2
+  /// already (a `#r2-` channel, or set so). Null when radio2 can't take it:
+  /// firmware without tx.channel, or radio2 off or listen-only.
+  Future<Future<void> Function()?> _channelOnRadio2(
+    MeshCoreConnector connector,
+  ) async {
+    final mm = MediaMeshController(connector);
+    final slot = widget.channel.index;
+    final before = await mm.getChannelRoute(slot);
+    if (before == null) return null;
+    if (before.active == 'radio2') return () async {};
+    try {
+      final now = await mm.setChannelRoute(slot, TxChoice.radio2);
+      if (now.active != 'radio2') {
+        await mm.setChannelRoute(slot, before.choice);
+        return null;
+      }
+    } on MediaMeshException {
+      return null;
+    }
+    return () async {
+      try {
+        await mm.setChannelRoute(slot, before.choice);
+      } on MediaMeshException {
+        // The radio kept radio2 for this channel; its Radio setting shows it.
+      }
+    };
   }
 
   /// Chunks [result] and puts it on the channel as GRP_DATA packets.

@@ -43,7 +43,9 @@ class AeicHdScreen extends StatelessWidget {
                 'sketch. The picture is squeezed to about 1-2 KB (roughly '
                 '8-15 packets) and redrawn by an image model on the '
                 'receiving phone: far closer to the real photo than an AI '
-                'sketch, still about half the airtime of a Mesh photo.',
+                'sketch, still about half the airtime of a Mesh photo. In '
+                'channels it goes out on MediaMesh (radio2), like Mesh '
+                'photos.',
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 12),

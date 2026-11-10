@@ -628,7 +628,8 @@ class _PhotoKindChooser extends StatelessWidget {
             'AEIC HD, about 1-2 KB (8-15 packets): much closer to the real '
             'photo than an AI sketch, half the airtime of a Mesh photo. The '
             'receiver\'s phone takes a few minutes to draw it and needs the '
-            'AI sketch HD model; radios can\'t show it.';
+            'AI sketch HD model; radios can\'t show it. In channels it goes '
+            'on MediaMesh (radio2), like Mesh photos.';
     }
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
