@@ -77,7 +77,8 @@ Tap a channel card to open the channel chat screen.
 - Channel name
 - Subtitle: channel type and effective region when set, with `(default)` when inherited
 - Tap the title or landscape icon to select a region; see [Regions](regions.md)
-- Bell icon: mute or unmute notifications for this channel (crossed-out bell when muted)
+- Overflow menu (⋮) → **Notifications**: choose all messages, mentions only or muted for this channel. The row shows the current mode
+- Overflow menu (⋮) → **Edit channel** and **Delete channel**: the same sheet and confirmation as a long-press in the channel list
 - Overflow menu (⋮) → **Chat background**: a color or picture, with a fade slider, behind this channel only. See [Chat backgrounds](themes.md#chat-backgrounds). Holiday greetings in new messages play a short animation, as in [direct chat](chat-and-messaging.md#message-list)
 
 ### Message Display
@@ -100,6 +101,10 @@ Messages also show a region label when known, independently of message tracing. 
 - **Mesh images** sent as GRP_DATA chunks and reconstructed locally ([setup and limitations](image-messages.md))
 - **URL image previews** when enabled per channel; content is fetched over the internet
 - **Reactions** displayed as emoji pills below target messages
+
+### Message Filter
+
+The app bar overflow menu (⋮) has **Filter messages in this channel** (shown while the master switch is on) to turn the [message filter](message-filter.md) on or off for just this channel. Hidden messages do not count as unread, notify, or appear in the channel list preview.
 
 ### Replies (Channel Chat Only)
 
@@ -128,6 +133,7 @@ Where your radio only hears nearby repeaters, turn on **Also count different nea
 | Reply | All messages | Triggers reply mode |
 | Path | All messages | Opens message path view |
 | Add Reaction | Incoming messages only | Opens emoji picker (cannot react to your own messages) |
+| Mark as spam / Filter this sender / Filter messages like this… | Incoming messages (when filtering is on for the channel) | Hides spam; see [Message filter](message-filter.md) |
 | Copy | All messages | Copies text to clipboard |
 | Mark as Unread | Incoming messages only | Marks this message and all subsequent incoming messages as unread |
 | Delete | All messages | Removes locally (not from mesh) |

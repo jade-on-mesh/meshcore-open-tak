@@ -32,9 +32,10 @@ import '../services/network_map/network_map_api_client.dart';
 import '../services/ui_view_state_service.dart';
 import '../storage/prefs_manager.dart';
 import '../utils/contact_search.dart';
-import '../utils/disconnect_navigation_mixin.dart';
+import '../utils/radio_guard.dart';
 import '../utils/battery_utils.dart';
 import '../utils/route_transitions.dart';
+import '../widgets/connect_sheet.dart';
 import '../widgets/app_update_ui.dart';
 import '../widgets/map_poi_cluster.dart';
 import '../widgets/marker_label_dialog.dart';
@@ -43,6 +44,7 @@ import '../widgets/quick_switch_bar.dart';
 import '../widgets/sync_progress_overlay.dart';
 import '../icons/los_icon.dart';
 import 'channels_screen.dart';
+import 'manual_path_trace_screen.dart';
 import 'chat_screen.dart';
 import 'contacts_screen.dart';
 import '../theme/mesh_theme.dart';
@@ -88,7 +90,7 @@ class MapScreen extends StatefulWidget {
   State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
+class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   // Zoom level at which node labels start to appear
   static const double _labelZoomThreshold = 14.0;
   // Below this zoom, nearby nodes collapse into clusters.
@@ -156,6 +158,9 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
   ({LatLng center, double zoom})? _initialCamera;
 
   static const String _lastCameraKey = 'map_last_camera';
+  static const Duration _cameraSaveDelay = Duration(milliseconds: 500);
+  Timer? _cameraSaveTimer;
+  List<String>? _pendingCamera;
 
   ({LatLng center, double zoom}) _fallbackCamera(MeshCoreConnector connector) {
     final lat = connector.selfLatitude;
@@ -173,24 +178,59 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
     return (center: const LatLng(20, 0), zoom: _mapMinZoom);
   }
 
-  void _saveLastCamera() {
+  void _scheduleCameraSave() {
     try {
       final camera = _mapController.camera;
-      PrefsManager.instance.setStringList(_lastCameraKey, [
+      final value = [
         camera.center.latitude.toString(),
         camera.center.longitude.toString(),
         camera.zoom.toString(),
-      ]);
+      ];
+      _cameraSaveTimer?.cancel();
+      _cameraSaveTimer = null;
+      _pendingCamera =
+          listEquals(value, PrefsManager.instance.getStringList(_lastCameraKey))
+          ? null
+          : value;
+      if (_pendingCamera != null) {
+        _cameraSaveTimer = Timer(_cameraSaveDelay, _flushCameraSave);
+      }
     } catch (_) {}
+  }
+
+  void _flushCameraSave() {
+    _cameraSaveTimer?.cancel();
+    _cameraSaveTimer = null;
+    final value = _pendingCamera;
+    _pendingCamera = null;
+    if (value == null) return;
+    final prefs = PrefsManager.instance;
+    if (listEquals(value, prefs.getStringList(_lastCameraKey))) return;
+    unawaited(
+      prefs.setStringList(_lastCameraKey, value).catchError((Object error) {
+        debugPrint('Saving map camera failed: $error');
+        return false;
+      }),
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) {
+      _scheduleCameraSave();
+      _flushCameraSave();
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _ageTimer?.cancel();
     _online.removeListener(_onOnlineChanged);
     MediaMeshRepeaters.instance.removeListener(_onMediaMeshChanged);
     _online.dispose();
-    _saveLastCamera();
+    _scheduleCameraSave();
+    _flushCameraSave();
     _searchController.dispose();
     _searchFocus.dispose();
     _tak.dispose();
@@ -262,7 +302,13 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
 
   void _requestOnlineData() {
     try {
-      _online.requestBounds(_mapController.camera.visibleBounds);
+      _online.requestBounds(
+        _mapController.camera.visibleBounds,
+        fetchLinks: context
+            .read<AppSettingsService>()
+            .settings
+            .mapShowOnlineLinks,
+      );
     } catch (_) {
       // Camera not ready yet; onMapReady requests once it is.
     }
@@ -303,6 +349,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadRemovedMarkers();
     _online.addListener(_onOnlineChanged);
     MediaMeshRepeaters.instance.addListener(_onMediaMeshChanged);
@@ -557,9 +604,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
               _MapConnectorSnapshot.fromConnector,
             );
         final connector = connectorSnapshot.connector;
-        if (!checkConnectionAndNavigate(connector)) {
-          return const SizedBox.shrink();
-        }
+        final readOnly = isRadioReadOnly(connector);
         final settings = context.select<AppSettingsService, AppSettings>(
           (service) => service.settings,
         );
@@ -576,7 +621,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
         final tileCache = context.read<MapTileCacheService>();
         final scheme = Theme.of(context).colorScheme;
         final isDesktop = _isDesktopPlatform(defaultTargetPlatform);
-        final allContacts = connector.allContacts;
+        final allContacts = connectorSnapshot.allContacts;
 
         final contacts = settings.mapShowDiscoveryContacts
             ? allContacts
@@ -783,6 +828,11 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
           contactsWithLocation,
           settings,
         );
+        final visibleOnlineRepeaters = _filterOnlineRepeatersBySettings(
+          _online.repeaters,
+          settings,
+          showGuessedLocations: settings.mapShowGuessedLocations,
+        );
         Contact? selectedContact;
         if (_selectedKey != null) {
           for (final c in allContacts) {
@@ -825,12 +875,9 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                         connector.selfLatitude != null &&
                         connector.selfLongitude != null)
                       PopupMenuItem(
-                        child: Row(
-                          children: [
-                            const Icon(Icons.radar),
-                            const SizedBox(width: 8),
-                            Text(context.l10n.contacts_pathTrace),
-                          ],
+                        child: MeshMenuItemRow(
+                          icon: Icons.radar,
+                          label: context.l10n.contacts_pathTrace,
                         ),
                         onTap: () => _openPathTrace(
                           connector,
@@ -842,12 +889,18 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                       ),
                     if (!_isBuildingPathTrace)
                       PopupMenuItem(
-                        child: Row(
-                          children: [
-                            const LosIcon(),
-                            const SizedBox(width: 8),
-                            Text(context.l10n.map_lineOfSight),
-                          ],
+                        enabled: !readOnly,
+                        child: MeshMenuItemRow(
+                          icon: Icons.radar,
+                          label: context.l10n.manualTrace_menuItem,
+                        ),
+                        onTap: () => ManualPathTraceScreen.open(context),
+                      ),
+                    if (!_isBuildingPathTrace)
+                      PopupMenuItem(
+                        child: MeshMenuItemRow(
+                          leading: const LosIcon(size: 20),
+                          label: context.l10n.map_lineOfSight,
                         ),
                         onTap: () {
                           final candidates = <LineOfSightEndpoint>[];
@@ -886,28 +939,13 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                           );
                         },
                       ),
+                    connectionMenuItem(this.context, context),
                     PopupMenuItem(
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.logout,
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(context.l10n.common_disconnect),
-                        ],
-                      ),
-                      onTap: () => _disconnect(context, connector),
-                    ),
-                    PopupMenuItem(
-                      child: Row(
-                        children: [
-                          const UpdateDot(
-                            child: ThemedIcon(ThemeIconSlot.settings),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(context.l10n.settings_title),
-                        ],
+                      child: MeshMenuItemRow(
+                        leading: const UpdateDot(
+                          child: ThemedIcon(ThemeIconSlot.settings, size: 20),
+                        ),
+                        label: context.l10n.settings_title,
                       ),
                       onTap: () => Navigator.push(
                         context,
@@ -984,11 +1022,12 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                           event is MapEventFlingAnimationEnd ||
                           event is MapEventScrollWheelZoom ||
                           event is MapEventDoubleTapZoomEnd) {
-                        _saveLastCamera();
+                        _scheduleCameraSave();
                         if (showOnline) _requestOnlineData();
                       }
                     },
                     onPositionChanged: (camera, hasGesture) {
+                      _scheduleCameraSave();
                       // Track zoom in half-step buckets so cluster/marker
                       // detail levels update without rebuilding every frame.
                       final bucket = (camera.zoom * 2).roundToDouble() / 2;
@@ -1015,6 +1054,8 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                     if (showOnline)
                       ...buildNetworkMapOnlineLayers(
                         controller: _online,
+                        repeaters: visibleOnlineRepeaters,
+                        showLinks: settings.mapShowOnlineLinks,
                         localMarkerKeys: showLocal
                             ? {for (final c in visibleContacts) c.publicKeyHex}
                             : const {},
@@ -1167,13 +1208,19 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
             ),
             bottomNavigationBar: SafeArea(
               top: false,
-              child: QuickSwitchBar(
-                selectedIndex: 2,
-                onDestinationSelected: (index) =>
-                    _handleQuickSwitch(index, context),
-                contactsUnreadCount: connector.getTotalContactsUnreadCount(),
-                channelsUnreadCount: connector.getTotalChannelsUnreadCount(),
-                highContrast: _usePaletteOverlay,
+              child: Selector<MeshCoreConnector, (int, int)>(
+                selector: (_, connector) => (
+                  connector.getTotalContactsUnreadCount(),
+                  connector.getTotalChannelsUnreadCount(),
+                ),
+                builder: (context, unread, child) => QuickSwitchBar(
+                  selectedIndex: 2,
+                  onDestinationSelected: (index) =>
+                      _handleQuickSwitch(index, context),
+                  contactsUnreadCount: unread.$1,
+                  channelsUnreadCount: unread.$2,
+                  highContrast: _usePaletteOverlay,
+                ),
               ),
             ),
             floatingActionButton:
@@ -1212,8 +1259,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
   }) {
     final visibleContactsSignature = Object.hashAll(
       contacts.map(
-        (contact) =>
-            Object.hash(_mapContactSignature(contact), _ageOf(contact)),
+        (contact) => Object.hash(contact.publicKeyHex, _ageOf(contact)),
       ),
     );
     final key = _NodeMarkersCacheKey(
@@ -1531,6 +1577,43 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
     return filtered;
   }
 
+  List<NetworkMapRepeater> _filterOnlineRepeatersBySettings(
+    List<NetworkMapRepeater> repeaters,
+    dynamic settings, {
+    required bool showGuessedLocations,
+  }) {
+    final keyPrefix = settings.mapKeyPrefix.trim().toLowerCase();
+    final now = DateTime.now();
+
+    return repeaters.where((repeater) {
+      if (repeater.isEstimated && !showGuessedLocations) return false;
+
+      final typeVisible = switch (repeater.type) {
+        advTypeRepeater => settings.mapShowRepeaters,
+        advTypeChat => settings.mapShowChatNodes,
+        _ => settings.mapShowOtherNodes,
+      };
+      if (!typeVisible) return false;
+
+      final freshnessVisible = switch (_freshness) {
+        _Freshness.all => true,
+        _Freshness.online => repeater.status == NetworkMapRepeaterStatus.active,
+        _Freshness.recent => repeater.status != NetworkMapRepeaterStatus.stale,
+        _Freshness.stale => repeater.status == NetworkMapRepeaterStatus.stale,
+      };
+      if (!freshnessVisible) return false;
+
+      if (settings.mapTimeFilterHours > 0 && repeater.lastSeen != null) {
+        final age = now.difference(repeater.lastSeen!).inHours;
+        if (age > settings.mapTimeFilterHours) return false;
+      }
+
+      return !settings.mapKeyPrefixEnabled ||
+          keyPrefix.isEmpty ||
+          repeater.key.toLowerCase().startsWith(keyPrefix);
+    }).toList();
+  }
+
   List<Marker> _buildNodeMarkers(
     List<Contact> contacts,
     settings, {
@@ -1758,33 +1841,37 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
             ],
           ),
           alignment: Alignment.center,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                '$count',
-                style: MeshTheme.mono(
-                  fontSize: count >= 100 ? 13 : 15,
-                  fontWeight: FontWeight.w800,
-                  color: MapPalette.markerOutline,
-                ),
-              ),
-              if (online > 0)
-                Container(
-                  width: 7,
-                  height: 7,
-                  margin: const EdgeInsets.only(top: 1),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: MapPalette.online,
-                    border: Border.all(
-                      color: MapPalette.markerOutline,
-                      width: 1,
-                    ),
+          // The marker has a fixed size; large text scales shrink to fit it.
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '$count',
+                  style: MeshTheme.mono(
+                    fontSize: count >= 100 ? 13 : 15,
+                    fontWeight: FontWeight.w800,
+                    color: MapPalette.markerOutline,
                   ),
                 ),
-            ],
+                if (online > 0)
+                  Container(
+                    width: 7,
+                    height: 7,
+                    margin: const EdgeInsets.only(top: 1),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: MapPalette.online,
+                      border: Border.all(
+                        color: MapPalette.markerOutline,
+                        width: 1,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -2255,6 +2342,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
     !settings.mapShowRooms,
     !settings.mapShowSensors,
     _onlyMediaMesh,
+    !settings.mapShowOnlineLinks,
     settings.mapKeyPrefixEnabled,
   ].where((active) => active).length;
 
@@ -2280,19 +2368,19 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
           ButtonSegment(
             value: MapSourceOption.local,
             icon: const Icon(Icons.radio, size: 20),
-            label: Text(l10n.networkMap_sourceLocal),
+            label: MeshSegmentLabel(l10n.networkMap_sourceLocal),
             tooltip: l10n.networkMap_sourceLocalHint,
           ),
           ButtonSegment(
             value: MapSourceOption.online,
             icon: const Icon(Icons.public, size: 20),
-            label: Text(l10n.networkMap_sourceOnline),
+            label: MeshSegmentLabel(l10n.networkMap_sourceOnline),
             tooltip: l10n.networkMap_sourceOnlineHint,
           ),
           ButtonSegment(
             value: MapSourceOption.both,
             icon: const Icon(Icons.layers, size: 20),
-            label: Text(l10n.networkMap_sourceBoth),
+            label: MeshSegmentLabel(l10n.networkMap_sourceBoth),
             tooltip: l10n.networkMap_sourceBothHint,
           ),
         ],
@@ -3279,6 +3367,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
   }
 
   void _handleQuickSwitch(int index, BuildContext context) {
+    FocusManager.instance.primaryFocus?.unfocus();
     if (index == 2) return;
     switch (index) {
       case 0:
@@ -3293,33 +3382,6 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
           buildQuickSwitchRoute(const ChannelsScreen(hideBackButton: true)),
         );
         break;
-    }
-  }
-
-  Future<void> _disconnect(
-    BuildContext context,
-    MeshCoreConnector connector,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(context.l10n.common_disconnect),
-        content: Text(context.l10n.map_disconnectConfirm),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(context.l10n.common_cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(context.l10n.common_disconnect),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      await connector.disconnect();
     }
   }
 
@@ -3444,6 +3506,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
     required MeshCoreConnector connector,
     required LatLng position,
   }) {
+    final readOnly = isRadioReadOnly(connector);
     showModalBottomSheet(
       context: context,
       builder: (sheetContext) => SafeArea(
@@ -3452,6 +3515,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
+                enabled: !readOnly,
                 leading: const Icon(Icons.place),
                 title: Text(context.l10n.map_shareMarkerHere),
                 onTap: () {
@@ -3466,6 +3530,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                 },
               ),
               ListTile(
+                enabled: !readOnly,
                 leading: const Icon(Icons.my_location),
                 title: Text(context.l10n.map_setAsMyLocation),
                 onTap: () {
@@ -3479,7 +3544,7 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                 onTap: () => Navigator.pop(sheetContext),
               ),
             ],
-          ),
+        ),
         ),
       ),
     );
@@ -3726,6 +3791,8 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
     BuildContext context,
     AppSettingsService settingsService,
   ) {
+    final showOnlineFilters =
+        context.read<UiViewStateService>().mapSource != MapSourceOption.local;
     showMeshSheet(
       context,
       builder: (sheetContext) => StatefulBuilder(
@@ -3887,6 +3954,14 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                           onChanged: (value) =>
                               service.setMapShowOtherNodes(value),
                         ),
+                        if (showOnlineFilters)
+                          SwitchListTile(
+                            title: Text(sheetContext.l10n.map_showOnlineLinks),
+                            value: settings.mapShowOnlineLinks,
+                            dense: true,
+                            onChanged: (value) =>
+                                service.setMapShowOnlineLinks(value),
+                          ),
                         SectionHeader(sheetContext.l10n.map_markers),
                         SwitchListTile(
                           title: Text(sheetContext.l10n.map_showSharedMarkers),
@@ -4136,6 +4211,18 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
     });
   }
 
+  void _openManualEntry() {
+    final text = PathHelper.splitPathBytes(
+      _pathTrace,
+      context.read<MeshCoreConnector>().pathHashByteWidth,
+    ).map(PathHelper.formatHopHex).join(',');
+    ManualPathTraceScreen.open(
+      context,
+      initialText: text,
+      initialReturnPath: _traceDraft.returnPath,
+    );
+  }
+
   void _openTraceResult({required bool reuseLastResult}) {
     final draft = _traceDraft;
     final path = Uint8List.fromList(_pathTrace);
@@ -4263,6 +4350,12 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                         label: Text(l10n.map_removeLast),
                       ),
                       TextButton.icon(
+                        onPressed: _openManualEntry,
+                        style: TextButton.styleFrom(minimumSize: buttonSize),
+                        icon: const Icon(Icons.keyboard),
+                        label: Text(l10n.manualTrace_enterHashes),
+                      ),
+                      TextButton.icon(
                         onPressed: _clearPath,
                         style: TextButton.styleFrom(minimumSize: buttonSize),
                         icon: const Icon(Icons.delete_outline),
@@ -4276,12 +4369,16 @@ class _MapScreenState extends State<MapScreen> with DisconnectNavigationMixin {
                       ButtonSegment(
                         value: true,
                         icon: const Icon(Icons.sync_alt),
-                        label: Text(l10n.map_pathTraceModeRoundTrip),
+                        label: MeshSegmentLabel(
+                          l10n.map_pathTraceModeRoundTrip,
+                        ),
                       ),
                       ButtonSegment(
                         value: false,
                         icon: const Icon(Icons.arrow_forward),
-                        label: Text(l10n.map_pathTraceModeAsEntered),
+                        label: MeshSegmentLabel(
+                          l10n.map_pathTraceModeAsEntered,
+                        ),
                       ),
                     ],
                     selected: {returnPath},
@@ -4364,6 +4461,7 @@ int _mapContactSignature(Contact contact) {
 
 class _MapConnectorSnapshot {
   final MeshCoreConnector connector;
+  final List<Contact> allContacts;
   final int contactsSignature;
   final int markerSignature;
   final int batterySignature;
@@ -4371,6 +4469,7 @@ class _MapConnectorSnapshot {
 
   const _MapConnectorSnapshot({
     required this.connector,
+    required this.allContacts,
     required this.contactsSignature,
     required this.markerSignature,
     required this.batterySignature,
@@ -4423,6 +4522,7 @@ class _MapConnectorSnapshot {
 
     return _MapConnectorSnapshot(
       connector: connector,
+      allContacts: allContacts,
       contactsSignature: contactsSignature,
       markerSignature: Object.hashAll(markerParts),
       batterySignature: batterySignature,
@@ -4434,8 +4534,6 @@ class _MapConnectorSnapshot {
         connector.currentBwHz,
         connector.currentSf,
         connector.currentTxPower,
-        connector.getTotalContactsUnreadCount(),
-        connector.getTotalChannelsUnreadCount(),
       ),
     );
   }

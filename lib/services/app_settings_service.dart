@@ -119,6 +119,10 @@ class AppSettingsService extends ChangeNotifier {
     await updateSettings(_settings.copyWith(mapShowSensors: value));
   }
 
+  Future<void> setMapShowOnlineLinks(bool value) async {
+    await updateSettings(_settings.copyWith(mapShowOnlineLinks: value));
+  }
+
   Future<void> setMapShowOverlaps(bool value) async {
     await updateSettings(_settings.copyWith(mapShowOverlaps: value));
   }
@@ -755,6 +759,20 @@ class AppSettingsService extends ChangeNotifier {
       _settings.copyWith(
         cyr2latProfiles: updated,
         selectedCyr2latProfileId: newSelectedId,
+      ),
+    );
+  }
+
+  Future<void> resetRoutingSettingsToDefault() async {
+    await updateSettings(
+      _settings.copyWith(
+        maxRouteWeight: AppSettings.defaultMaxRouteWeight,
+        initialRouteWeight: AppSettings.defaultInitialRouteWeight,
+        routeWeightSuccessIncrement:
+            AppSettings.defaultRouteWeightSuccessIncrement,
+        routeWeightFailureDecrement:
+            AppSettings.defaultRouteWeightFailureDecrement,
+        maxMessageRetries: AppSettings.defaultMaxMessageRetries,
       ),
     );
   }

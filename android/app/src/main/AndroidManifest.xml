@@ -38,7 +38,7 @@
             android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice"
-            android:stopWithTask="false" />
+            android:stopWithTask="true" />
         <!-- Bridge for the MeshCore ATAK plugin (atak-plugin/). Only ATAK's
              packages are served; see TakBridgeService.kt. -->
         <service
@@ -59,6 +59,10 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/app_update_paths" />
         </provider>
+        <!-- Monochrome small icon for the background-connection notification -->
+        <meta-data
+            android:name="org.meshcore.open.NOTIFICATION_ICON"
+            android:resource="@drawable/ic_stat_notification" />
         <!-- Handles reply / mark-as-read actions on message notifications -->
         <receiver
             android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver"

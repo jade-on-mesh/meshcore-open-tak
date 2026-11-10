@@ -141,4 +141,6 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     // FileProvider for in-app updates (AppUpdateChannel.kt)
     implementation("androidx.core:core-ktx:1.13.1")
+    // enableEdgeToEdge() for Android 15+ edge-to-edge enforcement.
+    implementation("androidx.activity:activity-ktx:1.13.0")
 }

@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'l10n/app_localizations.dart';
 import 'l10n/l10n.dart';
+import 'l10n/locale_tag.dart';
 import 'package:provider/provider.dart';
 
 import 'review_mode/review_mode_storage.dart';
@@ -17,6 +18,7 @@ import 'services/mediamesh_coverage.dart';
 import 'services/media_mesh_nearby.dart';
 import 'services/mediamesh_repeaters.dart';
 import 'services/media_lockdown.dart';
+import 'screens/channels_screen.dart';
 import 'utils/platform_info.dart';
 
 import 'connector/meshcore_connector.dart';
@@ -28,11 +30,14 @@ import 'services/image_codec_service.dart';
 import 'services/image_codec_settings_store.dart';
 import 'services/received_image_blob_store_factory.dart';
 import 'services/received_image_store.dart';
+import 'services/scroll_capture_service.dart';
 import 'services/storage_service.dart';
+import 'services/message_filter/message_filter_service.dart';
 import 'services/message_retry_service.dart';
 import 'services/path_history_service.dart';
 import 'services/app_settings_service.dart';
 import 'services/network_map/network_map_upload_service.dart';
+import 'services/notification_navigator.dart';
 import 'services/notification_service.dart';
 import 'services/ble_debug_log_service.dart';
 import 'services/app_debug_log_service.dart';
@@ -46,6 +51,7 @@ import 'services/ui_view_state_service.dart';
 import 'services/chat_background_service.dart';
 import 'services/timeout_prediction_service.dart';
 import 'storage/prefs_manager.dart';
+import 'storage/history_store.dart';
 import 'theme/mesh_theme.dart';
 import 'utils/app_logger.dart';
 import 'widgets/image_send_codec_binding.dart';
@@ -84,6 +90,8 @@ void main() async {
       'SystemChrome.setEnabledSystemUIMode',
       () => SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge),
     );
+    // Android's scrolling screenshot ("Capture more") for Flutter lists.
+    ScrollCaptureService.initialize();
   }
 
   // Initialize SharedPreferences cache
@@ -91,6 +99,7 @@ void main() async {
     'PrefsManager.initialize',
     () => PrefsManager.initialize(),
   );
+  await _startupStep('HistoryStore.initialize', HistoryStore.initialize);
 
   // Android: look for a newer build on the GitHub "Latest build" release.
   unawaited(AppUpdateService.instance.start());
@@ -111,6 +120,7 @@ void main() async {
   final translationService = TranslationService(appSettingsService);
   final uiViewStateService = UiViewStateService();
   final timeoutPredictionService = TimeoutPredictionService(storage);
+  final messageFilterService = MessageFilterService();
 
   // Load settings before anything reads them. The image stack below takes its
   // model registry and its "process automatically" default straight off
@@ -250,6 +260,10 @@ void main() async {
     'timeoutPredictionService.initialize',
     () => timeoutPredictionService.initialize(),
   );
+  await _startupStep(
+    'messageFilterService.load',
+    () => messageFilterService.load(),
+  );
 
   // Wire up connector with services
   connector.initialize(
@@ -264,6 +278,7 @@ void main() async {
     imageCodecService: imageCodecService,
     imageTransport: imageTransport,
     receivedImageStore: receivedImageStore,
+    messageFilterService: messageFilterService,
     // ImageStreamReassembler.addChunk already forwards every outcome to the
     // store together with the channel index (which ImageChunkOutcome itself
     // does not carry), so onImageChunk would be a second, channel-blind path.
@@ -279,16 +294,8 @@ void main() async {
   );
 
   await _startupStep(
-    'connector.loadContactCache',
-    () => connector.loadContactCache(),
-  );
-  await _startupStep(
-    'connector.loadCachedChannels',
-    () => connector.loadCachedChannels(),
-  );
-  await _startupStep(
-    'connector.loadUnreadState',
-    () => connector.loadUnreadState(),
+    'connector.restoreLastRadio',
+    () => connector.restoreLastRadio(),
   );
 
   runApp(
@@ -312,6 +319,7 @@ void main() async {
       voxVoiceService: voxVoiceService,
       networkMapUploadService: networkMapUploadService,
       chatBackgroundService: chatBackgroundService,
+      messageFilterService: messageFilterService,
     ),
   );
   _reportStartupStalls();
@@ -476,6 +484,7 @@ class MeshCoreApp extends StatefulWidget {
   final VoxVoiceService? voxVoiceService;
   final NetworkMapUploadService networkMapUploadService;
   final ChatBackgroundService chatBackgroundService;
+  final MessageFilterService messageFilterService;
 
   const MeshCoreApp({
     super.key,
@@ -498,6 +507,7 @@ class MeshCoreApp extends StatefulWidget {
     this.voxVoiceService,
     required this.networkMapUploadService,
     required this.chatBackgroundService,
+    required this.messageFilterService,
   });
 
   @override
@@ -531,6 +541,20 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
   late final MediaMeshCoverageService _coverage = MediaMeshCoverageService(
     widget.connector,
   );
+  late final NotificationNavigator _notificationNavigator =
+      NotificationNavigator(
+        navigatorKey: appNavigatorKey,
+        connector: widget.connector,
+        notifications: NotificationService(),
+      );
+
+  // Chosen once: the settings Consumer below rebuilds MaterialApp, and a new
+  // home there would replace the route the user is on.
+  late final Widget _home = (PlatformInfo.isWeb && !PlatformInfo.isChrome)
+      ? const ChromeRequiredScreen()
+      : widget.connector.hasRadioData
+      ? const ChannelsScreen()
+      : const ScannerScreen();
 
   @override
   void initState() {
@@ -543,6 +567,7 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
     MapHighlights.instance.attach(_teamService, _watchFeed);
     WidgetsBinding.instance.addObserver(this);
     _startModelDownloads();
+    _notificationNavigator.attach();
     _imageSweepTimer = Timer.periodic(
       _kImageSweepInterval,
       (_) => widget.imageReassembler.evictExpired(),
@@ -615,6 +640,7 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
   void dispose() {
     _modelDownloader?.dispose();
     _atakBridge.dispose();
+    _notificationNavigator.dispose();
     _imageSweepTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -698,6 +724,7 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
         Provider<AtakPluginBridge>.value(value: _atakBridge),
         ChangeNotifierProvider.value(value: widget.networkMapUploadService),
         ChangeNotifierProvider.value(value: widget.chatBackgroundService),
+        ChangeNotifierProvider.value(value: widget.messageFilterService),
       ],
       child: Consumer<AppSettingsService>(
         builder: (context, settingsService, child) {
@@ -745,9 +772,7 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
                     : app,
               );
             },
-            home: (PlatformInfo.isWeb && !PlatformInfo.isChrome)
-                ? const ChromeRequiredScreen()
-                : const ScannerScreen(),
+            home: _home,
           );
         },
       ),
@@ -788,7 +813,7 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
 
   Locale? _localeFromSetting(String? languageCode) {
     if (languageCode == null) return null;
-    return Locale(languageCode);
+    return localeFromTag(languageCode);
   }
 }
 

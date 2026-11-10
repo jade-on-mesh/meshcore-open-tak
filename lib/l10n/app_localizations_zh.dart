@@ -52,7 +52,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get common_close => '关闭';
 
   @override
-  String get common_done => 'Done';
+  String get common_done => '完成';
 
   @override
   String get common_edit => '编辑';
@@ -449,6 +449,177 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settings_appSettingsSubtitle => '通知、消息和地图偏好';
 
   @override
+  String get settings_export => '导出';
+
+  @override
+  String get settings_exportSubtitle => '将联系人和中继站导出为 GPX';
+
+  @override
+  String get backupRestore_title => '备份与恢复';
+
+  @override
+  String get backupRestore_subtitle => '保存或恢复应用数据和无线电设置';
+
+  @override
+  String get backupRestore_import => '导入';
+
+  @override
+  String get backupRestore_selectImportFile => '导入文件';
+
+  @override
+  String get backupRestore_password => '密码（可选）';
+
+  @override
+  String get backupRestore_passwordHelp =>
+      '设置密码会加密文件。留空则以明文保存，可能包含私钥/频道密钥、历史记录和凭据。';
+
+  @override
+  String get backupRestore_importUnavailable => '请检查密码，或选择受支持的备份文件。';
+
+  @override
+  String get backupRestore_items => '备份和恢复项目';
+
+  @override
+  String get backupRestore_nodeSettings => '节点设置';
+
+  @override
+  String get backupRestore_nodeSettingsDescription => '设备名称、私钥和公钥、无线电设置以及区域';
+
+  @override
+  String get backupRestore_deviceName => '设备名称';
+
+  @override
+  String get backupRestore_privateKey => '私钥（敏感）';
+
+  @override
+  String get backupRestore_publicKey => '公钥';
+
+  @override
+  String get backupRestore_radioSettings => '无线电设置';
+
+  @override
+  String get backupRestore_regions => '区域';
+
+  @override
+  String get backupRestore_location => '位置';
+
+  @override
+  String get backupRestore_contactSettings => '联系人设置';
+
+  @override
+  String get backupRestore_privacySettings => '隐私设置';
+
+  @override
+  String get backupRestore_contactsData => '联系人';
+
+  @override
+  String get backupRestore_perContactSettings => '联系人设置和过滤器';
+
+  @override
+  String get backupRestore_contactGroups => '联系人分组';
+
+  @override
+  String get backupRestore_contactHistory => '联系人历史记录';
+
+  @override
+  String get backupRestore_channelsData => '频道';
+
+  @override
+  String get backupRestore_channelFilters => '消息过滤设置';
+
+  @override
+  String get backupRestore_channelSettings => '频道设置';
+
+  @override
+  String get backupRestore_communities => '社区';
+
+  @override
+  String get backupRestore_channelHistory => '频道历史记录';
+
+  @override
+  String get backupRestore_locationSettings => '位置设置';
+
+  @override
+  String get backupRestore_locationSettingsDescription => '位置、联系人设置和隐私设置';
+
+  @override
+  String get backupRestore_appSettings => '应用设置';
+
+  @override
+  String get backupRestore_appSettingsDescription => '应用偏好和外观设置';
+
+  @override
+  String get backupRestore_ipfsKey => 'IPFS API 密钥（敏感）';
+
+  @override
+  String get backupRestore_stadiaMapKey => 'Stadia Maps API 密钥（敏感）';
+
+  @override
+  String get backupRestore_contacts => '联系人';
+
+  @override
+  String get backupRestore_contactsDescription => '联系人、每个联系人的过滤器和设置、分组以及消息历史记录';
+
+  @override
+  String get backupRestore_discoveredContacts => '已发现的联系人';
+
+  @override
+  String get backupRestore_discoveredContactsDescription => '已发现的联系人及其保存的详细信息';
+
+  @override
+  String get backupRestore_channels => '频道';
+
+  @override
+  String get backupRestore_channelsDescription => '频道、频道过滤器、社区和消息历史记录';
+
+  @override
+  String get backupRestore_backup => '创建备份';
+
+  @override
+  String get backupRestore_restore => '恢复所选项';
+
+  @override
+  String get backupRestore_backupComplete => '备份文件已创建。';
+
+  @override
+  String get backupRestore_restoreComplete => '恢复完成。如果恢复了无线电身份，请重新连接。';
+
+  @override
+  String get backupRestore_missingModelsTitle => '模型未下载';
+
+  @override
+  String backupRestore_missingModelsMessage(String models) {
+    return '恢复的设置所选用的模型在此设备上不可用：\n$models\n\n现在下载吗？';
+  }
+
+  @override
+  String get backupRestore_downloadModels => '下载模型';
+
+  @override
+  String get backupRestore_downloading => '正在下载…';
+
+  @override
+  String get backupRestore_cancelDownload => '取消下载';
+
+  @override
+  String backupRestore_failed(String error) {
+    return '备份操作失败：$error';
+  }
+
+  @override
+  String get backupRestore_fileTooLarge => '备份文件超过 100 MB 的限制。';
+
+  @override
+  String get backupRestore_selectAtLeastOne => '请至少选择一项。';
+
+  @override
+  String get backupRestore_replaceIdentityTitle => '替换无线电身份？';
+
+  @override
+  String get backupRestore_replaceIdentityMessage =>
+      '恢复节点设置会替换已连接无线电的私钥并更改其身份。仅在确有此意时继续。';
+
+  @override
   String get settings_nodeSettings => '节点设置';
 
   @override
@@ -664,11 +835,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settings_actions => '操作';
 
   @override
-  String get settings_deleteAllPaths => 'Delete All Paths';
+  String get settings_deleteAllPaths => '删除所有路径';
 
   @override
-  String get settings_deleteAllPathsSubtitle =>
-      'Clear all path data from contacts.';
+  String get settings_deleteAllPathsSubtitle => '清除联系人中的所有路径数据。';
 
   @override
   String get settings_sendAdvertisement => '发送广播';
@@ -1092,7 +1262,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appSettings_languageSl => '斯洛文尼亚语';
 
   @override
-  String get appSettings_languagePt => '葡萄牙语';
+  String get appSettings_languagePt => '葡萄牙语（巴西）';
+
+  @override
+  String get appSettings_languagePtPt => '葡萄牙语（葡萄牙）';
 
   @override
   String get appSettings_languageIt => '意大利语';
@@ -1117,6 +1290,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appSettings_languageUk => '乌克兰语';
+
+  @override
+  String get appSettings_languageCs => '捷克语';
 
   @override
   String get repeater_pathHashModeOption0 => '0 - 1 字节';
@@ -1260,32 +1436,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appSettings_autoRouteRotationDisabled => '自动路径轮换已禁用';
 
   @override
-  String get appSettings_maxRouteWeight => '最大路径重量';
-
-  @override
-  String get appSettings_maxRouteWeightSubtitle => '一条路径可以累积的最大重量，取决于成功交付的数量。';
-
-  @override
-  String get appSettings_initialRouteWeight => '初始路线权重';
-
-  @override
-  String get appSettings_initialRouteWeightSubtitle => '新发现路径的初始重量';
-
-  @override
-  String get appSettings_routeWeightSuccessIncrement => '成功权重增加';
-
-  @override
-  String get appSettings_routeWeightSuccessIncrementSubtitle =>
-      '在成功交付后，将重量添加到路径中';
-
-  @override
-  String get appSettings_routeWeightFailureDecrement => '失败权重降低';
-
-  @override
-  String get appSettings_routeWeightFailureDecrementSubtitle =>
-      '从一条路径上移除的货物，由于无法成功交付而移除。';
-
-  @override
   String get appSettings_maxMessageRetries => '最大消息重试次数';
 
   @override
@@ -1390,6 +1540,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appSettings_showOtherNodesSubtitle => '在地图上显示其他节点类型';
+
+  @override
+  String get appSettings_showOnlineLinks => '显示在线地图连接';
+
+  @override
+  String get appSettings_showOnlineLinksSubtitle => '显示在线地图中节点之间的连接线';
 
   @override
   String get appSettings_showRepeaterPath => 'Repeaters under hop count';
@@ -1649,23 +1805,23 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String contacts_lastSeenMinsAgo(int minutes) {
-    return '最后在线 $minutes 分钟前';
+    return '约 $minutes 分钟';
   }
 
   @override
-  String get contacts_lastSeenHourAgo => '最后在线 1小时前';
+  String get contacts_lastSeenHourAgo => '约 1 小时';
 
   @override
   String contacts_lastSeenHoursAgo(int hours) {
-    return '最后在线 $hours 小时前';
+    return '约 $hours 小时';
   }
 
   @override
-  String get contacts_lastSeenDayAgo => '最后在线 1天前';
+  String get contacts_lastSeenDayAgo => '约 1 天';
 
   @override
   String contacts_lastSeenDaysAgo(int days) {
-    return '最后在线 $days 天前';
+    return '约 $days 天';
   }
 
   @override
@@ -2037,6 +2193,34 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chat_noMessages => '暂无消息';
 
   @override
+  String get chatSearch_tooltip => '搜索消息';
+
+  @override
+  String get chatSearch_hint => '搜索消息';
+
+  @override
+  String get chatSearch_close => '关闭搜索';
+
+  @override
+  String chatSearch_resultCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 条结果',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get chatSearch_noResults => '没有匹配的消息';
+
+  @override
+  String get chatSearch_noResultsHint => '请尝试其他词语或检查拼写';
+
+  @override
+  String get chatSearch_jumpFailed => '在聊天中找不到该消息';
+
+  @override
   String get chat_sendMessage => '发送消息';
 
   @override
@@ -2079,6 +2263,63 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get chat_messageDeleted => '消息已删除';
+
+  @override
+  String get chat_selectMessages => '选择消息';
+
+  @override
+  String chat_selectedCount(int count) {
+    return '已选择 $count 项';
+  }
+
+  @override
+  String get chat_selectAll => '全选';
+
+  @override
+  String get chat_clearSelection => '取消选择';
+
+  @override
+  String get chat_deleteSelectedTitle => '删除消息？';
+
+  @override
+  String chat_deleteSelectedConfirm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '要从此设备删除 $count 条消息吗？',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String chat_messagesDeleted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '已删除 $count 条消息',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String messageFilter_markedSpamCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '已将 $count 条消息标记为垃圾消息',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String messageFilter_markedNotSpamCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '已将 $count 条消息标记为非垃圾消息',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get chat_retryingMessage => '正在重试消息';
@@ -2313,13 +2554,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get routing_title => '路由';
 
   @override
-  String get routing_modeAuto => '汽车';
+  String get routing_modeAuto => '自动';
 
   @override
   String get routing_modeFlood => '泛洪';
 
   @override
-  String get routing_modeManual => '手册';
+  String get routing_modeManual => '手动';
+
+  @override
+  String get routing_modeDirect => '直连';
 
   @override
   String get routing_modeAutoHint => '自动选择已知最佳路径，当没有已知路径时，则进行“泛洪”搜索。';
@@ -2329,6 +2573,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get routing_modeManualHint => '总是按照您设置的路径进行导航。';
+
+  @override
+  String get routing_modeDirectHint => '始终直接发送给该联系人，不经过中继跳。在对方处于无线电范围内时使用。';
 
   @override
   String get routing_currentRoute => '当前路线';
@@ -2385,7 +2632,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String routing_deliveryCounts(int successes, int failures) {
-    return '$successes delivered, $failures failed';
+    return '已送达 $successes，失败 $failures';
   }
 
   @override
@@ -2396,7 +2643,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String pathEditor_hopCounter(int count) {
-    return '$count of 64 hops';
+    return '$count / 64 跳';
   }
 
   @override
@@ -2478,6 +2725,52 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get chat_poiShared => '共享位置';
+
+  @override
+  String get contactShare_headerOutgoing => '你分享了一个联系人';
+
+  @override
+  String get contactShare_headerIncoming => '分享了一个联系人';
+
+  @override
+  String get contactShare_add => '添加联系人';
+
+  @override
+  String get contactShare_adding => '正在添加联系人...';
+
+  @override
+  String get contactShare_saved => '已保存';
+
+  @override
+  String get contactShare_addAgain => '重新添加';
+
+  @override
+  String get contactShare_isYou => '这是你自己';
+
+  @override
+  String get contactShare_shareAction => '分享联系人';
+
+  @override
+  String get contactShare_pickerTitle => '分享联系人';
+
+  @override
+  String get contactShare_myContact => '我的联系人';
+
+  @override
+  String get contactShare_searchHint => '搜索联系人';
+
+  @override
+  String get contactShare_noContacts => '未找到联系人';
+
+  @override
+  String contactShare_preview(String name) {
+    return '分享的联系人：$name';
+  }
+
+  @override
+  String contactShare_notification(String name) {
+    return '分享了一个联系人：$name';
+  }
 
   @override
   String chat_unread(int count) {
@@ -2602,9 +2895,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get map_lastSeen => '最后在线';
 
   @override
-  String get map_disconnectConfirm => '确定要断开与此设备的连接吗？';
-
-  @override
   String get map_from => '来自';
 
   @override
@@ -2617,16 +2907,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get map_type => 'Type';
 
   @override
-  String get map_path => 'Path';
+  String get map_path => '路径';
 
   @override
-  String get map_location => 'Location';
+  String get map_location => '位置';
 
   @override
-  String get map_estLocation => 'Est. Location';
+  String get map_estLocation => '预估位置';
 
   @override
-  String get map_publicKey => 'Public Key';
+  String get map_publicKey => '公钥';
 
   @override
   String get map_publicKeyPrefixHint => 'e.g. ab12';
@@ -2683,6 +2973,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get map_otherNodes => '其他节点';
+
+  @override
+  String get map_showOnlineLinks => '显示在线地图连接';
 
   @override
   String get map_rooms => 'Rooms';
@@ -2776,6 +3069,56 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get map_pathTraceViewLast => '查看上次结果';
+
+  @override
+  String get manualTrace_menuItem => '按哈希进行路径追踪';
+
+  @override
+  String get manualTrace_inputLabel => '中继器哈希';
+
+  @override
+  String manualTrace_helper(String example) {
+    return '示例：$example。用逗号或空格分隔。';
+  }
+
+  @override
+  String manualTrace_previewTitle(int count) {
+    return '跳数（$count）';
+  }
+
+  @override
+  String get manualTrace_unknownNode => '未知节点';
+
+  @override
+  String get manualTrace_enterHashes => '输入哈希';
+
+  @override
+  String get manualTrace_run => '运行路径追踪';
+
+  @override
+  String get manualTrace_notConnected => '请连接电台以运行追踪';
+
+  @override
+  String get manualTrace_errorInvalidHex => '仅允许十六进制字符（0-9、A-F）';
+
+  @override
+  String get manualTrace_errorOddLength => '每个哈希的十六进制字符数必须为偶数，与跳大小一致';
+
+  @override
+  String get manualTrace_errorMixedWidths => '所有哈希长度必须相同';
+
+  @override
+  String get manualTrace_errorUnsupportedWidth =>
+      '哈希必须为 1、2 或 3 字节（2、4 或 6 个十六进制字符）';
+
+  @override
+  String manualTrace_errorTooManyHops(int max) {
+    return '路径过长（最多 $max 字节）';
+  }
+
+  @override
+  String get manualTrace_errorTraceTooLong =>
+      '跳数过多，无法在一次请求中追踪。请减少一些跳，或选择“按输入顺序”。';
 
   @override
   String get mapCache_title => '离线地图缓存';
@@ -3195,6 +3538,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String repeater_hoursMinsSecs(int hours, int minutes, int seconds) {
+    return '$hours小时 $minutes分 $seconds秒';
+  }
+
+  @override
   String repeater_packetTxTotal(int total, String flood, String direct) {
     return '总计：$total，泛洪：$flood，直连：$direct';
   }
@@ -3391,7 +3739,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get repeater_loopDetectHelper => '创建看起来像路由环的“泛洪包”';
 
   @override
-  String get repeater_loopDetectOff => '离开';
+  String get repeater_loopDetectOff => '关闭';
 
   @override
   String get repeater_loopDetectMinimal => '最少';
@@ -5265,7 +5613,7 @@ class AppLocalizationsZh extends AppLocalizations {
       '打开转发节点设置时请求所有设置。每项设置都是一次通过 LoRa 发送的独立请求，因此速度较慢并会占用空中时间。关闭后，请点按“全部刷新”或刷新单独的部分。';
 
   @override
-  String get appSettings_languageHu => '匈牙利';
+  String get appSettings_languageHu => '匈牙利语';
 
   @override
   String get appSettings_languageJa => '日语';
@@ -5482,24 +5830,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get translation_systemLanguage => '系统语言';
 
   @override
-  String get background_serviceTitle => 'MeshCore running';
+  String get background_serviceTitle => 'MeshCore 运行中';
 
   @override
-  String get background_serviceText => 'Keeping BLE connected';
+  String get background_serviceText => '保持蓝牙连接';
 
   @override
   String appSettings_translationModelDeleted(String name) {
-    return 'Deleted $name';
+    return '已删除 $name';
   }
 
   @override
   String appSettings_translationModelDeleteFailed(String error) {
-    return 'Failed to delete: $error';
+    return '删除失败：$error';
   }
 
   @override
   String channels_channelUpdateFailed(String error) {
-    return 'Failed to update channel: $error';
+    return '更新频道失败：$error';
   }
 
   @override
@@ -5515,7 +5863,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get contact_typeSensor => 'Sensor';
 
   @override
-  String get contact_typeUnknown => 'Unknown';
+  String get contact_typeUnknown => '未知';
 
   @override
   String get map_zoomIn => '放大';
@@ -5640,6 +5988,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get pathMap_expandPanel => '展开面板';
 
   @override
+  String get pathMap_expandHopList => '展开中继列表';
+
+  @override
+  String get pathMap_showMap => '显示地图';
+
+  @override
   String get pathMap_noLocation => '无位置';
 
   @override
@@ -5672,7 +6026,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get imageSend_modelNotDownloaded => '图像模型尚未下载。在设置中下载后才能发送图像。';
 
   @override
-  String get imageSend_originalSize => '原文';
+  String get imageSend_originalSize => '原图';
 
   @override
   String get imageSend_onAirSize => '直播中';
@@ -5840,6 +6194,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String receivedImage_shareCaption(int bytes) {
     return '由 $bytes 字节经 AI 重建；细节为生成内容，并非传输而来。';
   }
+
+  @override
+  String get receivedImage_syntheticBadge => 'AI 重建';
 
   @override
   String get receivedImage_packetInfo => '数据包信息';
@@ -6327,6 +6684,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appSettings_routingSection => '路由';
+
+  @override
+  String get appSettings_resetRoutingToDefault => '将路由算法重置为默认值';
+
+  @override
+  String get appSettings_resetRoutingToDefaultSubtitle => '将路由算法设置恢复为出厂默认值';
+
+  @override
+  String get appSettings_routingResetToDefault => '路由算法设置已重置为默认值';
 
   @override
   String get appSettings_imageMessagesSection => '图片消息';
@@ -8377,4 +8743,245 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get holidayGreeting_newYear => '新年快乐|新年快樂|元旦快乐|元旦快樂|新年好|新年愉快';
+
+  @override
+  String get chat_loadOlderMessages => '加载更早的消息';
+
+  @override
+  String get messageFilter_title => '消息过滤';
+
+  @override
+  String get messageFilter_settingsSubtitle => '隐藏垃圾消息和重复消息';
+
+  @override
+  String get messageFilter_enabled => '过滤消息';
+
+  @override
+  String get messageFilter_enabledSubtitle => '适用于频道消息';
+
+  @override
+  String get messageFilter_displayTitle => '已过滤的消息';
+
+  @override
+  String get messageFilter_displayPlaceholder => '显示一个小占位提示';
+
+  @override
+  String get messageFilter_displayHide => '完全隐藏';
+
+  @override
+  String get messageFilter_displayHideHelp => '被隐藏的消息仍会保留在“已过滤的消息”列表中。';
+
+  @override
+  String get messageFilter_rulesSection => '你的规则';
+
+  @override
+  String get messageFilter_rulesEmpty => '还没有规则。添加一个词语、短语或发送者名称，即可隐藏匹配的消息。';
+
+  @override
+  String get messageFilter_addRule => '添加规则';
+
+  @override
+  String get messageFilter_editRule => '编辑规则';
+
+  @override
+  String get messageFilter_rulePattern => '词语、短语或名称';
+
+  @override
+  String get messageFilter_rulePatternHint => '例如 meshos';
+
+  @override
+  String get messageFilter_ruleWhere => '查找范围';
+
+  @override
+  String get messageFilter_ruleFieldText => '消息内容';
+
+  @override
+  String get messageFilter_ruleFieldSender => '发送者名称';
+
+  @override
+  String get messageFilter_ruleFieldBoth => '两者';
+
+  @override
+  String get messageFilter_ruleMatch => '匹配方式';
+
+  @override
+  String get messageFilter_ruleMatchContains => '包含';
+
+  @override
+  String get messageFilter_ruleMatchWholeWord => '完整词语';
+
+  @override
+  String get messageFilter_ruleMatchExact => '完全相同';
+
+  @override
+  String get messageFilter_ruleDeleted => '规则已删除';
+
+  @override
+  String get messageFilter_ruleSaved => '规则已保存';
+
+  @override
+  String get messageFilter_automaticSection => '自动';
+
+  @override
+  String get messageFilter_duplicates => '重复消息';
+
+  @override
+  String get messageFilter_duplicatesSubtitle => '重复发送的相同消息，或多个发送者发送的相同消息';
+
+  @override
+  String get messageFilter_repeatSends => '视为重复的发送次数';
+
+  @override
+  String messageFilter_repeatSendsSubtitle(int count) {
+    return '同一发送者在 10 分钟内发送同一消息 $count 次时隐藏该消息';
+  }
+
+  @override
+  String get messageFilter_repeatedCharacters => '重复字符';
+
+  @override
+  String get messageFilter_repeatedCharactersSubtitle =>
+      '同一字符的长串重复，例如“aaaaaaaaaaaaaaaaaaaa”';
+
+  @override
+  String get messageFilter_learning => '从“垃圾消息”点击中学习';
+
+  @override
+  String messageFilter_learningSubtitle(int spam, int notSpam) {
+    return '$spam 个垃圾消息示例和 $notSpam 个非垃圾消息示例';
+  }
+
+  @override
+  String get messageFilter_resetLearning => '重置学习';
+
+  @override
+  String get messageFilter_resetLearningConfirm =>
+      '要清除从你点击“垃圾消息”和“非垃圾消息”中学到的所有内容吗？你的规则会保留。';
+
+  @override
+  String messageFilter_filteredMessages(int count) {
+    return '已过滤的消息（$count）';
+  }
+
+  @override
+  String get messageFilter_filteredMessagesEmpty => '没有被过滤的消息。';
+
+  @override
+  String get messageFilter_ghostSingle => '已隐藏的消息 · 点击查看';
+
+  @override
+  String messageFilter_ghostMany(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 条已隐藏的消息 · 点击查看',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get messageFilter_ghostSingleExpanded => '正在显示已隐藏的消息 · 点击隐藏';
+
+  @override
+  String messageFilter_ghostManyExpanded(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '正在显示 $count 条已隐藏的消息 · 点击隐藏',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String messageFilter_reasonTextRule(String pattern) {
+    return '已过滤：匹配“$pattern”';
+  }
+
+  @override
+  String messageFilter_reasonSenderRule(String pattern) {
+    return '已过滤：发送者“$pattern”';
+  }
+
+  @override
+  String get messageFilter_reasonRepeatedCharacters => '已过滤：重复字符';
+
+  @override
+  String get messageFilter_reasonDuplicate => '已过滤：重复消息';
+
+  @override
+  String get messageFilter_reasonCrossSenderDuplicate => '已过滤：多个发送者发送的相同消息';
+
+  @override
+  String get messageFilter_reasonLearned => '已过滤：与你标记为垃圾消息的内容相似';
+
+  @override
+  String get messageFilter_reasonManual => '已过滤：你已将此消息标记为垃圾消息';
+
+  @override
+  String get messageFilter_notSpam => '非垃圾消息';
+
+  @override
+  String get messageFilter_hideAgain => '隐藏';
+
+  @override
+  String get messageFilter_markSpam => '标记为垃圾消息';
+
+  @override
+  String get messageFilter_markedSpam => '已标记为垃圾消息';
+
+  @override
+  String get messageFilter_markedNotSpam => '已标记为非垃圾消息';
+
+  @override
+  String get messageFilter_filterSender => '过滤此发送者';
+
+  @override
+  String messageFilter_filterSenderConfirm(String name) {
+    return '要隐藏来自“$name”的所有消息吗？';
+  }
+
+  @override
+  String get messageFilter_filterLikeThis => '过滤类似的消息…';
+
+  @override
+  String get messageFilter_channelToggle => '过滤此频道中的消息';
+
+  @override
+  String get messageFilter_ghostIconTooltip => '已被你的消息过滤隐藏';
+
+  @override
+  String appBar_offlineSubtitle(String name) {
+    return '离线 · $name';
+  }
+
+  @override
+  String get appBar_offline => '离线';
+
+  @override
+  String get appBar_reconnecting => '正在重新连接…';
+
+  @override
+  String get connectSheet_title => '连接无线电';
+
+  @override
+  String connectSheet_reconnect(String name) {
+    return '重新连接到 $name';
+  }
+
+  @override
+  String get connectSheet_chooseRadio => '选择无线电';
+
+  @override
+  String get connectSheet_chooseRadioSubtitle => '蓝牙、USB 或 TCP';
+
+  @override
+  String get connectSheet_stopReconnecting => '停止重新连接';
+
+  @override
+  String connectSheet_reconnectFailed(String name) {
+    return '无法连接到 $name。请确保其已开机且在附近。';
+  }
+
+  @override
+  String get chat_composerOffline => '连接到无线电后才能发送消息';
 }

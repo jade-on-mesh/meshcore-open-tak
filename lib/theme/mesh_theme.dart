@@ -570,7 +570,7 @@ class MeshTheme {
           return TextStyle(
             fontFamily: MeshFonts.sans,
             fontFamilyFallback: MeshFonts.sansFallback,
-            fontSize: 11.5,
+            fontSize: 12,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
             letterSpacing: 0.1,
             color: selected ? scheme.onPrimary : scheme.onSurfaceVariant,
@@ -603,7 +603,9 @@ class MeshTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: scheme.surfaceContainerHigh,
-        contentTextStyle: TextStyle(color: scheme.onSurface),
+        contentTextStyle: TextStyle(color: scheme.onSurface, fontSize: 16),
+        actionTextColor: scheme.onSurface,
+        disabledActionTextColor: scheme.onSurfaceVariant,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(MeshRadii.md),

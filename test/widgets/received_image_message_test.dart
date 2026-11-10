@@ -166,7 +166,7 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(find.text('AI-reconstructed'), findsOneWidget);
-    expect(find.textContaining('Fine detail is generated'), findsOneWidget);
+    expect(find.textContaining('fine detail is generated'), findsOneWidget);
     // Untagged, from a radio not (yet) known to have no radio2: no claim.
     expect(find.textContaining('main mesh'), findsNothing);
   });
@@ -425,8 +425,8 @@ void main() {
     await tester.pump();
 
     expect(find.text('AI-reconstructed'), findsOneWidget);
-    expect(find.textContaining('Reconstructed by an AI model'), findsOneWidget);
-    expect(find.textContaining('Fine detail is generated'), findsOneWidget);
+    expect(find.textContaining('AI-reconstructed from'), findsOneWidget);
+    expect(find.textContaining('fine detail is generated'), findsOneWidget);
   });
 
   testWidgets('the caption quotes the real bitstream size, not a nominal one', (
@@ -511,7 +511,7 @@ void main() {
     await tester.pump();
 
     final caption = tester.widget<Text>(
-      find.textContaining('Reconstructed by an AI model'),
+      find.textContaining('AI-reconstructed from'),
     );
     expect(caption.maxLines, isNull, reason: 'the sentence must wrap in full');
     expect(caption.overflow, isNot(TextOverflow.ellipsis));

@@ -1,14 +1,22 @@
 package com.meshcore.meshcore_open
 
 import android.content.Intent
+import android.os.Build
+import android.os.Bundle
 import android.provider.Settings
+import android.view.View
 import android.view.WindowManager
-import io.flutter.embedding.android.FlutterActivity
-import io.flutter.plugin.common.MethodChannel
+import androidx.activity.enableEdgeToEdge
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
 
-class MainActivity : FlutterActivity() {
+// FlutterFragmentActivity (a ComponentActivity) so enableEdgeToEdge() works:
+// Android 15+ enforces edge-to-edge for apps targeting SDK 35, and the app
+// already draws behind the system bars and handles insets in Flutter.
+class MainActivity : FlutterFragmentActivity() {
     private val usbFunctions by lazy { MeshcoreUsbFunctions(this) }
+    private var scrollCapture: FlutterScrollCapture? = null
 
     // Settings > Keep screen on (lib/services/screen_awake_service.dart).
     // The flag only holds while this window is showing.
@@ -20,6 +28,11 @@ class MainActivity : FlutterActivity() {
         } else {
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
+        super.onCreate(savedInstanceState)
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -56,6 +69,13 @@ class MainActivity : FlutterActivity() {
                 result.notImplemented()
             }
         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            scrollCapture?.detach()
+            scrollCapture = FlutterScrollCapture(
+                this,
+                flutterEngine.dartExecutor.binaryMessenger,
+            ).also { it.attach(findViewById<View>(android.R.id.content)) }
+        }
     }
 
     override fun onResume() {
@@ -65,6 +85,8 @@ class MainActivity : FlutterActivity() {
 
     override fun onDestroy() {
         TakBridgeHub.detach()
+        scrollCapture?.detach()
+        scrollCapture = null
         usbFunctions.dispose()
         super.onDestroy()
     }
