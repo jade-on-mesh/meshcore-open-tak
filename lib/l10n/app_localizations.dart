@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
 import 'app_localizations_bg.dart';
+import 'app_localizations_cs.dart';
 import 'app_localizations_de.dart';
 import 'app_localizations_en.dart';
 import 'app_localizations_es.dart';
@@ -111,6 +112,7 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('bg'),
+    Locale('cs'),
     Locale('de'),
     Locale('en'),
     Locale('es'),
@@ -122,6 +124,7 @@ abstract class AppLocalizations {
     Locale('nl'),
     Locale('pl'),
     Locale('pt'),
+    Locale('pt', 'PT'),
     Locale('ru'),
     Locale('sk'),
     Locale('sl'),
@@ -933,6 +936,336 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Notifications, messaging, and map preferences'**
   String get settings_appSettingsSubtitle;
+
+  /// No description provided for @settings_export.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get settings_export;
+
+  /// No description provided for @settings_exportSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Export contacts and repeaters as GPX'**
+  String get settings_exportSubtitle;
+
+  /// No description provided for @backupRestore_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup & Restore'**
+  String get backupRestore_title;
+
+  /// No description provided for @backupRestore_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Save or restore app data and radio settings'**
+  String get backupRestore_subtitle;
+
+  /// No description provided for @backupRestore_import.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get backupRestore_import;
+
+  /// No description provided for @backupRestore_selectImportFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Import File'**
+  String get backupRestore_selectImportFile;
+
+  /// No description provided for @backupRestore_password.
+  ///
+  /// In en, this message translates to:
+  /// **'Password (optional)'**
+  String get backupRestore_password;
+
+  /// No description provided for @backupRestore_passwordHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'A password encrypts the file. Blank saves plaintext that may include private/channel keys, history, and credentials.'**
+  String get backupRestore_passwordHelp;
+
+  /// No description provided for @backupRestore_importUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the password or choose a supported backup file.'**
+  String get backupRestore_importUnavailable;
+
+  /// No description provided for @backupRestore_items.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup and restore items'**
+  String get backupRestore_items;
+
+  /// No description provided for @backupRestore_nodeSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Node Settings'**
+  String get backupRestore_nodeSettings;
+
+  /// No description provided for @backupRestore_nodeSettingsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Device name, private and public keys, radio settings, and regions'**
+  String get backupRestore_nodeSettingsDescription;
+
+  /// No description provided for @backupRestore_deviceName.
+  ///
+  /// In en, this message translates to:
+  /// **'Device Name'**
+  String get backupRestore_deviceName;
+
+  /// No description provided for @backupRestore_privateKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Private Key (sensitive)'**
+  String get backupRestore_privateKey;
+
+  /// No description provided for @backupRestore_publicKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Public Key'**
+  String get backupRestore_publicKey;
+
+  /// No description provided for @backupRestore_radioSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Radio Settings'**
+  String get backupRestore_radioSettings;
+
+  /// No description provided for @backupRestore_regions.
+  ///
+  /// In en, this message translates to:
+  /// **'Regions'**
+  String get backupRestore_regions;
+
+  /// No description provided for @backupRestore_location.
+  ///
+  /// In en, this message translates to:
+  /// **'Location'**
+  String get backupRestore_location;
+
+  /// No description provided for @backupRestore_contactSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact Settings'**
+  String get backupRestore_contactSettings;
+
+  /// No description provided for @backupRestore_privacySettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy Settings'**
+  String get backupRestore_privacySettings;
+
+  /// No description provided for @backupRestore_contactsData.
+  ///
+  /// In en, this message translates to:
+  /// **'Contacts'**
+  String get backupRestore_contactsData;
+
+  /// No description provided for @backupRestore_perContactSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact Settings and Filters'**
+  String get backupRestore_perContactSettings;
+
+  /// No description provided for @backupRestore_contactGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact Groups'**
+  String get backupRestore_contactGroups;
+
+  /// No description provided for @backupRestore_contactHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact History'**
+  String get backupRestore_contactHistory;
+
+  /// No description provided for @backupRestore_channelsData.
+  ///
+  /// In en, this message translates to:
+  /// **'Channels'**
+  String get backupRestore_channelsData;
+
+  /// No description provided for @backupRestore_channelFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Message Filter Settings'**
+  String get backupRestore_channelFilters;
+
+  /// No description provided for @backupRestore_channelSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Channel Settings'**
+  String get backupRestore_channelSettings;
+
+  /// No description provided for @backupRestore_communities.
+  ///
+  /// In en, this message translates to:
+  /// **'Communities'**
+  String get backupRestore_communities;
+
+  /// No description provided for @backupRestore_channelHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Channel History'**
+  String get backupRestore_channelHistory;
+
+  /// No description provided for @backupRestore_locationSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Location Settings'**
+  String get backupRestore_locationSettings;
+
+  /// No description provided for @backupRestore_locationSettingsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Location, contact settings, and privacy settings'**
+  String get backupRestore_locationSettingsDescription;
+
+  /// No description provided for @backupRestore_appSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'App Settings'**
+  String get backupRestore_appSettings;
+
+  /// No description provided for @backupRestore_appSettingsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'App preferences and appearance settings'**
+  String get backupRestore_appSettingsDescription;
+
+  /// No description provided for @backupRestore_ipfsKey.
+  ///
+  /// In en, this message translates to:
+  /// **'IPFS API Key (sensitive)'**
+  String get backupRestore_ipfsKey;
+
+  /// No description provided for @backupRestore_stadiaMapKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Stadia Maps API Key (sensitive)'**
+  String get backupRestore_stadiaMapKey;
+
+  /// No description provided for @backupRestore_contacts.
+  ///
+  /// In en, this message translates to:
+  /// **'Contacts'**
+  String get backupRestore_contacts;
+
+  /// No description provided for @backupRestore_contactsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Contacts, per-contact filters and settings, groups, and message history'**
+  String get backupRestore_contactsDescription;
+
+  /// No description provided for @backupRestore_discoveredContacts.
+  ///
+  /// In en, this message translates to:
+  /// **'Discovered Contacts'**
+  String get backupRestore_discoveredContacts;
+
+  /// No description provided for @backupRestore_discoveredContactsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Discovered contacts and their saved details'**
+  String get backupRestore_discoveredContactsDescription;
+
+  /// No description provided for @backupRestore_channels.
+  ///
+  /// In en, this message translates to:
+  /// **'Channels'**
+  String get backupRestore_channels;
+
+  /// No description provided for @backupRestore_channelsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Channels, channel filters, communities, and message history'**
+  String get backupRestore_channelsDescription;
+
+  /// No description provided for @backupRestore_backup.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Backup'**
+  String get backupRestore_backup;
+
+  /// No description provided for @backupRestore_restore.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore Selected'**
+  String get backupRestore_restore;
+
+  /// No description provided for @backupRestore_backupComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup file created.'**
+  String get backupRestore_backupComplete;
+
+  /// No description provided for @backupRestore_restoreComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore complete. Reconnect if you restored the radio identity.'**
+  String get backupRestore_restoreComplete;
+
+  /// No description provided for @backupRestore_missingModelsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Models Not Downloaded'**
+  String get backupRestore_missingModelsTitle;
+
+  /// No description provided for @backupRestore_missingModelsMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The restored settings select models that are not available on this device:\n{models}\n\nDownload them now?'**
+  String backupRestore_missingModelsMessage(String models);
+
+  /// No description provided for @backupRestore_downloadModels.
+  ///
+  /// In en, this message translates to:
+  /// **'Download Models'**
+  String get backupRestore_downloadModels;
+
+  /// No description provided for @backupRestore_downloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading…'**
+  String get backupRestore_downloading;
+
+  /// No description provided for @backupRestore_cancelDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel Download'**
+  String get backupRestore_cancelDownload;
+
+  /// No description provided for @backupRestore_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup operation failed: {error}'**
+  String backupRestore_failed(String error);
+
+  /// No description provided for @backupRestore_fileTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup file is larger than the 100 MB limit.'**
+  String get backupRestore_fileTooLarge;
+
+  /// No description provided for @backupRestore_selectAtLeastOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Select at least one item.'**
+  String get backupRestore_selectAtLeastOne;
+
+  /// No description provided for @backupRestore_replaceIdentityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace radio identity?'**
+  String get backupRestore_replaceIdentityTitle;
+
+  /// No description provided for @backupRestore_replaceIdentityMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Restoring Node Settings replaces the connected radio\'s private key and changes its identity. Continue only if this is intended.'**
+  String get backupRestore_replaceIdentityMessage;
 
   /// No description provided for @settings_nodeSettings.
   ///
@@ -2155,8 +2488,14 @@ abstract class AppLocalizations {
   /// No description provided for @appSettings_languagePt.
   ///
   /// In en, this message translates to:
-  /// **'Português'**
+  /// **'Português (Brasil)'**
   String get appSettings_languagePt;
+
+  /// No description provided for @appSettings_languagePtPt.
+  ///
+  /// In en, this message translates to:
+  /// **'Português (Portugal)'**
+  String get appSettings_languagePtPt;
 
   /// No description provided for @appSettings_languageIt.
   ///
@@ -2205,6 +2544,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Українська'**
   String get appSettings_languageUk;
+
+  /// No description provided for @appSettings_languageCs.
+  ///
+  /// In en, this message translates to:
+  /// **'Čeština'**
+  String get appSettings_languageCs;
 
   /// No description provided for @repeater_pathHashModeOption0.
   ///
@@ -2440,54 +2785,6 @@ abstract class AppLocalizations {
   /// **'Auto route rotation disabled'**
   String get appSettings_autoRouteRotationDisabled;
 
-  /// No description provided for @appSettings_maxRouteWeight.
-  ///
-  /// In en, this message translates to:
-  /// **'Max Route Weight'**
-  String get appSettings_maxRouteWeight;
-
-  /// No description provided for @appSettings_maxRouteWeightSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Maximum weight a path can accumulate from successful deliveries'**
-  String get appSettings_maxRouteWeightSubtitle;
-
-  /// No description provided for @appSettings_initialRouteWeight.
-  ///
-  /// In en, this message translates to:
-  /// **'Initial Route Weight'**
-  String get appSettings_initialRouteWeight;
-
-  /// No description provided for @appSettings_initialRouteWeightSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Starting weight for newly discovered paths'**
-  String get appSettings_initialRouteWeightSubtitle;
-
-  /// No description provided for @appSettings_routeWeightSuccessIncrement.
-  ///
-  /// In en, this message translates to:
-  /// **'Success Weight Increment'**
-  String get appSettings_routeWeightSuccessIncrement;
-
-  /// No description provided for @appSettings_routeWeightSuccessIncrementSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Weight added to a path after successful delivery'**
-  String get appSettings_routeWeightSuccessIncrementSubtitle;
-
-  /// No description provided for @appSettings_routeWeightFailureDecrement.
-  ///
-  /// In en, this message translates to:
-  /// **'Failure Weight Decrement'**
-  String get appSettings_routeWeightFailureDecrement;
-
-  /// No description provided for @appSettings_routeWeightFailureDecrementSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Weight removed from a path after failed delivery'**
-  String get appSettings_routeWeightFailureDecrementSubtitle;
-
   /// No description provided for @appSettings_maxMessageRetries.
   ///
   /// In en, this message translates to:
@@ -2685,6 +2982,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Display other node types on the map'**
   String get appSettings_showOtherNodesSubtitle;
+
+  /// No description provided for @appSettings_showOnlineLinks.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Online Map Connections'**
+  String get appSettings_showOnlineLinks;
+
+  /// No description provided for @appSettings_showOnlineLinksSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Display connection lines between nodes from the online map'**
+  String get appSettings_showOnlineLinksSubtitle;
 
   /// No description provided for @appSettings_showRepeaterPath.
   ///
@@ -3832,6 +4141,48 @@ abstract class AppLocalizations {
   /// **'No messages yet'**
   String get chat_noMessages;
 
+  /// No description provided for @chatSearch_tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Search messages'**
+  String get chatSearch_tooltip;
+
+  /// No description provided for @chatSearch_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search messages'**
+  String get chatSearch_hint;
+
+  /// No description provided for @chatSearch_close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close search'**
+  String get chatSearch_close;
+
+  /// No description provided for @chatSearch_resultCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 result} other{{count} results}}'**
+  String chatSearch_resultCount(int count);
+
+  /// No description provided for @chatSearch_noResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching messages'**
+  String get chatSearch_noResults;
+
+  /// No description provided for @chatSearch_noResultsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Try a different word or check the spelling'**
+  String get chatSearch_noResultsHint;
+
+  /// No description provided for @chatSearch_jumpFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t find that message in the chat'**
+  String get chatSearch_jumpFailed;
+
   /// No description provided for @chat_sendMessage.
   ///
   /// In en, this message translates to:
@@ -3903,6 +4254,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Message deleted'**
   String get chat_messageDeleted;
+
+  /// No description provided for @chat_selectMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'Select messages'**
+  String get chat_selectMessages;
+
+  /// No description provided for @chat_selectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String chat_selectedCount(int count);
+
+  /// No description provided for @chat_selectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get chat_selectAll;
+
+  /// No description provided for @chat_clearSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear selection'**
+  String get chat_clearSelection;
+
+  /// No description provided for @chat_deleteSelectedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete messages?'**
+  String get chat_deleteSelectedTitle;
+
+  /// No description provided for @chat_deleteSelectedConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Delete 1 message from this device?} other{Delete {count} messages from this device?}}'**
+  String chat_deleteSelectedConfirm(int count);
+
+  /// No description provided for @chat_messagesDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 message deleted} other{{count} messages deleted}}'**
+  String chat_messagesDeleted(int count);
+
+  /// No description provided for @messageFilter_markedSpamCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 message marked as spam} other{{count} messages marked as spam}}'**
+  String messageFilter_markedSpamCount(int count);
+
+  /// No description provided for @messageFilter_markedNotSpamCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 message marked as not spam} other{{count} messages marked as not spam}}'**
+  String messageFilter_markedNotSpamCount(int count);
 
   /// No description provided for @chat_retryingMessage.
   ///
@@ -4342,6 +4747,12 @@ abstract class AppLocalizations {
   /// **'Manual'**
   String get routing_modeManual;
 
+  /// No description provided for @routing_modeDirect.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct'**
+  String get routing_modeDirect;
+
   /// No description provided for @routing_modeAutoHint.
   ///
   /// In en, this message translates to:
@@ -4359,6 +4770,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Always sends along the exact path you set.'**
   String get routing_modeManualHint;
+
+  /// No description provided for @routing_modeDirectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Always sends straight to this contact with no repeater hops. Use it when they are in radio range.'**
+  String get routing_modeDirectHint;
 
   /// No description provided for @routing_currentRoute.
   ///
@@ -4636,6 +5053,90 @@ abstract class AppLocalizations {
   /// **'POI Shared'**
   String get chat_poiShared;
 
+  /// No description provided for @contactShare_headerOutgoing.
+  ///
+  /// In en, this message translates to:
+  /// **'You shared a contact'**
+  String get contactShare_headerOutgoing;
+
+  /// No description provided for @contactShare_headerIncoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared a contact'**
+  String get contactShare_headerIncoming;
+
+  /// No description provided for @contactShare_add.
+  ///
+  /// In en, this message translates to:
+  /// **'Add contact'**
+  String get contactShare_add;
+
+  /// No description provided for @contactShare_adding.
+  ///
+  /// In en, this message translates to:
+  /// **'Adding contact...'**
+  String get contactShare_adding;
+
+  /// No description provided for @contactShare_saved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get contactShare_saved;
+
+  /// No description provided for @contactShare_addAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Add again'**
+  String get contactShare_addAgain;
+
+  /// No description provided for @contactShare_isYou.
+  ///
+  /// In en, this message translates to:
+  /// **'This is you'**
+  String get contactShare_isYou;
+
+  /// No description provided for @contactShare_shareAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Share contact'**
+  String get contactShare_shareAction;
+
+  /// No description provided for @contactShare_pickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share a contact'**
+  String get contactShare_pickerTitle;
+
+  /// No description provided for @contactShare_myContact.
+  ///
+  /// In en, this message translates to:
+  /// **'My contact'**
+  String get contactShare_myContact;
+
+  /// No description provided for @contactShare_searchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search contacts'**
+  String get contactShare_searchHint;
+
+  /// No description provided for @contactShare_noContacts.
+  ///
+  /// In en, this message translates to:
+  /// **'No contacts found'**
+  String get contactShare_noContacts;
+
+  /// No description provided for @contactShare_preview.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared contact: {name}'**
+  String contactShare_preview(String name);
+
+  /// No description provided for @contactShare_notification.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared a contact: {name}'**
+  String contactShare_notification(String name);
+
   /// No description provided for @chat_unread.
   ///
   /// In en, this message translates to:
@@ -4864,12 +5365,6 @@ abstract class AppLocalizations {
   /// **'Last Seen'**
   String get map_lastSeen;
 
-  /// No description provided for @map_disconnectConfirm.
-  ///
-  /// In en, this message translates to:
-  /// **'Are you sure you want to disconnect from this device?'**
-  String get map_disconnectConfirm;
-
   /// No description provided for @map_from.
   ///
   /// In en, this message translates to:
@@ -5025,6 +5520,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Other Nodes'**
   String get map_otherNodes;
+
+  /// No description provided for @map_showOnlineLinks.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Online Map Connections'**
+  String get map_showOnlineLinks;
 
   /// No description provided for @map_rooms.
   ///
@@ -5211,6 +5712,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'View last result'**
   String get map_pathTraceViewLast;
+
+  /// No description provided for @manualTrace_menuItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Path trace by hashes'**
+  String get manualTrace_menuItem;
+
+  /// No description provided for @manualTrace_inputLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeater hashes'**
+  String get manualTrace_inputLabel;
+
+  /// No description provided for @manualTrace_helper.
+  ///
+  /// In en, this message translates to:
+  /// **'Example: {example}. Separate with commas or spaces.'**
+  String manualTrace_helper(String example);
+
+  /// No description provided for @manualTrace_previewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hops ({count})'**
+  String manualTrace_previewTitle(int count);
+
+  /// No description provided for @manualTrace_unknownNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown node'**
+  String get manualTrace_unknownNode;
+
+  /// No description provided for @manualTrace_enterHashes.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter hashes'**
+  String get manualTrace_enterHashes;
+
+  /// No description provided for @manualTrace_run.
+  ///
+  /// In en, this message translates to:
+  /// **'Run path trace'**
+  String get manualTrace_run;
+
+  /// No description provided for @manualTrace_notConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to a radio to run a trace'**
+  String get manualTrace_notConnected;
+
+  /// No description provided for @manualTrace_errorInvalidHex.
+  ///
+  /// In en, this message translates to:
+  /// **'Only hex characters (0-9, A-F) are allowed'**
+  String get manualTrace_errorInvalidHex;
+
+  /// No description provided for @manualTrace_errorOddLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Each hash needs an even number of hex characters, matching the hop size'**
+  String get manualTrace_errorOddLength;
+
+  /// No description provided for @manualTrace_errorMixedWidths.
+  ///
+  /// In en, this message translates to:
+  /// **'All hashes must be the same length'**
+  String get manualTrace_errorMixedWidths;
+
+  /// No description provided for @manualTrace_errorUnsupportedWidth.
+  ///
+  /// In en, this message translates to:
+  /// **'Hashes must be 1, 2 or 3 bytes (2, 4 or 6 hex characters)'**
+  String get manualTrace_errorUnsupportedWidth;
+
+  /// No description provided for @manualTrace_errorTooManyHops.
+  ///
+  /// In en, this message translates to:
+  /// **'Path is too long (maximum {max} bytes)'**
+  String manualTrace_errorTooManyHops(int max);
+
+  /// No description provided for @manualTrace_errorTraceTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many hops to trace in one request. Remove some hops or choose As entered.'**
+  String get manualTrace_errorTraceTooLong;
 
   /// No description provided for @mapCache_title.
   ///
@@ -5947,6 +6532,12 @@ abstract class AppLocalizations {
     int minutes,
     int seconds,
   );
+
+  /// No description provided for @repeater_hoursMinsSecs.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h {minutes}m {seconds}s'**
+  String repeater_hoursMinsSecs(int hours, int minutes, int seconds);
 
   /// No description provided for @repeater_packetTxTotal.
   ///
@@ -10280,6 +10871,18 @@ abstract class AppLocalizations {
   /// **'Expand panel'**
   String get pathMap_expandPanel;
 
+  /// No description provided for @pathMap_expandHopList.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand hop list'**
+  String get pathMap_expandHopList;
+
+  /// No description provided for @pathMap_showMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Show map'**
+  String get pathMap_showMap;
+
   /// No description provided for @pathMap_noLocation.
   ///
   /// In en, this message translates to:
@@ -10609,6 +11212,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'AI-reconstructed from {bytes} bytes; fine detail is generated, not transmitted.'**
   String receivedImage_shareCaption(int bytes);
+
+  /// Permanent label burnt into the bottom of every received image that an AI model reconstructed from a tiny bitstream. Must never be empty; keep it short (one line over a narrow image).
+  ///
+  /// In en, this message translates to:
+  /// **'AI-reconstructed'**
+  String get receivedImage_syntheticBadge;
 
   /// No description provided for @receivedImage_packetInfo.
   ///
@@ -11383,6 +11992,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Routing'**
   String get appSettings_routingSection;
+
+  /// No description provided for @appSettings_resetRoutingToDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Routing Algorithm to Default'**
+  String get appSettings_resetRoutingToDefault;
+
+  /// No description provided for @appSettings_resetRoutingToDefaultSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore routing algorithm settings to factory defaults'**
+  String get appSettings_resetRoutingToDefaultSubtitle;
+
+  /// No description provided for @appSettings_routingResetToDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Routing algorithm settings reset to default'**
+  String get appSettings_routingResetToDefault;
 
   /// No description provided for @appSettings_imageMessagesSection.
   ///
@@ -14868,6 +15495,420 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Happy New Year|Happy New Year\'s'**
   String get holidayGreeting_newYear;
+
+  /// Button on an empty channel when filtered messages hide the loaded ones and older history may exist
+  ///
+  /// In en, this message translates to:
+  /// **'Load older messages'**
+  String get chat_loadOlderMessages;
+
+  /// Message filter: Message filter
+  ///
+  /// In en, this message translates to:
+  /// **'Message filter'**
+  String get messageFilter_title;
+
+  /// Message filter: Hide spam and repeated messages
+  ///
+  /// In en, this message translates to:
+  /// **'Hide spam and repeated messages'**
+  String get messageFilter_settingsSubtitle;
+
+  /// Message filter: Filter messages
+  ///
+  /// In en, this message translates to:
+  /// **'Filter messages'**
+  String get messageFilter_enabled;
+
+  /// Message filter: Applies to channel messages
+  ///
+  /// In en, this message translates to:
+  /// **'Applies to channel messages'**
+  String get messageFilter_enabledSubtitle;
+
+  /// Message filter: Filtered messages
+  ///
+  /// In en, this message translates to:
+  /// **'Filtered messages'**
+  String get messageFilter_displayTitle;
+
+  /// Message filter: Show a small placeholder
+  ///
+  /// In en, this message translates to:
+  /// **'Show a small placeholder'**
+  String get messageFilter_displayPlaceholder;
+
+  /// Message filter: Hide completely
+  ///
+  /// In en, this message translates to:
+  /// **'Hide completely'**
+  String get messageFilter_displayHide;
+
+  /// Message filter: Hidden messages stay in the Filtered messages list.
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden messages stay in the Filtered messages list.'**
+  String get messageFilter_displayHideHelp;
+
+  /// Message filter: Your rules
+  ///
+  /// In en, this message translates to:
+  /// **'Your rules'**
+  String get messageFilter_rulesSection;
+
+  /// Message filter: No rules yet. Add a word, phrase or sender name to hide messages that match it.
+  ///
+  /// In en, this message translates to:
+  /// **'No rules yet. Add a word, phrase or sender name to hide messages that match it.'**
+  String get messageFilter_rulesEmpty;
+
+  /// Message filter: Add rule
+  ///
+  /// In en, this message translates to:
+  /// **'Add rule'**
+  String get messageFilter_addRule;
+
+  /// Message filter: Edit rule
+  ///
+  /// In en, this message translates to:
+  /// **'Edit rule'**
+  String get messageFilter_editRule;
+
+  /// Message filter: Word, phrase or name
+  ///
+  /// In en, this message translates to:
+  /// **'Word, phrase or name'**
+  String get messageFilter_rulePattern;
+
+  /// Message filter: e.g. meshos
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. meshos'**
+  String get messageFilter_rulePatternHint;
+
+  /// Message filter: Look in
+  ///
+  /// In en, this message translates to:
+  /// **'Look in'**
+  String get messageFilter_ruleWhere;
+
+  /// Message filter: Message text
+  ///
+  /// In en, this message translates to:
+  /// **'Message text'**
+  String get messageFilter_ruleFieldText;
+
+  /// Message filter: Sender name
+  ///
+  /// In en, this message translates to:
+  /// **'Sender name'**
+  String get messageFilter_ruleFieldSender;
+
+  /// Message filter: Both
+  ///
+  /// In en, this message translates to:
+  /// **'Both'**
+  String get messageFilter_ruleFieldBoth;
+
+  /// Message filter: Match
+  ///
+  /// In en, this message translates to:
+  /// **'Match'**
+  String get messageFilter_ruleMatch;
+
+  /// Message filter: Contains
+  ///
+  /// In en, this message translates to:
+  /// **'Contains'**
+  String get messageFilter_ruleMatchContains;
+
+  /// Message filter: Whole word
+  ///
+  /// In en, this message translates to:
+  /// **'Whole word'**
+  String get messageFilter_ruleMatchWholeWord;
+
+  /// Message filter: Exact
+  ///
+  /// In en, this message translates to:
+  /// **'Exact'**
+  String get messageFilter_ruleMatchExact;
+
+  /// Message filter: Rule deleted
+  ///
+  /// In en, this message translates to:
+  /// **'Rule deleted'**
+  String get messageFilter_ruleDeleted;
+
+  /// Message filter: Rule saved
+  ///
+  /// In en, this message translates to:
+  /// **'Rule saved'**
+  String get messageFilter_ruleSaved;
+
+  /// Message filter: Automatic
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get messageFilter_automaticSection;
+
+  /// Message filter: Repeated messages
+  ///
+  /// In en, this message translates to:
+  /// **'Repeated messages'**
+  String get messageFilter_duplicates;
+
+  /// Message filter: The same message sent again, or by several senders
+  ///
+  /// In en, this message translates to:
+  /// **'The same message sent again, or by several senders'**
+  String get messageFilter_duplicatesSubtitle;
+
+  /// Message filter: title of the setting for which send of the same message by the same sender is hidden as a repeat
+  ///
+  /// In en, this message translates to:
+  /// **'Sends to count as a repeat'**
+  String get messageFilter_repeatSends;
+
+  /// Message filter: subtitle of the repeat-sends setting
+  ///
+  /// In en, this message translates to:
+  /// **'Hide a message when the same sender sends it {count} times within 10 minutes'**
+  String messageFilter_repeatSendsSubtitle(int count);
+
+  /// Message filter: Repeated characters
+  ///
+  /// In en, this message translates to:
+  /// **'Repeated characters'**
+  String get messageFilter_repeatedCharacters;
+
+  /// Message filter: Messages like "aaaaaaaa" or "!!!!!!!!"
+  ///
+  /// In en, this message translates to:
+  /// **'Long runs of one character, like \"aaaaaaaaaaaaaaaaaaaa\"'**
+  String get messageFilter_repeatedCharactersSubtitle;
+
+  /// Message filter: Learn from Spam taps
+  ///
+  /// In en, this message translates to:
+  /// **'Learn from Spam taps'**
+  String get messageFilter_learning;
+
+  /// Message filter: {spam} spam and {notSpam} not-spam examples
+  ///
+  /// In en, this message translates to:
+  /// **'{spam} spam and {notSpam} not-spam examples'**
+  String messageFilter_learningSubtitle(int spam, int notSpam);
+
+  /// Message filter: Reset learning
+  ///
+  /// In en, this message translates to:
+  /// **'Reset learning'**
+  String get messageFilter_resetLearning;
+
+  /// Message filter: Forget everything learned from your Spam and Not spam taps? Your rules are kept.
+  ///
+  /// In en, this message translates to:
+  /// **'Forget everything learned from your Spam and Not spam taps? Your rules are kept.'**
+  String get messageFilter_resetLearningConfirm;
+
+  /// Message filter: Filtered messages ({count})
+  ///
+  /// In en, this message translates to:
+  /// **'Filtered messages ({count})'**
+  String messageFilter_filteredMessages(int count);
+
+  /// Message filter: Nothing has been filtered.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing has been filtered.'**
+  String get messageFilter_filteredMessagesEmpty;
+
+  /// Message filter: Hidden message · Tap to view
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden message · Tap to view'**
+  String get messageFilter_ghostSingle;
+
+  /// Message filter: {count, plural, one{{count} hidden message · Tap to view} other{{count} hidden messages · Tap to view}}
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} hidden message · Tap to view} other{{count} hidden messages · Tap to view}}'**
+  String messageFilter_ghostMany(int count);
+
+  /// Header above one revealed filtered message; tapping it hides the message again
+  ///
+  /// In en, this message translates to:
+  /// **'Showing hidden message · Tap to hide'**
+  String get messageFilter_ghostSingleExpanded;
+
+  /// Header above a revealed run of filtered messages; tapping it hides them again
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Showing 1 hidden message · Tap to hide} other{Showing {count} hidden messages · Tap to hide}}'**
+  String messageFilter_ghostManyExpanded(int count);
+
+  /// Message filter: Filtered: matches "{pattern}"
+  ///
+  /// In en, this message translates to:
+  /// **'Filtered: matches \"{pattern}\"'**
+  String messageFilter_reasonTextRule(String pattern);
+
+  /// Message filter: Filtered: sender "{pattern}"
+  ///
+  /// In en, this message translates to:
+  /// **'Filtered: sender \"{pattern}\"'**
+  String messageFilter_reasonSenderRule(String pattern);
+
+  /// Message filter: Filtered: repeated characters
+  ///
+  /// In en, this message translates to:
+  /// **'Filtered: repeated characters'**
+  String get messageFilter_reasonRepeatedCharacters;
+
+  /// Message filter: Filtered: repeated message
+  ///
+  /// In en, this message translates to:
+  /// **'Filtered: repeated message'**
+  String get messageFilter_reasonDuplicate;
+
+  /// Message filter: Filtered: same message from several senders
+  ///
+  /// In en, this message translates to:
+  /// **'Filtered: same message from several senders'**
+  String get messageFilter_reasonCrossSenderDuplicate;
+
+  /// Message filter: Filtered: looks like messages you marked as spam
+  ///
+  /// In en, this message translates to:
+  /// **'Filtered: looks like messages you marked as spam'**
+  String get messageFilter_reasonLearned;
+
+  /// Message filter: Filtered: you marked this as spam
+  ///
+  /// In en, this message translates to:
+  /// **'Filtered: you marked this as spam'**
+  String get messageFilter_reasonManual;
+
+  /// Message filter: Not spam
+  ///
+  /// In en, this message translates to:
+  /// **'Not spam'**
+  String get messageFilter_notSpam;
+
+  /// Message filter: Hide
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get messageFilter_hideAgain;
+
+  /// Message filter: Mark as spam
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as spam'**
+  String get messageFilter_markSpam;
+
+  /// Message filter: Marked as spam
+  ///
+  /// In en, this message translates to:
+  /// **'Marked as spam'**
+  String get messageFilter_markedSpam;
+
+  /// Message filter: Marked as not spam
+  ///
+  /// In en, this message translates to:
+  /// **'Marked as not spam'**
+  String get messageFilter_markedNotSpam;
+
+  /// Message filter: Filter this sender
+  ///
+  /// In en, this message translates to:
+  /// **'Filter this sender'**
+  String get messageFilter_filterSender;
+
+  /// Message filter: Hide all messages from "{name}"?
+  ///
+  /// In en, this message translates to:
+  /// **'Hide all messages from \"{name}\"?'**
+  String messageFilter_filterSenderConfirm(String name);
+
+  /// Message filter: Filter messages like this…
+  ///
+  /// In en, this message translates to:
+  /// **'Filter messages like this…'**
+  String get messageFilter_filterLikeThis;
+
+  /// Message filter: Filter messages in this channel
+  ///
+  /// In en, this message translates to:
+  /// **'Filter messages in this channel'**
+  String get messageFilter_channelToggle;
+
+  /// Message filter: Hidden by your message filter
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden by your message filter'**
+  String get messageFilter_ghostIconTooltip;
+
+  /// App bar subtitle while no radio is connected; name is the last connected radio
+  ///
+  /// In en, this message translates to:
+  /// **'Offline · {name}'**
+  String appBar_offlineSubtitle(String name);
+
+  /// App bar subtitle while no radio is connected and no radio name is known
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get appBar_offline;
+
+  /// App bar chip while the app is reconnecting to the radio
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnecting…'**
+  String get appBar_reconnecting;
+
+  /// Title of the sheet opened by the Connect button
+  ///
+  /// In en, this message translates to:
+  /// **'Connect a radio'**
+  String get connectSheet_title;
+
+  /// Connect sheet option that reconnects to the last radio
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect to {name}'**
+  String connectSheet_reconnect(String name);
+
+  /// Connect sheet option that opens the radio scanner
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a radio'**
+  String get connectSheet_chooseRadio;
+
+  /// Subtitle of the Choose a radio option
+  ///
+  /// In en, this message translates to:
+  /// **'Bluetooth, USB or TCP'**
+  String get connectSheet_chooseRadioSubtitle;
+
+  /// Connect sheet option that cancels the automatic reconnect
+  ///
+  /// In en, this message translates to:
+  /// **'Stop reconnecting'**
+  String get connectSheet_stopReconnecting;
+
+  /// Shown when reconnecting to the last radio fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reach {name}. Make sure it is on and nearby.'**
+  String connectSheet_reconnectFailed(String name);
+
+  /// Shown in place of the message box while no radio is connected
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to a radio to send messages'**
+  String get chat_composerOffline;
 }
 
 class _AppLocalizationsDelegate
@@ -14882,6 +15923,7 @@ class _AppLocalizationsDelegate
   @override
   bool isSupported(Locale locale) => <String>[
     'bg',
+    'cs',
     'de',
     'en',
     'es',
@@ -14906,10 +15948,24 @@ class _AppLocalizationsDelegate
 }
 
 AppLocalizations lookupAppLocalizations(Locale locale) {
+  // Lookup logic when language+country codes are specified.
+  switch (locale.languageCode) {
+    case 'pt':
+      {
+        switch (locale.countryCode) {
+          case 'PT':
+            return AppLocalizationsPtPt();
+        }
+        break;
+      }
+  }
+
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
     case 'bg':
       return AppLocalizationsBg();
+    case 'cs':
+      return AppLocalizationsCs();
     case 'de':
       return AppLocalizationsDe();
     case 'en':

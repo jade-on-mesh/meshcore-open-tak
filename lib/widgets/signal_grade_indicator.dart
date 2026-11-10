@@ -146,7 +146,10 @@ IconData iconForSignalGrade(String label) {
 /// (acquireRadioStatsPolling/releaseRadioStatsPolling) - safe to mount
 /// alongside RadioStatsIconButton, which already polls the same data.
 class SignalGradeIndicator extends StatefulWidget {
-  const SignalGradeIndicator({super.key});
+  const SignalGradeIndicator({super.key, this.compact = false});
+
+  /// Just the coloured icon, the grade in its tooltip: for crowded app bars.
+  final bool compact;
 
   @override
   State<SignalGradeIndicator> createState() => _SignalGradeIndicatorState();
@@ -208,11 +211,13 @@ class _SignalGradeIndicatorState extends State<SignalGradeIndicator> {
                         size: 16,
                         color: grade.color,
                       ),
-                      const SizedBox(width: 3),
-                      Text(
-                        grade.label,
-                        style: TextStyle(fontSize: 10, color: grade.color),
-                      ),
+                      if (!widget.compact) ...[
+                        const SizedBox(width: 3),
+                        Text(
+                          grade.label,
+                          style: TextStyle(fontSize: 10, color: grade.color),
+                        ),
+                      ],
                     ],
                   ),
                 ),

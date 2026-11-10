@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   format:
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[format]') || contains(github.event.head_commit.message, '[lock]')
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[format]') || contains(github.event.head_commit.message, '[lock]') || contains(github.event.head_commit.message, '[l10n]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,10 +33,14 @@ jobs:
           MSG: ${{ github.event.head_commit.message }}
         run: |
           if [[ "$MSG" == *"[lock]"* ]]; then flutter pub get; else flutter pub get --enforce-lockfile; fi
+          # [l10n]: regenerate the localization classes from the .arb files
+          # (a new locale, or an upstream merge that brings one).
+          if [[ "$MSG" == *"[l10n]"* ]]; then flutter gen-l10n; fi
       - name: Format and commit
         run: |
           dart format lib test
-          if git diff --quiet; then echo "Already formatted, lockfile current"; exit 0; fi
+          git add -A lib
+          if git diff --quiet HEAD; then echo "Already formatted, lockfile current"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if git diff --quiet -- pubspec.lock; then git commit -qam "dart format"; else git commit -qam "dart format, pubspec.lock"; fi

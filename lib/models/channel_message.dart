@@ -68,6 +68,12 @@ class ChannelMessage {
   final int? chunkIndex;
   final int? chunkTotal;
 
+  /// Set when the message filter hid this message (a FilterReason JSON name).
+  final String? filterReason;
+
+  /// Extra context for [filterReason], e.g. the matching rule pattern.
+  final String? filterDetail;
+
   ChannelMessage({
     this.senderKey,
     required this.senderName,
@@ -98,6 +104,8 @@ class ChannelMessage {
     Map<String, List<String?>>? reactions,
     this.chunkIndex,
     this.chunkTotal,
+    this.filterReason,
+    this.filterDetail,
   }) : messageId =
            messageId ??
            '${timestamp.millisecondsSinceEpoch}_${senderName.hashCode}_${text.hashCode}',
@@ -108,6 +116,8 @@ class ChannelMessage {
          pathBytes ?? Uint8List(0),
          pathVariants,
        );
+
+  bool get isFiltered => filterReason != null;
 
   String? get senderKeyHex =>
       senderKey != null ? pubKeyToHex(senderKey!) : null;
@@ -150,6 +160,9 @@ class ChannelMessage {
     int? chunkIndex,
     int? chunkTotal,
     int? channelIndex,
+    String? filterReason,
+    String? filterDetail,
+    bool clearFilter = false,
   }) {
     return ChannelMessage(
       senderKey: senderKey,
@@ -191,6 +204,8 @@ class ChannelMessage {
       reactions: reactions ?? this.reactions,
       chunkIndex: chunkIndex ?? this.chunkIndex,
       chunkTotal: chunkTotal ?? this.chunkTotal,
+      filterReason: clearFilter ? null : (filterReason ?? this.filterReason),
+      filterDetail: clearFilter ? null : (filterDetail ?? this.filterDetail),
     );
   }
 

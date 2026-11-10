@@ -195,6 +195,7 @@ const int cmdImportContact = 18;
 const int cmdReboot = 19;
 const int cmdGetBattAndStorage = 20;
 const int cmdDeviceQuery = 22;
+const int cmdExportPrivateKey = 23;
 const int cmdImportPrivateKey =
     24; // firmware built with ENABLE_PRIVATE_KEY_IMPORT
 const int cmdSendRawData = 25; // VOX: direct-path raw payload
@@ -273,6 +274,8 @@ const int respCodeNoMoreMessages = 10;
 const int respCodeExportContact = 11;
 const int respCodeBattAndStorage = 12;
 const int respCodeDeviceInfo = 13;
+const int respCodePrivateKey = 14;
+const int respCodeDisabled = 15;
 const int respCodeContactMsgRecvV3 = 16;
 const int respCodeChannelMsgRecvV3 = 17;
 const int respCodeChannelInfo = 18;
@@ -721,16 +724,6 @@ Uint8List buildGetChannelFrame(int channelIndex) {
 
 // Build CMD_SET_CHANNEL frame
 // Format: [cmd][idx][name x32][psk x16]
-// Build CMD_IMPORT_PRIVATE_KEY frame: [cmd][private key x64]. The radio
-// takes the identity and reloads its contacts (OK), or refuses (ERR) when the
-// key is invalid or the firmware was built without key import.
-Uint8List buildImportPrivateKeyFrame(Uint8List privateKey) {
-  final writer = BufferWriter();
-  writer.writeByte(cmdImportPrivateKey);
-  writer.writeBytes(privateKey);
-  return writer.toBytes();
-}
-
 Uint8List buildSetChannelFrame(int channelIndex, String name, Uint8List psk) {
   final writer = BufferWriter();
   writer.writeByte(cmdSetChannel);
@@ -1199,6 +1192,16 @@ Uint8List buildTraceReq(int tag, int auth, int flag, {Uint8List? payload}) {
     writer.writeBytes(payload);
   }
   return writer.toBytes();
+}
+
+Uint8List buildExportPrivateKeyFrame() =>
+    Uint8List.fromList([cmdExportPrivateKey]);
+
+Uint8List buildImportPrivateKeyFrame(Uint8List keyData) {
+  if (keyData.length != 64) {
+    throw ArgumentError.value(keyData.length, 'keyData.length', 'must be 64');
+  }
+  return Uint8List.fromList([cmdImportPrivateKey, ...keyData]);
 }
 
 // Build a export contact frame

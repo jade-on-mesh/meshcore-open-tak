@@ -16,8 +16,10 @@ MeshCore Open is an open-source Flutter client for MeshCore LoRa mesh networking
 3. [Contacts](contacts.md) - Contact management, groups, discovery, nearby-node scan, discovered-contact import/export, and sharing
 4. [Chat & Messaging](chat-and-messaging.md) - Direct messages, location sharing, message status, reactions, and retries
 5. [Channels](channels.md) - Broadcast channels, communities, channel chat, and auto-resend
-6. [Map & Location](map-and-location.md) - The map (nodes, team, watched reports), shared pins, path tracing, line-of-sight, and offline caching
-7. [Settings](settings.md) - Device settings, app settings, radio configuration, and exports
+6. [Map & Location](map-and-location.md) - Node map, shared pins, path tracing, line-of-sight, and offline caching
+7. [Settings](settings.md) - Device settings, app settings, radio configuration, backup/restore, and exports
+8. [Map & Location](map-and-location.md) - The map (nodes, team, watched reports), shared pins, path tracing, line-of-sight, and offline caching
+9. [Settings](settings.md) - Device settings, app settings, radio configuration, and exports
 8. [Notifications](notifications.md) - System notifications, replies from watches and Android Auto, unread badges, and notification preferences
 9. [Repeater Management](repeater-management.md) - Repeater hub, status, CLI, telemetry, and neighbors
 10. [Additional Features](additional-features.md) - GIF picker, localization, debug logs, SMAZ compression, and more
@@ -30,19 +32,23 @@ MeshCore Open is an open-source Flutter client for MeshCore LoRa mesh networking
 17. [Review Mode](review-mode.md) - Simulated radio and reviewer instructions for Google Play and App Store review
 18. [Network Map](network-map.md) - Online repeater map, adding and managing repeaters from it, opt-in uploads, and hiding a repeater
 19. [Themes](themes.md) - Color themes, custom icons and map markers, chat backgrounds, automatic holiday themes, and holiday message animations
-20. [ATAK Plugin](atak-plugin.md) - Sharing the radio with the MeshCore ATAK plugin, and items shared from ATAK
-21. [MediaMesh](media-mesh.md) - Photos and voice on a second frequency (`radio2`) of the same radio
-22. [Walkie-talkie](walkie-talkie.md) - Push-to-talk on a channel over MediaMesh, heard as it's spoken and kept as a voice message
-23. [Update a repeater over LoRa](lora-ota-repeater-tutorial.md) - LoRa OTA from the phone (Repeater Management > LoRa OTA), plus ESP32 Wi-Fi and nRF52 Bluetooth updates for nearby repeaters
-24. [Update a Companion](companion-update-tutorial.md) - Settings > Update Companion: nRF52 Bluetooth DFU or ESP32 Wi-Fi OTA
-25. [Drone detector](drone-detector.md) - Remote ID drones heard by the phone's Bluetooth, on the map and posted to a channel
-26. [MeshCore TEAM](meshcore-team.md) - Seeing MeshCore TEAM users on the team channel, and being seen by them
-27. [Sharing a team in one scan](team-setup.md) - One QR code (or Sound link) with the team channel, watched channels and MediaMesh profile
-28. [Quick replies](quick-replies.md) - One-tap answers to teammates' alerts, reports and pins, and to watched reports
-29. [Who got it](message-reach.md) - Tap a sent channel message to see the repeaters that re-sent it and the teammates who heard it, on a map
-30. [Photos on the map](photo-mosaic.md) - Photos received over MediaMesh as thumbnails where they were taken, with a timeline (a toggle)
-31. [AR view](ar-view.md) - Hold the phone up to see teammates, pins and watched reports as labels with their distance
-32. [Transit cards](transit-watch.md) - A watched transit bot channel (BusBot's #transit) as full cards: ticking arrivals, alerts, trip plans, stops on the map
+20. [Message Filter](message-filter.md) - Hide spam and repeated channel messages with your own rules, automatic checks, and learning from Spam taps, all on the device
+21. [UI Design Reference](design.md) - Contributor reference: theme, typography, spacing, shared widgets, sheets vs dialogs vs pages, states, and localization rules for UI changes
+22. [Offline Mode](offline-mode.md) - Read-only view of the last radio's contacts, channels and messages while no radio is connected, and the Connect sheet
+23. [Performance Profiling](performance-profiling.md) - Contributor reference: frame and memory baselines, HTTP capture retention, and resetting diagnostic recordings
+24. [ATAK Plugin](atak-plugin.md) - Sharing the radio with the MeshCore ATAK plugin, and items shared from ATAK
+25. [MediaMesh](media-mesh.md) - Photos and voice on a second frequency (`radio2`) of the same radio
+26. [Walkie-talkie](walkie-talkie.md) - Push-to-talk on a channel over MediaMesh, heard as it's spoken and kept as a voice message
+27. [Update a repeater over LoRa](lora-ota-repeater-tutorial.md) - LoRa OTA from the phone (Repeater Management > LoRa OTA), plus ESP32 Wi-Fi and nRF52 Bluetooth updates for nearby repeaters
+28. [Update a Companion](companion-update-tutorial.md) - Settings > Update Companion: nRF52 Bluetooth DFU or ESP32 Wi-Fi OTA
+29. [Drone detector](drone-detector.md) - Remote ID drones heard by the phone's Bluetooth, on the map and posted to a channel
+30. [MeshCore TEAM](meshcore-team.md) - Seeing MeshCore TEAM users on the team channel, and being seen by them
+31. [Sharing a team in one scan](team-setup.md) - One QR code (or Sound link) with the team channel, watched channels and MediaMesh profile
+32. [Quick replies](quick-replies.md) - One-tap answers to teammates' alerts, reports and pins, and to watched reports
+33. [Who got it](message-reach.md) - Tap a sent channel message to see the repeaters that re-sent it and the teammates who heard it, on a map
+34. [Photos on the map](photo-mosaic.md) - Photos received over MediaMesh as thumbnails where they were taken, with a timeline (a toggle)
+35. [AR view](ar-view.md) - Hold the phone up to see teammates, pins and watched reports as labels with their distance
+36. [Transit cards](transit-watch.md) - A watched transit bot channel (BusBot's #transit) as full cards: ticking arrivals, alerts, trip plans, stops on the map
 
 ## App Overview
 
@@ -58,6 +64,7 @@ MeshCore Open connects to MeshCore LoRa mesh radios over BLE, USB, or TCP. Once 
 - **Configure radio settings** including frequency, power, bandwidth, and spreading factor
 - **Cache offline maps** for use without internet connectivity
 - **Analyze line-of-sight** between nodes with terrain elevation profiles
+- **Filter spam** in channels with your own rules and automatic on-device checks
 - **Use Android Auto** to hear new messages and reply by voice while driving (Android)
 
 ## What needs internet?

@@ -135,7 +135,7 @@
       }
     }
   },
-  "settings_aboutLegalese": "2026 MeshCore Open Source Project",
+  "settings_aboutLegalese": "2026 MeshCore Open Source-projekt",
   "settings_aboutDescription": "En Flutter-klient med öppen källkod för MeshCore-enheter i LoRa-meshnät.",
   "settings_infoName": "Namn",
   "settings_infoId": "ID",
@@ -176,12 +176,13 @@
   "appSettings_languageDe": "Tyska",
   "appSettings_languagePl": "Polska",
   "appSettings_languageSl": "Sloveniska",
-  "appSettings_languagePt": "Portugisiska",
+  "appSettings_languagePt": "Portugisiska (Brasilien)",
   "appSettings_languageIt": "Italienska",
   "appSettings_languageZh": "Kinesiska",
   "appSettings_languageSv": "Svenska",
   "appSettings_languageNl": "Nederländska",
   "appSettings_languageSk": "Slovakiska",
+  "appSettings_languageCs": "Tjeckiska",
   "appSettings_languageBg": "Bulgariska",
   "appSettings_notifications": "Notifieringar",
   "appSettings_enableNotifications": "Aktivera notifieringar",
@@ -316,8 +317,8 @@
   "contacts_filterContacts": "Filtrera kontakter...",
   "contacts_noContactsMatchFilter": "Inga kontakter matchar ditt filter",
   "contacts_noMembers": "Inga medlemmar",
-  "contacts_lastSeenNow": "Senast synlig nu",
-  "contacts_lastSeenMinsAgo": "Senast sedd {minutes} min sedan",
+  "contacts_lastSeenNow": "nyss",
+  "contacts_lastSeenMinsAgo": "~ {minutes} min",
   "@contacts_lastSeenMinsAgo": {
     "placeholders": {
       "minutes": {
@@ -325,8 +326,8 @@
       }
     }
   },
-  "contacts_lastSeenHourAgo": "Senast sedd för 1 timme sedan",
-  "contacts_lastSeenHoursAgo": "Senast sedd {hours} timmar sedan",
+  "contacts_lastSeenHourAgo": "~ 1 timme",
+  "contacts_lastSeenHoursAgo": "~ {hours} timmar",
   "@contacts_lastSeenHoursAgo": {
     "placeholders": {
       "hours": {
@@ -334,8 +335,8 @@
       }
     }
   },
-  "contacts_lastSeenDayAgo": "Senast sedd för 1 dag sedan",
-  "contacts_lastSeenDaysAgo": "Senast synlig {days} dagar sedan",
+  "contacts_lastSeenDayAgo": "~ 1 dag",
+  "contacts_lastSeenDaysAgo": "~ {days} dagar",
   "@contacts_lastSeenDaysAgo": {
     "placeholders": {
       "days": {
@@ -689,7 +690,6 @@
   "map_pinPrivate": "Markör (privat)",
   "map_pinPublic": "Markör (offentlig)",
   "map_lastSeen": "Senast sedd",
-  "map_disconnectConfirm": "Är du säker på att du vill koppla från enheten?",
   "map_from": "Från",
   "map_source": "Källa",
   "map_flags": "Flaggor",
@@ -1010,6 +1010,7 @@
   "repeater_received": "Mottaget",
   "repeater_duplicates": "Dubbletter",
   "repeater_daysHoursMinsSecs": "{days} dagar {hours} timmar {minutes} minuter {seconds} sekunder",
+  "repeater_hoursMinsSecs": "{hours} timmar {minutes} minuter {seconds} sekunder",
   "@repeater_daysHoursMinsSecs": {
     "placeholders": {
       "days": {
@@ -1484,7 +1485,7 @@
     }
   },
   "channelPath_unknownPath": "Okänd",
-  "channelPath_floodPath": "Flood-trafik",
+  "channelPath_floodPath": "Flood",
   "channelPath_directPath": "Direkt",
   "channelPath_observedZeroOf": "0 av {total} hopp",
   "@channelPath_observedZeroOf": {
@@ -2156,14 +2157,6 @@
   "contact_teleBaseSubtitle": "Tillåt delning av batterinivå och grundläggande telemetri",
   "contact_teleLoc": "Telemetridata plats",
   "contact_teleLocSubtitle": "Tillåt delning av platsdata",
-  "appSettings_initialRouteWeightSubtitle": "Startvikt för nyligen upptäckta rutter",
-  "appSettings_maxRouteWeight": "Maximal ruttvikt",
-  "appSettings_maxRouteWeightSubtitle": "Maximal vikt som en rutt kan samla efter lyckade leveranser",
-  "appSettings_initialRouteWeight": "Initial vikt för rutt",
-  "appSettings_routeWeightSuccessIncrement": "Ökning av vikt för framgång",
-  "appSettings_routeWeightSuccessIncrementSubtitle": "Vikt som läggs till en rutt efter en lyckad leverans",
-  "appSettings_routeWeightFailureDecrement": "Minskning av vikten för misslyckande",
-  "appSettings_routeWeightFailureDecrementSubtitle": "Vikt som tas bort från en rutt efter en misslyckad leverans",
   "appSettings_maxMessageRetries": "Maximalt antal försök",
   "appSettings_maxMessageRetriesSubtitle": "Antal försök att skicka om ett meddelande innan det markeras som misslyckat.",
   "path_routeWeight": "{weight}/{max}",
@@ -2505,8 +2498,8 @@
   "contacts_searchOpen": "Sök efter kontakter",
   "contacts_searchClose": "Stäng sökning",
   "routing_title": "Ruttplanering",
-  "routing_modeAuto": "Automatisk",
-  "routing_modeFlood": "Flood-trafik",
+  "routing_modeAuto": "Auto",
+  "routing_modeFlood": "Flood",
   "routing_modeManual": "Manuell",
   "routing_modeAutoHint": "Väljer automatiskt den bästa kända rutten och använder flood när ingen rutt är känd.",
   "routing_modeFloodHint": "Sänder via alla repeatrar. Mest tillförlitligt, men använder mer sändningstid.",
@@ -3241,6 +3234,9 @@
   "settings_regionFetchNoneResponded": "Ingen repeater i närheten svarade. Flytta dig närmare en repeater och försök igen.",
   "appSettings_sourceSummary": "{label} - {description}",
   "appSettings_routingSection": "Routing",
+  "appSettings_resetRoutingToDefault": "Återställ rutningsalgoritm till standard",
+  "appSettings_resetRoutingToDefaultSubtitle": "Återställ rutningsalgoritmins inställningar till fabriksstandard",
+  "appSettings_routingResetToDefault": "Rutningsalgoritmins inställningar återställda till standard",
   "appSettings_imageMessagesSection": "Bildmeddelanden",
   "appSettings_showApiKey": "Visa API-nyckel",
   "appSettings_hideApiKey": "Dölj API-nyckel",
@@ -3517,5 +3513,311 @@
   "themes_chatBackground": "Chattbakgrund",
   "themes_chatBackgroundHelp": "Visas i chattar som inte har en egen bakgrund",
   "themes_chatBackgroundEverywhere": "Använd i alla chattar",
-  "themes_chatBackgroundEverywhereHelp": "Ersätter även bakgrunder som är inställda för enskilda chattar"
+  "themes_chatBackgroundEverywhereHelp": "Ersätter även bakgrunder som är inställda för enskilda chattar",
+  "appSettings_showOnlineLinks": "Visa anslutningar från onlinekartan",
+  "appSettings_showOnlineLinksSubtitle": "Visa anslutningslinjer mellan noder från onlinekartan",
+  "map_showOnlineLinks": "Visa anslutningar från onlinekartan",
+  "chat_loadOlderMessages": "Ladda äldre meddelanden",
+  "messageFilter_title": "Meddelandefilter",
+  "messageFilter_settingsSubtitle": "Dölj skräppost och upprepade meddelanden",
+  "messageFilter_enabled": "Filtrera meddelanden",
+  "messageFilter_enabledSubtitle": "Gäller kanalmeddelanden",
+  "messageFilter_displayTitle": "Filtrerade meddelanden",
+  "messageFilter_displayPlaceholder": "Visa en liten platshållare",
+  "messageFilter_displayHide": "Dölj helt",
+  "messageFilter_displayHideHelp": "Dolda meddelanden finns kvar i listan Filtrerade meddelanden.",
+  "messageFilter_rulesSection": "Dina regler",
+  "messageFilter_rulesEmpty": "Inga regler ännu. Lägg till ett ord, en fras eller ett avsändarnamn för att dölja matchande meddelanden.",
+  "messageFilter_addRule": "Lägg till regel",
+  "messageFilter_editRule": "Redigera regel",
+  "messageFilter_rulePattern": "Ord, fras eller namn",
+  "messageFilter_rulePatternHint": "t.ex. meshos",
+  "messageFilter_ruleWhere": "Sök i",
+  "messageFilter_ruleFieldText": "Meddelandetext",
+  "messageFilter_ruleFieldSender": "Avsändarnamn",
+  "messageFilter_ruleFieldBoth": "Båda",
+  "messageFilter_ruleMatch": "Matchning",
+  "messageFilter_ruleMatchContains": "Innehåller",
+  "messageFilter_ruleMatchWholeWord": "Helt ord",
+  "messageFilter_ruleMatchExact": "Exakt",
+  "messageFilter_ruleDeleted": "Regeln har raderats",
+  "messageFilter_ruleSaved": "Regeln har sparats",
+  "messageFilter_automaticSection": "Automatiskt",
+  "messageFilter_duplicates": "Upprepade meddelanden",
+  "messageFilter_duplicatesSubtitle": "Samma meddelande skickas igen, eller av flera avsändare",
+  "messageFilter_repeatSends": "Utskick som räknas som upprepning",
+  "messageFilter_repeatSendsSubtitle": "Dölj ett meddelande när samma avsändare skickar det {count} gånger inom 10 minuter",
+  "messageFilter_repeatedCharacters": "Upprepade tecken",
+  "messageFilter_repeatedCharactersSubtitle": "Långa följder av samma tecken, som ”aaaaaaaaaaaaaaaaaaaa”",
+  "messageFilter_learning": "Lär av tryck på Skräppost",
+  "messageFilter_learningSubtitle": "{spam} skräppost- och {notSpam} inte-skräppost-exempel",
+  "@messageFilter_learningSubtitle": {
+    "placeholders": {
+      "spam": {
+        "type": "int"
+      },
+      "notSpam": {
+        "type": "int"
+      }
+    }
+  },
+  "messageFilter_resetLearning": "Återställ inlärning",
+  "messageFilter_resetLearningConfirm": "Glömma allt som lärts från dina tryck på Skräppost och Inte skräppost? Dina regler behålls.",
+  "messageFilter_filteredMessages": "Filtrerade meddelanden ({count})",
+  "@messageFilter_filteredMessages": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "messageFilter_filteredMessagesEmpty": "Inget har filtrerats.",
+  "messageFilter_ghostSingle": "Dolt meddelande · Tryck för att visa",
+  "messageFilter_ghostMany": "{count, plural, one{{count} dolt meddelande · Tryck för att visa} other{{count} dolda meddelanden · Tryck för att visa}}",
+  "@messageFilter_ghostMany": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "messageFilter_ghostSingleExpanded": "Visar dolt meddelande · Tryck för att dölja",
+  "messageFilter_ghostManyExpanded": "{count, plural, one{Visar {count} dolt meddelande · Tryck för att dölja} other{Visar {count} dolda meddelanden · Tryck för att dölja}}",
+  "@messageFilter_ghostManyExpanded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "messageFilter_reasonTextRule": "Filtrerat: matchar ”{pattern}”",
+  "@messageFilter_reasonTextRule": {
+    "placeholders": {
+      "pattern": {
+        "type": "String"
+      }
+    }
+  },
+  "messageFilter_reasonSenderRule": "Filtrerat: avsändare ”{pattern}”",
+  "@messageFilter_reasonSenderRule": {
+    "placeholders": {
+      "pattern": {
+        "type": "String"
+      }
+    }
+  },
+  "messageFilter_reasonRepeatedCharacters": "Filtrerat: upprepade tecken",
+  "messageFilter_reasonDuplicate": "Filtrerat: upprepat meddelande",
+  "messageFilter_reasonCrossSenderDuplicate": "Filtrerat: samma meddelande från flera avsändare",
+  "messageFilter_reasonLearned": "Filtrerat: liknar meddelanden du markerat som skräppost",
+  "messageFilter_reasonManual": "Filtrerat: du markerade detta som skräppost",
+  "messageFilter_notSpam": "Inte skräppost",
+  "messageFilter_hideAgain": "Dölj",
+  "messageFilter_markSpam": "Markera som skräppost",
+  "messageFilter_markedSpam": "Markerat som skräppost",
+  "messageFilter_markedNotSpam": "Markerat som inte skräppost",
+  "messageFilter_filterSender": "Filtrera denna avsändare",
+  "messageFilter_filterSenderConfirm": "Dölja alla meddelanden från ”{name}”?",
+  "@messageFilter_filterSenderConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "messageFilter_filterLikeThis": "Filtrera meddelanden som detta…",
+  "messageFilter_channelToggle": "Filtrera meddelanden i den här kanalen",
+  "messageFilter_ghostIconTooltip": "Dolt av ditt meddelandefilter",
+  "chatSearch_tooltip": "Sök i meddelanden",
+  "chatSearch_hint": "Sök i meddelanden",
+  "chatSearch_close": "Stäng sökning",
+  "chatSearch_resultCount": "{count, plural, =1{1 träff} other{{count} träffar}}",
+  "@chatSearch_resultCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "chatSearch_noResults": "Inga matchande meddelanden",
+  "chatSearch_noResultsHint": "Prova ett annat ord eller kontrollera stavningen",
+  "contactShare_headerOutgoing": "Du delade en kontakt",
+  "contactShare_headerIncoming": "Delade en kontakt",
+  "contactShare_add": "Lägg till kontakt",
+  "contactShare_adding": "Lägger till kontakt...",
+  "contactShare_saved": "Sparad",
+  "contactShare_isYou": "Det här är du",
+  "contactShare_shareAction": "Dela kontakt",
+  "contactShare_pickerTitle": "Dela en kontakt",
+  "contactShare_myContact": "Min kontakt",
+  "contactShare_searchHint": "Sök bland kontakter",
+  "contactShare_noContacts": "Inga kontakter hittades",
+  "contactShare_preview": "Delad kontakt: {name}",
+  "@contactShare_preview": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "contactShare_notification": "Delade en kontakt: {name}",
+  "@contactShare_notification": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "manualTrace_menuItem": "Ruttspårning via hashar",
+  "manualTrace_inputLabel": "Repeater-hashar",
+  "manualTrace_helper": "Exempel: {example}. Separera med kommatecken eller mellanslag.",
+  "@manualTrace_helper": {
+    "placeholders": {
+      "example": {
+        "type": "String"
+      }
+    }
+  },
+  "manualTrace_previewTitle": "Hopp ({count})",
+  "@manualTrace_previewTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "manualTrace_unknownNode": "Okänd nod",
+  "manualTrace_enterHashes": "Ange hashar",
+  "manualTrace_run": "Kör ruttspårning",
+  "manualTrace_notConnected": "Anslut till en radio för att köra en spårning",
+  "manualTrace_errorInvalidHex": "Endast hex-tecken (0-9, A-F) är tillåtna",
+  "manualTrace_errorOddLength": "Varje hash måste ha ett jämnt antal hex-tecken, som matchar hoppstorleken",
+  "manualTrace_errorMixedWidths": "Alla hashar måste ha samma längd",
+  "manualTrace_errorUnsupportedWidth": "Hashar måste vara 1, 2 eller 3 byte (2, 4 eller 6 hex-tecken)",
+  "manualTrace_errorTooManyHops": "Rutten är för lång (högst {max} byte)",
+  "manualTrace_errorTraceTooLong": "För många hopp för att spåra i en enda förfrågan. Ta bort några hopp eller välj ”Som inmatat”.",
+  "@manualTrace_errorTooManyHops": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "chatSearch_jumpFailed": "Det gick inte att hitta meddelandet i chatten",
+  "chat_clearSelection": "Rensa markering",
+  "chat_deleteSelectedConfirm": "{count, plural, =1{Radera 1 meddelande från den här enheten?} other{Radera {count} meddelanden från den här enheten?}}",
+  "@chat_deleteSelectedConfirm": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "chat_deleteSelectedTitle": "Radera meddelanden?",
+  "chat_messagesDeleted": "{count, plural, =1{1 meddelande raderat} other{{count} meddelanden raderade}}",
+  "@chat_messagesDeleted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "chat_selectAll": "Markera alla",
+  "chat_selectMessages": "Markera meddelanden",
+  "chat_selectedCount": "{count} markerade",
+  "@chat_selectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "contactShare_addAgain": "Lägg till igen",
+  "messageFilter_markedNotSpamCount": "{count, plural, =1{1 meddelande markerat som inte skräppost} other{{count} meddelanden markerade som inte skräppost}}",
+  "@messageFilter_markedNotSpamCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "messageFilter_markedSpamCount": "{count, plural, =1{1 meddelande markerat som skräppost} other{{count} meddelanden markerade som skräppost}}",
+  "@messageFilter_markedSpamCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pathMap_expandHopList": "Expandera hopplistan",
+  "pathMap_showMap": "Visa karta",
+  "routing_modeDirect": "Direkt",
+  "routing_modeDirectHint": "Skickar alltid direkt till den här kontakten utan repeaterhopp. Använd när kontakten är inom radioräckvidd.",
+  "settings_export": "Exportera",
+  "settings_exportSubtitle": "Exportera kontakter och repeatrar som GPX",
+  "backupRestore_title": "Säkerhetskopia och återställning",
+  "backupRestore_subtitle": "Spara eller återställ appdata och radioinställningar",
+  "backupRestore_import": "Importera",
+  "backupRestore_selectImportFile": "Importera fil",
+  "backupRestore_password": "Lösenord (valfritt)",
+  "backupRestore_passwordHelp": "Ett lösenord krypterar filen. Utan lösenord sparas klartext som kan innehålla privata nycklar/kanalnycklar, historik och inloggningsuppgifter.",
+  "backupRestore_importUnavailable": "Kontrollera lösenordet eller välj en fil som stöds.",
+  "backupRestore_items": "Objekt för säkerhetskopiering och återställning",
+  "backupRestore_nodeSettings": "Nodinställningar",
+  "backupRestore_nodeSettingsDescription": "Enhetsnamn, privata och publika nycklar, radioinställningar och regioner",
+  "backupRestore_deviceName": "Enhetsnamn",
+  "backupRestore_privateKey": "Privat nyckel (känslig)",
+  "backupRestore_publicKey": "Publik nyckel",
+  "backupRestore_radioSettings": "Radioinställningar",
+  "backupRestore_regions": "Regioner",
+  "backupRestore_location": "Plats",
+  "backupRestore_contactSettings": "Kontaktinställningar",
+  "backupRestore_privacySettings": "Integritetsinställningar",
+  "backupRestore_contactsData": "Kontakter",
+  "backupRestore_perContactSettings": "Kontaktinställningar och filter",
+  "backupRestore_contactGroups": "Kontaktgrupper",
+  "backupRestore_contactHistory": "Kontakthistorik",
+  "backupRestore_channelsData": "Kanaler",
+  "backupRestore_channelFilters": "Inställningar för meddelandefilter",
+  "backupRestore_channelSettings": "Kanalinställningar",
+  "backupRestore_communities": "Communityn",
+  "backupRestore_channelHistory": "Kanalhistorik",
+  "backupRestore_locationSettings": "Platsinställningar",
+  "backupRestore_locationSettingsDescription": "Plats, kontaktinställningar och integritetsinställningar",
+  "backupRestore_appSettings": "Appinställningar",
+  "backupRestore_appSettingsDescription": "Appinställningar och utseende",
+  "backupRestore_ipfsKey": "IPFS API-nyckel (känslig)",
+  "backupRestore_stadiaMapKey": "API-nyckel för Stadia Maps (känslig)",
+  "backupRestore_contacts": "Kontakter",
+  "backupRestore_contactsDescription": "Kontakter, filter och inställningar per kontakt, grupper och meddelandehistorik",
+  "backupRestore_discoveredContacts": "Upptäckta kontakter",
+  "backupRestore_discoveredContactsDescription": "Upptäckta kontakter och deras sparade uppgifter",
+  "backupRestore_channels": "Kanaler",
+  "backupRestore_channelsDescription": "Kanaler, kanalfilter, communityn och meddelandehistorik",
+  "backupRestore_backup": "Skapa säkerhetskopia",
+  "backupRestore_restore": "Återställ markerade",
+  "backupRestore_backupComplete": "Säkerhetskopia skapad.",
+  "backupRestore_restoreComplete": "Återställningen är klar. Återanslut om du återställde radions identitet.",
+  "backupRestore_missingModelsTitle": "Modeller inte nedladdade",
+  "backupRestore_missingModelsMessage": "De återställda inställningarna väljer modeller som inte finns på den här enheten:\n{models}\n\nLadda ned dem nu?",
+  "backupRestore_downloadModels": "Ladda ned modeller",
+  "backupRestore_downloading": "Laddar ned…",
+  "backupRestore_cancelDownload": "Avbryt nedladdning",
+  "backupRestore_failed": "Säkerhetskopieringen misslyckades: {error}",
+  "backupRestore_fileTooLarge": "Säkerhetskopian är större än gränsen på 100 MB.",
+  "backupRestore_selectAtLeastOne": "Välj minst ett objekt.",
+  "backupRestore_replaceIdentityTitle": "Ersätta radions identitet?",
+  "backupRestore_replaceIdentityMessage": "Att återställa nodinställningarna ersätter den anslutna radions privata nyckel och ändrar dess identitet. Fortsätt bara om det är avsett.",
+  "appSettings_languagePtPt": "Portugisiska (Portugal)",
+  "receivedImage_syntheticBadge": "AI-rekonstruerad",
+  "appBar_offlineSubtitle": "Offline · {name}",
+  "appBar_offline": "Offline",
+  "appBar_reconnecting": "Återansluter…",
+  "connectSheet_title": "Anslut en radio",
+  "connectSheet_reconnect": "Återanslut till {name}",
+  "connectSheet_chooseRadio": "Välj en radio",
+  "connectSheet_chooseRadioSubtitle": "Bluetooth, USB eller TCP",
+  "connectSheet_stopReconnecting": "Sluta återansluta",
+  "connectSheet_reconnectFailed": "Kunde inte nå {name}. Kontrollera att den är påslagen och i närheten.",
+  "chat_composerOffline": "Anslut till en radio för att skicka meddelanden"
 }
