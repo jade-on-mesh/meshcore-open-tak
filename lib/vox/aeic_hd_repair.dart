@@ -301,7 +301,8 @@ class AeicHdRepairService {
     final total = entry.totalChunks.clamp(1, 15).toInt();
     final missing = reassembler.missingDataChunks(key);
     if (missing != null && missing.isEmpty) return true;
-    if (round == 1) _rounds[entry.streamId] = (_rounds[entry.streamId] ?? 0) + 1;
+    if (round == 1)
+      _rounds[entry.streamId] = (_rounds[entry.streamId] ?? 0) + 1;
     final generation = _rounds[entry.streamId];
     final held = missing == null ? 0 : total - missing.length;
     var mask = 0;
@@ -381,7 +382,9 @@ class AeicHdRepairService {
     final missing = reassembler.missingDataChunks(e.key);
     if (missing != null && missing.isEmpty) return;
     if (round < maxRounds) {
-      _log('still missing ${missing ?? 'all'} after round $round: asking again');
+      _log(
+        'still missing ${missing ?? 'all'} after round $round: asking again',
+      );
       await requestRest(e, round: round + 1);
       return;
     }
