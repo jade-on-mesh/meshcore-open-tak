@@ -204,8 +204,7 @@ class FileReceivedImageBlobStore implements ReceivedImageBlobStore {
       _read(streamId, _partialExt);
 
   @override
-  Future<void> deletePartial(String streamId) =>
-      _delete(streamId, _partialExt);
+  Future<void> deletePartial(String streamId) => _delete(streamId, _partialExt);
 
   /// Atomic: write `<id>.json.tmp`, then rename over `<id>.json`. `rename` is
   /// atomic within a directory on every platform we ship, so a reader either
