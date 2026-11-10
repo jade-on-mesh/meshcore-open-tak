@@ -51,6 +51,7 @@ class FileReceivedImageBlobStore implements ReceivedImageBlobStore {
 
   static const String _bitstreamExt = '.aeic';
   static const String _pngExt = '.png';
+  static const String _partialExt = '.part';
   static const String _sidecarExt = '.json';
   static const String _tmpExt = '.json.tmp';
 
@@ -194,6 +195,18 @@ class FileReceivedImageBlobStore implements ReceivedImageBlobStore {
   @override
   Future<int?> pngSize(String streamId) => _size(streamId, _pngExt);
 
+  @override
+  Future<bool> writePartial(String streamId, Uint8List bytes) =>
+      _write(streamId, _partialExt, bytes);
+
+  @override
+  Future<Uint8List?> readPartial(String streamId) =>
+      _read(streamId, _partialExt);
+
+  @override
+  Future<void> deletePartial(String streamId) =>
+      _delete(streamId, _partialExt);
+
   /// Atomic: write `<id>.json.tmp`, then rename over `<id>.json`. `rename` is
   /// atomic within a directory on every platform we ship, so a reader either
   /// sees the old record or the new one.
@@ -287,7 +300,9 @@ class FileReceivedImageBlobStore implements ReceivedImageBlobStore {
       if (dot <= 0) continue;
       final id = name.substring(0, dot);
       final ext = name.substring(dot);
-      if (ext != _bitstreamExt && ext != _pngExt) continue;
+      if (ext != _bitstreamExt && ext != _pngExt && ext != _partialExt) {
+        continue;
+      }
       if (result.containsKey(id)) continue;
       orphans.add(file);
     }

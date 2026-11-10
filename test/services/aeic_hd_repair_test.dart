@@ -236,6 +236,47 @@ void main() {
       );
     });
 
+    test('saved chunks survive a restart and finish with a resend', () {
+      final set = hdImage();
+      final total = set.dataChunkCount;
+      const key = ImageStreamKey(
+        senderPrefix: 0x8c41,
+        imgId: 9,
+        channelIndex: 0,
+      );
+      final before = ImageReassembler();
+      for (var i = 0; i < total - 2; i++) {
+        before.addChunk(set.blobs[i], channelIndex: 0);
+      }
+      final held = before.heldChunks(key)!;
+      expect(held.bodies.length, total - 2);
+      final saved = decodeAeicHdPartial(
+        encodeAeicHdPartial(
+          total: held.total,
+          bodies: held.bodies,
+          parity: held.parity,
+        ),
+      )!;
+      expect(saved.total, total);
+      expect(saved.bodies.keys, held.bodies.keys);
+      expect(decodeAeicHdPartial(Uint8List.fromList([1, 2, 3])), isNull);
+
+      // A new reassembler, as after a restart.
+      final after = ImageReassembler();
+      expect(after.missingDataChunks(key), isNull);
+      after.restoreParked(
+        key,
+        total: saved.total,
+        bodies: saved.bodies,
+        parity: saved.parity,
+      );
+      expect(after.missingDataChunks(key), [total - 2, total - 1]);
+      after.expectResend(key);
+      after.addChunk(set.blobs[total - 2], channelIndex: 0);
+      final last = after.addChunk(set.blobs[total - 1], channelIndex: 0);
+      expect(last.status, ImageChunkStatus.completed);
+    });
+
     test('a regular AI sketch is not offered "ask for the rest"', () {
       final e = ReceivedImageEntry(
         streamId: 'x',
