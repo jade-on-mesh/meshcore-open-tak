@@ -2303,13 +2303,15 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     // hammering the channel back-to-back.
     // An HD image on radio2 is paced for radio2 ([packetAirtime]).
     final total = result.airtime;
-    final perPacket = packetAirtime ?? (total == null
-        ? Duration.zero
-        : Duration(
-            microseconds:
-                total.inMicroseconds ~/
-                (result.packetCount == 0 ? 1 : result.packetCount),
-          ));
+    final perPacket =
+        packetAirtime ??
+        (total == null
+            ? Duration.zero
+            : Duration(
+                microseconds:
+                    total.inMicroseconds ~/
+                    (result.packetCount == 0 ? 1 : result.packetCount),
+              ));
 
     setState(() {
       _imageSendTotal = chunkSet.blobs.length;
