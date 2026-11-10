@@ -1,0 +1,154 @@
+name: TestFlight
+
+# Uploads every published build to TestFlight, so the TestFlight beta never
+# lags the "Latest build" release. Runs after Build succeeds on main (same
+# commit, same build number as the release), or by hand.
+#
+# Off until these are set (Settings > Secrets and variables > Actions); without
+# them the job says so and stops, so forks and this repo are unaffected:
+#   secrets  ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (the .p8's text): an App
+#            Store Connect API key with the Admin role (it signs with a
+#            cloud-managed distribution certificate and makes the profile).
+#   vars     IOS_TEAM_ID (10 characters) and IOS_BUNDLE_ID: the team and the
+#            bundle ID of the app record the TestFlight beta belongs to.
+#            TESTFLIGHT_BUILD_OFFSET (optional, default 0): added to the
+#            build number when that record already has higher ones.
+
+on:
+  workflow_run:
+    workflows: [Build]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: testflight
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: macos-latest
+    timeout-minutes: 90
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      TEAM_ID: ${{ vars.IOS_TEAM_ID }}
+      BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID }}
+      BUILD_OFFSET: ${{ vars.TESTFLIGHT_BUILD_OFFSET }}
+      # The release's build number: Build's run number, or this run's by hand.
+      RUN_NUMBER: ${{ github.event.workflow_run.run_number || github.run_number }}
+    steps:
+      - name: Configured?
+        id: cfg
+        run: |
+          if [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_ISSUER_ID" ] || [ -z "$ASC_KEY_P8" ] || [ -z "$TEAM_ID" ] || [ -z "$BUNDLE_ID" ]; then
+            echo "::notice title=TestFlight::Not set up (see the top of .github/workflows/testflight.yml); nothing uploaded."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.cfg.outputs.go == 'true'
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      # Photo messages: libaom for iPhone, as in build.yml's ios job.
+      - name: Cache libaom (iOS)
+        if: steps.cfg.outputs.go == 'true'
+        id: aomios
+        uses: actions/cache@v4
+        with:
+          path: third_party/vox_av1/aom-ios
+          key: aom-ios-v3.12.1-arm64-1
+      - name: Build libaom (iOS)
+        if: steps.cfg.outputs.go == 'true' && steps.aomios.outputs.cache-hit != 'true'
+        timeout-minutes: 30
+        run: |
+          set -euo pipefail
+          curl -sSL -o /tmp/aom.tgz "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/deps-cache/aom-v3.12.1.tar.gz"
+          echo "76558ad5918820d66fa78460d9957e5bbf7cf9eef1a5421b5ba5e616f200d76e  /tmp/aom.tgz" | shasum -a 256 -c
+          tar xzf /tmp/aom.tgz -C /tmp
+          cmake -S /tmp/aom -B /tmp/aom-ios \
+            -DCMAKE_TOOLCHAIN_FILE=/tmp/aom/build/cmake/toolchains/arm64-ios.cmake \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=16.4 -DCMAKE_BUILD_TYPE=Release \
+            -DENABLE_DOCS=0 -DENABLE_EXAMPLES=0 -DENABLE_TESTS=0 -DENABLE_TESTDATA=0 \
+            -DENABLE_TOOLS=0 -DCONFIG_AV1_HIGHBITDEPTH=0 -DCONFIG_WEBM_IO=0
+          cmake --build /tmp/aom-ios -j"$(sysctl -n hw.ncpu)" --target aom
+          out=third_party/vox_av1/aom-ios
+          mkdir -p $out/lib $out/include/aom
+          cp /tmp/aom-ios/libaom.a $out/lib/
+          cp /tmp/aom/aom/*.h $out/include/aom/
+      - id: fv
+        if: steps.cfg.outputs.go == 'true'
+        shell: bash
+        run: echo "v=$(tr -d '[:space:]' < .flutter-version)" >> "$GITHUB_OUTPUT"
+      - uses: subosito/flutter-action@v2
+        if: steps.cfg.outputs.go == 'true'
+        with:
+          flutter-version: ${{ steps.fv.outputs.v }}
+          channel: "stable"
+          cache: true
+      - if: steps.cfg.outputs.go == 'true'
+        run: flutter pub get --enforce-lockfile
+      - name: Prepare (Flutter build settings, version, build number)
+        if: steps.cfg.outputs.go == 'true'
+        id: ver
+        run: |
+          set -euo pipefail
+          upstream=$(sed -n 's/^version:[[:space:]]*\([^+[:space:]]*\).*/\1/p' pubspec.yaml)
+          build=$((1000 + RUN_NUMBER + ${BUILD_OFFSET:-0}))
+          sha=$(git rev-parse --short=7 HEAD)
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+          echo "version=$upstream" >> "$GITHUB_OUTPUT"
+          # Writes Generated.xcconfig (version, build number, dart defines)
+          # and the pods; signing happens in the archive below.
+          flutter build ios --release --no-pub --no-codesign --build-name="$upstream" --build-number=$build \
+            --dart-define=APP_VERSION="${upstream}-tak" --dart-define=APP_BUILD=$build \
+            --dart-define=APP_BUILD_DATE="$(date -u '+%d %b %Y')" --dart-define=APP_COMMIT="$sha"
+      - name: API key
+        if: steps.cfg.outputs.go == 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/asc"
+          printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/asc/AuthKey_${ASC_KEY_ID}.p8"
+      - name: Archive (signed)
+        if: steps.cfg.outputs.go == 'true'
+        run: |
+          set -euo pipefail
+          xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Runner.xcarchive" archive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/asc/AuthKey_${ASC_KEY_ID}.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$TEAM_ID" PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" CODE_SIGN_STYLE=Automatic \
+            | tail -40
+      - name: Upload to TestFlight
+        if: steps.cfg.outputs.go == 'true'
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>${TEAM_ID}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+          </dict>
+          </plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/asc/AuthKey_${ASC_KEY_ID}.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            | tail -40
+          echo "::notice title=TestFlight::Uploaded ${{ steps.ver.outputs.version }} (${{ steps.ver.outputs.build }}). It shows in TestFlight once Apple has processed it (usually 5-30 minutes)."
+      - name: Remove the key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/asc"
