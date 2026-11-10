@@ -90,9 +90,9 @@ class MapPackStore {
         bytes: f.lengthSync(),
       );
     } catch (_) {
-      _queries.remove(id)?.dispose();
+      _queries.remove(id)?.close();
       _dbs.remove(id);
-      db.dispose();
+      db.close();
       rethrow;
     }
   }
@@ -133,16 +133,16 @@ class MapPackStore {
       rethrow;
     }
     final tmpId = info.id;
-    _queries.remove(tmpId)?.dispose();
-    _dbs.remove(tmpId)?.dispose();
+    _queries.remove(tmpId)?.close();
+    _dbs.remove(tmpId)?.close();
     await remove(name);
     final dest = await tmp.rename('${d.path}/$name');
     return _openFile(dest);
   }
 
   Future<void> remove(String id) async {
-    _queries.remove(id)?.dispose();
-    _dbs.remove(id)?.dispose();
+    _queries.remove(id)?.close();
+    _dbs.remove(id)?.close();
     final d = await _folder();
     final f = File('${d.path}/$id');
     if (await f.exists()) await f.delete();
