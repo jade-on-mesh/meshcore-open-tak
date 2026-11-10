@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
+import '../helpers/fork_providers.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:latlong2/latlong.dart';
@@ -75,9 +76,11 @@ void main() {
       tiles.dispose();
       settings.dispose();
     });
+    final fork = await forkProviders(tester, connector);
     await tester.pumpWidget(
       MultiProvider(
         providers: [
+          ...fork,
           ChangeNotifierProvider.value(value: connector),
           ChangeNotifierProvider.value(value: settings),
           ChangeNotifierProvider.value(value: paths),

@@ -432,6 +432,10 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  /// Search sits in the ⋮ menu instead of the bar below this width.
+  static bool _searchInMenu(BuildContext context) =>
+      MediaQuery.sizeOf(context).width < 400;
+
   Widget _buildScaffold(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -502,11 +506,14 @@ class _ChatScreenState extends State<ChatScreen> {
                 const SignalGradeIndicator(),
                 const MediaMeshNearbyIcon(),
                 const RadioStatsIconButton(),
-                IconButton(
-                  tooltip: context.l10n.chatSearch_tooltip,
-                  icon: const Icon(Icons.search),
-                  onPressed: _openSearch,
-                ),
+                // On a narrow phone search moves into the ⋮ menu, so the
+                // fork's extra buttons still fit the bar.
+                if (!_searchInMenu(context))
+                  IconButton(
+                    tooltip: context.l10n.chatSearch_tooltip,
+                    icon: const Icon(Icons.search),
+                    onPressed: _openSearch,
+                  ),
                 Consumer<MeshCoreConnector>(
                   builder: (context, connector, _) {
                     final contact = _resolveContact(connector);
@@ -569,6 +576,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       icon: const Icon(Icons.more_vert),
                       onSelected: (value) {
                         switch (value) {
+                          case 'search':
+                            _openSearch();
                           case 'routing':
                             ContactRoutingSheet.show(context, contact: contact);
                           case 'info':
@@ -604,6 +613,14 @@ class _ChatScreenState extends State<ChatScreen> {
                         }
                       },
                       itemBuilder: (context) => [
+                        if (_searchInMenu(context))
+                          PopupMenuItem(
+                            value: 'search',
+                            child: MeshMenuItemRow(
+                              icon: Icons.search,
+                              label: context.l10n.chatSearch_tooltip,
+                            ),
+                          ),
                         PopupMenuItem(
                           value: 'routing',
                           child: MeshMenuItemRow(

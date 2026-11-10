@@ -693,6 +693,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       onSelected: (value) {
         final connector = context.read<MeshCoreConnector>();
         switch (value) {
+          case 'search':
+            _openSearch();
           case 'messageFilter':
             _toggleChannelFiltering();
           case 'notifications':
@@ -732,6 +734,11 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             .getChannelNotificationMode(muteKey);
         final readOnly = isRadioReadOnly(context.read<MeshCoreConnector>());
         return [
+          if (_searchInMenu(context))
+            PopupMenuItem(
+              value: 'search',
+              child: _menuRow(Icons.search, context.l10n.chatSearch_tooltip),
+            ),
           if (_messageFilter case final filter? when filter.settings.enabled)
             PopupMenuItem(
               value: 'messageFilter',
@@ -857,6 +864,10 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     );
   }
 
+  /// Search sits in the ⋮ menu instead of the bar below this width.
+  static bool _searchInMenu(BuildContext context) =>
+      MediaQuery.sizeOf(context).width < 400;
+
   Widget _buildScaffold(BuildContext context) {
     return Scaffold(
       appBar: _selecting
@@ -968,11 +979,14 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                       const SignalGradeIndicator(),
                       const MediaMeshNearbyIcon(),
                       const RadioStatsIconButton(),
-                      IconButton(
-                        tooltip: context.l10n.chatSearch_tooltip,
-                        icon: const Icon(Icons.search),
-                        onPressed: _openSearch,
-                      ),
+                      // On a narrow phone search moves into the ⋮ menu, so
+                      // the fork's extra buttons still fit the bar.
+                      if (!_searchInMenu(context))
+                        IconButton(
+                          tooltip: context.l10n.chatSearch_tooltip,
+                          icon: const Icon(Icons.search),
+                          onPressed: _openSearch,
+                        ),
                       ..._otpActions(),
                       _buildOverflowMenu(context),
                     ],

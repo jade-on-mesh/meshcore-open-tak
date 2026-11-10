@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import '../helpers/fork_providers.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -105,8 +106,10 @@ Future<Widget> _app(
   final settings = AppSettingsService();
   await tester.runAsync(settings.loadSettings);
   final translation = TranslationService(settings);
+  final fork = await forkProviders(tester, connector);
   return MultiProvider(
     providers: [
+      ...fork,
       ChangeNotifierProvider.value(value: connector),
       ChangeNotifierProvider.value(value: MessageRetryService()),
       ChangeNotifierProvider.value(value: PathHistoryService(storage)),

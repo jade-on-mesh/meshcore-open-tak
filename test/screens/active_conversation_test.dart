@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import '../helpers/fork_providers.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
@@ -228,10 +229,12 @@ Future<(MeshCoreConnector, List<SingleChildWidget>)> _connect(
     }
   });
   expect(connector.channels.length, greaterThanOrEqualTo(2));
+  final fork = await forkProviders(tester, connector);
 
   return (
     connector,
     <SingleChildWidget>[
+      ...fork,
       ChangeNotifierProvider.value(value: connector),
       ChangeNotifierProvider.value(value: retry),
       ChangeNotifierProvider.value(value: PathHistoryService(storage)),

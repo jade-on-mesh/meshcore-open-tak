@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_map/flutter_map.dart';
+import '../helpers/fork_providers.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:meshcore_open/connector/meshcore_connector.dart';
@@ -96,9 +97,11 @@ void main() {
   });
 
   Future<void> openMap(WidgetTester tester) async {
+    final fork = await forkProviders(tester, connector);
     await tester.pumpWidget(
       MultiProvider(
         providers: [
+          ...fork,
           ChangeNotifierProvider<MeshCoreConnector>.value(value: connector),
           ChangeNotifierProvider.value(value: settings),
           ChangeNotifierProvider.value(value: paths),
