@@ -4066,6 +4066,18 @@ abstract class AppLocalizations {
   /// **'Smileys'**
   String get emojiCategorySmileys;
 
+  /// No description provided for @emojiSearch_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search emoji'**
+  String get emojiSearch_hint;
+
+  /// No description provided for @emojiSearch_none.
+  ///
+  /// In en, this message translates to:
+  /// **'No emoji match'**
+  String get emojiSearch_none;
+
   /// No description provided for @emojiCategoryGestures.
   ///
   /// In en, this message translates to:

@@ -2196,6 +2196,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get emojiCategorySmileys => '이모티콘';
 
   @override
+  String get emojiSearch_hint => 'Search emoji';
+
+  @override
+  String get emojiSearch_none => 'No emoji match';
+
+  @override
   String get emojiCategoryGestures => '제스처';
 
   @override

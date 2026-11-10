@@ -2290,6 +2290,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get emojiCategorySmileys => 'Emojis';
 
   @override
+  String get emojiSearch_hint => 'Search emoji';
+
+  @override
+  String get emojiSearch_none => 'No emoji match';
+
+  @override
   String get emojiCategoryGestures => 'Gestos';
 
   @override

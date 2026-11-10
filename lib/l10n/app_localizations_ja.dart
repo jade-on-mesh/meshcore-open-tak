@@ -2193,6 +2193,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get emojiCategorySmileys => '顔文字';
 
   @override
+  String get emojiSearch_hint => 'Search emoji';
+
+  @override
+  String get emojiSearch_none => 'No emoji match';
+
+  @override
   String get emojiCategoryGestures => 'ジェスチャー';
 
   @override

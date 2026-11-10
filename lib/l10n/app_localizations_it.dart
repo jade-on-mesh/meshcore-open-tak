@@ -2298,6 +2298,12 @@ class AppLocalizationsIt extends AppLocalizations {
   String get emojiCategorySmileys => 'Emoji';
 
   @override
+  String get emojiSearch_hint => 'Search emoji';
+
+  @override
+  String get emojiSearch_none => 'No emoji match';
+
+  @override
   String get emojiCategoryGestures => 'Gesti';
 
   @override
