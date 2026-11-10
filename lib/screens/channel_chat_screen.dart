@@ -702,6 +702,22 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                 builder: (_) => OtpPadScreen.forChannel(widget.channel),
               ),
             );
+          case 'otpResync':
+            // Ports OTP_3_RC1.lua's "ReSync": see resyncChannel's doc comment.
+            final ok = connector.resyncChannel(widget.channel.index);
+            showDismissibleSnackBar(
+              context,
+              content: Text(
+                ok
+                    ? 'Pad reloaded — sync check sent'
+                    : 'No OTP pad for this channel',
+              ),
+            );
+          case 'otpStrip':
+            final settings = context.read<AppSettingsService>();
+            settings.setChannelParticipantStripEnabled(
+              !settings.settings.channelParticipantStripEnabled,
+            );
           case 'messageFilter':
             _toggleChannelFiltering();
           case 'notifications':
@@ -740,21 +756,39 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             .read<AppSettingsService>()
             .getChannelNotificationMode(muteKey);
         final readOnly = isRadioReadOnly(context.read<MeshCoreConnector>());
+        final otpEnabled = context
+            .read<MeshCoreConnector>()
+            .isChannelOtpEnabled(widget.channel.index);
+        final stripShown = context
+            .read<AppSettingsService>()
+            .settings
+            .channelParticipantStripEnabled;
         return [
-          if (_narrowBar(context)) ...[
+          if (!_searchInBar(context))
             PopupMenuItem(
               value: 'search',
               child: _menuRow(Icons.search, context.l10n.chatSearch_tooltip),
             ),
+          if (!_padInBar(context))
             PopupMenuItem(
               value: 'otpPad',
               child: _menuRow(
-                context.read<MeshCoreConnector>().isChannelOtpEnabled(
-                      widget.channel.index,
-                    )
-                    ? Icons.lock
-                    : Icons.lock_open,
-                'OTP Pad',
+                otpEnabled ? Icons.lock : Icons.lock_open,
+                otpEnabled ? 'OTP Pad (encrypting)' : 'OTP Pad',
+              ),
+            ),
+          if (otpEnabled) ...[
+            PopupMenuItem(
+              value: 'otpResync',
+              child: _menuRow(Icons.sync, 'ReSync pad'),
+            ),
+            PopupMenuItem(
+              value: 'otpStrip',
+              child: _menuRow(
+                stripShown ? Icons.people : Icons.people_outline,
+                stripShown
+                    ? 'Hide participant sync strip'
+                    : 'Show participant sync strip',
               ),
             ),
           ],
@@ -883,10 +917,14 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     );
   }
 
-  /// Below this width search and the OTP pad sit in the ⋮ menu instead of
-  /// the bar, so the fork's extra buttons still fit.
-  static bool _narrowBar(BuildContext context) =>
-      MediaQuery.sizeOf(context).width < 400;
+  /// What gets a button in the bar rather than a ⋮ menu item, by the
+  /// screen's width: the bar holds the back arrow, the title, the signal,
+  /// MediaMesh and radio-stats indicators and the menu first. OTP ReSync and
+  /// the participant strip are always menu items.
+  static bool _searchInBar(BuildContext context) =>
+      MediaQuery.sizeOf(context).width >= 480;
+  static bool _padInBar(BuildContext context) =>
+      MediaQuery.sizeOf(context).width >= 420;
 
   Widget _buildScaffold(BuildContext context) {
     return Scaffold(
@@ -996,12 +1034,12 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
               actions: _searching
                   ? null
                   : [
-                      const SignalGradeIndicator(),
+                      const SignalGradeIndicator(compact: true),
                       const MediaMeshNearbyIcon(),
                       const RadioStatsIconButton(),
                       // On a narrow phone search moves into the ⋮ menu, so
                       // the fork's extra buttons still fit the bar.
-                      if (!_narrowBar(context))
+                      if (_searchInBar(context))
                         IconButton(
                           tooltip: context.l10n.chatSearch_tooltip,
                           icon: const Icon(Icons.search),
@@ -1242,56 +1280,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     );
   }
 
-  /// The OTP buttons (ports of OTP_3_RC1.lua's chat-screen controls): ReSync
-  /// and the participant-strip toggle while the channel's pad is on, and
-  /// the pad screen always.
+  /// The OTP pad button, when the bar has room for it (else a ⋮ item).
   List<Widget> _otpActions() => [
-    Consumer<MeshCoreConnector>(
-      builder: (context, connector, _) {
-        final otpEnabled = connector.isChannelOtpEnabled(widget.channel.index);
-        if (!otpEnabled) return const SizedBox.shrink();
-        // See resyncChannel's own doc comment.
-        return IconButton(
-          tooltip: 'ReSync',
-          icon: const Icon(Icons.sync),
-          onPressed: () {
-            final ok = connector.resyncChannel(widget.channel.index);
-            showDismissibleSnackBar(
-              context,
-              content: Text(
-                ok
-                    ? 'Pad reloaded — sync check sent'
-                    : 'No OTP pad for this channel',
-              ),
-            );
-          },
-        );
-      },
-    ),
-    Consumer<MeshCoreConnector>(
-      builder: (context, connector, _) {
-        final otpEnabled = connector.isChannelOtpEnabled(widget.channel.index);
-        if (!otpEnabled) return const SizedBox.shrink();
-        // Shown only where the strip itself could appear (channel + OTP
-        // enabled), same gating as _buildParticipantStrip.
-        final shown = context
-            .watch<AppSettingsService>()
-            .settings
-            .channelParticipantStripEnabled;
-        return IconButton(
-          tooltip: shown
-              ? 'Hide participant sync strip'
-              : 'Show participant sync strip',
-          icon: Icon(shown ? Icons.people : Icons.people_outline),
-          onPressed: () {
-            context
-                .read<AppSettingsService>()
-                .setChannelParticipantStripEnabled(!shown);
-          },
-        );
-      },
-    ),
-    if (!_narrowBar(context))
+    if (_padInBar(context))
       Consumer<MeshCoreConnector>(
         builder: (context, connector, _) {
           final otpEnabled = connector.isChannelOtpEnabled(

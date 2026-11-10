@@ -432,10 +432,14 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  /// Below this width search and the OTP pad sit in the ⋮ menu instead of
-  /// the bar, so the fork's extra buttons still fit.
-  static bool _narrowBar(BuildContext context) =>
-      MediaQuery.sizeOf(context).width < 400;
+  /// What gets a button in the bar rather than a ⋮ menu item, by the
+  /// screen's width: the bar holds the back arrow, the title, the signal,
+  /// MediaMesh and radio-stats indicators and the menu first. OTP ReSync is
+  /// always a menu item.
+  static bool _searchInBar(BuildContext context) =>
+      MediaQuery.sizeOf(context).width >= 480;
+  static bool _padInBar(BuildContext context) =>
+      MediaQuery.sizeOf(context).width >= 420;
 
   Widget _buildScaffold(BuildContext context) {
     return Scaffold(
@@ -504,49 +508,16 @@ class _ChatScreenState extends State<ChatScreen> {
         actions: _searching
             ? null
             : [
-                const SignalGradeIndicator(),
+                const SignalGradeIndicator(compact: true),
                 const MediaMeshNearbyIcon(),
                 const RadioStatsIconButton(),
-                // On a narrow phone search moves into the ⋮ menu, so the
-                // fork's extra buttons still fit the bar.
-                if (!_narrowBar(context))
+                if (_searchInBar(context))
                   IconButton(
                     tooltip: context.l10n.chatSearch_tooltip,
                     icon: const Icon(Icons.search),
                     onPressed: _openSearch,
                   ),
-                Consumer<MeshCoreConnector>(
-                  builder: (context, connector, _) {
-                    final contact = _resolveContact(connector);
-                    final otpEnabled = connector.isContactOtpEnabled(
-                      contact.publicKeyHex,
-                    );
-                    if (!otpEnabled) return const SizedBox.shrink();
-                    // Ports OTP_3_RC1.lua's chat-screen "ReSync" button: force-
-                    // reload this contact's pad from storage (discarding
-                    // whatever's cached — see resyncContact's own doc comment)
-                    // and fire an immediate, unthrottled sync-check, without
-                    // waiting for the next periodic/backed-off automatic one.
-                    return IconButton(
-                      tooltip: 'ReSync',
-                      icon: const Icon(Icons.sync),
-                      onPressed: () {
-                        final ok = connector.resyncContact(
-                          contact.publicKeyHex,
-                        );
-                        showDismissibleSnackBar(
-                          context,
-                          content: Text(
-                            ok
-                                ? 'Pad reloaded — sync check sent'
-                                : 'No OTP pad for this contact',
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
-                if (!_narrowBar(context))
+                if (_padInBar(context))
                   Consumer<MeshCoreConnector>(
                     builder: (context, connector, _) {
                       final contact = _resolveContact(connector);
@@ -575,6 +546,9 @@ class _ChatScreenState extends State<ChatScreen> {
                     final contact = _resolveContact(connector);
                     final isRoom = contact.type == advTypeRoom;
                     final readOnly = isRadioReadOnly(connector);
+                    final otpEnabled = connector.isContactOtpEnabled(
+                      contact.publicKeyHex,
+                    );
 
                     return PopupMenuButton<String>(
                       icon: const Icon(Icons.more_vert),
@@ -582,6 +556,21 @@ class _ChatScreenState extends State<ChatScreen> {
                         switch (value) {
                           case 'search':
                             _openSearch();
+                          case 'otpResync':
+                            // Ports OTP_3_RC1.lua's "ReSync": force-reload
+                            // this contact's pad and send a sync check now
+                            // (see resyncContact's doc comment).
+                            final ok = connector.resyncContact(
+                              contact.publicKeyHex,
+                            );
+                            showDismissibleSnackBar(
+                              context,
+                              content: Text(
+                                ok
+                                    ? 'Pad reloaded — sync check sent'
+                                    : 'No OTP pad for this contact',
+                              ),
+                            );
                           case 'otpPad':
                             Navigator.push(
                               context,
@@ -625,7 +614,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         }
                       },
                       itemBuilder: (context) => [
-                        if (_narrowBar(context)) ...[
+                        if (!_searchInBar(context))
                           PopupMenuItem(
                             value: 'search',
                             child: MeshMenuItemRow(
@@ -633,19 +622,24 @@ class _ChatScreenState extends State<ChatScreen> {
                               label: context.l10n.chatSearch_tooltip,
                             ),
                           ),
+                        if (!_padInBar(context))
                           PopupMenuItem(
                             value: 'otpPad',
                             child: MeshMenuItemRow(
-                              icon:
-                                  connector.isContactOtpEnabled(
-                                    contact.publicKeyHex,
-                                  )
-                                  ? Icons.lock
-                                  : Icons.lock_open,
-                              label: 'OTP Pad',
+                              icon: otpEnabled ? Icons.lock : Icons.lock_open,
+                              label: otpEnabled
+                                  ? 'OTP Pad (encrypting)'
+                                  : 'OTP Pad',
                             ),
                           ),
-                        ],
+                        if (otpEnabled)
+                          const PopupMenuItem(
+                            value: 'otpResync',
+                            child: MeshMenuItemRow(
+                              icon: Icons.sync,
+                              label: 'ReSync pad',
+                            ),
+                          ),
                         PopupMenuItem(
                           value: 'routing',
                           child: MeshMenuItemRow(
