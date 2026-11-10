@@ -230,6 +230,11 @@ class ReceivedImageEntry {
   /// `ChannelMessage.reactions`.
   final Map<String, List<String?>> reactions;
 
+  /// The sender's name, when its app said it (AI sketch HD's announce,
+  /// lib/vox/aeic_hd_repair.dart): the chunks themselves only carry a 2-byte
+  /// key prefix, which often matches no contact.
+  final String? senderName;
+
   /// What a reaction to this image names ([ReactionHelper.imageReactionHash]).
   String get reactionHash =>
       ReactionHelper.imageReactionHash(senderPrefix, imgId);
@@ -260,6 +265,7 @@ class ReceivedImageEntry {
     this.viaMask = 0,
     this.pngBytes,
     this.reactions = const {},
+    this.senderName,
   });
 
   ImageStreamKey get key => ImageStreamKey(
@@ -299,6 +305,7 @@ class ReceivedImageEntry {
     int? viaMask,
     Object? pngBytes = _unset,
     Map<String, List<String?>>? reactions,
+    String? senderName,
   }) {
     return ReceivedImageEntry(
       streamId: streamId,
@@ -328,6 +335,7 @@ class ReceivedImageEntry {
           ? this.pngBytes
           : pngBytes as Uint8List?,
       reactions: reactions ?? this.reactions,
+      senderName: senderName ?? this.senderName,
     );
   }
 
@@ -357,6 +365,7 @@ class ReceivedImageEntry {
     if (error != null) 'error': error,
     if (viaMask != 0) 'viaMask': viaMask,
     if (reactions.isNotEmpty) 'reactions': reactions,
+    if (senderName != null) 'senderName': senderName,
   };
 
   factory ReceivedImageEntry.fromJson(Map<String, dynamic> json) {
@@ -387,6 +396,7 @@ class ReceivedImageEntry {
       pngByteCount: json['pngByteCount'] as int? ?? 0,
       viaMask: json['viaMask'] as int? ?? 0,
       reactions: _parseReactions(json['reactions']),
+      senderName: json['senderName'] as String?,
     );
   }
 
@@ -688,6 +698,62 @@ class ReceivedImageStore extends ChangeNotifier {
   /// newest image it names. False when it names none here — it may be for a
   /// text message. Image ids are 8-bit and come round again, so an older
   /// image with the same sender and id loses out to the newest.
+  // ---- sender names and resuming (AI sketch HD) ---------------------------
+
+  /// Names announced with (sender prefix, image id), and the latest per prefix.
+  final Map<int, String> _announced = <int, String>{};
+  final Map<int, String> _prefixNames = <int, String>{};
+
+  static int _announceKey(int senderPrefix, int imgId) =>
+      (senderPrefix << 8) | (imgId & 0xFF);
+
+  /// A sender's app named itself for an image. The image's entry gets it (now,
+  /// or when its first chunk arrives).
+  void noteSenderName(int senderPrefix, int imgId, String name) {
+    _announced[_announceKey(senderPrefix, imgId)] = name;
+    while (_announced.length > 64) {
+      _announced.remove(_announced.keys.first);
+    }
+    _prefixNames[senderPrefix] = name;
+    for (final e in _entries.values) {
+      if (e.senderPrefix == senderPrefix &&
+          e.imgId == imgId &&
+          !e.isOutgoing &&
+          e.senderName != name) {
+        unawaited(_store(e.copyWith(senderName: name)));
+      }
+    }
+  }
+
+  /// The best name known for [entry]'s sender: its own, the one announced for
+  /// it, or the last one announced with the same key prefix. Null if none.
+  String? senderNameFor(ReceivedImageEntry entry) =>
+      entry.senderName ??
+      _announced[_announceKey(entry.senderPrefix, entry.imgId)] ??
+      _prefixNames[entry.senderPrefix];
+
+  /// "Ask for the rest" was sent for an incomplete image: it is receiving
+  /// again, so the resent chunks land on it rather than starting a new one.
+  Future<ReceivedImageEntry?> resumeReceiving(String streamId) async {
+    final e = _entries[streamId];
+    if (e == null || e.state != ReceivedImageState.failedIncomplete) return e;
+    _claimKeyFor(e);
+    return _store(e.copyWith(state: ReceivedImageState.receiving, error: null));
+  }
+
+  /// Nothing came back for an "ask for the rest": incomplete again.
+  Future<void> resumeGaveUp(String streamId, int receivedAtRequest) async {
+    final e = _entries[streamId];
+    if (e == null ||
+        e.state != ReceivedImageState.receiving ||
+        e.receivedChunks != receivedAtRequest) {
+      return;
+    }
+    await _store(e.copyWith(state: ReceivedImageState.failedIncomplete));
+  }
+
+  void _claimKeyFor(ReceivedImageEntry e) => _byKey[e.key] = e.streamId;
+
   bool applyReaction(ReactionInfo info) {
     if (info.hashType != HashType.ours) return false;
     for (final e in entries) {
@@ -900,6 +966,8 @@ class ReceivedImageStore extends ChangeNotifier {
           receivedChunks: counts,
           totalChunks: header.total,
           viaMask: viaBit,
+          senderName:
+              _announced[_announceKey(header.senderPrefix, header.imgId)],
         );
         return _store(created);
 
@@ -1101,6 +1169,7 @@ class ReceivedImageStore extends ChangeNotifier {
     required int chunkCount,
     int aspectCode = 0,
     DateTime? at,
+    Uint8List? bitstream,
   }) async {
     final now = at ?? _clock();
     final streamId = _uniqueStreamId(
@@ -1112,6 +1181,10 @@ class ReceivedImageStore extends ChangeNotifier {
     // cached on the entry); the next launch then reports it as evicted rather
     // than pointing at a file that was never written.
     final pngWritten = await blobs.writePng(streamId, previewPng);
+    // Kept when given (AI sketch HD), so a receiver missing chunks can ask
+    // this phone to send them again.
+    final bitsWritten =
+        bitstream != null && await blobs.writeBitstream(streamId, bitstream);
     final entry = ReceivedImageEntry(
       streamId: streamId,
       senderPrefix: senderPrefix,
@@ -1131,6 +1204,8 @@ class ReceivedImageStore extends ChangeNotifier {
       pngStored: pngWritten,
       pngByteCount: pngWritten ? previewPng.length : 0,
       pngBytes: previewPng,
+      bitstreamStored: bitsWritten,
+      bitstreamByteCount: bitsWritten ? bitstream.length : 0,
     );
     final stored = await _store(entry);
     await evictToBudget(protect: stored.streamId);

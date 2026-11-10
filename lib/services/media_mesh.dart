@@ -665,6 +665,77 @@ class MediaMeshController {
   }
 }
 
+/// Puts a channel's traffic on radio2 (`tx.channel`) while something that
+/// belongs on MediaMesh but isn't marked as Open TAK media by the radio goes
+/// out (AI sketch HD's image chunks, its repair requests and resends), then
+/// back. Overlapping holds on one channel share one switch: the old choice
+/// comes back when the last is released.
+class MediaMeshChannelHold {
+  MediaMeshChannelHold._();
+
+  static final Map<int, _Hold> _holds = <int, _Hold>{};
+
+  /// Holds [slot] on radio2. Returns the release, or null when radio2 can't
+  /// take it (firmware without tx.channel, radio2 off or listen-only).
+  static Future<Future<void> Function()?> hold(
+    MeshCoreConnector connector,
+    int slot,
+  ) async {
+    final held = _holds[slot];
+    if (held != null) {
+      held.count++;
+      return () => _release(slot);
+    }
+    final mm = MediaMeshController(connector);
+    final before = await mm.getChannelRoute(slot);
+    if (before == null) return null;
+    TxChoice? restore;
+    if (before.active != 'radio2') {
+      try {
+        final now = await mm.setChannelRoute(slot, TxChoice.radio2);
+        if (now.active != 'radio2') {
+          await mm.setChannelRoute(slot, before.choice);
+          return null;
+        }
+      } on MediaMeshException {
+        return null;
+      }
+      restore = before.choice;
+    }
+    final again = _holds[slot];
+    if (again != null) {
+      // Another hold got there while this one asked the radio.
+      again.count++;
+    } else {
+      _holds[slot] = _Hold(mm, restore);
+    }
+    return () => _release(slot);
+  }
+
+  static Future<void> _release(int slot) async {
+    final h = _holds[slot];
+    if (h == null) return;
+    if (--h.count > 0) return;
+    _holds.remove(slot);
+    final restore = h.restore;
+    if (restore == null) return;
+    try {
+      await h.mm.setChannelRoute(slot, restore);
+    } on MediaMeshException {
+      // The radio kept radio2 for this channel; its Radio setting shows it.
+    }
+  }
+}
+
+class _Hold {
+  final MediaMeshController mm;
+
+  /// The choice to put back, or null when the channel was on radio2 already.
+  final TxChoice? restore;
+  int count = 1;
+  _Hold(this.mm, this.restore);
+}
+
 /// The radio photo and voice packets go out on, for pacing them: radio2's
 /// profile when they go on radio2 alone, null when they (also) use the main
 /// radio, or when the radio can't say.

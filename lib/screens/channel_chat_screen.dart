@@ -27,6 +27,7 @@ import '../helpers/snack_bar_builder.dart';
 import '../l10n/l10n.dart';
 import '../models/channel.dart';
 import '../models/channel_message.dart';
+import '../models/contact.dart';
 import '../models/image_codec_support.dart' show aeicRatePointForUi;
 import '../models/otp_theme.dart';
 import '../services/app_settings_service.dart'
@@ -76,6 +77,7 @@ import 'channel_message_path_screen.dart';
 import 'map_screen.dart';
 import 'region_management_screen.dart';
 import '../storage/region_store.dart';
+import '../vox/aeic_hd_repair.dart';
 import '../vox/aeic_hd_screens.dart';
 import '../vox/caption_field.dart';
 import '../vox/image_send_sheet.dart';
@@ -2148,9 +2150,15 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     final result = await showAeicHdSendSheet(context, imageBytes: sourceBytes);
     if (result == null || !mounted) return;
     final connector = context.read<MeshCoreConnector>();
-    final restore = await _channelOnRadio2(connector);
-    if (!mounted) return;
-    if (restore == null && !MediaLockdown.devAllowMain.value) {
+    final release = await MediaMeshChannelHold.hold(
+      connector,
+      widget.channel.index,
+    );
+    if (!mounted) {
+      await release?.call();
+      return;
+    }
+    if (release == null && !MediaLockdown.devAllowMain.value) {
       showDismissibleSnackBar(
         context,
         content: const Text(MediaLockdown.blockedMessage),
@@ -2158,40 +2166,31 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       return;
     }
     try {
-      await _sendImage(connector, result, sourceBytes: sourceBytes);
+      await _sendImage(connector, result, sourceBytes: sourceBytes, hd: true);
     } finally {
-      await restore?.call();
+      await release?.call();
     }
   }
 
-  /// Puts this channel's traffic on radio2 (MediaMesh's `tx.channel`) and
-  /// returns what puts the old choice back; a no-op when it is on radio2
-  /// already (a `#r2-` channel, or set so). Null when radio2 can't take it:
-  /// firmware without tx.channel, or radio2 off or listen-only.
-  Future<Future<void> Function()?> _channelOnRadio2(
-    MeshCoreConnector connector,
-  ) async {
-    final mm = MediaMeshController(connector);
-    final slot = widget.channel.index;
-    final before = await mm.getChannelRoute(slot);
-    if (before == null) return null;
-    if (before.active == 'radio2') return () async {};
+  /// "Ask for the rest" of an incomplete AI sketch HD (aeic_hd_repair.dart).
+  Future<void> _askForRest(ReceivedImageEntry entry) async {
+    final AeicHdRepairService repair;
     try {
-      final now = await mm.setChannelRoute(slot, TxChoice.radio2);
-      if (now.active != 'radio2') {
-        await mm.setChannelRoute(slot, before.choice);
-        return null;
-      }
-    } on MediaMeshException {
-      return null;
+      repair = context.read<AeicHdRepairService>();
+    } on ProviderNotFoundException {
+      return;
     }
-    return () async {
-      try {
-        await mm.setChannelRoute(slot, before.choice);
-      } on MediaMeshException {
-        // The radio kept radio2 for this channel; its Radio setting shows it.
-      }
-    };
+    final ok = await repair.requestRest(entry);
+    if (!mounted) return;
+    showDismissibleSnackBar(
+      context,
+      content: Text(
+        ok
+            ? 'Asked for the missing packets. Whoever has the picture sends '
+                  'them on MediaMesh.'
+            : MediaLockdown.blockedMessage,
+      ),
+    );
   }
 
   /// Chunks [result] and puts it on the channel as GRP_DATA packets.
@@ -2207,8 +2206,17 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     MeshCoreConnector connector,
     ImageSendPreviewResult result, {
     required Uint8List sourceBytes,
+    bool hd = false,
   }) async {
     final l10n = context.l10n;
+    AeicHdRepairService? repair;
+    if (hd) {
+      try {
+        repair = context.read<AeicHdRepairService>();
+      } on ProviderNotFoundException {
+        repair = null;
+      }
+    }
 
     if (!connector.supportsChannelData) {
       showDismissibleSnackBar(
@@ -2267,6 +2275,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       _imageSendSent = 0;
     });
     try {
+      // AI sketch HD: its sender's name first, so receivers can show it.
+      await repair?.announce(widget.channel.index, senderPrefix, chunkSet.imgId);
       final sent = await connector.sendImageChunks(
         chunkSet.blobs,
         channelIndex: widget.channel.index,
@@ -2284,6 +2294,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           chunkSet: chunkSet,
           senderPrefix: senderPrefix,
           sourceBytes: sourceBytes,
+          // Kept for AI sketch HD, so a receiver can ask for missing chunks.
+          bitstream: hd ? result.payload : null,
         );
       }
       if (!mounted) return;
@@ -2327,6 +2339,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     required ImageChunkSet chunkSet,
     required int senderPrefix,
     required Uint8List sourceBytes,
+    Uint8List? bitstream,
   }) async {
     final ReceivedImageStore store;
     try {
@@ -2348,6 +2361,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         rate: aeicRatePointForUi(result.rate),
         chunkCount: chunkSet.dataChunkCount,
         aspectCode: await _aspectCodeOf(sourceBytes),
+        bitstream: bitstream,
       );
     } on Exception catch (error) {
       debugPrint('outgoing image registration failed: $error');
@@ -2580,6 +2594,15 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                       ),
                     ),
                   ),
+                  if (aeicHdResumable(entry))
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4, top: 2),
+                      child: TextButton.icon(
+                        onPressed: () => _askForRest(entry),
+                        icon: const Icon(Icons.download_outlined, size: 18),
+                        label: const Text('Ask for the rest'),
+                      ),
+                    ),
                   Padding(
                     padding: const EdgeInsets.only(
                       left: 8,
@@ -2638,6 +2661,19 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                 ),
                 subtitle: _imageSenderLabel(entry),
               ),
+              if (aeicHdResumable(entry))
+                ListTile(
+                  leading: const Icon(Icons.download_outlined),
+                  title: const Text('Ask for the rest'),
+                  subtitle: const Text(
+                    'Ask whoever has this picture for the packets that '
+                    'didn\'t arrive.',
+                  ),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _askForRest(entry);
+                  },
+                ),
               // Can't react to your own photo
               if (!entry.isOutgoing)
                 ListTile(
@@ -2794,10 +2830,24 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     if (entry.isOutgoing) {
       return connector.selfName ?? context.l10n.receivedImage_senderPrefix(hex);
     }
-    final matches = connector.contacts
-        .where((c) => c.publicKeyHex.toLowerCase().startsWith(hex))
-        .toList();
-    if (matches.length == 1) return matches.single.name;
+    // The name its app announced (AI sketch HD), when it did.
+    String? announced;
+    try {
+      announced = context.read<ReceivedImageStore>().senderNameFor(entry);
+    } on ProviderNotFoundException {
+      announced = null;
+    }
+    if (announced != null && announced.isNotEmpty) return announced;
+    // Else a node whose key starts with the prefix: contacts first, then
+    // every node heard advertising; among several, the chat nodes (phones
+    // and standalones send pictures, repeaters don't).
+    bool matches(Contact c) => c.publicKeyHex.toLowerCase().startsWith(hex);
+    for (final pool in [connector.contacts, connector.allContactsUnfiltered]) {
+      final found = pool.where(matches).toList();
+      if (found.length == 1) return found.single.name;
+      final chats = found.where((c) => c.type == advTypeChat).toList();
+      if (chats.length == 1) return chats.single.name;
+    }
     return context.l10n.receivedImage_senderPrefix(hex);
   }
 
