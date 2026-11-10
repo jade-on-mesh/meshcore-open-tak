@@ -498,9 +498,16 @@ class AeicHdRunner {
     return Uint8List.sublistView(file, 12);
   }
 
+  /// A fresh job folder under the cache's aeic_hd/. createTemp needs its
+  /// parent to exist: on a phone that never had it (or whose cache Android
+  /// cleared) it failed with PathNotFoundException, "Creation of temporary
+  /// directory failed", and the download stopped.
   Future<Directory> _workDir() async {
     final tmp = await getTemporaryDirectory();
-    return Directory('${tmp.path}/aeic_hd').createTemp('job');
+    final parent = await Directory(
+      '${tmp.path}/aeic_hd',
+    ).create(recursive: true);
+    return parent.createTemp('job');
   }
 
   static Future<int> _stageCount(
