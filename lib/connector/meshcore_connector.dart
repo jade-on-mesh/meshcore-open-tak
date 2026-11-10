@@ -4437,8 +4437,6 @@ class MeshCoreConnector extends ChangeNotifier {
     }
   }
 
-  /// The channel whose chat is open, if any.
-  int? get activeChannelIndex => _activeChannelIndex;
 
   void setActiveChannel(int? channelIndex) {
     _activeChannelIndex = channelIndex;
