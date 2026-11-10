@@ -548,26 +548,28 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 if (!_narrowBar(context))
                   Consumer<MeshCoreConnector>(
-                  builder: (context, connector, _) {
-                    final contact = _resolveContact(connector);
-                    final otpEnabled = connector.isContactOtpEnabled(
-                      contact.publicKeyHex,
-                    );
-                    return IconButton(
-                      tooltip: otpEnabled ? 'OTP Pad (encrypting)' : 'OTP Pad',
-                      icon: Icon(
-                        otpEnabled ? Icons.lock : Icons.lock_open,
-                        color: otpEnabled ? MeshPalette.blue : null,
-                      ),
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => OtpPadScreen.forContact(contact),
+                    builder: (context, connector, _) {
+                      final contact = _resolveContact(connector);
+                      final otpEnabled = connector.isContactOtpEnabled(
+                        contact.publicKeyHex,
+                      );
+                      return IconButton(
+                        tooltip: otpEnabled
+                            ? 'OTP Pad (encrypting)'
+                            : 'OTP Pad',
+                        icon: Icon(
+                          otpEnabled ? Icons.lock : Icons.lock_open,
+                          color: otpEnabled ? MeshPalette.blue : null,
                         ),
-                      ),
-                    );
-                  },
-                ),
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => OtpPadScreen.forContact(contact),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 Consumer<MeshCoreConnector>(
                   builder: (context, connector, _) {
                     final contact = _resolveContact(connector);

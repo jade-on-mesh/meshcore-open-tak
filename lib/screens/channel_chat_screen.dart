@@ -1293,23 +1293,25 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     ),
     if (!_narrowBar(context))
       Consumer<MeshCoreConnector>(
-      builder: (context, connector, _) {
-        final otpEnabled = connector.isChannelOtpEnabled(widget.channel.index);
-        return IconButton(
-          tooltip: otpEnabled ? 'OTP Pad (encrypting)' : 'OTP Pad',
-          icon: Icon(
-            otpEnabled ? Icons.lock : Icons.lock_open,
-            color: otpEnabled ? MeshPalette.blue : null,
-          ),
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => OtpPadScreen.forChannel(widget.channel),
+        builder: (context, connector, _) {
+          final otpEnabled = connector.isChannelOtpEnabled(
+            widget.channel.index,
+          );
+          return IconButton(
+            tooltip: otpEnabled ? 'OTP Pad (encrypting)' : 'OTP Pad',
+            icon: Icon(
+              otpEnabled ? Icons.lock : Icons.lock_open,
+              color: otpEnabled ? MeshPalette.blue : null,
             ),
-          ),
-        );
-      },
-    ),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => OtpPadScreen.forChannel(widget.channel),
+              ),
+            ),
+          );
+        },
+      ),
   ];
 
   /// Whether [m] counts toward the unread badge and divider. Filtered
