@@ -204,6 +204,38 @@ void main() {
       );
     });
 
+    test('resuming counts from what is still held', () async {
+      final store = ReceivedImageStore(decoder: null);
+      final r = ImageReassembler();
+      final set = hdImage();
+      final e = await store.handleOutcome(
+        r.addChunk(set.blobs[0]),
+        channelIndex: 0,
+      );
+      await store.handleOutcome(r.addChunk(set.blobs[1]), channelIndex: 0);
+      await store.handleFailure(
+        ImageReassemblyFailure(
+          key: e!.key,
+          total: set.dataChunkCount,
+          receivedDataChunks: 2,
+          hadParity: false,
+          firstSeen: e.firstSeen,
+          expiredAt: e.firstSeen,
+        ),
+      );
+      expect(store.entryFor(e.streamId)!.receivedChunks, 2);
+      // The app restarted: the reassembler holds none of them now.
+      final resumed = await store.resumeReceiving(e.streamId, held: 0);
+      expect(resumed!.state, ReceivedImageState.receiving);
+      expect(resumed.receivedChunks, 0);
+      // Some came back but not all: forced incomplete after the last round.
+      await store.resumeGaveUp(e.streamId, 1, force: true);
+      expect(
+        store.entryFor(e.streamId)!.state,
+        ReceivedImageState.failedIncomplete,
+      );
+    });
+
     test('a regular AI sketch is not offered "ask for the rest"', () {
       final e = ReceivedImageEntry(
         streamId: 'x',

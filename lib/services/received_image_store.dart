@@ -734,19 +734,43 @@ class ReceivedImageStore extends ChangeNotifier {
 
   /// "Ask for the rest" was sent for an incomplete image: it is receiving
   /// again, so the resent chunks land on it rather than starting a new one.
-  Future<ReceivedImageEntry?> resumeReceiving(String streamId) async {
+  ///
+  /// [held] is how many of its chunks the reassembler still has. Resent
+  /// chunks are counted on top of it; counted on top of the old figure,
+  /// chunks forgotten since (the app restarted) were counted twice, and a
+  /// 7-of-8 image showed 8 of 8 and waited.
+  Future<ReceivedImageEntry?> resumeReceiving(
+    String streamId, {
+    int? held,
+  }) async {
     final e = _entries[streamId];
-    if (e == null || e.state != ReceivedImageState.failedIncomplete) return e;
+    if (e == null) return null;
+    if (e.state == ReceivedImageState.receiving) {
+      if (held == null || held == e.receivedChunks) return e;
+      return _store(e.copyWith(receivedChunks: held));
+    }
+    if (e.state != ReceivedImageState.failedIncomplete) return e;
     _claimKeyFor(e);
-    return _store(e.copyWith(state: ReceivedImageState.receiving, error: null));
+    return _store(
+      e.copyWith(
+        state: ReceivedImageState.receiving,
+        error: null,
+        receivedChunks: held ?? e.receivedChunks,
+      ),
+    );
   }
 
   /// Nothing came back for an "ask for the rest": incomplete again.
-  Future<void> resumeGaveUp(String streamId, int receivedAtRequest) async {
+  /// With [force], incomplete again even if some came back.
+  Future<void> resumeGaveUp(
+    String streamId,
+    int receivedAtRequest, {
+    bool force = false,
+  }) async {
     final e = _entries[streamId];
     if (e == null ||
         e.state != ReceivedImageState.receiving ||
-        e.receivedChunks != receivedAtRequest) {
+        (!force && e.receivedChunks != receivedAtRequest)) {
       return;
     }
     await _store(e.copyWith(state: ReceivedImageState.failedIncomplete));

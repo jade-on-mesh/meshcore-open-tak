@@ -194,6 +194,13 @@ class AeicHdRepairService {
   static const int requestCopies = 3;
   static const Duration requestSpacing = Duration(seconds: 3);
 
+  /// Request rounds per tap: the first, then follow-ups for what's still
+  /// missing.
+  static const int maxRounds = 3;
+
+  /// Taps per image, so a newer tap's rounds replace an older one's.
+  final Map<String, int> _rounds = <String, int>{};
+
   AeicHdRepairService({
     required this.connector,
     required this.store,
@@ -285,10 +292,19 @@ class AeicHdRepairService {
   /// "Ask for the rest" of [entry]: on radio2, for the chunks this phone
   /// lacks (all of them when it kept none). Returns false when radio2 can't
   /// take the request.
-  Future<bool> requestRest(ReceivedImageEntry entry) async {
+  ///
+  /// Answers get lost too, so when some chunks are still missing once the
+  /// answers have had time to arrive, it asks again for just those, up to
+  /// [maxRounds] times in all ([round] counts them).
+  Future<bool> requestRest(ReceivedImageEntry entry, {int round = 1}) async {
     final key = entry.key;
     final total = entry.totalChunks.clamp(1, 15).toInt();
     final missing = reassembler.missingDataChunks(key);
+    if (missing != null && missing.isEmpty) return true;
+    if (round == 1)
+      _rounds[entry.streamId] = (_rounds[entry.streamId] ?? 0) + 1;
+    final generation = _rounds[entry.streamId];
+    final held = missing == null ? 0 : total - missing.length;
     var mask = 0;
     if (missing == null) {
       mask = (1 << total) - 1;
@@ -311,10 +327,11 @@ class AeicHdRepairService {
       'asking for the rest of '
       '${entry.senderPrefix.toRadixString(16).padLeft(4, '0')}/${entry.imgId} '
       'on slot ${entry.channelIndex}: mask '
-      '0x${mask.toRadixString(16)} of ${entry.totalChunks}',
+      '0x${mask.toRadixString(16)} of ${entry.totalChunks}, '
+      'holding $held (round $round of $maxRounds)',
     );
     try {
-      final resumed = await store.resumeReceiving(entry.streamId);
+      final resumed = await store.resumeReceiving(entry.streamId, held: held);
       // A single request is easily missed: the holder's radio only visits
       // radio2 part of the time, and the original image already lost
       // packets on the way. So it goes out [requestCopies] times, a few
@@ -335,15 +352,44 @@ class AeicHdRepairService {
         );
         _log('request ${copy + 1} of $requestCopies sent');
       }
-      final at = resumed?.receivedChunks ?? entry.receivedChunks;
+      final at = resumed?.receivedChunks ?? held;
       Timer(
         answerWait,
-        () => unawaited(store.resumeGaveUp(entry.streamId, at)),
+        () => unawaited(_afterAnswers(entry.streamId, at, round, generation)),
       );
       return true;
     } finally {
       await release();
     }
+  }
+
+  /// Once the answers to round [round] have had their time: done, ask again
+  /// for what's still missing, or (after the last round) incomplete again.
+  Future<void> _afterAnswers(
+    String streamId,
+    int receivedAtRequest,
+    int round,
+    int? generation,
+  ) async {
+    // A newer tap took over.
+    if (_rounds[streamId] != generation) return;
+    final e = store.entryFor(streamId);
+    if (e == null) return;
+    if (e.state != ReceivedImageState.receiving &&
+        e.state != ReceivedImageState.failedIncomplete) {
+      return;
+    }
+    final missing = reassembler.missingDataChunks(e.key);
+    if (missing != null && missing.isEmpty) return;
+    if (round < maxRounds) {
+      _log(
+        'still missing ${missing ?? 'all'} after round $round: asking again',
+      );
+      await requestRest(e, round: round + 1);
+      return;
+    }
+    _log('still missing ${missing ?? 'all'} after $maxRounds rounds');
+    await store.resumeGaveUp(streamId, receivedAtRequest, force: true);
   }
 
   /// The whole HD image a request on [slot] names, if this phone holds it.
