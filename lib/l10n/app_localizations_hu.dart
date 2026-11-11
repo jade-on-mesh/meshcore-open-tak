@@ -2389,6 +2389,9 @@ class AppLocalizationsHu extends AppLocalizations {
   String get chat_sendMessageToStart => 'A kezdéshez küldjön üzenetet';
 
   @override
+  String get chat_sendPhoto => 'Send a photo';
+
+  @override
   String get chat_originalMessageNotFound => 'Az eredeti üzenet nem található';
 
   @override

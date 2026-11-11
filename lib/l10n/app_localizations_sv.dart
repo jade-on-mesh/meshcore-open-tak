@@ -2368,6 +2368,9 @@ class AppLocalizationsSv extends AppLocalizations {
       'Skicka ett meddelande för att komma igång';
 
   @override
+  String get chat_sendPhoto => 'Send a photo';
+
+  @override
   String get chat_originalMessageNotFound =>
       'Originalt meddelande hittades inte';
 

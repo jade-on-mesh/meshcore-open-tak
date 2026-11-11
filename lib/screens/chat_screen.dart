@@ -83,6 +83,7 @@ import '../vox/caption_field.dart';
 import '../vox/image_send_sheet.dart';
 import '../vox/voice_message_bubble.dart';
 import '../vox/voice_record_sheet.dart';
+import '../vox/walkie_service.dart';
 import '../vox/walkie_sheet.dart';
 import '../vox/voice_service.dart';
 import '../vox/voice_wire.dart';
@@ -131,6 +132,8 @@ class _ChatScreenState extends State<ChatScreen> {
   // OTP DM image send progress — mirrors channel_chat_screen.dart's own
   // _imageSendTotal/_imageSendSent, but this is chunk progress from the OTP
   // chunk-ack pipeline, not GRP_DATA blob-send progress.
+  // Set by the legacy OTP image preview, no longer offered in the composer.
+  // ignore: unused_field
   bool _sendingOtpImage = false;
   final ChatSendGuard _sendGuard = ChatSendGuard();
 
@@ -993,13 +996,6 @@ class _ChatScreenState extends State<ChatScreen> {
     final useEncoder =
         connector.isContactSmazEnabled(keyHex) ||
         connector.isContactCyr2LatEnabled(keyHex);
-    // OTP image: only on an OTP-enabled DM, since the codec bitstream rides
-    // the OTP chunk-send pipeline (see the note at the top of this file).
-    final showImageAction =
-        otpEnabled &&
-        !_sendingOtpImage &&
-        connector.canSendOtpImageToContact(contactKeyHex) &&
-        _imageCodec?.availability == ImageCodecAvailability.ready;
     // Text typed here goes out as the caption of a photo or voice message.
     final caption = VoxCaptionInput(
       _textController,
@@ -1039,41 +1035,6 @@ class _ChatScreenState extends State<ChatScreen> {
             .read<VoxVoiceService>()
             .sendClipToContact(_resolveContact(connector), clip, caption: text),
       ),
-      leading: [
-        VoxImageButton(
-          // AI sketches to a person ride the OTP pipeline, so they are
-          // offered only once this contact has a pad.
-          aiSketch:
-              connector.canSendOtpImageToContact(contactKeyHex) &&
-                  _imageCodec != null
-              ? VoxAiSketchOption(
-                  ready: () =>
-                      _imageCodec?.availability == ImageCodecAvailability.ready,
-                  explainNotReady: () =>
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'AI sketches need the image model: turn on '
-                            'Image messages in App settings.',
-                          ),
-                        ),
-                      ),
-                  send: (bytes, fileBytes) =>
-                      _sendOtpAiSketch(connector, bytes, fileBytes),
-                  sendHd: (bytes, _) => _sendOtpAiSketchHd(connector, bytes),
-                )
-              : null,
-          recipientLabel: _resolveContact(connector).name,
-          caption: caption,
-          onSend: (image, text) =>
-              context.read<VoxVoiceService>().sendImageToContact(
-                _resolveContact(connector),
-                image,
-                caption: text,
-              ),
-        ),
-        WalkieButton.dm(contact: _resolveContact(connector)),
-      ],
       onSend: () => _sendMessage(connector),
       sendTooltip: context.l10n.chat_sendMessageTo(
         _resolveContact(connector).name,
@@ -1085,18 +1046,27 @@ class _ChatScreenState extends State<ChatScreen> {
             .uploadIpfsEndpoint
             .trim()
             .isNotEmpty;
+        // One menu for everything: the photo (Mesh photo, or an AI sketch
+        // over the OTP pad from its sheet) and the walkie-talkie first. The
+        // legacy "Send low-res image over radio" entry is gone: the photo
+        // sheet's AI sketch sends the same OTP image.
         return [
+          ChatComposerAction(
+            id: 'photo',
+            icon: Icons.add_photo_alternate_outlined,
+            label: context.l10n.chat_sendPhoto,
+          ),
+          if (context.read<WalkieService>().available)
+            ChatComposerAction(
+              id: 'walkie',
+              icon: Icons.record_voice_over_outlined,
+              label: context.l10n.walkie_title,
+            ),
           ChatComposerAction(
             id: 'gif',
             icon: Icons.gif_box,
             label: context.l10n.chat_sendGif,
           ),
-          if (showImageAction)
-            ChatComposerAction(
-              id: 'otp-image',
-              icon: Icons.enhanced_encryption_outlined,
-              label: context.l10n.chat_sendImageLora,
-            ),
           if (showIpfsAction)
             ChatComposerAction(
               id: 'ipfs-image',
@@ -1118,10 +1088,46 @@ class _ChatScreenState extends State<ChatScreen> {
       onAction: (action) {
         if (!mounted) return;
         switch (action) {
+          case 'photo':
+            showVoxImagePicker(
+              context,
+              // AI sketches to a person ride the OTP pipeline, so they are
+              // offered only once this contact has a pad.
+              aiSketch:
+                  connector.canSendOtpImageToContact(contactKeyHex) &&
+                      _imageCodec != null
+                  ? VoxAiSketchOption(
+                      ready: () =>
+                          _imageCodec?.availability ==
+                          ImageCodecAvailability.ready,
+                      explainNotReady: () =>
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'AI sketches need the image model: turn on '
+                                'Image messages in App settings.',
+                              ),
+                            ),
+                          ),
+                      send: (bytes, fileBytes) =>
+                          _sendOtpAiSketch(connector, bytes, fileBytes),
+                      sendHd: (bytes, _) =>
+                          _sendOtpAiSketchHd(connector, bytes),
+                    )
+                  : null,
+              recipientLabel: _resolveContact(connector).name,
+              caption: caption,
+              onSend: (image, text) =>
+                  context.read<VoxVoiceService>().sendImageToContact(
+                    _resolveContact(connector),
+                    image,
+                    caption: text,
+                  ),
+            );
+          case 'walkie':
+            showDmWalkieSheet(context, _resolveContact(connector));
           case 'gif':
             showChatGifPicker(context, _textController);
-          case 'otp-image':
-            _showOtpImageSendPreview(context.read<MeshCoreConnector>());
           case 'ipfs-image':
             _sendImageViaIpfs();
           case 'send-my-location':
@@ -1178,6 +1184,9 @@ class _ChatScreenState extends State<ChatScreen> {
   /// `_showImageSendPreview`, but riding the OTP DM chunk pipeline instead
   /// of GRP_DATA (see the note at the top of this file and
   /// `otp_image_transport.dart`).
+  // The legacy "Send low-res image over radio" preview: no longer in the
+  // composer (the photo sheet's AI sketch sends OTP images). Kept for now.
+  // ignore: unused_element
   Future<void> _showOtpImageSendPreview(MeshCoreConnector connector) async {
     final codec = _imageCodec;
     if (codec == null) return;

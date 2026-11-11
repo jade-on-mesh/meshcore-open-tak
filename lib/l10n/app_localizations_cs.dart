@@ -2381,6 +2381,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get chat_sendMessageToStart => 'Odešlete zprávu a začněte';
 
   @override
+  String get chat_sendPhoto => 'Send a photo';
+
+  @override
   String get chat_originalMessageNotFound => 'Původní zpráva nebyla nalezena';
 
   @override

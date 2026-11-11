@@ -13,7 +13,7 @@ Downloads use the configured Hugging Face model bundle, support resume, and veri
 
 ## Send an image
 
-1. Open channel chat and tap the image button beside the composer.
+1. Open a chat, tap **⊕**, then **Send a photo**, and choose **AI sketch**. (MeshCore Open TAK no longer has a separate **Send low-res image over radio** entry; received images still show.)
 2. Pick a photo from your gallery.
 3. Wait for encoding. Inspect the source preview and, if available, the reconstructed preview.
 4. Review transmitted bytes, packet count, and estimated send duration. Estimates use the current radio settings and are unavailable if those settings are unknown.

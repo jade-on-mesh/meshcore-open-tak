@@ -2380,6 +2380,9 @@ class AppLocalizationsNl extends AppLocalizations {
   String get chat_sendMessageToStart => 'Stuur een bericht om te beginnen';
 
   @override
+  String get chat_sendPhoto => 'Send a photo';
+
+  @override
   String get chat_originalMessageNotFound => 'Originele bericht niet gevonden';
 
   @override

@@ -2390,6 +2390,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get chat_sendMessageToStart => 'Enviar uma mensagem para começar';
 
   @override
+  String get chat_sendPhoto => 'Send a photo';
+
+  @override
   String get chat_originalMessageNotFound => 'Mensagem original não encontrada';
 
   @override

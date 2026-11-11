@@ -2408,6 +2408,9 @@ class AppLocalizationsPl extends AppLocalizations {
   String get chat_sendMessageToStart => 'Wyślij wiadomość, aby rozpocząć.';
 
   @override
+  String get chat_sendPhoto => 'Send a photo';
+
+  @override
   String get chat_originalMessageNotFound =>
       'Błąd: Nie znaleziono oryginalnego komunikatu';
 

@@ -135,7 +135,7 @@ shows the switch. It's also in **Settings > App Settings > Messaging** as
 **Photos and voice on Public**, with a red warning to switch it on only in an
 emergency. Like OTP, which Public refuses outright, the app refuses these sends
 whatever started them (a pasted or forwarded photo too). Upstream's own image
-messages (**Send low-res image over radio**) aren't affected. Wadamesh TAK standalones have
+messages, from other apps, aren't affected. Wadamesh TAK standalones have
 the same switch, also off by default.
 
 ## What moves to MediaMesh

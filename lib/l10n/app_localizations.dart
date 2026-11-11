@@ -4243,6 +4243,12 @@ abstract class AppLocalizations {
   /// **'Send a message to get started'**
   String get chat_sendMessageToStart;
 
+  /// No description provided for @chat_sendPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a photo'**
+  String get chat_sendPhoto;
+
   /// No description provided for @chat_originalMessageNotFound.
   ///
   /// In en, this message translates to:

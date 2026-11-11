@@ -2258,6 +2258,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chat_sendMessageToStart => '发送消息开始对话';
 
   @override
+  String get chat_sendPhoto => 'Send a photo';
+
+  @override
   String get chat_originalMessageNotFound => '找不到原始消息';
 
   @override

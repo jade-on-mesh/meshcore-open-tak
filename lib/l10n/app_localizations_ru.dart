@@ -2390,6 +2390,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get chat_sendMessageToStart => 'Отправьте сообщение, чтобы начать';
 
   @override
+  String get chat_sendPhoto => 'Send a photo';
+
+  @override
   String get chat_originalMessageNotFound => 'Исходное сообщение не найдено';
 
   @override

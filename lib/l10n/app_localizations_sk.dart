@@ -2383,6 +2383,9 @@ class AppLocalizationsSk extends AppLocalizations {
   String get chat_sendMessageToStart => 'Pošlite správu na začiatok';
 
   @override
+  String get chat_sendPhoto => 'Send a photo';
+
+  @override
   String get chat_originalMessageNotFound => 'Neznámy pôvodný odkaz.';
 
   @override
