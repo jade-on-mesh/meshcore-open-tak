@@ -132,6 +132,8 @@ class _ChatScreenState extends State<ChatScreen> {
   // OTP DM image send progress — mirrors channel_chat_screen.dart's own
   // _imageSendTotal/_imageSendSent, but this is chunk progress from the OTP
   // chunk-ack pipeline, not GRP_DATA blob-send progress.
+  // Set by the legacy OTP image preview, no longer offered in the composer.
+  // ignore: unused_field
   bool _sendingOtpImage = false;
   final ChatSendGuard _sendGuard = ChatSendGuard();
 
