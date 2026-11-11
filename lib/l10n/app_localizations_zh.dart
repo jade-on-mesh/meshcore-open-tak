@@ -2409,6 +2409,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get emojiCategorySmileys => '表情';
 
   @override
+  String get emojiGroup_people => 'People';
+
+  @override
+  String get emojiGroup_animals => 'Animals & nature';
+
+  @override
+  String get emojiGroup_food => 'Food & drink';
+
+  @override
+  String get emojiGroup_travel => 'Travel & places';
+
+  @override
+  String get emojiGroup_activities => 'Activities';
+
+  @override
+  String get emojiGroup_symbols => 'Symbols';
+
+  @override
+  String get emojiGroup_flags => 'Flags';
+
+  @override
   String get emojiSearch_hint => 'Search emoji';
 
   @override

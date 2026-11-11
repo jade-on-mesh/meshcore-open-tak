@@ -2081,7 +2081,6 @@ class _ChatScreenState extends State<ChatScreen> {
     if (!ensureRadioConnected(context)) return;
     final connector = context.read<MeshCoreConnector>();
     final emojiIndex = ReactionHelper.emojiToIndex(emoji);
-    if (emojiIndex == null) return; // Unknown emoji, skip
     final timestampSecs = message.timestamp.millisecondsSinceEpoch ~/ 1000;
 
     // For room servers, include sender name (like channels) since multiple users
@@ -2091,6 +2090,19 @@ class _ChatScreenState extends State<ChatScreen> {
         ? senderContact.name
         : null;
     appLogger.info('Sending reaction using senderName: $senderName');
+    if (emojiIndex == null) {
+      // Outside the classic set: MeshCore One's format carries any emoji.
+      connector.sendMessage(
+        liveContact,
+        ReactionHelper.encodeReactionMC1(
+          emoji: emoji,
+          timestampSecs: timestampSecs,
+          text: message.text,
+          senderName: senderName,
+        ),
+      );
+      return;
+    }
     final hash = ReactionHelper.computeReactionHash(
       timestampSecs,
       senderName,
