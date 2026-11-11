@@ -192,6 +192,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
               size: 42,
               color: isChat ? null : contactTypeColor(contact.type),
               iconSlot: contactTypeIconSlot(contact.type),
+              photoKey: contact.publicKeyHex,
             ),
             const SizedBox(width: 12),
             Expanded(

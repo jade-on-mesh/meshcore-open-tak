@@ -541,6 +541,48 @@ abstract class AppLocalizations {
   /// **'USB'**
   String get connectionChoiceUsbLabel;
 
+  /// No description provided for @contactPhoto_set.
+  ///
+  /// In en, this message translates to:
+  /// **'Set photo'**
+  String get contactPhoto_set;
+
+  /// No description provided for @contactPhoto_change.
+  ///
+  /// In en, this message translates to:
+  /// **'Change photo'**
+  String get contactPhoto_change;
+
+  /// No description provided for @contactPhoto_remove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove photo'**
+  String get contactPhoto_remove;
+
+  /// No description provided for @contactPhoto_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo for {name}'**
+  String contactPhoto_title(String name);
+
+  /// No description provided for @contactPhoto_use.
+  ///
+  /// In en, this message translates to:
+  /// **'Use'**
+  String get contactPhoto_use;
+
+  /// No description provided for @contactPhoto_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag and pinch to place the picture in the circle.'**
+  String get contactPhoto_hint;
+
+  /// No description provided for @contactPhoto_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the picture: {reason}'**
+  String contactPhoto_failed(String reason);
+
   /// No description provided for @connectionChoiceBluetoothLabel.
   ///
   /// In en, this message translates to:

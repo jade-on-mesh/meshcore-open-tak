@@ -1,10 +1,12 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import '../l10n/l10n.dart';
+import '../services/contact_photos.dart';
 import '../theme/mesh_theme.dart';
 import '../theme/theme_icons.dart';
 
@@ -283,13 +285,15 @@ class StatTile extends StatelessWidget {
 
 /// Initials avatar with a deterministic per-name hue, or a fixed [color]
 /// for node-type coloring. Optional [icon] or themeable [iconSlot] replaces
-/// initials.
+/// initials. A photo the person set for the contact with public key
+/// [photoKey] ([ContactPhotos]) replaces all of them, in the circle.
 class AvatarCircle extends StatelessWidget {
   final String name;
   final double size;
   final Color? color;
   final IconData? icon;
   final ThemeIconSlot? iconSlot;
+  final String? photoKey;
 
   const AvatarCircle({
     super.key,
@@ -298,6 +302,7 @@ class AvatarCircle extends StatelessWidget {
     this.color,
     this.icon,
     this.iconSlot,
+    this.photoKey,
   });
 
   static const _hues = [
@@ -319,6 +324,19 @@ class AvatarCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (photoKey == null) return _plain(context);
+    final photos = ContactPhotos.instance;
+    return ListenableBuilder(
+      listenable: photos,
+      builder: (context, _) {
+        final photo = photos.photoFor(photoKey);
+        if (photo == null) return _plain(context);
+        return ContactPhotoCircle(photo: photo, size: size);
+      },
+    );
+  }
+
+  Widget _plain(BuildContext context) {
     final accent = color ?? _colorFor(name);
     final initials = _initials(name);
     final background = _tintedCardBackground(context, accent, 0.14);
@@ -390,6 +408,35 @@ class AvatarCircle extends StatelessWidget {
     return (words.first.characters.take(1).toString() +
             words[1].characters.take(1).toString())
         .toUpperCase();
+  }
+}
+
+/// A contact's photo ([ContactPhotos]) in a circle, [size] across.
+class ContactPhotoCircle extends StatelessWidget {
+  final Uint8List photo;
+  final double size;
+  const ContactPhotoCircle({super.key, required this.photo, this.size = 40});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: ClipOval(
+        child: Image.memory(
+          photo,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+          filterQuality: FilterQuality.medium,
+        ),
+      ),
+    );
   }
 }
 

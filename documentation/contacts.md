@@ -80,6 +80,8 @@ Groups are stored per radio identity (scoped by public key).
 | Manage Repeater | Repeaters only | Login dialog → RepeaterHubScreen |
 | Room Login | Rooms only | Login dialog → ChatScreen |
 | Room Management | Rooms only | Login dialog → RepeaterHubScreen (management mode) |
+| Set/Change Photo | All types except web | Pick an image from the gallery, move and zoom it inside a circle, then **Use**. The photo is kept on this device (`contact_photos/<public key>.png`) and shown in place of the contact's avatar in the contact list, chats, channel messages from that name, discovery and the map card |
+| Remove Photo | When a photo is set | Goes back to the usual avatar |
 | Add/Remove Favorite | All types | Toggles the favorite flag |
 | Share Contact | All types | Requests advert from device → copies `meshcore://<hex>` URI to clipboard |
 | Share Contact Zero-Hop | All types | Broadcasts the contact's advertisement one hop |

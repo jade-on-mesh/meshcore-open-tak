@@ -2652,7 +2652,15 @@ class _MessageBubble extends StatelessWidget {
   }
 
   Widget _buildAvatar(String senderName) {
-    return AvatarCircle(name: senderName, size: 32);
+    // In a 1:1 chat the sender is the contact: its photo, if one is set.
+    final room =
+        context.read<MeshCoreConnector>().getContactByPubKeyHex(sourceId)?.type ==
+        advTypeRoom;
+    return AvatarCircle(
+      name: senderName,
+      size: 32,
+      photoKey: room ? null : sourceId,
+    );
   }
 
   // " (just now)" / " (5m)" / " (2h)" — same relative-time-ago shape used

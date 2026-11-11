@@ -2719,6 +2719,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                     color: color,
                     icon: mapNodeTypeIcon(contact.type),
                     iconSlot: mapMarkerSlotForNodeType(contact.type),
+                    photoKey: contact.publicKeyHex,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
