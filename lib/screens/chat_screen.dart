@@ -2269,7 +2269,7 @@ class _MessageBubble extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   if (!layoutOutgoing) ...[
-                    _buildAvatar(senderName),
+                    _buildAvatar(context, senderName),
                     const SizedBox(width: 6),
                   ],
                   Flexible(
@@ -2651,7 +2651,7 @@ class _MessageBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildAvatar(String senderName) {
+  Widget _buildAvatar(BuildContext context, String senderName) {
     // In a 1:1 chat the sender is the contact: its photo, if one is set.
     final room =
         context
