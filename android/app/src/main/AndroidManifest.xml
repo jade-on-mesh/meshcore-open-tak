@@ -27,6 +27,8 @@
     <!-- In-app updates from the GitHub "Latest build" release (AppUpdateChannel.kt).
          Google Play restricts this permission; a Play build would leave it out. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <!-- "Install an earlier version": Android's own uninstall prompt for this app -->
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES"/>
     <uses-feature android:name="android.hardware.usb.host" android:required="false"/>
 
     <application
