@@ -97,7 +97,7 @@ import '../vox/voice_message_bubble.dart';
 import '../vox/voice_record_sheet.dart';
 import '../vox/voice_service.dart';
 import '../vox/voice_wire.dart';
-import '../vox/vox_rx_path.dart' show VoxPathRadio;
+import '../vox/vox_rx_path.dart' show VoxPathRadio, VoxRxPath;
 import '../team/message_reach_screen.dart';
 import '../vox/walkie_service.dart';
 import '../vox/walkie_sheet.dart';
@@ -1394,9 +1394,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     connector.setChannelUnreadCount(widget.channel.index, count);
   }
 
-  /// The default under a voice clip's or photo's hop count: just how many
-  /// hops its packets took over MediaMesh ("MediaMesh · 3 hops"), once the
-  /// radio has said one came over radio2. Nothing otherwise. The repeaters
+  /// The default under a voice clip's or photo's hop count: "MediaMesh", once
+  /// the radio has said one of its packets came over radio2 (the hop chip
+  /// above then counts that path's hops, [_mediaPathView]). Nothing otherwise. The repeaters
   /// themselves and the other radios' paths are behind the "Repeaters under
   /// hop count" setting ([_buildRepeaterPath]).
   Widget _buildMediaMeshHops({
@@ -1415,16 +1415,14 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             ?.byRadio[VoxPathRadio.mediaMesh];
         if (path == null) return const SizedBox.shrink();
         final l10n = context.l10n;
-        final hops = path.hopCount == 0
-            ? l10n.chat_direct
-            : l10n.chat_hopsCount(path.hopCount);
+        // The hop chip above has the count: it's the media packets' now.
         return Padding(
           padding: padSides
               ? const EdgeInsets.symmetric(horizontal: 8)
               : EdgeInsets.zero,
           child: RepeaterPathList(
             hops: const [],
-            label: '${l10n.chat_repeaterPathMediaMesh} · $hops',
+            label: l10n.chat_repeaterPathMediaMesh,
             color: color,
             textScale: textScale,
           ),
@@ -1538,18 +1536,28 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     final originalDisplayText = message.isOutgoing
         ? message.originalText
         : (translatedDisplayText != baseDisplayText ? baseDisplayText : null);
-    final displayPath = message.pathBytes.isNotEmpty
-        ? message.pathBytes
-        : (message.pathVariants.isNotEmpty
-              ? message.pathVariants.first
+    // A voice clip's or photo's hops are its media packets' (MediaMesh first),
+    // once one has arrived, not the announcing text's.
+    if (voxEnvelope != null && !isOutgoing) {
+      context.select<VoxVoiceService, String?>(
+        (v) => v.stateFor(voxEnvelope).viaPaths?.toStorage(),
+      );
+    }
+    final pathMessage = voxEnvelope == null
+        ? message
+        : _mediaPathView(message, voxEnvelope);
+    final displayPath = pathMessage.pathBytes.isNotEmpty
+        ? pathMessage.pathBytes
+        : (pathMessage.pathVariants.isNotEmpty
+              ? pathMessage.pathVariants.first
               : Uint8List(0));
     final displayPathHashWidth =
-        message.pathHashWidth ??
+        pathMessage.pathHashWidth ??
         context.read<MeshCoreConnector>().pathHashByteWidth;
     final displayHopCount = _displayHopCount(
       displayPath,
       displayPathHashWidth,
-      message.pathLength,
+      pathMessage.pathLength,
     );
 
     // Bubble colors: the usual outgoing/received ones, unless OTP is active
@@ -1819,7 +1827,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                                   sameLine: regionOnHopsLine,
                                   children: [
                                     RouteChip(
-                                      isDirect: (message.pathLength ?? -1) >= 0,
+                                      isDirect:
+                                          (pathMessage.pathLength ?? -1) >= 0,
                                       hops: displayHopCount,
                                     ),
                                     if (message.region?.isNotEmpty ?? false)
@@ -3747,12 +3756,41 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   }
 
   void _showMessagePathInfo(ChannelMessage message) {
+    final env = VoxVoiceEnvelope.tryParse(message.displayText);
+    final shown = env == null ? message : _mediaPathView(message, env);
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) =>
-            ChannelMessagePathScreen(message: message, channelMessage: true),
+            ChannelMessagePathScreen(message: shown, channelMessage: true),
       ),
+    );
+  }
+
+  /// [message] with the path its clip's or photo's media packets took instead
+  /// of the announcing text's: MediaMesh's when they came over radio2, else
+  /// the main mesh's or an untagged radio's, the others as path variants. The
+  /// message as it is when it's ours or no media packet has arrived yet.
+  ChannelMessage _mediaPathView(ChannelMessage message, VoxVoiceEnvelope env) {
+    if (message.isOutgoing) return message;
+    final VoxVoiceService voice;
+    try {
+      voice = context.read<VoxVoiceService>();
+    } on ProviderNotFoundException {
+      return message;
+    }
+    final paths = voice.stateFor(env).viaPaths;
+    if (paths == null || paths.isEmpty) return message;
+    Uint8List bytesOf(VoxRxPath p) =>
+        Uint8List.fromList([for (final h in p.hops) ...h]);
+    final ordered = paths.ordered;
+    final best = ordered.first.value;
+    return message.copyWith(
+      pathBytes: bytesOf(best),
+      pathHashWidth: best.hashWidth,
+      pathLength: best.hopCount,
+      pathVariants: [for (final e in ordered.skip(1)) bytesOf(e.value)],
+      repeats: const [],
     );
   }
 

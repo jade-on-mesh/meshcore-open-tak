@@ -91,6 +91,8 @@ Tap a channel card to open the channel chat screen.
 - **Pinch-to-zoom**: Two-finger zoom (0.8x–1.8x) and double-tap to reset text size
 - **Message tracing mode** (when enabled in App Settings): Each bubble additionally shows path prefix bytes (`via XX,YY,...`), a timestamp, and a repeat count icon
 
+A received voice clip or photo (MeshCore Open TAK) counts the hops of its media packets, not of the short text that announced it: the hop count, the `via` path in tracing mode and the message's path page show the path its packets took, MediaMesh's (labelled under the bubble) when they came over radio2, else the main mesh's. Until a packet has arrived, they show the announcement's path.
+
 Messages also show a region label when known, independently of message tracing. By default the region chip sits below the hop count; turn on **Region next to hop count** in App Settings → Messaging to show both on one line. The [message-region guide](regions.md#regions-displayed-on-messages) explains why some incoming messages have no label.
 
 ### Message Types in Chat
