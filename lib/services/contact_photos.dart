@@ -26,7 +26,9 @@ class ContactPhotos extends ChangeNotifier {
 
   Future<Directory> _dir() async {
     final base = await getApplicationSupportDirectory();
-    final dir = Directory('${base.path}${Platform.pathSeparator}contact_photos');
+    final dir = Directory(
+      '${base.path}${Platform.pathSeparator}contact_photos',
+    );
     if (!dir.existsSync()) await dir.create(recursive: true);
     return dir;
   }
@@ -58,10 +60,9 @@ class ContactPhotos extends ChangeNotifier {
     if (!supported) return;
     final key = _key(keyHex);
     final dir = await _dir();
-    await File('${dir.path}${Platform.pathSeparator}$key.png').writeAsBytes(
-      png,
-      flush: true,
-    );
+    await File(
+      '${dir.path}${Platform.pathSeparator}$key.png',
+    ).writeAsBytes(png, flush: true);
     _photos[key] = png;
     notifyListeners();
   }
@@ -73,9 +74,7 @@ class ContactPhotos extends ChangeNotifier {
     _photos.remove(key);
     notifyListeners();
     try {
-      final f = File(
-        '${(await _dir()).path}${Platform.pathSeparator}$key.png',
-      );
+      final f = File('${(await _dir()).path}${Platform.pathSeparator}$key.png');
       if (f.existsSync()) await f.delete();
     } catch (_) {}
   }

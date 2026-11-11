@@ -259,7 +259,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get contactPhoto_use => 'Use';
 
   @override
-  String get contactPhoto_hint => 'Drag and pinch to place the picture in the circle.';
+  String get contactPhoto_hint =>
+      'Drag and pinch to place the picture in the circle.';
 
   @override
   String contactPhoto_failed(String reason) {

@@ -162,8 +162,10 @@ class _ContactPhotoCropScreenState extends State<ContactPhotoCropScreen> {
           ? const Center(child: CircularProgressIndicator())
           : LayoutBuilder(
               builder: (context, constraints) {
-                final side =
-                    (constraints.biggest.shortestSide - 32).clamp(120.0, 600.0);
+                final side = (constraints.biggest.shortestSide - 32).clamp(
+                  120.0,
+                  600.0,
+                );
                 // The picture's shorter side fills the circle; the rest can
                 // be dragged into it.
                 final fit = side / size.shortestSide;
@@ -241,7 +243,10 @@ class _CircleMask extends CustomPainter {
       Path()..addRect(rect),
       circle,
     );
-    canvas.drawPath(outside, Paint()..color = Colors.black.withValues(alpha: 0.6));
+    canvas.drawPath(
+      outside,
+      Paint()..color = Colors.black.withValues(alpha: 0.6),
+    );
     canvas.drawPath(
       circle,
       Paint()

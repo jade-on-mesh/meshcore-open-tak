@@ -2654,7 +2654,10 @@ class _MessageBubble extends StatelessWidget {
   Widget _buildAvatar(String senderName) {
     // In a 1:1 chat the sender is the contact: its photo, if one is set.
     final room =
-        context.read<MeshCoreConnector>().getContactByPubKeyHex(sourceId)?.type ==
+        context
+            .read<MeshCoreConnector>()
+            .getContactByPubKeyHex(sourceId)
+            ?.type ==
         advTypeRoom;
     return AvatarCircle(
       name: senderName,
