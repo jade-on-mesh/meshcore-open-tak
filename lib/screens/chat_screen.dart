@@ -1089,36 +1089,38 @@ class _ChatScreenState extends State<ChatScreen> {
           case 'photo':
             showVoxImagePicker(
               context,
-          // AI sketches to a person ride the OTP pipeline, so they are
-          // offered only once this contact has a pad.
-          aiSketch:
-              connector.canSendOtpImageToContact(contactKeyHex) &&
-                  _imageCodec != null
-              ? VoxAiSketchOption(
-                  ready: () =>
-                      _imageCodec?.availability == ImageCodecAvailability.ready,
-                  explainNotReady: () =>
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'AI sketches need the image model: turn on '
-                            'Image messages in App settings.',
+              // AI sketches to a person ride the OTP pipeline, so they are
+              // offered only once this contact has a pad.
+              aiSketch:
+                  connector.canSendOtpImageToContact(contactKeyHex) &&
+                      _imageCodec != null
+                  ? VoxAiSketchOption(
+                      ready: () =>
+                          _imageCodec?.availability ==
+                          ImageCodecAvailability.ready,
+                      explainNotReady: () =>
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'AI sketches need the image model: turn on '
+                                'Image messages in App settings.',
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                  send: (bytes, fileBytes) =>
-                      _sendOtpAiSketch(connector, bytes, fileBytes),
-                  sendHd: (bytes, _) => _sendOtpAiSketchHd(connector, bytes),
-                )
-              : null,
-          recipientLabel: _resolveContact(connector).name,
-          caption: caption,
-          onSend: (image, text) =>
-              context.read<VoxVoiceService>().sendImageToContact(
-                _resolveContact(connector),
-                image,
-                caption: text,
-              ),
+                      send: (bytes, fileBytes) =>
+                          _sendOtpAiSketch(connector, bytes, fileBytes),
+                      sendHd: (bytes, _) =>
+                          _sendOtpAiSketchHd(connector, bytes),
+                    )
+                  : null,
+              recipientLabel: _resolveContact(connector).name,
+              caption: caption,
+              onSend: (image, text) =>
+                  context.read<VoxVoiceService>().sendImageToContact(
+                    _resolveContact(connector),
+                    image,
+                    caption: text,
+                  ),
             );
           case 'walkie':
             showDmWalkieSheet(context, _resolveContact(connector));
