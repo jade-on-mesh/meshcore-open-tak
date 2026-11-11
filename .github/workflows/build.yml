@@ -506,6 +506,10 @@ jobs:
           cp /tmp/aom/aom/*.h $out/include/aom/
       - run: flutter pub get --enforce-lockfile
       - name: Build
+        # Upstream's CMake install step now builds its own AppImage (with
+        # linuxdeploy); this job packages the fork's AppImage itself below.
+        env:
+          MESHCORE_BUILD_APPIMAGE: "0"
         run: |
           set -euo pipefail
           upstream=$(sed -n 's/^version:[[:space:]]*\([^+[:space:]]*\).*/\1/p' pubspec.yaml)
