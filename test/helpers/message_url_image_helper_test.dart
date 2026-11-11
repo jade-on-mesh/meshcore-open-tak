@@ -1,9 +1,25 @@
+import 'dart:io';
+
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:meshcore_open/helpers/message_url_image_helper.dart';
 
 void main() {
+  // Verifying a link loads it as an image through cached_network_image, whose
+  // cache asks path_provider for a folder; without a stand-in the
+  // MissingPluginException could land in this file's tests (#185).
+  setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    final tmp = Directory.systemTemp.createTempSync('url_image_test_');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('plugins.flutter.io/path_provider'),
+          (call) async => tmp.path,
+        );
+  });
+
   group('MessageUrlImageHelper', () {
     tearDown(() {
       MessageUrlImageHelper.httpClient = null;
