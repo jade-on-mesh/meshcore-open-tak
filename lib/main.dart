@@ -17,6 +17,7 @@ import 'team/map_highlights.dart';
 import 'services/mediamesh_coverage.dart';
 import 'services/media_mesh_nearby.dart';
 import 'services/mediamesh_repeaters.dart';
+import 'services/contact_photos.dart';
 import 'services/media_lockdown.dart';
 import 'screens/channels_screen.dart';
 import 'utils/platform_info.dart';
@@ -252,6 +253,7 @@ void main() async {
     () => receivedImageStore.load(),
   );
   await _startupStep('mediaLockdown.load', MediaLockdown.load);
+  await _startupStep('contactPhotos.load', ContactPhotos.instance.load);
   await _startupStep(
     'uiViewStateService.initialize',
     () => uiViewStateService.initialize(),

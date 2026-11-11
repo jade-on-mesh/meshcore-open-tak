@@ -44,8 +44,10 @@ import 'contact_qr_scanner_screen.dart';
 import 'discovery_screen.dart';
 import 'map_screen.dart';
 import '../review_mode/review_mode_banner.dart';
+import 'contact_photo_screen.dart';
 import 'repeater_hub_screen.dart';
 import 'settings_screen.dart';
+import '../services/contact_photos.dart';
 import '../theme/theme_icons.dart';
 
 enum RoomLoginDestination { chat, management }
@@ -1743,6 +1745,11 @@ class _ContactsScreenState extends State<ContactsScreen> {
                   );
                 },
               ),
+              ...contactPhotoTiles(
+                context,
+                contact,
+                close: () => Navigator.pop(sheetContext),
+              ),
               ListTile(
                 enabled: !readOnly,
                 leading: const Icon(Icons.alt_route),
@@ -1924,26 +1931,37 @@ class _ContactTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
           children: [
-            // Avatar
-            if (emoji != null)
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: scheme.surfaceContainerHigh,
-                  border: Border.all(color: scheme.outlineVariant),
-                ),
-                alignment: Alignment.center,
-                child: Text(emoji, style: const TextStyle(fontSize: 20)),
-              )
-            else
-              AvatarCircle(
-                name: contact.name,
-                size: 42,
-                color: isChat ? null : contactTypeColor(contact.type),
-                iconSlot: contactTypeIconSlot(contact.type),
-              ),
+            // Avatar: the photo set for this contact, else its emoji or icon.
+            ListenableBuilder(
+              listenable: ContactPhotos.instance,
+              builder: (context, _) {
+                final photo = ContactPhotos.instance.photoFor(
+                  contact.publicKeyHex,
+                );
+                if (photo != null) {
+                  return ContactPhotoCircle(photo: photo, size: 42);
+                }
+                if (emoji != null) {
+                  return Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: scheme.surfaceContainerHigh,
+                      border: Border.all(color: scheme.outlineVariant),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(emoji, style: const TextStyle(fontSize: 20)),
+                  );
+                }
+                return AvatarCircle(
+                  name: contact.name,
+                  size: 42,
+                  color: isChat ? null : contactTypeColor(contact.type),
+                  iconSlot: contactTypeIconSlot(contact.type),
+                );
+              },
+            ),
             const SizedBox(width: 12),
             // Main content. The name owns the whole first row (wrapping to
             // a second line if needed); last-seen and the route share the row

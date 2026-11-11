@@ -238,6 +238,32 @@ class AppLocalizationsZh extends AppLocalizations {
   String get connectionChoiceUsbLabel => 'USB';
 
   @override
+  String get contactPhoto_set => 'Set photo';
+
+  @override
+  String get contactPhoto_change => 'Change photo';
+
+  @override
+  String get contactPhoto_remove => 'Remove photo';
+
+  @override
+  String contactPhoto_title(String name) {
+    return 'Photo for $name';
+  }
+
+  @override
+  String get contactPhoto_use => 'Use';
+
+  @override
+  String get contactPhoto_hint =>
+      'Drag and pinch to place the picture in the circle.';
+
+  @override
+  String contactPhoto_failed(String reason) {
+    return 'Couldn\'t open the picture: $reason';
+  }
+
+  @override
   String get connectionChoiceBluetoothLabel => '蓝牙';
 
   @override

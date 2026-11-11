@@ -37,6 +37,7 @@ import '../models/message_filter.dart';
 import '../models/otp_theme.dart';
 import '../services/app_settings_service.dart' show AppSettingsService;
 import '../services/chat_text_scale_service.dart';
+import '../services/contact_photos.dart';
 import '../services/image_chunk_transport.dart';
 import '../services/image_codec_service.dart';
 import '../services/media_lockdown.dart';
@@ -3350,7 +3351,23 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     return AvatarCircle(
       name: senderName,
       size: (32 * textScale).clamp(28.0, 56.0),
+      photoKey: _photoKeyForSender(senderName),
     );
+  }
+
+  /// The public key of the chat contact named [senderName], when exactly one
+  /// has that name: a channel message names its sender, not their key. Null
+  /// when no photo is set for them, so the usual avatar shows.
+  String? _photoKeyForSender(String senderName) {
+    final photos = ContactPhotos.instance;
+    if (!photos.supported) return null;
+    final named = context
+        .read<MeshCoreConnector>()
+        .contacts
+        .where((c) => c.type == advTypeChat && c.name == senderName)
+        .toList();
+    if (named.length != 1) return null;
+    return named.single.publicKeyHex;
   }
 
   Widget _buildReplyBanner(double textScale) {
