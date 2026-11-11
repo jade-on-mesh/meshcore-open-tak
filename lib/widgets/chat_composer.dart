@@ -74,9 +74,6 @@ class ChatComposer extends StatelessWidget {
   final ValueChanged<String> onAction;
   final List<Widget> header;
 
-  /// MeshCore Open TAK: buttons after the "+" menu (photo, push-to-talk).
-  final List<Widget> leading;
-
   /// MeshCore Open TAK: shown in the send button's place while there's
   /// nothing to send (the voice-message button), as messaging apps do.
   final Widget? idleTrailing;
@@ -100,14 +97,27 @@ class ChatComposer extends StatelessWidget {
     this.softLimitNote,
     this.encoder,
     this.header = const [],
-    this.leading = const [],
     this.idleTrailing,
     this.counterTextBuilder,
     this.counterColorBuilder,
   });
 
+  /// MeshCore Open TAK: everything the composer offers is in the one "+"
+  /// menu (photo, walkie-talkie, GIF, location, contact, translation), not
+  /// split between "+" and a row of buttons folded behind ">".
   Future<void> _openActionMenu(BuildContext buttonContext) async {
-    final actions = actionsBuilder();
+    final settings = buttonContext.read<AppSettingsService>().settings;
+    final actions = [
+      ...actionsBuilder(),
+      if (settings.translationEnabled)
+        ChatComposerAction(
+          id: _translateAction,
+          icon: settings.composerTranslationEnabled
+              ? Icons.translate
+              : Icons.translate_outlined,
+          label: buttonContext.l10n.translation_translationOptions,
+        ),
+    ];
     if (actions.isEmpty) return;
     final button = buttonContext.findRenderObject() as RenderBox;
     final overlay =
@@ -140,8 +150,14 @@ class ChatComposer extends StatelessWidget {
       ],
     );
     if (selected == null || !buttonContext.mounted) return;
+    if (selected == _translateAction) {
+      await showComposerTranslationOptions(buttonContext);
+      return;
+    }
     onAction(selected);
   }
+
+  static const _translateAction = '_translate';
 
   @override
   Widget build(BuildContext context) {
@@ -149,14 +165,6 @@ class ChatComposer extends StatelessWidget {
     // Offline the chat is read-only. The draft stays in [controller] (owned
     // by the screen) and is back when the radio reconnects.
     if (context.radioReadOnly) return const OfflineComposerBar();
-    final translation = context
-        .select<AppSettingsService, (bool, bool, String?)>(
-          (s) => (
-            s.settings.translationEnabled,
-            s.settings.composerTranslationEnabled,
-            s.settings.translationTargetLanguageCode,
-          ),
-        );
     return Container(
       decoration: BoxDecoration(
         color: scheme.surface,
@@ -178,23 +186,6 @@ class ChatComposer extends StatelessWidget {
                       tooltip: context.l10n.chat_selectSendAction,
                       onPressed: () => _openActionMenu(buttonContext),
                     ),
-                  ),
-                  _CollapsingButtons(
-                    controller: controller,
-                    focusNode: focusNode,
-                    // A phone's width: folded until asked, so the field
-                    // gets the room even before typing.
-                    alwaysFold: MediaQuery.sizeOf(context).width < 600,
-                    children: [
-                      ...leading,
-                      if (translation.$1)
-                        MessageTranslationButton(
-                          enabled: translation.$2,
-                          languageCode: translation.$3,
-                          onPressed: () =>
-                              showComposerTranslationOptions(context),
-                        ),
-                    ],
                   ),
                   Expanded(
                     child: ValueListenableBuilder<TextEditingValue>(
@@ -328,95 +319,6 @@ class ChatComposer extends StatelessWidget {
           vertical: 12,
         ),
       ),
-    );
-  }
-}
-
-/// MeshCore Open TAK: the buttons between "+" and the text field (photo,
-/// push-to-talk, translation). Once there's text, or always on a phone's
-/// width, they fold into one chevron so the field gets the width, as
-/// messaging apps do; the chevron unfolds them until the text changes. The
-/// voice-message button sits in the send button's place instead
-/// ([ChatComposer.idleTrailing]), so it's always one tap away.
-class _CollapsingButtons extends StatefulWidget {
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final List<Widget> children;
-
-  /// Folded even with an empty field (narrow screens).
-  final bool alwaysFold;
-
-  const _CollapsingButtons({
-    required this.controller,
-    required this.focusNode,
-    required this.children,
-    this.alwaysFold = false,
-  });
-
-  @override
-  State<_CollapsingButtons> createState() => _CollapsingButtonsState();
-}
-
-class _CollapsingButtonsState extends State<_CollapsingButtons> {
-  bool _unfolded = false;
-  String _textWhenUnfolded = '';
-
-  @override
-  void initState() {
-    super.initState();
-    widget.controller.addListener(_changed);
-    widget.focusNode.addListener(_changed);
-  }
-
-  @override
-  void didUpdateWidget(_CollapsingButtons old) {
-    super.didUpdateWidget(old);
-    if (old.controller != widget.controller) {
-      old.controller.removeListener(_changed);
-      widget.controller.addListener(_changed);
-    }
-    if (old.focusNode != widget.focusNode) {
-      old.focusNode.removeListener(_changed);
-      widget.focusNode.addListener(_changed);
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.controller.removeListener(_changed);
-    widget.focusNode.removeListener(_changed);
-    super.dispose();
-  }
-
-  void _changed() {
-    if (!mounted) return;
-    // Typing folds them away again.
-    if (_unfolded && widget.controller.text != _textWhenUnfolded) {
-      _unfolded = false;
-    }
-    setState(() {});
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (widget.children.isEmpty) return const SizedBox.shrink();
-    final folded =
-        (widget.alwaysFold || widget.controller.text.isNotEmpty) &&
-        !_unfolded &&
-        widget.children.length > 1;
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 150),
-      alignment: Alignment.centerLeft,
-      child: folded
-          ? IconButton(
-              icon: const Icon(Icons.chevron_right),
-              tooltip: context.l10n.chat_showComposerButtons,
-              onPressed: () => setState(() {
-                _unfolded = true;
-                _textWhenUnfolded = widget.controller.text;
-              }),
-            )
-          : Row(mainAxisSize: MainAxisSize.min, children: widget.children),
     );
   }
 }

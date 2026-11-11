@@ -2385,6 +2385,9 @@ class AppLocalizationsUk extends AppLocalizations {
   String get chat_sendMessageToStart => 'Надішліть повідомлення, щоб почати';
 
   @override
+  String get chat_sendPhoto => 'Send a photo';
+
+  @override
   String get chat_originalMessageNotFound =>
       'Оригінальне повідомлення не знайдено';
 

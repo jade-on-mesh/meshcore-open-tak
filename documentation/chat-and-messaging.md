@@ -39,9 +39,9 @@ From the Contacts screen, tap any Chat-type contact to open the ChatScreen.
 
 ### Input Bar
 
-- **Send action button** (left, ⊕ icon): Opens a menu with **Send GIF** (GIF picker bottom sheet) and **Share my location**
-- **Share my location**: Sends your radio's current position (from the radio, not the phone's GPS) as a location pin. You're asked for a label (default: your node name) before sending; the keyboard's Send key confirms. If the radio reports no usable position (none set, or 0,0), the item is hidden and a snackbar says "Your radio has no location set". Location shares follow the same send cooldown as typed messages and are never sent as a reply. In channel chat the menu also holds **Send low-res image over radio** when image messages are set up
-- **Translation button** (optional, between GIF and text field): Shown only when translation is enabled in App Settings. Tap to configure outgoing-message translation language and on/off toggle.
+- **Send action button** (left, ⊕ icon): the one menu for everything besides typing: **Send a photo** (a Mesh photo, or an AI sketch from the photo sheet), **Walkie-talkie** (when available), **Send GIF**, **Send image or file via IPFS** (when an upload endpoint is set), **Share my location**, **Share contact** and, when translation is on, **Translation options**. There's no second row of buttons behind a **>** any more. On Public and #public, photo and walkie-talkie say why they're off until **Photos and voice on Public** is switched on
+- **Share my location**: Sends your radio's current position (from the radio, not the phone's GPS) as a location pin. You're asked for a label (default: your node name) before sending; the keyboard's Send key confirms. If the radio reports no usable position (none set, or 0,0), the item is hidden and a snackbar says "Your radio has no location set". Location shares follow the same send cooldown as typed messages and are never sent as a reply. MeshCore Open's **Send low-res image over radio** isn't offered: AI sketches are sent from **Send a photo**, and low-res images from other apps still show
+- **Translation options** (in the ⊕ menu): Shown only when translation is enabled in App Settings. Configures outgoing-message translation language and the on/off toggle.
 - **Text field** (center): Auto-capitalization, enforces UTF-8 byte limit in real-time
 - **Send button** (right): Submits the message
 - On desktop: Enter/Numpad Enter also submits

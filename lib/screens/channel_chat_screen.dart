@@ -2416,6 +2416,11 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
 
   /// Takes no [BuildContext]: it uses the [State]'s own, so the `mounted`
   /// checks around each `await` are the ones that actually govern it.
+  ///
+  /// MeshCore Open's own "Send low-res image over radio" (upstream code, kept
+  /// as it is so syncs stay clean). Open TAK no longer offers it in the
+  /// composer: AI sketches go from the photo sheet.
+  // ignore: unused_element
   Future<void> _showImageSendPreview() async {
     final codec = _imageCodec;
     if (codec == null) return;
@@ -3502,8 +3507,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             c.isChannelOtpEnabled(widget.channel.index),
           ),
         );
-    final showImageAction = context.select<AppSettingsService, bool>(
-      (s) => s.settings.imageMessagesEnabled,
+    final walkieAvailable = context.select<WalkieService, bool>(
+      (w) => w.available,
     );
     final showIpfsAction = context.select<AppSettingsService, bool>(
       (s) => s.settings.uploadIpfsEndpoint.trim().isNotEmpty,
@@ -3566,26 +3571,6 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
               .sendClipToChannel(widget.channel, clip, caption: text),
         ),
       ),
-      leading: [
-        PublicMediaGuard(
-          channel: widget.channel,
-          icon: Icons.add_photo_alternate_outlined,
-          child: VoxImageButton(
-            aiSketch: _aiSketchOption,
-            recipientLabel: widget.channel.name,
-            caption: caption,
-            onSend: (image, text) => context
-                .read<VoxVoiceService>()
-                .sendImageToChannel(widget.channel, image, caption: text),
-          ),
-        ),
-        PublicMediaGuard(
-          channel: widget.channel,
-          icon: Icons.record_voice_over_outlined,
-          visible: context.select<WalkieService, bool>((w) => w.available),
-          child: WalkieButton(channel: widget.channel),
-        ),
-      ],
       header: [
         if (replyTo != null)
           Builder(
@@ -3600,7 +3585,22 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       ],
       actionsBuilder: () {
         final connector = context.read<MeshCoreConnector>();
+        // One menu for everything: the photo (Mesh photo, or an AI sketch
+        // from its sheet) and the walkie-talkie first. The legacy "Send
+        // low-res image over radio" entry is gone: AI sketches are in the
+        // photo sheet, and AEIC images from other apps still show here.
         return [
+          ChatComposerAction(
+            id: 'photo',
+            icon: Icons.add_photo_alternate_outlined,
+            label: context.l10n.chat_sendPhoto,
+          ),
+          if (walkieAvailable)
+            ChatComposerAction(
+              id: 'walkie',
+              icon: Icons.record_voice_over_outlined,
+              label: context.l10n.walkie_title,
+            ),
           ChatComposerAction(
             id: 'gif',
             icon: Icons.gif_box,
@@ -3611,12 +3611,6 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
               id: 'ipfs-image',
               icon: Icons.cloud_upload_outlined,
               label: context.l10n.chat_sendImageIpfs,
-            ),
-          if (showImageAction)
-            ChatComposerAction(
-              id: 'meshcore-image',
-              icon: Icons.image_outlined,
-              label: context.l10n.chat_sendImageLora,
             ),
           if (hasShareableLocation(
             connector.selfLatitude,
@@ -3636,13 +3630,31 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       },
       onAction: (action) {
         if (!mounted) return;
+        // On Public and #public photos and voice stay off (and say why)
+        // until "Photos and voice on Public" is switched on.
+        final mediaOff =
+            MediaLockdown.isPublicMediaChannel(widget.channel) &&
+            !MediaLockdown.publicAllowed.value;
         switch (action) {
+          case 'photo' when mediaOff:
+          case 'walkie' when mediaOff:
+            showPublicMediaOff(context);
+          case 'photo':
+            showVoxImagePicker(
+              context,
+              aiSketch: _aiSketchOption,
+              recipientLabel: widget.channel.name,
+              caption: caption,
+              onSend: (image, text) => context
+                  .read<VoxVoiceService>()
+                  .sendImageToChannel(widget.channel, image, caption: text),
+            );
+          case 'walkie':
+            showWalkieSheet(context, widget.channel);
           case 'gif':
             showChatGifPicker(context, _textController);
           case 'ipfs-image':
             _sendImageViaIpfs();
-          case 'meshcore-image':
-            _showImageSendPreview();
           case 'send-my-location':
             _shareMyLocation(context.read<MeshCoreConnector>());
           case 'share-contact':

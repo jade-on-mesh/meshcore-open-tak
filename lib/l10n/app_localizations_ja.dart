@@ -2283,6 +2283,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get chat_sendMessageToStart => '開始するためにメッセージを送信してください';
 
   @override
+  String get chat_sendPhoto => 'Send a photo';
+
+  @override
   String get chat_originalMessageNotFound => '元のメッセージが見つかりませんでした';
 
   @override

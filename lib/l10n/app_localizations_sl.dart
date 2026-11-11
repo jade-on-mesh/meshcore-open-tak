@@ -2382,6 +2382,9 @@ class AppLocalizationsSl extends AppLocalizations {
   String get chat_sendMessageToStart => 'Pošlji sporočilo za začetek.';
 
   @override
+  String get chat_sendPhoto => 'Send a photo';
+
+  @override
   String get chat_originalMessageNotFound =>
       'Opozorilo: Sporočilo ni bilo najdeno';
 

@@ -166,7 +166,7 @@ Individual channels can be muted from the channel chat bell icon, the channel li
 Not shown on web. Controls on-device message translation powered by a locally-downloaded ML model:
 - **Enable translation**: Enables message translation controls
 - **Auto-translate incoming messages**: Automatically translates incoming messages for chat/channel display and notifications
-- **Translate before sending**: Sets the default state of the composer's translate icon (on means messages are translated before sending)
+- **Translate before sending**: Sets the default for **Translation options** in the composer's ⊕ menu (on means messages are translated before sending)
 - **Target language**: Language to translate into (searchable list; defaults to the app language)
 - **Downloaded model**: Dropdown to select among already-downloaded translation models
 - **Preset Hugging Face model**: Download a curated preset model with one tap
