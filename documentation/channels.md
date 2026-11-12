@@ -117,6 +117,13 @@ The app bar overflow menu (⋮) has **Filter messages in this channel** (shown w
 - Sent replies are prefixed `@[{senderName}] {text}`
 - Received replies show a bordered quote block inside the bubble; tapping scrolls to the original. Reply previews render GIF thumbnails and location pin icons, not just text.
 
+### Resend
+
+- **All platforms**: Long-press (or right-click on desktop) one of your own messages → **Resend**
+- It goes to the channel again as it went the first time, reply mention and region included; an OTP message is encrypted again.
+- A **failed** message is replaced by the new send; a sent one stays, and the new one appears below it (a channel has no delivery receipt to say whether anyone got the first).
+- The usual send cooldown applies.
+
 ### Message Path Viewing
 
 - **All platforms**: Long-press (or right-click on desktop) a message bubble → "Path"

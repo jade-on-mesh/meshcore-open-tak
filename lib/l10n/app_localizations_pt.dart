@@ -2401,6 +2401,9 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get chat_resend => 'Resend';
+
+  @override
   String chat_replyTo(String name) {
     return 'Responder a $name';
   }

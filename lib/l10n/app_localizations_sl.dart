@@ -2394,6 +2394,9 @@ class AppLocalizationsSl extends AppLocalizations {
   }
 
   @override
+  String get chat_resend => 'Resend';
+
+  @override
   String chat_replyTo(String name) {
     return 'Odpošlji odgovor $name';
   }
