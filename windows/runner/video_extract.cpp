@@ -78,6 +78,14 @@ std::wstring TempFile(const wchar_t* name) {
   return path + name;
 }
 
+// _wfopen without MSVC's deprecation warning (the build treats warnings as
+// errors).
+FILE* OpenForWriting(const std::wstring& path) {
+  FILE* file = nullptr;
+  if (_wfopen_s(&file, path.c_str(), L"wb") != 0) return nullptr;
+  return file;
+}
+
 int Even(double v) { return std::max(2, (int)std::lround(v / 2) * 2); }
 
 // An upright, cropped picture in RGB, shrunk to w x h with a box filter.
@@ -207,7 +215,7 @@ bool ReadSound(IMFSourceReader* reader, int clip_ms, std::wstring& path, int64_t
   }
   if (pcm.empty()) return false;
   path = TempFile(L"vox_video_sound.pcm");
-  FILE* file = _wfopen(path.c_str(), L"wb");
+  FILE* file = OpenForWriting(path);
   if (!file) return false;
   const size_t wrote = fwrite(pcm.data(), sizeof(int16_t), pcm.size(), file);
   fclose(file);
@@ -302,7 +310,7 @@ VideoExtractResult ExtractVideo(const std::string& utf8_path, int max_side, int 
   }
 
   const std::wstring frames_path = TempFile(L"vox_video_frames.rgb");
-  FILE* frames_file = _wfopen(frames_path.c_str(), L"wb");
+  FILE* frames_file = OpenForWriting(frames_path);
   if (!frames_file) return Fail("couldn't write a temporary file");
 
   std::vector<uint8_t> last((size_t)w * h * 3, 0), next;
