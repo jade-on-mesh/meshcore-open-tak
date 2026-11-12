@@ -1972,6 +1972,14 @@ class _ChatScreenState extends State<ChatScreen> {
                   },
                 ),
               ListTile(
+                leading: const Icon(Icons.copy),
+                title: Text(context.l10n.common_copy),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  copyChatMessageText(context, message.displayText);
+                },
+              ),
+              ListTile(
                 leading: const Icon(Icons.route),
                 title: Text(context.l10n.chat_path),
                 onTap: () {
@@ -1988,14 +1996,6 @@ class _ChatScreenState extends State<ChatScreen> {
                     _openMessagePath(message, contact, openMap: true);
                   },
                 ),
-              ListTile(
-                leading: const Icon(Icons.copy),
-                title: Text(context.l10n.common_copy),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  copyChatMessageText(context, message.displayText);
-                },
-              ),
               if (canTranslateMessage)
                 ListTile(
                   leading: const Icon(Icons.translate),

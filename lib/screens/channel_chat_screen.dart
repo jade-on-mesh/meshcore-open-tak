@@ -3932,6 +3932,25 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                     _showReach(message);
                   },
                 ),
+              // Can't react to your own messages
+              if (!message.isOutgoing)
+                ListTile(
+                  enabled: !readOnly,
+                  leading: const Icon(Icons.add_reaction_outlined),
+                  title: Text(context.l10n.chat_addReaction),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _showEmojiPicker(message);
+                  },
+                ),
+              ListTile(
+                leading: const Icon(Icons.copy),
+                title: Text(context.l10n.common_copy),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  copyChatMessageText(context, message.displayText);
+                },
+              ),
               ListTile(
                 leading: const Icon(Icons.checklist),
                 title: Text(context.l10n.chat_selectMessages),
@@ -3965,25 +3984,6 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                     );
                   },
                 ),
-              // Can't react to your own messages
-              if (!message.isOutgoing)
-                ListTile(
-                  enabled: !readOnly,
-                  leading: const Icon(Icons.add_reaction_outlined),
-                  title: Text(context.l10n.chat_addReaction),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    _showEmojiPicker(message);
-                  },
-                ),
-              ListTile(
-                leading: const Icon(Icons.copy),
-                title: Text(context.l10n.common_copy),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  copyChatMessageText(context, message.displayText);
-                },
-              ),
               if (canTranslateMessage)
                 ListTile(
                   leading: const Icon(Icons.translate),
