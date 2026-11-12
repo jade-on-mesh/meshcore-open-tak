@@ -258,7 +258,7 @@ VideoExtractResult ExtractVideo(const std::string& utf8_path, int max_side, int 
   // Video: RGB32 out of the Source Reader's converter.
   const DWORD video = (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM;
   reader->SetStreamSelection((DWORD)MF_SOURCE_READER_ALL_STREAMS, FALSE);
-  if (FAILED(reader->SetStreamSelection(video, TRUE))) return Fail("no picture track in this video");
+  if (FAILED(reader->SetStreamSelection(video, TRUE))) return Fail("no picture in this video");
   UINT32 rotation = 0;
   {
     Com<IMFMediaType> native;
@@ -274,57 +274,40 @@ VideoExtractResult ExtractVideo(const std::string& utf8_path, int max_side, int 
     if (FAILED(reader->SetCurrentMediaType(video, nullptr, want.get())))
       return Fail("Windows can't decode this video's format");
   }
-  // The decoded frame's layout. Windows' decoders often settle it only with
-  // the first frame (1080p H.264 decodes as 1920 x 1088, say), reporting a
-  // media type change then, so it is read again whenever that happens.
+  Com<IMFMediaType> current;
+  if (FAILED(reader->GetCurrentMediaType(video, current.put()))) return Fail("not a video");
   UINT32 frame_w = 0, frame_h = 0;
-  LONG default_stride = 0;
-  int crop_x = 0, crop_y = 0, crop_w = 0, crop_h = 0;
-  auto read_layout = [&]() -> bool {
-    Com<IMFMediaType> current;
-    if (FAILED(reader->GetCurrentMediaType(video, current.put()))) return false;
-    frame_w = frame_h = 0;
-    MFGetAttributeSize(current.get(), MF_MT_FRAME_SIZE, &frame_w, &frame_h);
-    if (!frame_w || !frame_h) return false;
-    default_stride = (LONG)MFGetAttributeUINT32(current.get(), MF_MT_DEFAULT_STRIDE, 0);
-    if (default_stride == 0) default_stride = (LONG)frame_w * 4;
-    crop_x = 0;
-    crop_y = 0;
-    crop_w = (int)frame_w;
-    crop_h = (int)frame_h;
-    for (const GUID& key : {MF_MT_MINIMUM_DISPLAY_APERTURE, MF_MT_GEOMETRIC_APERTURE}) {
-      MFVideoArea area;
-      UINT32 size = 0;
-      if (SUCCEEDED(current->GetBlob(key, reinterpret_cast<UINT8*>(&area), sizeof(area), &size)) &&
-          size == sizeof(area) && area.Area.cx > 0 && area.Area.cy > 0) {
-        crop_x = std::max(0, (int)area.OffsetX.value);
-        crop_y = std::max(0, (int)area.OffsetY.value);
-        crop_w = std::max(1, std::min((int)area.Area.cx, (int)frame_w - crop_x));
-        crop_h = std::max(1, std::min((int)area.Area.cy, (int)frame_h - crop_y));
-        break;
-      }
+  MFGetAttributeSize(current.get(), MF_MT_FRAME_SIZE, &frame_w, &frame_h);
+  if (!frame_w || !frame_h) return Fail("no picture in this video");
+  LONG default_stride = (LONG)MFGetAttributeUINT32(current.get(), MF_MT_DEFAULT_STRIDE, 0);
+  if (default_stride == 0) default_stride = (LONG)frame_w * 4;
+  int crop_x = 0, crop_y = 0, crop_w = (int)frame_w, crop_h = (int)frame_h;
+  {
+    MFVideoArea area;
+    UINT32 size = 0;
+    if (SUCCEEDED(current->GetBlob(MF_MT_MINIMUM_DISPLAY_APERTURE, reinterpret_cast<UINT8*>(&area),
+                                   sizeof(area), &size)) &&
+        size == sizeof(area) && area.Area.cx > 0 && area.Area.cy > 0) {
+      crop_x = std::max(0, (int)area.OffsetX.value);
+      crop_y = std::max(0, (int)area.OffsetY.value);
+      crop_w = std::min((int)area.Area.cx, (int)frame_w - crop_x);
+      crop_h = std::min((int)area.Area.cy, (int)frame_h - crop_y);
     }
-    return true;
-  };
-  if (!read_layout()) return Fail("this video's picture size isn't known");
+  }
 
-  // The shape as shown: cropped, then turned. Worked out again if the layout
-  // changes before the first frame is kept.
-  int w = 2, h = 2;
-  auto size_output = [&]() {
-    const bool sideways = rotation == 90 || rotation == 270;
-    const double shown_w = sideways ? crop_h : crop_w;
-    const double shown_h = sideways ? crop_w : crop_h;
-    const double aspect = shown_w / std::max(shown_h, 1.0);
-    if (aspect >= 1) {
-      w = Even(max_side);
-      h = Even(max_side / aspect);
-    } else {
-      w = Even(max_side * aspect);
-      h = Even(max_side);
-    }
-  };
-  size_output();
+  // The shape as shown: cropped, then turned.
+  const bool sideways = rotation == 90 || rotation == 270;
+  const double shown_w = sideways ? crop_h : crop_w;
+  const double shown_h = sideways ? crop_w : crop_h;
+  const double aspect = shown_w / std::max(shown_h, 1.0);
+  int w, h;
+  if (aspect >= 1) {
+    w = Even(max_side);
+    h = Even(max_side / aspect);
+  } else {
+    w = Even(max_side * aspect);
+    h = Even(max_side);
+  }
 
   const std::wstring frames_path = TempFile(L"vox_video_frames.rgb");
   FILE* frames_file = OpenForWriting(frames_path);
@@ -334,29 +317,16 @@ VideoExtractResult ExtractVideo(const std::string& utf8_path, int max_side, int 
   bool have_last = false, any = false;
   int written = 0;
   bool ended = false;
-  HRESULT read_error = S_OK;
   int64_t frame_100ns = (int64_t)10000000 / fps;
   while (written < count && !ended) {
     DWORD flags = 0;
     LONGLONG at = 0;
     Com<IMFSample> sample;
-    const HRESULT hr = reader->ReadSample(video, 0, nullptr, &flags, &at, sample.put());
-    if (FAILED(hr)) {
-      read_error = hr;
-      break;
-    }
-    if (flags & MF_SOURCE_READERF_ERROR) {
-      read_error = E_FAIL;
-      break;
-    }
+    if (FAILED(reader->ReadSample(video, 0, nullptr, &flags, &at, sample.put()))) break;
     if (flags & MF_SOURCE_READERF_ENDOFSTREAM) ended = true;
     if (flags & MF_SOURCE_READERF_CURRENTMEDIATYPECHANGED) {
-      // The sample that comes with it is already in the new layout.
-      if (!read_layout()) break;
-      if (!any) {
-        size_output();
-        last.assign((size_t)w * h * 3, 0);
-      }
+      // A new size mid-stream: keep going with the frames already made.
+      ended = true;
     }
     if (sample && !ended) {
       // Every output frame due before this one shows the previous frame.
@@ -381,7 +351,7 @@ VideoExtractResult ExtractVideo(const std::string& utf8_path, int max_side, int 
       }
       if (!done && SUCCEEDED(buffer->Lock(&data, nullptr, &len))) {
         const LONG abs_stride = default_stride < 0 ? -default_stride : default_stride;
-        if ((DWORD)abs_stride * frame_h <= len && abs_stride >= (LONG)frame_w * 4) {
+        if ((DWORD)abs_stride * frame_h <= len) {
           // A negative stride is a bottom-up picture: start at its last row.
           const BYTE* top = default_stride < 0 ? data + (size_t)abs_stride * (frame_h - 1) : data;
           Shrink(top, default_stride, crop_x, crop_y, crop_w, crop_h, (int)rotation, w, h, next);
@@ -404,13 +374,7 @@ VideoExtractResult ExtractVideo(const std::string& utf8_path, int max_side, int 
   fclose(frames_file);
   if (!any) {
     _wremove(frames_path.c_str());
-    if (FAILED(read_error)) {
-      char why[96];
-      snprintf(why, sizeof(why), "Windows couldn't decode this video's pictures (0x%08lX)",
-               (unsigned long)read_error);
-      return Fail(why);
-    }
-    return Fail("no pictures decoded from this video");
+    return Fail("no picture in this video");
   }
 
   VideoExtractResult result;
