@@ -2005,6 +2005,18 @@ abstract class AppLocalizations {
   /// **'Frequency set to {freq} MHz for off-grid repeat'**
   String settings_clientRepeatFrequencyNote(String freq);
 
+  /// No description provided for @settings_clientRepeatOffGridSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat others\' packets on the off-grid channel (918 MHz, 62.5 kHz in the US), with MediaMesh beside it on 918.250 MHz. Your settings come back when you turn it off.'**
+  String get settings_clientRepeatOffGridSubtitle;
+
+  /// No description provided for @settings_clientRepeatRadio2Failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Radio settings saved, but the radio didn\'t change MediaMesh. Check radio2 in MediaMesh Settings.'**
+  String get settings_clientRepeatRadio2Failed;
+
   /// No description provided for @settings_clientRepeatSubtitle.
   ///
   /// In en, this message translates to:

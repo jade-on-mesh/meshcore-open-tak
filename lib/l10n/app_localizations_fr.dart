@@ -1080,6 +1080,14 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get settings_clientRepeatOffGridSubtitle =>
+      'Repeat others\' packets on the off-grid channel (918 MHz, 62.5 kHz in the US), with MediaMesh beside it on 918.250 MHz. Your settings come back when you turn it off.';
+
+  @override
+  String get settings_clientRepeatRadio2Failed =>
+      'Radio settings saved, but the radio didn\'t change MediaMesh. Check radio2 in MediaMesh Settings.';
+
+  @override
   String get settings_clientRepeatSubtitle =>
       'Permettre à cet appareil de relayer les paquets du maillage pour les autres.';
 

@@ -441,6 +441,8 @@
       }
     }
   },
+  "settings_clientRepeatOffGridSubtitle": "Repeat others' packets on the off-grid channel (918 MHz, 62.5 kHz in the US), with MediaMesh beside it on 918.250 MHz. Your settings come back when you turn it off.",
+  "settings_clientRepeatRadio2Failed": "Radio settings saved, but the radio didn't change MediaMesh. Check radio2 in MediaMesh Settings.",
   "settings_clientRepeatSubtitle": "Allow this device to repeat mesh packets for others",
   "settings_clientRepeatFreqWarning": "Off-grid repeat requires 433, 869.495, or 918 MHz frequency",
   "settings_error": "Error: {message}",

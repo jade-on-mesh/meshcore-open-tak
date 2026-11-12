@@ -8,6 +8,8 @@ import '../helpers/snack_bar_builder.dart';
 import '../l10n/l10n.dart';
 import '../models/radio_settings.dart';
 import '../services/app_debug_log_service.dart';
+import '../services/media_mesh.dart';
+import '../storage/off_grid_repeat_store.dart';
 import '../utils/radio_guard.dart';
 
 /// Convert device coding-rate value (1-4 on some firmware, 5-8 on others)
@@ -27,6 +29,13 @@ bool _isAllowedRepeatFreqKHz(MeshCoreConnector connector, int freqKHz) {
   }
   return ranges.any((r) => freqKHz >= r.lowKHz && freqKHz <= r.highKHz);
 }
+
+/// Off-Grid Repeat's main channel apart from the frequency: the standard
+/// 62.5 kHz, SF7, CR 4/5 (Wadamesh TAK's helpers/ClientRepeat.h). MediaMesh
+/// runs beside it in the US band (offGridRadio2Frequency).
+const LoRaBandwidth _offGridBandwidth = LoRaBandwidth.bw62_5;
+const LoRaSpreadingFactor _offGridSpreadingFactor = LoRaSpreadingFactor.sf7;
+const LoRaCodingRate _offGridCodingRate = LoRaCodingRate.cr4_5;
 
 /// Lowest TX power companion firmware accepts (CMD_SET_RADIO_TX_POWER).
 const int _minTxPowerDbm = -9;
@@ -116,6 +125,7 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
     if (_clientRepeat) {
       _lastNonRepeatSnapshot =
           _sessionRememberedNonRepeatSnapshot() ??
+          _storedNonRepeatSnapshot() ??
           _inferNonRepeatSnapshotForRepeatEnabled();
       _selectedPresetIndex = _findMatchingPresetIndexForSnapshot(
         _lastNonRepeatSnapshot!,
@@ -232,6 +242,15 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
     return _RadioSettingsSnapshot.fromMeshCoreSnapshot(snapshot);
   }
 
+  _RadioSettingsSnapshot? _storedNonRepeatSnapshot() {
+    final radio = OffGridRepeatStore.load(
+      widget.connector.selfPublicKeyHex,
+    )?.radio;
+    return radio == null
+        ? null
+        : _RadioSettingsSnapshot.fromMeshCoreSnapshot(radio);
+  }
+
   _RadioSettingsSnapshot _inferNonRepeatSnapshotForRepeatEnabled() {
     final current = _currentSnapshot();
     for (final i in _visiblePresetIndexes()) {
@@ -291,19 +310,19 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
     final previousPresetIndex = _selectedPresetIndex;
     final previousLastNonRepeat = _lastNonRepeatSnapshot;
     if (_clientRepeat) {
+      // The off-grid preset is fixed while repeating (the fields are locked);
+      // only TX power can change, and it carries over to the remembered
+      // settings.
       final baseSnapshot =
           previousLastNonRepeat ?? _inferNonRepeatSnapshotForRepeatEnabled();
-      if (_bandwidth != baseSnapshot.bandwidth ||
-          _spreadingFactor != baseSnapshot.spreadingFactor ||
-          _codingRate != baseSnapshot.codingRate ||
-          (int.tryParse(_txPowerController.text) ?? 20) !=
-              baseSnapshot.txPowerDbm) {
+      final txPower = int.tryParse(_txPowerController.text) ?? 20;
+      if (txPower != baseSnapshot.txPowerDbm) {
         _lastNonRepeatSnapshot = _RadioSettingsSnapshot(
           frequencyMHz: baseSnapshot.frequencyMHz,
-          bandwidth: _bandwidth,
-          spreadingFactor: _spreadingFactor,
-          codingRate: _codingRate,
-          txPowerDbm: int.tryParse(_txPowerController.text) ?? 20,
+          bandwidth: baseSnapshot.bandwidth,
+          spreadingFactor: baseSnapshot.spreadingFactor,
+          codingRate: baseSnapshot.codingRate,
+          txPowerDbm: txPower,
         );
       }
       _selectedPresetIndex = _findMatchingPresetIndexForSnapshot(
@@ -364,9 +383,15 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
         }
         final baseSnapshot = _lastNonRepeatSnapshot ?? currentSnapshot;
         _clientRepeat = true;
+        // The off-grid channel, as Wadamesh TAK standalones use: the allowed
+        // frequency nearest the current one (918 MHz in the US), 62.5 kHz,
+        // SF7, CR 4/5. Saving also sets MediaMesh beside it (918.250 MHz).
         _frequencyController.text = _offGridFrequencyForBaseFrequency(
           baseSnapshot.frequencyMHz,
         ).toStringAsFixed(3);
+        _bandwidth = _offGridBandwidth;
+        _spreadingFactor = _offGridSpreadingFactor;
+        _codingRate = _offGridCodingRate;
         _validateFields();
         return;
       }
@@ -415,6 +440,7 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
     // if the client repeat isnt null then we know its supported
     //otherwise we leave it out of the frame to avoid accidentally enabling
     final knownRepeat = widget.connector.clientRepeat != null;
+    final wasRepeat = widget.connector.clientRepeat ?? false;
 
     if (knownRepeat) {
       if (_clientRepeat && !_isAllowedRepeatFreqKHz(widget.connector, freqHz)) {
@@ -511,12 +537,26 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
           rememberedSnapshot.toMeshCoreSnapshot(),
         );
       }
+      final mediaOk =
+          !knownRepeat ||
+          await _applyOffGridRepeatMediaMesh(
+            on: _clientRepeat,
+            wasOn: wasRepeat,
+            mainFrequencyMHz: freqMHz,
+            remembered: rememberedSnapshot,
+          );
 
       if (!mounted) return;
       _logRadioSettingsState('Radio settings saved successfully');
+      // The radio settings are saved either way; a refused radio2 step is
+      // said instead, so it can be fixed on the MediaMesh page.
       showDismissibleSnackBar(
         context,
-        content: Text(l10n.settings_radioSettingsUpdated),
+        content: Text(
+          mediaOk
+              ? l10n.settings_radioSettingsUpdated
+              : l10n.settings_clientRepeatRadio2Failed,
+        ),
       );
       Navigator.pop(context);
     } catch (e) {
@@ -528,6 +568,49 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
         context,
         content: Text(l10n.settings_error(e.toString())),
       );
+    }
+  }
+
+  /// Off-Grid Repeat and MediaMesh: turning it on puts radio2 beside the
+  /// off-grid channel in the US band (918.250 MHz, 250 kHz, photos and voice
+  /// on it, cross off), or off elsewhere; turning it off puts radio2, cross
+  /// and `tx.media` back. What was replaced is kept per radio with the main
+  /// radio settings ([OffGridRepeatStore]), so it survives an app restart.
+  /// False when the radio refused a radio2 step.
+  Future<bool> _applyOffGridRepeatMediaMesh({
+    required bool on,
+    required bool wasOn,
+    required double mainFrequencyMHz,
+    required _RadioSettingsSnapshot? remembered,
+  }) async {
+    final key = widget.connector.selfPublicKeyHex;
+    final controller = MediaMeshController(widget.connector);
+    try {
+      if (on) {
+        var memory =
+            OffGridRepeatStore.load(key) ?? const OffGridRepeatMemory();
+        if (!wasOn || !memory.holdsRadio2) {
+          final hold = await controller.holdForOffGridRepeat(mainFrequencyMHz);
+          memory = memory.copyWith(hold: hold);
+        }
+        if (remembered != null) {
+          memory = memory.copyWith(radio: remembered.toMeshCoreSnapshot());
+        }
+        await OffGridRepeatStore.save(key, memory);
+      } else if (wasOn) {
+        final memory = OffGridRepeatStore.load(key);
+        await OffGridRepeatStore.clear(key);
+        if (memory != null) {
+          await controller.releaseAfterOffGridRepeat(memory.radio2Hold);
+        }
+      }
+      return true;
+    } catch (e) {
+      _appLog.warn(
+        'Off-grid repeat radio2 step failed: $e',
+        tag: 'RadioSettings',
+      );
+      return false;
     }
   }
 
@@ -621,15 +704,19 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
                     ),
                   ),
               ],
-              onChanged: (index) {
-                if (index != null && index >= 0) {
-                  _applyPreset(index);
-                }
-              },
+              onChanged: _clientRepeat
+                  ? null
+                  : (index) {
+                      if (index != null && index >= 0) {
+                        _applyPreset(index);
+                      }
+                    },
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _frequencyController,
+              // Off-Grid Repeat fixes the preset; turn it off to edit.
+              enabled: !_clientRepeat,
               onChanged: (_) => _handleManualSettingsChanged('frequency'),
               decoration: InputDecoration(
                 labelText: l10n.settings_frequency,
@@ -661,15 +748,19 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
                     ),
                   )
                   .toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() {
-                    _bandwidth = value;
-                    _syncPresetSelection();
-                  });
-                  _logRadioSettingsState('Manual settings edit: bandwidth');
-                }
-              },
+              onChanged: _clientRepeat
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        setState(() {
+                          _bandwidth = value;
+                          _syncPresetSelection();
+                        });
+                        _logRadioSettingsState(
+                          'Manual settings edit: bandwidth',
+                        );
+                      }
+                    },
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<LoRaSpreadingFactor>(
@@ -687,17 +778,19 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
                     ),
                   )
                   .toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() {
-                    _spreadingFactor = value;
-                    _syncPresetSelection();
-                  });
-                  _logRadioSettingsState(
-                    'Manual settings edit: spreading factor',
-                  );
-                }
-              },
+              onChanged: _clientRepeat
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        setState(() {
+                          _spreadingFactor = value;
+                          _syncPresetSelection();
+                        });
+                        _logRadioSettingsState(
+                          'Manual settings edit: spreading factor',
+                        );
+                      }
+                    },
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<LoRaCodingRate>(
@@ -715,15 +808,19 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
                     ),
                   )
                   .toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() {
-                    _codingRate = value;
-                    _syncPresetSelection();
-                  });
-                  _logRadioSettingsState('Manual settings edit: coding rate');
-                }
-              },
+              onChanged: _clientRepeat
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        setState(() {
+                          _codingRate = value;
+                          _syncPresetSelection();
+                        });
+                        _logRadioSettingsState(
+                          'Manual settings edit: coding rate',
+                        );
+                      }
+                    },
             ),
             const SizedBox(height: 16),
             if (_supportsPathHashMode) ...[
@@ -789,7 +886,7 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
               const SizedBox(height: 16),
               SwitchListTile(
                 title: Text(l10n.settings_clientRepeat),
-                subtitle: Text(l10n.settings_clientRepeatSubtitle),
+                subtitle: Text(l10n.settings_clientRepeatOffGridSubtitle),
                 value: _clientRepeat,
                 onChanged: _handleClientRepeatChanged,
                 contentPadding: EdgeInsets.zero,
