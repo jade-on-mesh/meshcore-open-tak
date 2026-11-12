@@ -38,7 +38,8 @@ int main(int argc, char** argv) {
   check(want_portrait ? r.height > r.width : r.width > r.height, "upright shape");
   check(want_sound == (r.samples > 48000 / 2), "sound");
 
-  FILE* f = std::fopen(r.frames_path.c_str(), "rb");
+  FILE* f = nullptr;
+  if (fopen_s(&f, r.frames_path.c_str(), "rb") != 0) f = nullptr;
   check(f != nullptr, "frames file");
   if (f) {
     const size_t frame = (size_t)r.width * r.height * 3;
