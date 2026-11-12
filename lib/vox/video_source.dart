@@ -48,7 +48,9 @@ class VoxVideoSource {
   /// ([unsupportedReason] says so when it isn't).
   static bool get isReady =>
       isSupported &&
-      (kIsWeb || defaultTargetPlatform != TargetPlatform.linux || _ffmpeg != null);
+      (kIsWeb ||
+          defaultTargetPlatform != TargetPlatform.linux ||
+          _ffmpeg != null);
 
   /// Why videos can't be sent from here, for the message the picker shows.
   static String get unsupportedReason =>
@@ -86,11 +88,11 @@ class VoxVideoSource {
     final r = !kIsWeb && Platform.isLinux
         ? await _extractWithFfmpeg(path)
         : await _channel.invokeMapMethod<String, Object?>('extract', {
-      'path': path,
-      'maxSide': voxVideoSourceSide,
-      'fps': voxVideoSourceFps,
-      'maxSeconds': voxVideoMaxSeconds,
-    });
+            'path': path,
+            'maxSide': voxVideoSourceSide,
+            'fps': voxVideoSourceFps,
+            'maxSeconds': voxVideoMaxSeconds,
+          });
     if (r == null) throw StateError('Couldn\'t read the video');
     final framesFile = File(r['frames']! as String);
     final rgb = await framesFile.readAsBytes();
@@ -130,14 +132,24 @@ class VoxVideoSource {
     final frames = File('${tmp.path}/frames.rgb');
     const side = voxVideoSourceSide, fps = voxVideoSourceFps;
     final picture = await Process.run(ffmpeg, [
-      '-nostdin', '-hide_banner', '-y',
-      '-t', '$voxVideoMaxSeconds',
-      '-i', path,
-      '-an', '-sn', '-dn',
+      '-nostdin',
+      '-hide_banner',
+      '-y',
+      '-t',
+      '$voxVideoMaxSeconds',
+      '-i',
+      path,
+      '-an',
+      '-sn',
+      '-dn',
       '-vf',
       'fps=$fps,scale=w=$side:h=$side:force_original_aspect_ratio=decrease:'
           'force_divisible_by=2:flags=area',
-      '-pix_fmt', 'rgb24', '-f', 'rawvideo', frames.path,
+      '-pix_fmt',
+      'rgb24',
+      '-f',
+      'rawvideo',
+      frames.path,
     ]);
     if (picture.exitCode != 0 || !await frames.exists()) {
       await tmp.delete(recursive: true);
@@ -156,14 +168,28 @@ class VoxVideoSource {
     }
     final sound = File('${tmp.path}/sound.pcm');
     final audio = await Process.run(ffmpeg, [
-      '-nostdin', '-hide_banner', '-y',
-      '-t', '$voxVideoMaxSeconds',
-      '-i', path,
-      '-vn', '-sn', '-dn',
-      '-ac', '1', '-ar', '48000', '-f', 's16le', sound.path,
+      '-nostdin',
+      '-hide_banner',
+      '-y',
+      '-t',
+      '$voxVideoMaxSeconds',
+      '-i',
+      path,
+      '-vn',
+      '-sn',
+      '-dn',
+      '-ac',
+      '1',
+      '-ar',
+      '48000',
+      '-f',
+      's16le',
+      sound.path,
     ]);
     final hasSound =
-        audio.exitCode == 0 && await sound.exists() && await sound.length() >= 2;
+        audio.exitCode == 0 &&
+        await sound.exists() &&
+        await sound.length() >= 2;
     return {
       'frames': frames.path,
       'width': w,

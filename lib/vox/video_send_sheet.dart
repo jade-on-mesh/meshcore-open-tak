@@ -44,35 +44,35 @@ Future<void> showVoxVideoPicker(
   final source = !VoxVideoSource.canRecord
       ? ImageSource.gallery
       : await showModalBottomSheet<ImageSource>(
-    context: context,
-    builder: (context) => SafeArea(
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Text(
-                'Up to ${voxVideoMaxSeconds}s, sent small: about 160 px, '
-                'like a photo\'s airtime. Phones on this app can play it.',
-                style: Theme.of(context).textTheme.bodySmall,
+          context: context,
+          builder: (context) => SafeArea(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                    child: Text(
+                      'Up to ${voxVideoMaxSeconds}s, sent small: about 160 px, '
+                      'like a photo\'s airtime. Phones on this app can play it.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.videocam_outlined),
+                    title: const Text('Record video'),
+                    onTap: () => Navigator.pop(context, ImageSource.camera),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.video_library_outlined),
+                    title: const Text('Choose from gallery'),
+                    onTap: () => Navigator.pop(context, ImageSource.gallery),
+                  ),
+                ],
               ),
             ),
-            ListTile(
-              leading: const Icon(Icons.videocam_outlined),
-              title: const Text('Record video'),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.video_library_outlined),
-              title: const Text('Choose from gallery'),
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
+          ),
+        );
   if (source == null || !context.mounted) return;
   XFile? picked;
   try {
