@@ -185,7 +185,9 @@ Short clips ride the same transport as photos, with the same budgets, so a
 video never costs more airtime than a Super Sharp photo. They're announced
 with `VV1:` (same fields as `VE3:`, mode id 41 = `15`, the last field is the
 clip's length in seconds), then the word `VIDEO` and any caption. Sent from
-Android and iPhone; played wherever photos show.
+Android and iPhone (record or pick) and Windows, macOS and Linux (pick a
+file: Media Foundation, AVFoundation and the `ffmpeg` program read it);
+played wherever photos show.
 
 - **Codec.** One AV1 sequence (libaom good-quality mode, a key frame then
   inter frames, constant quantizer), 4:2:0 like the photos. Each encoder

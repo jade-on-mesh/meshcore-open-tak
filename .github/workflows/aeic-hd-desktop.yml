@@ -1,0 +1,75 @@
+name: AEIC HD desktop codec
+
+# Builds the AI sketch HD codec program for Linux, Windows and macOS
+# (tool/build_aeic_hd_desktop.sh) and runs the app's self-test on each with the
+# real model pack (tool/aeic_desktop/self_test.py): encoding the sample must
+# match the reference byte for byte, and decoding must come within 35 dB. The
+# desktop builds in build.yml bundle the same program.
+
+on:
+  push:
+    branches-ignore:
+      - main
+    paths:
+      - tool/build_aeic_hd_desktop.sh
+      - tool/aeic_desktop/**
+      - .github/workflows/aeic-hd-desktop.yml
+  workflow_dispatch:
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get install -y -q ninja-build zlib1g-dev > /dev/null
+      - name: Build
+        run: bash tool/build_aeic_hd_desktop.sh linux out
+      - name: Self-test
+        run: python3 tool/aeic_desktop/self_test.py out/aeic_codec "$RUNNER_TEMP/aeic-pack"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aeic-codec-linux-x86_64
+          path: out/aeic_codec
+
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install ninja > /dev/null || true
+      - name: Build (universal)
+        run: bash tool/build_aeic_hd_desktop.sh macos out
+      - name: Self-test (arm64)
+        run: python3 tool/aeic_desktop/self_test.py out/aeic_codec "$RUNNER_TEMP/aeic-pack"
+      - name: Self-test (x86_64, Rosetta)
+        run: |
+          if arch -x86_64 /usr/bin/true 2>/dev/null; then
+            python3 tool/aeic_desktop/self_test.py "arch -x86_64 out/aeic_codec" "$RUNNER_TEMP/aeic-pack"
+          else
+            echo "::warning::no Rosetta on this runner: the x86_64 slice wasn't run"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aeic-codec-macos-universal
+          path: out/aeic_codec
+
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: git mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-zlib
+      - name: Build
+        shell: msys2 {0}
+        run: bash tool/build_aeic_hd_desktop.sh windows out
+      - name: Self-test
+        shell: pwsh
+        run: python tool/aeic_desktop/self_test.py out/aeic_codec.exe "$env:RUNNER_TEMP/aeic-pack"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aeic-codec-windows-x86_64
+          path: out/aeic_codec.exe
