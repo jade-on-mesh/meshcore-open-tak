@@ -9,8 +9,11 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import 'caption_field.dart';
+import 'image_codec.dart' show VoxFocusRegions, VoxRect;
+import 'image_focus.dart';
 import 'video_codec.dart';
 import 'video_player.dart';
+import 'video_prep.dart';
 import 'video_source.dart';
 import 'voice_service.dart';
 import 'voice_wire.dart';
@@ -117,6 +120,14 @@ class VoxVideoSendSheet extends StatefulWidget {
 class _VoxVideoSendSheetState extends State<VoxVideoSendSheet> {
   VoxVideoDetail _detail = VoxVideoDetail.quick;
   bool _withSound = true;
+
+  /// Steady and clean up before encoding (video_prep.dart).
+  bool _cleanUp = true;
+  bool _useFocus = true;
+  VoxVideoFrames? _clean;
+  VoxPrepReport? _prep;
+  VoxFocusRegions _focus = VoxFocusRegions.none;
+  bool _preparing = false;
   bool _reading = true;
   bool _encoding = false;
   bool _sending = false;
@@ -125,7 +136,7 @@ class _VoxVideoSendSheetState extends State<VoxVideoSendSheet> {
   VoxEncodedVideo? _encoded;
   Uint8List? _previewWav;
   int _job = 0;
-  final Map<(VoxVideoDetail, bool), VoxEncodedVideo> _cache = {};
+  final Map<(VoxVideoDetail, bool, bool, bool), VoxEncodedVideo> _cache = {};
   final Map<int, VoxEncodedClip?> _sounds = {};
 
   @override
@@ -155,7 +166,48 @@ class _VoxVideoSendSheetState extends State<VoxVideoSendSheet> {
       _reading = false;
       _withSound = _picked!.sound != null;
     });
+    await _prepare();
     await _encode();
+  }
+
+  /// Steadies and cleans the clip up (once), then finds faces and text on a
+  /// few of its frames.
+  Future<void> _prepare() async {
+    final picked = _picked;
+    if (picked == null) return;
+    final voice = context.read<VoxVoiceService>();
+    setState(() => _preparing = true);
+    try {
+      if (_cleanUp && _clean == null) {
+        final (clean, report) = await voice.prepareVideo(picked.frames);
+        _clean = clean;
+        _prep = report;
+      }
+      if (_focus.isEmpty) _focus = await _findFocus(_frames!);
+    } catch (e) {
+      _cleanUp = false;
+      _error = 'Couldn\'t clean up this video: $e';
+    }
+    if (mounted) setState(() => _preparing = false);
+  }
+
+  /// The frames to encode: cleaned up, or as picked.
+  VoxVideoFrames? get _frames =>
+      _cleanUp && _clean != null ? _clean : _picked?.frames;
+
+  Future<VoxFocusRegions> _findFocus(VoxVideoFrames f) async {
+    final text = <VoxRect>[], faces = <VoxRect>[];
+    final detector = VoxFocusDetector();
+    try {
+      for (final i in {0, f.count ~/ 2, f.count - 1}) {
+        final r = await detector.detect(f.frame(i));
+        text.addAll(r.text);
+        faces.addAll(r.faces);
+      }
+    } finally {
+      unawaited(detector.close());
+    }
+    return VoxFocusRegions(text: text, faces: faces);
   }
 
   Future<VoxEncodedClip?> _soundFor(VoxVoiceService voice, int seconds) async {
@@ -169,8 +221,10 @@ class _VoxVideoSendSheetState extends State<VoxVideoSendSheet> {
 
   Future<void> _encode() async {
     final picked = _picked;
-    if (picked == null) return;
-    final key = (_detail, _withSound);
+    final frames = _frames;
+    if (picked == null || frames == null) return;
+    final useFocus = _useFocus && !_focus.isEmpty;
+    final key = (_detail, _withSound, _cleanUp && _clean != null, useFocus);
     final job = ++_job;
     setState(() {
       _encoding = true;
@@ -183,7 +237,12 @@ class _VoxVideoSendSheetState extends State<VoxVideoSendSheet> {
         final sound = _withSound
             ? await _soundFor(voice, _detail.maxSeconds)
             : null;
-        enc = await voice.encodeVideo(picked.frames, _detail, sound: sound);
+        enc = await voice.encodeVideo(
+          frames,
+          _detail,
+          sound: sound,
+          focus: useFocus ? _focus : VoxFocusRegions.none,
+        );
       }
       _cache[key] = enc;
       final wav = await voice.videoSoundPreview(enc);
@@ -240,7 +299,7 @@ class _VoxVideoSendSheetState extends State<VoxVideoSendSheet> {
     final theme = Theme.of(context);
     final enc = _encoded;
     final picked = _picked;
-    final busy = _reading || _encoding;
+    final busy = _reading || _preparing || _encoding;
     final soundNote = picked == null
         ? null
         : picked.sound == null
@@ -305,6 +364,8 @@ class _VoxVideoSendSheetState extends State<VoxVideoSendSheet> {
                                 Text(
                                   _reading
                                       ? 'Reading the video…'
+                                      : _preparing
+                                      ? 'Steadying and cleaning up…'
                                       : 'Fitting into ${_detail.budget} '
                                             'bytes…',
                                   style: const TextStyle(color: Colors.white),
@@ -358,6 +419,42 @@ class _VoxVideoSendSheetState extends State<VoxVideoSendSheet> {
                       ? null
                       : (v) {
                           setState(() => _withSound = v);
+                          unawaited(_encode());
+                        },
+                ),
+              if (picked != null)
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Steady and clean up'),
+                  subtitle: Text(
+                    _cleanUp && _prep != null && _prep!.steadyCrop > 0
+                        ? 'Took out hand shake (trims the edges slightly) '
+                              'and camera grain, so the bytes go to the scene.'
+                        : 'Takes out hand shake and camera grain, so the '
+                              'bytes go to the scene. Nothing is added.',
+                  ),
+                  value: _cleanUp,
+                  onChanged: busy
+                      ? null
+                      : (v) async {
+                          setState(() => _cleanUp = v);
+                          if (v) await _prepare();
+                          await _encode();
+                        },
+                ),
+              if (!_focus.isEmpty)
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Sharpen faces and text'),
+                  subtitle: const Text(
+                    'Spends more of the bytes on them and softens the '
+                    'background slightly.',
+                  ),
+                  value: _useFocus,
+                  onChanged: busy
+                      ? null
+                      : (v) {
+                          setState(() => _useFocus = v);
                           unawaited(_encode());
                         },
                 ),

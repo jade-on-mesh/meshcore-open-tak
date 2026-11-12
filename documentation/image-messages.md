@@ -85,6 +85,15 @@ Send a short clip from the chat's **+** menu: **Send a video**, then record one 
 
 Max is the same size as a Super Sharp photo: the most one transfer can carry. Clips are small (a 10 s clip at Max is about 160×120 at 12 frames a second) and the app picks the size and frame rate for the length and choice. The sound is coded like a voice message (Mimi, or Codec2 without the Mimi model); turn **Sound** off to give the picture all the bytes. A longer clip sends its first part.
 
+Before encoding, **Steady and clean up** (on by default) takes out hand shake and camera grain, so the bytes go to the scene; on a shaky test clip it halved the size at the same quality. It trims up to 6% from each edge to steady a shaky clip and adds nothing. When the clip has faces or text, **Sharpen faces and text** spends more of the bytes on them and softens the background slightly, as for photos.
+
+**AI views when watching (display only).** The full-screen player has two switches, remembered for next time:
+
+- **Smooth motion** makes up the frames in between the ones that were sent (RIFE 4.9, about 21 MB, downloaded once), so a 6 or 12 fps clip plays at about 24. The in-between frames are guesses: fast movement can smear or warp. The player says so while it's on.
+- **Enhance** sharpens every frame 2x with the photo enhancer (Real-ESRGAN, about 5 MB). It can invent detail, and fine detail can shimmer from frame to frame. The player says so while it's on.
+
+Both run on the phone after the clip has arrived and can take a while on long clips (a progress bar shows). The clip as received is what's kept and forwarded; the chat bubble always plays it as sent.
+
 A video goes out as `VV1:<id>:15:<packets>:<seconds> VIDEO`, then any caption, and travels like a photo, on MediaMesh where photos go there. The bubble shows the first frame as soon as the first two packets arrive; tap to download, tap again to play, or open it full screen. Videos are sent from Android and iPhone and play on every app that shows Mesh photos. Wadamesh standalones and older versions of the app show the text.
 
 ## Voice restorer (MeshCore Open TAK)

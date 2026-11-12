@@ -15,7 +15,7 @@ format, so other VE3 apps can exchange them.
 | `lib/vox/voice_record_sheet.dart` | Record / Play / Discard / Send sheet and mic button |
 | `lib/vox/voice_message_bubble.dart` | Voice bubble: download, progress, playback |
 | `lib/vox/voice_clip_store*.dart` | On-disk cache of complete clips |
-| `lib/vox/video_codec.dart`, `video_send_sheet.dart`, `video_message_bubble.dart`, `video_player.dart`, `video_source.dart` | Video messages: payload and fitting, send sheet, bubble, player, reading a picked clip |
+| `lib/vox/video_codec.dart`, `video_prep.dart`, `video_send_sheet.dart`, `video_message_bubble.dart`, `video_player.dart`, `video_source.dart`, `vox_interp.dart` | Video messages: payload and fitting, clean-up, send sheet, bubble, player with AI views, reading a picked clip, Smooth motion |
 | `third_party/codec2`, `android/app/src/main/cpp` | Vendored Codec2 and its Android build |
 
 ## Codecs
@@ -212,6 +212,21 @@ Android and iPhone; played wherever photos show.
   (`MeshVideoReader` in `ios/Runner/AppDelegate.swift`): frames through
   `AVAssetImageGenerator` in one batch (upright, SDR), sound through
   `AVAssetReader`, which resamples to 48 kHz mono itself.
+- **Clean-up before encoding** (`lib/vox/video_prep.dart`, pure Dart). Steady:
+  whole-frame shifts measured coarse to fine (quarter then half resolution),
+  the path smoothed with a half-second Gaussian, each frame cropped (at most
+  6% a side) to follow it and scaled back. Clean: each pixel averaged with the
+  two frames either side, weighted by how alike their 3×3 neighbourhoods are
+  against the estimated grain. Faces and text, found on the first, middle and
+  last frames, keep their detail while the rest is softened, as for photos.
+  AV1's own film grain synthesis was tried and dropped: libaom sends the grain
+  parameters with every frame, which made these small clips 45–135% bigger.
+- **AI views when watching** (display only): Smooth motion
+  (`lib/vox/vox_interp.dart`, RIFE 4.9 as ONNX from the `interp-onnx-v1`
+  release built by `.github/workflows/interp-model.yml`) and Enhance
+  (`VoxUpscaler.enhanceClip`, the photo enhancer at 2x). Switches in the
+  full-screen player, remembered, never downloading by themselves; with
+  Enhance on, Smooth motion keeps the clip to 240 frames.
 - **Not on Wadamesh.** Standalone radios show the envelope as text.
 
 ## Testing: force voice through repeaters
