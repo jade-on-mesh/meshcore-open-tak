@@ -3913,14 +3913,6 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                     _showReach(message);
                   },
                 ),
-              ListTile(
-                leading: const Icon(Icons.checklist),
-                title: Text(context.l10n.chat_selectMessages),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  _toggleSelected(message);
-                },
-              ),
               // Can't react to your own messages
               if (!message.isOutgoing)
                 ListTile(
@@ -3938,6 +3930,14 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                 onTap: () {
                   Navigator.pop(sheetContext);
                   copyChatMessageText(context, message.displayText);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.checklist),
+                title: Text(context.l10n.chat_selectMessages),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _toggleSelected(message);
                 },
               ),
               ListTile(
