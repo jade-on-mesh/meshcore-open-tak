@@ -135,17 +135,25 @@ List<(int, int)> voxClipMotion(VoxVideoFrames f) {
 }
 
 /// [path] (one coordinate) smoothed: a Gaussian about half a second wide,
-/// which keeps pans and takes out shake.
+/// which keeps pans and takes out shake. Past the ends the path is mirrored
+/// through its end points, so a steady pan stays exactly as it is.
 List<double> voxSmoothPath(List<double> path, int fps) {
+  final n = path.length;
+  if (n < 2) return List.of(path);
   final sigma = max(1.0, fps * 0.5);
   final r = (3 * sigma).ceil();
   final g = [for (var k = -r; k <= r; k++) exp(-k * k / (2 * sigma * sigma))];
+  double at(int j) {
+    if (j < 0) return 2 * path[0] - path[min(-j, n - 1)];
+    if (j >= n) return 2 * path[n - 1] - path[max(2 * (n - 1) - j, 0)];
+    return path[j];
+  }
+
   final out = <double>[];
-  for (var i = 0; i < path.length; i++) {
+  for (var i = 0; i < n; i++) {
     var s = 0.0, wsum = 0.0;
     for (var k = -r; k <= r; k++) {
-      final j = (i + k).clamp(0, path.length - 1);
-      s += path[j] * g[k + r];
+      s += at(i + k) * g[k + r];
       wsum += g[k + r];
     }
     out.add(s / wsum);
@@ -203,19 +211,13 @@ List<double> voxSmoothPath(List<double> path, int fps) {
   final ys = [
     for (var i = 0; i < f.count; i++) _luma(f.rgb, n, i * f.frameBytes),
   ];
-  // Grain from how much still pixels change frame to frame (the median is
-  // dominated by them): sigma ~ median|diff| / 0.6745 / sqrt 2.
-  final sample = <double>[];
-  for (var i = 1; i < f.count && sample.length < 20000; i++) {
-    for (var p = 0; p < n; p += 7) {
-      sample.add((ys[i][p] - ys[i - 1][p]).abs());
-    }
-  }
-  sample.sort();
-  final grain = sample.isEmpty
-      ? 0.0
-      : sample[sample.length ~/ 2] / 0.6745 / sqrt2;
-  final limit = max(3.0, 2.5 * grain);
+  // Grain from within single frames (Immerkaer's estimate), so a moving
+  // clip doesn't read as grainy: the median over its first, middle and last.
+  final est = [
+    for (final i in {0, f.count ~/ 2, f.count - 1}) voxGrainEstimate(ys[i], w, h),
+  ]..sort();
+  final grain = est[est.length ~/ 2];
+  final limit = max(3.0, min(2.5 * grain, 20.0));
   final out = Uint8List(f.rgb.length);
   final acc = Float32List(n * 3);
   final wsum = Float32List(n);
@@ -255,6 +257,30 @@ List<double> voxSmoothPath(List<double> path, int fps) {
     }
   }
   return (VoxVideoFrames(w, h, f.fps, out), grain);
+}
+
+/// The grain's standard deviation in a luma plane (Immerkaer 1996: a
+/// Laplacian difference kernel that cancels smooth detail).
+double voxGrainEstimate(Float32List y, int w, int h) {
+  if (w < 3 || h < 3) return 0;
+  var sum = 0.0;
+  for (var yy = 1; yy < h - 1; yy++) {
+    for (var xx = 1; xx < w - 1; xx++) {
+      final i = yy * w + xx;
+      final v =
+          y[i - w - 1] -
+          2 * y[i - w] +
+          y[i - w + 1] -
+          2 * y[i - 1] +
+          4 * y[i] -
+          2 * y[i + 1] +
+          y[i + w - 1] -
+          2 * y[i + w] +
+          y[i + w + 1];
+      sum += v.abs();
+    }
+  }
+  return sqrt(pi / 2) * sum / (6 * (w - 2) * (h - 2));
 }
 
 /// 3x3 mean of [src] into [out] (edges repeated), through [tmp].
