@@ -848,7 +848,8 @@ class MeshCoreConnector extends ChangeNotifier {
       _activeTransport == MeshCoreTransportType.usb;
   bool get isAutoReconnectScheduled =>
       (_shouldAutoReconnect || _shouldAutoReconnectTcp) &&
-      ((_reconnectTimer?.isActive ?? false) || _bluetoothOnSubscription != null);
+      ((_reconnectTimer?.isActive ?? false) ||
+          _bluetoothOnSubscription != null);
 
   /// True while an automatic Bluetooth reconnect waits for the phone's
   /// Bluetooth to be turned back on.
@@ -7098,16 +7099,13 @@ class MeshCoreConnector extends ChangeNotifier {
       tag: 'BLE Connect',
     );
     try {
-      _bluetoothOnSubscription = FlutterBluePlus.adapterState.listen(
-        (state) {
-          if (state != BluetoothAdapterState.on) return;
-          _stopWaitingForBluetooth();
-          if (!_shouldAutoReconnect) return;
-          _reconnectAttempts = 0;
-          _scheduleReconnect();
-        },
-        onError: (Object _) => _stopWaitingForBluetooth(),
-      );
+      _bluetoothOnSubscription = FlutterBluePlus.adapterState.listen((state) {
+        if (state != BluetoothAdapterState.on) return;
+        _stopWaitingForBluetooth();
+        if (!_shouldAutoReconnect) return;
+        _reconnectAttempts = 0;
+        _scheduleReconnect();
+      }, onError: (Object _) => _stopWaitingForBluetooth());
     } catch (_) {
       _bluetoothOnSubscription = null;
     }
