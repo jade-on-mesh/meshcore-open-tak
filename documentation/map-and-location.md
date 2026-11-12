@@ -294,3 +294,10 @@ The phone's own GPS is **never used**. All location data comes from the mesh:
 ## Regions and offline use
 
 A [message region](regions.md) is a forwarding scope, not a coordinate or GPS boundary. The map does not establish that a sender is physically inside that region. Cached tiles can be used offline; uncached tiles and uncached LOS elevation lookups require internet.
+
+## Pin and report attachments
+
+A pin, a report (Report in the map tools) or a SALUTE report can carry one attachment: a **photo**, a **video** (up to the video message length, sent small like a photo) or a **voice note**. Only a reference goes on air with the pin; teammates fetch the attachment from its author when they open the pin, and it plays in the pin's sheet like it does in a chat. A pin with a photo shows its thumbnail on the map; one with a video or voice note shows a small camera or microphone next to its icon (a video isn't fetched until someone opens it, to save airtime).
+
+In the map tools, **Quick Pic** and **Quick Video** take a photo or a video and drop a pin with it at your position (or the map centre without a fix). Video needs Android or iPhone.
+

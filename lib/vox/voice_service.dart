@@ -1076,6 +1076,9 @@ class VoxVoiceService extends ChangeNotifier {
   /// [VoxEncodedClip] for a photo, for [registerClip].
   VoxEncodedClip imageClip(VoxEncodedImage image) => _imageClip(image);
 
+  /// [VoxEncodedClip] for a video, for [registerClip] (a pin's attachment).
+  VoxEncodedClip videoClip(VoxEncodedVideo video) => _videoClip(video);
+
   /// The contact whose public key starts with [hexPrefix], if any.
   Contact? contactByKeyPrefix(String hexPrefix) {
     final p = hexPrefix.toLowerCase();
