@@ -105,6 +105,9 @@ build_one() {
     cp "$here/aeic_desktop/recovery_inprocess.cpp" "$src/recovery.cpp"
     test "$(grep -c '^#include <sys/resource.h>$' "$src/main.cpp")" = 1
     sed -i 's|^#include <sys/resource.h>$|#ifndef _WIN32\n#include <sys/resource.h>\n#endif|' "$src/main.cpp"
+    # A UTF-8 manifest, so non-ASCII paths (a user name) reach fopen intact.
+    cp "$here/aeic_desktop/utf8.manifest" "$here/aeic_desktop/utf8.rc" "$src/"
+    printf '\nenable_language(RC)\ntarget_sources(aeic_decode PRIVATE utf8.rc)\n' >> "$src/CMakeLists.txt"
     # The GUI subsystem: the app starts it with its output piped, and a
     # console program would flash a console window each time.
     extra=(-DZLIB_USE_STATIC_LIBS=ON
