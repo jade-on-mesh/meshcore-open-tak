@@ -590,9 +590,7 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
         var memory =
             OffGridRepeatStore.load(key) ?? const OffGridRepeatMemory();
         if (!wasOn || !memory.holdsRadio2) {
-          final hold = await controller.holdForOffGridRepeat(
-            mainFrequencyMHz,
-          );
+          final hold = await controller.holdForOffGridRepeat(mainFrequencyMHz);
           memory = memory.copyWith(hold: hold);
         }
         if (remembered != null) {
