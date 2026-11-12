@@ -63,6 +63,13 @@ def release_assets():
     if m_name and m_bytes and m_tag:
         out.append((m_tag.group(1), m_name.group(1), ints(m_bytes.group(1)), "VoxUpscaleModel"))
 
+    ip = read("lib/vox/vox_interp.dart")
+    m_name = re.search(r"class VoxInterpModel\s*\{.*?static const name = '([^']+)'", ip, re.S)
+    m_bytes = re.search(r"class VoxInterpModel\s*\{.*?static const bytes = ([0-9_]+)", ip, re.S)
+    m_tag = re.search(r"releases/download/'\s*'([A-Za-z0-9._-]+)/\$name'", ip)
+    if m_name and m_bytes and m_tag:
+        out.append((m_tag.group(1), m_name.group(1), ints(m_bytes.group(1)), "VoxInterpModel"))
+
     ve = read("lib/vox/vox_voice_enhance.dart")
     for m in re.finditer(
         r"VoxVoiceModelSpec\(\s*name:\s*'([^']+)',\s*sha256Hex:\s*'[0-9a-f]+',\s*bytes:\s*([0-9_]+),\s*tag:\s*'([^']+)'",
