@@ -168,6 +168,11 @@ See the [user documentation](documentation/README.md), [connection guide](docume
 | Device Management  | ✅                | ✅        | ✅   | ✅      | ✅    | ✅                                |
 | Repeater Hub       | ✅                | ✅        | ✅   | ✅      | ✅    | ✅                                |
 | Notification replies | ✅<br>(incl. watches; Android Auto optional) | ❌ | ❌ | ❌ | ❌ | ❌                              |
+| Voice messages     | ✅                | ✅        | ✅   | ✅      | ✅    | ❌                                |
+| Photo messages     | ✅                | ✅        | ✅   | ✅      | ✅    | ❌                                |
+| Video messages: send | ✅<br>(record or pick) | ✅<br>(record or pick) | ✅<br>(pick a file; needs ffmpeg) | ✅<br>(pick a file) | ✅<br>(pick a file) | ❌ |
+| Video messages: play | ✅              | ✅        | ✅   | ✅      | ✅    | ❌                                |
+| AI sketch HD photos | ✅               | ❌        | ✅<br>(x86_64) | ✅ | ✅    | ❌                                |
 
 The matrix describes implemented functionality, not a guarantee that every feature has been tested on every device. Web device connections use Web Serial and require Chrome and a secure origin. Image inference and translation require native runtimes and are unavailable on web. Android APKs currently include only `arm64-v8a`; the minimum Android API follows the Flutter SDK used to build.
 

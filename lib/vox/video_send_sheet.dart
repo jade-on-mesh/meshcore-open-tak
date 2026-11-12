@@ -27,17 +27,23 @@ Future<void> showVoxVideoPicker(
   VoxCaptionInput? caption,
 }) async {
   final voice = context.read<VoxVoiceService>();
-  if (!VoxVideoSource.isSupported || !voice.videosAvailable) {
+  if (!VoxVideoSource.isReady || !voice.videosAvailable) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text(
-          'Video messages can only be sent from Android and iPhone.',
+          !voice.videosAvailable
+              ? 'This build can\'t make video messages.'
+              : VoxVideoSource.unsupportedReason,
         ),
       ),
     );
     return;
   }
-  final source = await showModalBottomSheet<ImageSource>(
+  // A computer has no camera to record with here: straight to the file
+  // picker.
+  final source = !VoxVideoSource.canRecord
+      ? ImageSource.gallery
+      : await showModalBottomSheet<ImageSource>(
     context: context,
     builder: (context) => SafeArea(
       child: SingleChildScrollView(
