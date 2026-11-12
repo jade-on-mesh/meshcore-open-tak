@@ -27,6 +27,8 @@ import 'package:flutter_onnxruntime/flutter_onnxruntime.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+import 'video_codec.dart';
+
 /// The model file, as published.
 class VoxUpscaleModel {
   static const name = 'realesr-general-x4v3.onnx';
@@ -288,6 +290,80 @@ class VoxUpscaler extends ChangeNotifier {
       }
     });
     return c.future;
+  }
+
+  /// Every frame of a video message enhanced 2x (frame by frame, so fine
+  /// detail can shimmer). [onProgress] gets 0..1 as frames finish.
+  Future<VoxVideoFrames> enhanceClip(
+    VoxVideoFrames f, {
+    void Function(double)? onProgress,
+  }) {
+    final c = Completer<VoxVideoFrames>();
+    _lock = _lock.then((_) async {
+      try {
+        c.complete(await _enhanceClip(f, onProgress));
+      } catch (e, st) {
+        c.completeError(e, st);
+      }
+    });
+    return c.future;
+  }
+
+  Future<VoxVideoFrames> _enhanceClip(
+    VoxVideoFrames f,
+    void Function(double)? onProgress,
+  ) async {
+    if (!isReady) throw StateError('The enhancer is not downloaded');
+    final w = f.width, h = f.height;
+    if (!canEnhance(w, h)) throw StateError('This video is too big to enhance');
+    _idle?.cancel();
+    final session = _session ??= await _runtime.createSession(
+      (await _file()).path,
+    );
+    const s = 2;
+    final ow = w * s, oh = h * s;
+    final out = Uint8List(f.count * ow * oh * 3);
+    final rgba = Uint8List(w * h * 4);
+    final big = Uint8List(ow * oh * 4);
+    final tiles = voxUpscaleTiles(w, h);
+    for (var i = 0; i < f.count; i++) {
+      final base = i * f.frameBytes;
+      for (var p = 0; p < w * h; p++) {
+        rgba[p * 4] = f.rgb[base + p * 3];
+        rgba[p * 4 + 1] = f.rgb[base + p * 3 + 1];
+        rgba[p * 4 + 2] = f.rgb[base + p * 3 + 2];
+        rgba[p * 4 + 3] = 255;
+      }
+      for (final t in tiles) {
+        final input = await OrtValue.fromList(voxUpscaleInput(rgba, w, t), [
+          1,
+          3,
+          t.rh,
+          t.rw,
+        ]);
+        final outputs = <OrtValue>[];
+        try {
+          final result = await session.run({'input': input});
+          outputs.addAll(result.values);
+          final y = await result['output_x2']!.asFlattenedList();
+          voxUpscaleWrite(y.cast<num>(), t, big, w, s: s);
+        } finally {
+          await input.dispose();
+          for (final o in outputs) {
+            await o.dispose();
+          }
+        }
+      }
+      final ob = i * ow * oh * 3;
+      for (var p = 0; p < ow * oh; p++) {
+        out[ob + p * 3] = big[p * 4];
+        out[ob + p * 3 + 1] = big[p * 4 + 1];
+        out[ob + p * 3 + 2] = big[p * 4 + 2];
+      }
+      onProgress?.call((i + 1) / f.count);
+    }
+    _idle = Timer(const Duration(seconds: 60), () => unawaited(_close()));
+    return VoxVideoFrames(ow, oh, f.fps, out);
   }
 
   Future<ui.Image> _enhance(

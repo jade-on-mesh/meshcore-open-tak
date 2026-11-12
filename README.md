@@ -28,7 +28,7 @@ Flash the companion radio with Keymind Cascade from the [MediaMesh Flasher](http
 | Photo messages (AV1, 1× or 2× a voice message's airtime) | ✅ |
 | Team awareness: live positions with ATAK roles and team colours, trails, smart position updates (phone GPS, radio fallback) | ✅ |
 | Alerts: SOS/911, In Contact, Ring the Bell, with a full-screen alarm | ✅ |
-| Tactical pins (last known point, staging, clue, hazard, LZ, …) with photo or voice attachments | ✅ |
+| Tactical pins (last known point, staging, clue, hazard, LZ, …) with photo, video or voice attachments; Quick Pic and Quick Video drop one where you are | ✅ |
 | SALUTE reports in a condensed card format | ✅ |
 | Range and bearing, Bloodhound tracking | ✅ |
 | TAK Server gateway (CoT over TLS or TCP, ATAK data package import) and local ATAK multicast | ✅ |

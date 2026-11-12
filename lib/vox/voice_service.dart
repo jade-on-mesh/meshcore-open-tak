@@ -38,6 +38,7 @@ import 'voice_clip_store.dart';
 import 'av1_ffi.dart';
 import 'image_codec.dart';
 import 'video_codec.dart';
+import 'video_prep.dart';
 import 'mimi.dart';
 import 'resample.dart';
 import 'voice_codec.dart';
@@ -1075,6 +1076,9 @@ class VoxVoiceService extends ChangeNotifier {
   /// [VoxEncodedClip] for a photo, for [registerClip].
   VoxEncodedClip imageClip(VoxEncodedImage image) => _imageClip(image);
 
+  /// [VoxEncodedClip] for a video, for [registerClip] (a pin's attachment).
+  VoxEncodedClip videoClip(VoxEncodedVideo video) => _videoClip(video);
+
   /// The contact whose public key starts with [hexPrefix], if any.
   Contact? contactByKeyPrefix(String hexPrefix) {
     final p = hexPrefix.toLowerCase();
@@ -1978,16 +1982,33 @@ class VoxVoiceService extends ChangeNotifier {
     }
   }
 
-  /// Encodes a clip for sending, off the UI thread.
+  /// A picked clip steadied and cleaned up (video_prep.dart), off the UI
+  /// thread.
+  Future<(VoxVideoFrames, VoxPrepReport)> prepareVideo(
+    VoxVideoFrames frames,
+  ) async {
+    final sw = Stopwatch()..start();
+    final r = await compute(voxPrepareClip, frames);
+    _logEvent(
+      'video cleaned up in ${sw.elapsedMilliseconds}ms: '
+      '${r.$2.steadyCrop > 0 ? 'steadied (${r.$2.steadyCrop}px crop)' : 'steady already'}, '
+      'grain ${r.$2.grain.toStringAsFixed(1)}',
+    );
+    return r;
+  }
+
+  /// Encodes a clip for sending, off the UI thread. [focus] (faces and text,
+  /// in [source]'s pixels) keeps them sharp and softens the rest a little.
   Future<VoxEncodedVideo> encodeVideo(
     VoxVideoFrames source,
     VoxVideoDetail detail, {
     VoxEncodedClip? sound,
+    VoxFocusRegions focus = VoxFocusRegions.none,
   }) async {
     final sw = Stopwatch()..start();
     final enc = await compute(
       _encodeVideoJob,
-      _VideoEncodeJob(source, detail, sound?.mode, sound?.bits),
+      _VideoEncodeJob(source, detail, sound?.mode, sound?.bits, focus),
     );
     _logEvent(
       'video encoded in ${sw.elapsedMilliseconds}ms: ${enc.payload.length}B, '
@@ -4306,7 +4327,14 @@ class _VideoEncodeJob {
   final VoxVideoDetail detail;
   final VoxVoiceMode? soundMode;
   final Uint8List? sound;
-  _VideoEncodeJob(this.source, this.detail, this.soundMode, this.sound);
+  final VoxFocusRegions focus;
+  _VideoEncodeJob(
+    this.source,
+    this.detail,
+    this.soundMode,
+    this.sound,
+    this.focus,
+  );
 }
 
 VoxEncodedVideo _encodeVideoJob(_VideoEncodeJob j) {
@@ -4319,6 +4347,7 @@ VoxEncodedVideo _encodeVideoJob(_VideoEncodeJob j) {
     detail: j.detail,
     soundMode: j.soundMode,
     sound: j.sound,
+    focus: j.focus,
     encode: (f, q, speed) => av1.encodeClip(
       f.rgb,
       f.width,

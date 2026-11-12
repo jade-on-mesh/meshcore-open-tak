@@ -5329,6 +5329,11 @@ class AppLocalizationsPt extends AppLocalizations {
   String get community_updateSecret => 'Atualizar Segredo';
 
   @override
+  String connectSheet_bluetoothOff(String name) {
+    return 'Bluetooth is off. Turn it on to connect to $name.';
+  }
+
+  @override
   String community_secretUpdated(String name) {
     return 'Segredo atualizado para \"$name\"';
   }

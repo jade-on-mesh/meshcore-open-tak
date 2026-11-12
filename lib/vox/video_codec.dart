@@ -75,6 +75,14 @@ enum VoxVideoDetail {
   /// Longest clip at this level: the start of a longer one is sent.
   final int maxSeconds;
   int get budget => voxImageBaseBudget * multiple;
+
+  /// Box-blur radius and passes for what lies outside faces and text, when
+  /// there are some: as for photos, gentler as the budget grows.
+  (int radius, int passes) get backgroundSoften => switch (this) {
+    quick => (2, 2),
+    clear => (1, 2),
+    maximum => (1, 1),
+  };
 }
 
 /// Frame sizes (long side) and rates to choose from, least pixels per second
@@ -257,6 +265,7 @@ VoxEncodedVideo voxEncodeVideo({
   required VoxAv1Encode encodeStill,
   VoxVoiceMode? soundMode,
   Uint8List? sound,
+  VoxFocusRegions focus = VoxFocusRegions.none,
 }) {
   if (source.count == 0) throw StateError('The clip has no frames');
   final clip = voxTrimFrames(source, detail.maxSeconds);
@@ -306,6 +315,7 @@ VoxEncodedVideo voxEncodeVideo({
   while (true) {
     final (w, h) = voxVideoSize(aspect, shape.$1);
     f = voxResampleFrames(clip, w, h, shape.$2);
+    if (!focus.isEmpty) f = _softenOutside(f, focus, w / clip.width, detail);
     final found = fitQ(f);
     if (found != null) {
       fit = found;
@@ -361,6 +371,32 @@ VoxEncodedVideo voxEncodeVideo({
     sound: soundBytes,
     q: q,
   );
+}
+
+/// Faces and text ([focus], in [k]-scaled pixels) kept as they are, the rest
+/// softened slightly, so the encoder spends the bytes on them.
+VoxVideoFrames _softenOutside(
+  VoxVideoFrames f,
+  VoxFocusRegions focus,
+  double k,
+  VoxVideoDetail detail,
+) {
+  final grow = max(f.width, f.height) * 0.06;
+  final mask = voxFocusMask(f.width, f.height, [
+    for (final r in focus.scaled(k).all) r.inflate(grow),
+  ]);
+  final (radius, passes) = detail.backgroundSoften;
+  final out = Uint8List(f.rgb.length);
+  for (var i = 0; i < f.count; i++) {
+    final soft = voxSoftenOutside(
+      f.frame(i),
+      mask,
+      radius: radius,
+      passes: passes,
+    );
+    out.setRange(i * f.frameBytes, (i + 1) * f.frameBytes, soft.rgb);
+  }
+  return VoxVideoFrames(f.width, f.height, f.fps, out);
 }
 
 /// The parts of a received payload; null if it isn't a video this build

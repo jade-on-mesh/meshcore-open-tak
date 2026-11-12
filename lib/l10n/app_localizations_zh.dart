@@ -4982,6 +4982,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get community_updateSecret => '更新密钥';
 
   @override
+  String connectSheet_bluetoothOff(String name) {
+    return 'Bluetooth is off. Turn it on to connect to $name.';
+  }
+
+  @override
   String community_secretUpdated(String name) {
     return '“$name”的密钥已更新';
   }
