@@ -1,0 +1,68 @@
+name: Windows video reader
+
+# Decodes real clips with windows/runner/video_extract.cpp (Media Foundation),
+# as the Windows app does when a video is picked.
+
+on:
+  pull_request:
+    paths:
+      - windows/runner/video_extract.*
+      - tool/video_extract_test/**
+      - .github/workflows/windows-video.yml
+  push:
+    branches: [main]
+    paths:
+      - windows/runner/video_extract.*
+      - tool/video_extract_test/**
+      - .github/workflows/windows-video.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-video:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Build the test
+        shell: cmd
+        run: >
+          cl /nologo /EHsc /W4 /WX /std:c++17 /utf-8
+          tool\video_extract_test\main.cpp windows\runner\video_extract.cpp
+          /Fe:video_extract_test.exe
+      - name: Make clips
+        shell: bash
+        run: |
+          command -v ffmpeg || choco install ffmpeg -y --no-progress
+          export PATH="$PATH:/c/ProgramData/chocolatey/bin"
+          src=(-f lavfi -i testsrc2=size=1920x1080:rate=30 -f lavfi -i sine=frequency=440:sample_rate=44100)
+          # 1080p H.264 + AAC: decoded as 1920x1088, so the decoder changes
+          # the media type on the first frame.
+          ffmpeg -hide_banner -loglevel error -y "${src[@]}" -t 3 \
+            -c:v libx264 -pix_fmt yuv420p -c:a aac clip_1080p.mp4
+          # Like a downloaded clip that failed: 640x360 Constrained Baseline at
+          # 29.97 fps (decoded as 640x368).
+          ffmpeg -hide_banner -loglevel error -y \
+            -f lavfi -i testsrc2=size=640x360:rate=30000/1001 -f lavfi -i sine=sample_rate=44100 -t 3 \
+            -c:v libx264 -profile:v baseline -pix_fmt yuv420p -c:a aac clip_360p.mp4
+          # A phone's portrait clip: landscape frames turned 90 degrees.
+          ffmpeg -hide_banner -loglevel error -y -display_rotation 90 \
+            -f lavfi -i testsrc2=size=1280x720:rate=30 -f lavfi -i sine=sample_rate=48000 -t 3 \
+            -c:v libx264 -pix_fmt yuv420p -c:a aac clip_portrait.mp4 \
+          || ffmpeg -hide_banner -loglevel error -y \
+            -f lavfi -i testsrc2=size=1280x720:rate=30 -f lavfi -i sine=sample_rate=48000 -t 3 \
+            -c:v libx264 -pix_fmt yuv420p -c:a aac -metadata:s:v:0 rotate=90 clip_portrait.mp4
+          # Small, silent, odd-sized, in a .mov.
+          ffmpeg -hide_banner -loglevel error -y -f lavfi -i testsrc2=size=636x358:rate=25 -t 3 \
+            -c:v libx264 -pix_fmt yuv420p clip_silent.mov
+          ls -la clip_*
+      - name: Read the clips
+        shell: bash
+        run: |
+          ./video_extract_test.exe clip_1080p.mp4 0 1
+          ./video_extract_test.exe clip_360p.mp4 0 1
+          ./video_extract_test.exe clip_portrait.mp4 1 1
+          ./video_extract_test.exe clip_silent.mov 0 0
