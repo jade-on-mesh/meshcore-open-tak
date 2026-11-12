@@ -200,7 +200,9 @@ List<double> voxSmoothPath(List<double> path, int fps) {
 /// estimated strength.
 (VoxVideoFrames, double) voxClean(VoxVideoFrames f) {
   final w = f.width, h = f.height, n = w * h;
-  final ys = [for (var i = 0; i < f.count; i++) _luma(f.rgb, n, i * f.frameBytes)];
+  final ys = [
+    for (var i = 0; i < f.count; i++) _luma(f.rgb, n, i * f.frameBytes),
+  ];
   // Grain from how much still pixels change frame to frame (the median is
   // dominated by them): sigma ~ median|diff| / 0.6745 / sqrt 2.
   final sample = <double>[];

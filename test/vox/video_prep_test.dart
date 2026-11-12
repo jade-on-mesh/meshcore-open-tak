@@ -20,10 +20,10 @@ VoxVideoFrames _scene(
   final scene = Uint8List(sw * sh);
   for (var y = 0; y < sh; y++) {
     for (var x = 0; x < sw; x++) {
-      scene[y * sw + x] =
-          (128 + 60 * sin(x / 7) * cos(y / 9) + 40 * sin((x + y) / 23))
-              .round()
-              .clamp(0, 255);
+      scene[y * sw +
+          x] = (128 + 60 * sin(x / 7) * cos(y / 9) + 40 * sin((x + y) / 23))
+          .round()
+          .clamp(0, 255);
     }
   }
   final rgb = Uint8List(offsets.length * w * h * 3);
@@ -72,7 +72,8 @@ void main() {
     test('shake is taken out', () {
       final rng = Random(3);
       final shaky = [
-        for (var i = 0; i < 36; i++) (rng.nextInt(9) - 4 + 20, rng.nextInt(9) - 4 + 20),
+        for (var i = 0; i < 36; i++)
+          (rng.nextInt(9) - 4 + 20, rng.nextInt(9) - 4 + 20),
       ];
       final f = _scene(128, 96, shaky);
       final (out, crop) = voxSteady(f);
@@ -103,7 +104,10 @@ void main() {
       final noisy = _scene(96, 72, offsets, noise: 8);
       final (out, grain) = voxClean(noisy);
       expect(grain, greaterThan(3));
-      expect(_meanAbsDiff(out, clean), lessThan(_meanAbsDiff(noisy, clean) * 0.7));
+      expect(
+        _meanAbsDiff(out, clean),
+        lessThan(_meanAbsDiff(noisy, clean) * 0.7),
+      );
     });
 
     test('keeps a moving scene its own', () {

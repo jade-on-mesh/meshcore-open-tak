@@ -206,12 +206,7 @@ class VoxVideoScreen extends StatefulWidget {
   /// Shown under the clip (sound missing, size).
   final String? note;
 
-  const VoxVideoScreen({
-    super.key,
-    required this.frames,
-    this.wav,
-    this.note,
-  });
+  const VoxVideoScreen({super.key, required this.frames, this.wav, this.note});
 
   static Future<void> open(
     BuildContext context,
@@ -281,10 +276,7 @@ class _VoxVideoScreenState extends State<VoxVideoScreen> {
   }
 
   /// Asks to download a model, saying what it does and what it invents.
-  Future<bool> _offer({
-    required String title,
-    required String body,
-  }) async {
+  Future<bool> _offer({required String title, required String body}) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -487,9 +479,7 @@ class _VoxVideoScreenState extends State<VoxVideoScreen> {
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         centerTitle: true,
-        title: Text(
-          '${frames.width} × ${frames.height} · ${frames.fps} fps',
-        ),
+        title: Text('${frames.width} × ${frames.height} · ${frames.fps} fps'),
         actions: [
           if (VoxInterpolator.supported)
             IconButton(
