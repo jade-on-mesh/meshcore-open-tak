@@ -13,9 +13,10 @@
 # Every CPU-specific fast path is off, as on Android: the entropy model must
 # give bit-identical numbers on the sending and the receiving device, and those
 # paths (AVX/FMA/F16C on x86, ARMv8.2 fp16/dot and later on ARM) round
-# differently between chips. ncnn keeps its own small OpenMP runtime
-# (NCNN_SIMPLEOMP), so nothing extra ships next to the program. The app's
-# self-test (AI sketch HD settings) checks a device against the reference.
+# differently between chips. Nothing extra ships next to the program (see the
+# OpenMP note below). The app's self-test (AI sketch HD settings) checks a
+# device against the reference; .github/workflows/aeic-hd-desktop.yml runs it
+# on all three.
 #
 # Windows has no fork(): each model stage runs in-process there
 # (tool/aeic_desktop/recovery_inprocess.cpp) instead of in a child.
@@ -36,12 +37,16 @@ out=$(cd "$out" && pwd)
 gen=()
 if command -v ninja >/dev/null 2>&1; then gen=(-G Ninja); fi
 # ncnn's own small OpenMP runtime, so no libgomp/libomp ships with the
-# program; AEIC_OPENMP=off builds it single-threaded instead.
-if [ "${AEIC_OPENMP:-simple}" = off ]; then
-  omp=(-DNCNN_OPENMP=OFF)
-else
-  omp=(-DNCNN_OPENMP=ON -DNCNN_SIMPLEOMP=ON)
-fi
+# program. MinGW can't build that one (it needs POSIX threads' pthread_once),
+# so Windows links MinGW's libgomp statically instead. AEIC_OPENMP=off builds
+# it single-threaded.
+default_omp=simple
+[ "$os" = windows ] && default_omp=gomp
+case "${AEIC_OPENMP:-$default_omp}" in
+  off) omp=(-DNCNN_OPENMP=OFF) ;;
+  gomp) omp=(-DNCNN_OPENMP=ON -DNCNN_SIMPLEOMP=OFF) ;;
+  *) omp=(-DNCNN_OPENMP=ON -DNCNN_SIMPLEOMP=ON) ;;
+esac
 
 fetch() { # url commit dir
   if [ ! -d "$3/.git" ]; then
@@ -70,15 +75,26 @@ ncnn_common=(
   -DNCNN_ARM84BF16=OFF -DNCNN_ARM84I8MM=OFF -DNCNN_ARM86SVE=OFF -DNCNN_ARM86SVE2=OFF
 )
 
+# Runs a build step quietly; on failure shows the end of its output.
+quiet() { # log-name command...
+  local log="$work/$1.log"
+  shift
+  if ! "$@" > "$log" 2>&1; then
+    echo "::error::$(basename "$log" .log) failed; the end of its output:" >&2
+    tail -60 "$log" >&2
+    exit 1
+  fi
+}
+
 # One architecture: ncnn, then the program. $1 = a name for the build
 # directories, the rest = extra CMake arguments for both.
 build_one() {
   local tag=$1
   shift
-  cmake -S "$work/ncnn" -B "$work/ncnn-$tag" ${gen[@]+"${gen[@]}"} "${ncnn_common[@]}" "${omp[@]}" "$@" \
-    -DCMAKE_INSTALL_PREFIX="$work/ncnn-install-$tag" >/dev/null
-  cmake --build "$work/ncnn-$tag" -j "$jobs" >/dev/null
-  cmake --install "$work/ncnn-$tag" >/dev/null
+  quiet "ncnn-configure-$tag" cmake -S "$work/ncnn" -B "$work/ncnn-$tag" ${gen[@]+"${gen[@]}"} \
+    "${ncnn_common[@]}" "${omp[@]}" "$@" -DCMAKE_INSTALL_PREFIX="$work/ncnn-install-$tag"
+  quiet "ncnn-build-$tag" cmake --build "$work/ncnn-$tag" -j "$jobs"
+  quiet "ncnn-install-$tag" cmake --install "$work/ncnn-$tag"
 
   local src="$work/aeic/mobile/native"
   local extra=()
@@ -92,10 +108,10 @@ build_one() {
     extra=(-DZLIB_USE_STATIC_LIBS=ON
       "-DCMAKE_EXE_LINKER_FLAGS=-static -static-libgcc -static-libstdc++")
   fi
-  cmake -S "$src" -B "$work/codec-$tag" ${gen[@]+"${gen[@]}"} \
+  quiet "codec-configure-$tag" cmake -S "$src" -B "$work/codec-$tag" ${gen[@]+"${gen[@]}"} \
     -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
-    -Dncnn_DIR="$work/ncnn-install-$tag/lib/cmake/ncnn" ${extra[@]+"${extra[@]}"} "$@" >/dev/null
-  cmake --build "$work/codec-$tag" -j "$jobs"
+    -Dncnn_DIR="$work/ncnn-install-$tag/lib/cmake/ncnn" ${extra[@]+"${extra[@]}"} "$@"
+  quiet "codec-build-$tag" cmake --build "$work/codec-$tag" -j "$jobs"
 }
 
 case "$os" in
