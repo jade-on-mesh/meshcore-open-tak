@@ -40,72 +40,128 @@ void main() {
     });
   });
 
+  group('offGridRadio2Frequency', () {
+    test('250 kHz above in the US band, below near its top', () {
+      expect(offGridRadio2Frequency(918.0), 918.25);
+      expect(offGridRadio2Frequency(927.8), 927.55);
+    });
+
+    test('none outside the US band', () {
+      expect(offGridRadio2Frequency(869.495), isNull);
+      expect(offGridRadio2Frequency(433.0), isNull);
+    });
+
+    test('clear of a 62.5 kHz main channel', () {
+      final apartKHz = (offGridRadio2Frequency(918.0)! - 918.0) * 1000;
+      expect(apartKHz, greaterThan((62.5 + 250) / 2 + 6));
+    });
+  });
+
   group('holdForOffGridRepeat', () {
-    test('Keymind Cascade: radio2 off, media to the main radio', () async {
+    test('Keymind Cascade, US: radio2 beside, cross off, media on it', () async {
       final c = _CliConnector({
         'get radio2': '> 911.150,250.00,7,5,rxtx',
-        'get tx.media': '> tx.media radio2; active=radio2',
+        'get tx.media': '> tx.media auto; active=radio2',
+        'get radio2.cross': '> on',
       });
-      final held = await MediaMeshController(c).holdForOffGridRepeat();
-      expect(held.radio2Restore, 'set radio2 911.150,250,7,5,rxtx');
-      expect(held.txMedia, 'radio2');
+      final hold = await MediaMeshController(c).holdForOffGridRepeat(918.0);
       expect(c.sent, [
         'get radio2',
         'get tx.media',
-        'set tx.media radio',
-        'set radio2 off',
+        'get radio2.cross',
+        'set radio2 918.250,250,7,5,rxtx',
+        'set radio2.cross off',
+        'set tx.media radio2',
       ]);
+      expect(hold.radio2Restore, 'set radio2 911.150,250,7,5,rxtx');
+      expect(hold.txMedia, 'auto');
+      expect(hold.cross, 'on');
     });
 
-    test('media already on the main radio is left alone', () async {
+    test('Keymind Cascade, US, radio2 was off: put back off', () async {
       final c = _CliConnector({
-        'get radio2': '> 911.150,250.00,7,5,rx',
-        'get tx.media': '> tx.media auto; active=channel/global',
+        'get radio2': '> off',
+        'get tx.media': '> tx.media radio2',
+        'get radio2.cross': '> off',
       });
-      final held = await MediaMeshController(c).holdForOffGridRepeat();
-      expect(held.txMedia, isNull);
-      expect(c.sent, ['get radio2', 'get tx.media', 'set radio2 off']);
+      final hold = await MediaMeshController(c).holdForOffGridRepeat(918.0);
+      expect(hold.radio2Restore, 'set radio2 off');
+      expect(hold.txMedia, isNull); // already radio2
+      expect(hold.cross, isNull); // already off
+      expect(c.sent.last, 'set radio2.cross off');
     });
 
-    test('Wadamesh TAK holds radio2 off itself: nothing sent', () async {
+    test('Keymind Cascade, EU868: radio2 off, media to the main radio', () async {
+      final c = _CliConnector({
+        'get radio2': '> 869.525,125.00,5,7,rxtx',
+        'get tx.media': '> tx.media radio2; active=radio2',
+        'get radio2.cross': '> off',
+      });
+      final hold = await MediaMeshController(c).holdForOffGridRepeat(869.495);
+      expect(c.sent.sublist(3), ['set tx.media radio', 'set radio2 off']);
+      expect(hold.radio2Restore, 'set radio2 869.525,125,5,7,rxtx');
+      expect(hold.txMedia, 'radio2');
+    });
+
+    test('EU868 with radio2 already off: nothing to change', () async {
+      final c = _CliConnector({
+        'get radio2': '> off',
+        'get tx.media': '> tx.media auto',
+        'get radio2.cross': '> auto',
+      });
+      final hold = await MediaMeshController(c).holdForOffGridRepeat(869.495);
+      expect(hold.radio2Restore, isNull);
+      expect(c.sent.where((s) => s.startsWith('set ')), isEmpty);
+    });
+
+    test('Wadamesh TAK sets radio2 itself: nothing sent', () async {
       final c = _CliConnector({
         'get radio2':
-            '> off; client repeat is on (radio2 back to rxtx when it is off)',
+            '> 918.250,250.00,7,5,rxtx; client repeat is on (radio2 back to rxtx when it is off)',
       });
-      final held = await MediaMeshController(c).holdForOffGridRepeat();
-      expect(held.radio2Restore, isNull);
-      expect(held.txMedia, isNull);
+      final hold = await MediaMeshController(c).holdForOffGridRepeat(918.0);
+      expect(hold.radio2Restore, isNull);
       expect(c.sent, ['get radio2']);
     });
 
     test('a radio without radio2: nothing sent', () async {
       final c = _CliConnector({'get radio2': 'Unknown command'});
-      await MediaMeshController(c).holdForOffGridRepeat();
+      await MediaMeshController(c).holdForOffGridRepeat(918.0);
       expect(c.sent, ['get radio2']);
     });
 
-    test('a refused radio2 off throws', () async {
+    test('a refused radio2 throws', () async {
       final c = _CliConnector({
         'get radio2': '> 911.150,250.00,7,5,rxtx',
         'get tx.media': '> tx.media auto',
-        'set radio2 off': 'Error: busy',
+        'get radio2.cross': '> off',
+        'set radio2 918.250,250,7,5,rxtx': 'Error: busy',
       });
       expect(
-        MediaMeshController(c).holdForOffGridRepeat(),
+        MediaMeshController(c).holdForOffGridRepeat(918.0),
         throwsA(isA<MediaMeshException>()),
       );
     });
   });
 
-  test('releaseAfterOffGridRepeat puts both back', () async {
+  test('releaseAfterOffGridRepeat puts it all back', () async {
     final c = _CliConnector({});
     await MediaMeshController(c).releaseAfterOffGridRepeat(
-      radio2Restore: 'set radio2 911.150,250,7,5,rxtx',
-      txMedia: 'radio2',
+      const OffGridRadio2Hold(
+        radio2Restore: 'set radio2 911.150,250,7,5,rxtx',
+        txMedia: 'auto',
+        cross: 'on',
+      ),
     );
-    expect(c.sent, ['set radio2 911.150,250,7,5,rxtx', 'set tx.media radio2']);
+    expect(c.sent, [
+      'set radio2 911.150,250,7,5,rxtx',
+      'set radio2.cross on',
+      'set tx.media auto',
+    ]);
     final none = _CliConnector({});
-    await MediaMeshController(none).releaseAfterOffGridRepeat();
+    await MediaMeshController(none).releaseAfterOffGridRepeat(
+      const OffGridRadio2Hold(),
+    );
     expect(none.sent, isEmpty);
   });
 
@@ -121,6 +177,7 @@ void main() {
         ),
         radio2Restore: 'set radio2 911.150,250,7,5,rxtx',
         txMedia: 'radio2',
+        cross: 'on',
       );
       final back = OffGridRepeatMemory.fromJson(
         jsonDecode(jsonEncode(m.toJson())),
@@ -130,14 +187,19 @@ void main() {
       expect(back.radio!.txPowerDbm, 22);
       expect(back.radio2Restore, m.radio2Restore);
       expect(back.txMedia, 'radio2');
+      expect(back.cross, 'on');
+      expect(back.holdsRadio2, isTrue);
+      expect(const OffGridRepeatMemory().holdsRadio2, isFalse);
     });
 
     test('ignores anything that is not a radio2 command', () {
       final m = OffGridRepeatMemory.fromJson({
         'radio2Restore': 'erase',
         'radio': {'freqHz': 'x'},
+        'txMedia': 'rm -rf',
       })!;
       expect(m.radio2Restore, isNull);
+      expect(m.txMedia, isNull);
       expect(m.radio, isNull);
       expect(OffGridRepeatMemory.fromJson('nope'), isNull);
     });

@@ -1,31 +1,51 @@
 import 'dart:convert';
 
 import '../connector/meshcore_connector.dart';
+import '../services/media_mesh.dart';
 import 'prefs_manager.dart';
 
 /// What Off-Grid Repeat replaced on a radio, so turning it off puts it back,
-/// even after the app restarts: the main radio settings, and radio2 and
-/// `tx.media` when the app turned MediaMesh off for it. A Keymind Cascade
-/// companion needs that; a Wadamesh TAK standalone holds radio2 off itself and
-/// leaves both null. Kept per radio (the first 10 hex of its key).
+/// even after the app restarts: the main radio settings, and radio2,
+/// `radio2.cross` and `tx.media` when the app set MediaMesh for it. A Keymind
+/// Cascade companion needs that; a Wadamesh TAK standalone sets radio2 itself
+/// and leaves those null. Kept per radio (the first 10 hex of its key).
 class OffGridRepeatMemory {
   final MeshCoreRadioStateSnapshot? radio;
 
-  /// The `set radio2 ...` command that brings radio2 back as it was.
+  /// The `set radio2 ...` (or `set radio2 off`) that puts radio2 back.
   final String? radio2Restore;
 
-  /// The `tx.media` choice to put back (only `radio2`, which never falls back
-  /// to the main radio, is changed).
+  /// The `tx.media` choice to put back.
   final String? txMedia;
 
-  const OffGridRepeatMemory({this.radio, this.radio2Restore, this.txMedia});
+  /// The `radio2.cross` choice to put back.
+  final String? cross;
 
-  OffGridRepeatMemory copyWith({MeshCoreRadioStateSnapshot? radio}) =>
-      OffGridRepeatMemory(
-        radio: radio ?? this.radio,
-        radio2Restore: radio2Restore,
-        txMedia: txMedia,
-      );
+  const OffGridRepeatMemory({
+    this.radio,
+    this.radio2Restore,
+    this.txMedia,
+    this.cross,
+  });
+
+  OffGridRadio2Hold get radio2Hold => OffGridRadio2Hold(
+    radio2Restore: radio2Restore,
+    txMedia: txMedia,
+    cross: cross,
+  );
+
+  bool get holdsRadio2 =>
+      radio2Restore != null || txMedia != null || cross != null;
+
+  OffGridRepeatMemory copyWith({
+    MeshCoreRadioStateSnapshot? radio,
+    OffGridRadio2Hold? hold,
+  }) => OffGridRepeatMemory(
+    radio: radio ?? this.radio,
+    radio2Restore: hold != null ? hold.radio2Restore : radio2Restore,
+    txMedia: hold != null ? hold.txMedia : txMedia,
+    cross: hold != null ? hold.cross : cross,
+  );
 
   Map<String, Object?> toJson() => {
     if (radio != null)
@@ -38,6 +58,7 @@ class OffGridRepeatMemory {
       },
     'radio2Restore': ?radio2Restore,
     'txMedia': ?txMedia,
+    'cross': ?cross,
   };
 
   static OffGridRepeatMemory? fromJson(Object? json) {
@@ -58,14 +79,17 @@ class OffGridRepeatMemory {
         txPowerDbm: r['tx'] as int,
       );
     }
+    const choices = {'auto', 'radio', 'radio2', 'both', 'off', 'on'};
     final restore = json['radio2Restore'];
     final media = json['txMedia'];
+    final cross = json['cross'];
     return OffGridRepeatMemory(
       radio: radio,
       radio2Restore: restore is String && restore.startsWith('set radio2 ')
           ? restore
           : null,
-      txMedia: media is String ? media : null,
+      txMedia: media is String && choices.contains(media) ? media : null,
+      cross: cross is String && choices.contains(cross) ? cross : null,
     );
   }
 }

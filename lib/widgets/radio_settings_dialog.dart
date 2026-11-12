@@ -30,11 +30,12 @@ bool _isAllowedRepeatFreqKHz(MeshCoreConnector connector, int freqKHz) {
   return ranges.any((r) => freqKHz >= r.lowKHz && freqKHz <= r.highKHz);
 }
 
-/// Off-Grid Repeat's preset apart from the frequency (RadioSettings' Off-Grid
-/// presets; Wadamesh TAK's helpers/ClientRepeat.h).
-const LoRaBandwidth _offGridBandwidth = LoRaBandwidth.bw250;
-const LoRaSpreadingFactor _offGridSpreadingFactor = LoRaSpreadingFactor.sf11;
-const LoRaCodingRate _offGridCodingRate = LoRaCodingRate.cr4_8;
+/// Off-Grid Repeat's main channel apart from the frequency: the standard
+/// 62.5 kHz, SF7, CR 4/5 (Wadamesh TAK's helpers/ClientRepeat.h). MediaMesh
+/// runs beside it in the US band (offGridRadio2Frequency).
+const LoRaBandwidth _offGridBandwidth = LoRaBandwidth.bw62_5;
+const LoRaSpreadingFactor _offGridSpreadingFactor = LoRaSpreadingFactor.sf7;
+const LoRaCodingRate _offGridCodingRate = LoRaCodingRate.cr4_5;
 
 /// Lowest TX power companion firmware accepts (CMD_SET_RADIO_TX_POWER).
 const int _minTxPowerDbm = -9;
@@ -382,9 +383,9 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
         }
         final baseSnapshot = _lastNonRepeatSnapshot ?? currentSnapshot;
         _clientRepeat = true;
-        // The off-grid preset, as Wadamesh TAK standalones use: the allowed
-        // frequency nearest the current one (918 MHz in the US), 250 kHz,
-        // SF11, CR 4/8. Saving also turns radio2 off (MediaMesh).
+        // The off-grid channel, as Wadamesh TAK standalones use: the allowed
+        // frequency nearest the current one (918 MHz in the US), 62.5 kHz,
+        // SF7, CR 4/5. Saving also sets MediaMesh beside it (918.250 MHz).
         _frequencyController.text = _offGridFrequencyForBaseFrequency(
           baseSnapshot.frequencyMHz,
         ).toStringAsFixed(3);
@@ -541,6 +542,7 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
           await _applyOffGridRepeatMediaMesh(
             on: _clientRepeat,
             wasOn: wasRepeat,
+            mainFrequencyMHz: freqMHz,
             remembered: rememberedSnapshot,
           );
 
@@ -569,31 +571,29 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
     }
   }
 
-  /// Off-Grid Repeat and MediaMesh: turning it on turns radio2 off (and
-  /// moves `tx.media radio2` to the main radio) so everything goes out on the
-  /// off-grid channel; turning it off puts both back. What was replaced is
-  /// kept per radio with the main radio settings ([OffGridRepeatStore]), so
-  /// it survives an app restart. False when the radio refused a radio2 step.
+  /// Off-Grid Repeat and MediaMesh: turning it on puts radio2 beside the
+  /// off-grid channel in the US band (918.250 MHz, 250 kHz, photos and voice
+  /// on it, cross off), or off elsewhere; turning it off puts radio2, cross
+  /// and `tx.media` back. What was replaced is kept per radio with the main
+  /// radio settings ([OffGridRepeatStore]), so it survives an app restart.
+  /// False when the radio refused a radio2 step.
   Future<bool> _applyOffGridRepeatMediaMesh({
     required bool on,
     required bool wasOn,
+    required double mainFrequencyMHz,
     required _RadioSettingsSnapshot? remembered,
   }) async {
     final key = widget.connector.selfPublicKeyHex;
     final controller = MediaMeshController(widget.connector);
     try {
       if (on) {
-        final stored = OffGridRepeatStore.load(key);
-        var memory = stored ?? const OffGridRepeatMemory();
-        if (!wasOn || stored == null) {
-          // radio2 is checked every time it is turned on: one turned back on
-          // from the MediaMesh page meanwhile goes off again.
-          final held = await controller.holdForOffGridRepeat();
-          memory = OffGridRepeatMemory(
-            radio: memory.radio,
-            radio2Restore: held.radio2Restore ?? memory.radio2Restore,
-            txMedia: held.txMedia ?? memory.txMedia,
+        var memory =
+            OffGridRepeatStore.load(key) ?? const OffGridRepeatMemory();
+        if (!wasOn || !memory.holdsRadio2) {
+          final hold = await controller.holdForOffGridRepeat(
+            mainFrequencyMHz,
           );
+          memory = memory.copyWith(hold: hold);
         }
         if (remembered != null) {
           memory = memory.copyWith(radio: remembered.toMeshCoreSnapshot());
@@ -603,10 +603,7 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
         final memory = OffGridRepeatStore.load(key);
         await OffGridRepeatStore.clear(key);
         if (memory != null) {
-          await controller.releaseAfterOffGridRepeat(
-            radio2Restore: memory.radio2Restore,
-            txMedia: memory.txMedia,
-          );
+          await controller.releaseAfterOffGridRepeat(memory.radio2Hold);
         }
       }
       return true;

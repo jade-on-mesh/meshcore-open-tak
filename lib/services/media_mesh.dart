@@ -242,6 +242,32 @@ String buildSetRadio2Command(MediaMeshSettings s) =>
     'set radio2 '
     '${_profileTuple(s, s.mode == Radio2Mode.off ? Radio2Mode.rxtx : s.mode)}';
 
+/// Where Off-Grid Repeat runs radio2 beside an off-grid main channel on
+/// [mainFrequencyMHz]: in the US band (902-928 MHz), 250 kHz above it (below
+/// when above leaves the band), clear of a 62.5 kHz main channel. Null
+/// elsewhere, where radio2 goes off. Wadamesh TAK's helpers/ClientRepeat.h.
+double? offGridRadio2Frequency(double mainFrequencyMHz) {
+  if (mainFrequencyMHz < 902 || mainFrequencyMHz > 928) return null;
+  var f = mainFrequencyMHz + 0.25;
+  if (f + 0.125 > 928) f = mainFrequencyMHz - 0.25;
+  if (f - 0.125 < 902) return null;
+  return (f * 1000).round() / 1000;
+}
+
+/// What Off-Grid Repeat changed on radio2, to put back afterwards.
+class OffGridRadio2Hold {
+  /// The `set radio2 ...` (or `set radio2 off`) that puts radio2 back.
+  final String? radio2Restore;
+
+  /// The `tx.media` choice to put back.
+  final String? txMedia;
+
+  /// The `radio2.cross` choice to put back.
+  final String? cross;
+
+  const OffGridRadio2Hold({this.radio2Restore, this.txMedia, this.cross});
+}
+
 /// The `set radio2 ...` that puts back the radio2 `get radio2` reported in
 /// [r] (its preamble too, when set by hand), or null when radio2 is off or the
 /// reply is missing a setting.
@@ -630,37 +656,60 @@ class MediaMeshController {
     }
   }
 
-  /// Off-Grid Repeat (client repeat): radio2 off, so everything goes out on
-  /// the off-grid main radio. A Wadamesh TAK standalone already holds it off
-  /// (its `get radio2` reads off), so nothing is sent to it. `tx.media
-  /// radio2` never falls back to the main radio on Keymind Cascade, so it is
-  /// moved to `radio` meanwhile. Returns what [releaseAfterOffGridRepeat]
-  /// puts back; both null when there was nothing to turn off.
-  Future<({String? radio2Restore, String? txMedia})>
-  holdForOffGridRepeat() async {
+  /// Off-Grid Repeat (client repeat) on a radio whose main channel is now
+  /// [mainFrequencyMHz]. In the US band radio2 runs MediaMesh beside it
+  /// ([offGridRadio2Frequency]: 250 kHz above, 250 kHz SF7 CR 4/5, rxtx),
+  /// with `radio2.cross off` and photos and voice on radio2. Elsewhere radio2
+  /// goes off, and `tx.media radio2`, which never falls back to the main radio
+  /// on Keymind Cascade, moves to `radio` meanwhile. A Wadamesh TAK standalone
+  /// does all this itself (its `get radio2` says `client repeat is on`), so
+  /// nothing is sent to it. Returns what [releaseAfterOffGridRepeat] puts
+  /// back; all null when nothing was changed.
+  Future<OffGridRadio2Hold> holdForOffGridRepeat(
+    double mainFrequencyMHz,
+  ) async {
     final text = await _cli('get radio2');
     final r = text == null ? null : Radio2Reply.tryParse(text);
-    if (r == null || r.off) return (radio2Restore: null, txMedia: null);
+    if (r == null || text!.contains('client repeat')) {
+      return const OffGridRadio2Hold();
+    }
     final mediaText = await _cli('get tx.media');
     final media = mediaText == null ? null : parseTxMediaReply(mediaText);
+    final crossText = await _cli('get radio2.cross');
+    final cross = crossText == null ? null : parseCrossReply(crossText);
+    final restore = buildRadio2RestoreCommand(r) ?? 'set radio2 off';
+    final beside = offGridRadio2Frequency(mainFrequencyMHz);
+    if (beside != null) {
+      await _ok(
+        'set radio2 ${beside.toStringAsFixed(3)},250,7,5,rxtx',
+        'The radio rejected radio2 beside the off-grid channel',
+      );
+      await _ok('set radio2.cross off', 'The radio kept radio2.cross');
+      if (media != 'radio2') await _cli('set tx.media radio2');
+      return OffGridRadio2Hold(
+        radio2Restore: restore,
+        txMedia: media != null && media != 'radio2' ? media : null,
+        cross: cross != null && cross != 'off' ? cross : null,
+      );
+    }
+    if (r.off) return const OffGridRadio2Hold();
     if (media == 'radio2') await _cli('set tx.media radio');
     await _ok('set radio2 off', 'The radio did not turn radio2 off');
-    return (
-      radio2Restore: buildRadio2RestoreCommand(r),
+    return OffGridRadio2Hold(
+      radio2Restore: restore,
       txMedia: media == 'radio2' ? media : null,
     );
   }
 
-  /// Off-Grid Repeat turned off: radio2 and `tx.media` back as
-  /// [holdForOffGridRepeat] found them.
-  Future<void> releaseAfterOffGridRepeat({
-    String? radio2Restore,
-    String? txMedia,
-  }) async {
-    if (radio2Restore != null) {
-      await _ok(radio2Restore, 'The radio did not turn radio2 back on');
+  /// Off-Grid Repeat turned off: radio2, `radio2.cross` and `tx.media` back
+  /// as [holdForOffGridRepeat] found them.
+  Future<void> releaseAfterOffGridRepeat(OffGridRadio2Hold hold) async {
+    final restore = hold.radio2Restore;
+    if (restore != null) {
+      await _ok(restore, 'The radio did not put radio2 back');
     }
-    if (txMedia != null) await _cli('set tx.media $txMedia');
+    if (hold.cross != null) await _cli('set radio2.cross ${hold.cross}');
+    if (hold.txMedia != null) await _cli('set tx.media ${hold.txMedia}');
   }
 
   /// Replaces radio2 with [s] for [minutes]; the saved radio2 comes back
