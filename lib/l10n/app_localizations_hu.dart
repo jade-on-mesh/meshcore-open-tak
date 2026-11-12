@@ -1073,6 +1073,12 @@ class AppLocalizationsHu extends AppLocalizations {
   }
 
   @override
+  String get settings_clientRepeatOffGridSubtitle => 'Repeat others\' packets on the off-grid channel (918 MHz, 250 kHz, SF11 in the US). MediaMesh is off while it\'s on; your settings come back when you turn it off.';
+
+  @override
+  String get settings_clientRepeatRadio2Failed => 'Radio settings saved, but the radio didn\'t change MediaMesh. Check radio2 in MediaMesh Settings.';
+
+  @override
   String get settings_clientRepeatSubtitle =>
       'Engedélyezze az eszköznek, hogy megismételje a mesh-csomagokat mások számára';
 

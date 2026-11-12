@@ -36,6 +36,8 @@ sent on each profile, the measured switch time, and the radio's timing warnings.
 
 ### Find MediaMesh
 
+**Off-Grid Repeat** (Radio Settings) turns radio2 off while it's on, on any radio, and puts it back when it's turned off; see [Radio Settings](settings.md#radio-settings).
+
 **Find MediaMesh** works like Discover Repeaters: it asks the repeaters in
 direct range which radio2 profile they run, and lists them with what each said
 and the SNR it heard them at:

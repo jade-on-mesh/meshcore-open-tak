@@ -58,7 +58,11 @@ Opens a dialog pre-populated with the device's current radio settings. Contains:
 - **Spreading Factor**: SF5–SF12
 - **Coding Rate**: 4/5, 4/6, 4/7, 4/8
 - **TX Power** (dBm): Validated 0 to device max (typically 22 dBm)
-- **Client Repeat** toggle: Only shown on firmware v9+; requires frequency to be exactly 433.000, 869.000, or 918.000 MHz (the Off-Grid presets). Save is blocked with a warning if enabled on other frequencies
+- **Off-Grid Repeat** (client repeat) toggle: Only shown on firmware v9+. Turning it on fills in the off-grid preset: the allowed repeat frequency nearest the current one (918.000 MHz in the US, 869.495 in EU868, 433.000 at 433; the radio's own list when it reports one), 250 kHz, SF11, CR 4/8. The preset, frequency, bandwidth, SF and CR are locked while it's on; TX power stays editable. Saving also turns **MediaMesh off** (radio2), so everything goes out on the off-grid channel:
+  - Keymind Cascade companions: the app sends `set radio2 off`, and moves `tx.media radio2` to `radio` (radio2 never falls back to the main radio).
+  - Wadamesh TAK standalones already hold radio2 off themselves, so the app sends nothing.
+  - Turning it off and saving puts back the radio settings, radio2 and `tx.media` as they were. What was replaced is kept per radio, so it survives an app restart. If the radio refuses a radio2 step, the radio settings are still saved and the app says so.
+  - Save is blocked with a warning if the frequency isn't one the radio allows for repeating.
 
 ### MediaMesh Settings
 Below Radio Settings. Sends and receives photos and voice clips on a second frequency of the same radio (its `radio2` profile), while text stays on the main mesh:
