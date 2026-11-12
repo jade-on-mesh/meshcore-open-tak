@@ -243,13 +243,13 @@ String buildSetRadio2Command(MediaMeshSettings s) =>
     '${_profileTuple(s, s.mode == Radio2Mode.off ? Radio2Mode.rxtx : s.mode)}';
 
 /// Where Off-Grid Repeat runs radio2 beside an off-grid main channel on
-/// [mainFrequencyMHz]: in the US band (902-928 MHz), 250 kHz above it (below
+/// [mainFrequencyMHz]: in the US band (902-928 MHz), 800 kHz above it (below
 /// when above leaves the band), clear of a 62.5 kHz main channel. Null
 /// elsewhere, where radio2 goes off. Wadamesh TAK's helpers/ClientRepeat.h.
 double? offGridRadio2Frequency(double mainFrequencyMHz) {
   if (mainFrequencyMHz < 902 || mainFrequencyMHz > 928) return null;
-  var f = mainFrequencyMHz + 0.25;
-  if (f + 0.125 > 928) f = mainFrequencyMHz - 0.25;
+  var f = mainFrequencyMHz + 0.8;
+  if (f + 0.125 > 928) f = mainFrequencyMHz - 0.8;
   if (f - 0.125 < 902) return null;
   return (f * 1000).round() / 1000;
 }
@@ -658,7 +658,7 @@ class MediaMeshController {
 
   /// Off-Grid Repeat (client repeat) on a radio whose main channel is now
   /// [mainFrequencyMHz]. In the US band radio2 runs MediaMesh beside it
-  /// ([offGridRadio2Frequency]: 250 kHz above, 250 kHz SF7 CR 4/5, rxtx),
+  /// ([offGridRadio2Frequency]: 800 kHz above, 250 kHz SF7 CR 4/5, rxtx),
   /// with `radio2.cross off` and photos and voice on radio2. Elsewhere radio2
   /// goes off, and `tx.media radio2`, which never falls back to the main radio
   /// on Keymind Cascade, moves to `radio` meanwhile. A Wadamesh TAK standalone

@@ -41,9 +41,9 @@ void main() {
   });
 
   group('offGridRadio2Frequency', () {
-    test('250 kHz above in the US band, below near its top', () {
-      expect(offGridRadio2Frequency(918.0), 918.25);
-      expect(offGridRadio2Frequency(927.8), 927.55);
+    test('800 kHz above in the US band, below near its top', () {
+      expect(offGridRadio2Frequency(918.0), 918.8);
+      expect(offGridRadio2Frequency(927.8), 927.0);
     });
 
     test('none outside the US band', () {
@@ -71,7 +71,7 @@ void main() {
           'get radio2',
           'get tx.media',
           'get radio2.cross',
-          'set radio2 918.250,250,7,5,rxtx',
+          'set radio2 918.800,250,7,5,rxtx',
           'set radio2.cross off',
           'set tx.media radio2',
         ]);
@@ -123,7 +123,7 @@ void main() {
     test('Wadamesh TAK sets radio2 itself: nothing sent', () async {
       final c = _CliConnector({
         'get radio2':
-            '> 918.250,250.00,7,5,rxtx; client repeat is on (radio2 back to rxtx when it is off)',
+            '> 918.800,250.00,7,5,rxtx; client repeat is on (radio2 back to rxtx when it is off)',
       });
       final hold = await MediaMeshController(c).holdForOffGridRepeat(918.0);
       expect(hold.radio2Restore, isNull);
@@ -141,7 +141,7 @@ void main() {
         'get radio2': '> 911.150,250.00,7,5,rxtx',
         'get tx.media': '> tx.media auto',
         'get radio2.cross': '> off',
-        'set radio2 918.250,250,7,5,rxtx': 'Error: busy',
+        'set radio2 918.800,250,7,5,rxtx': 'Error: busy',
       });
       expect(
         MediaMeshController(c).holdForOffGridRepeat(918.0),

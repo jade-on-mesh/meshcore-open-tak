@@ -2008,7 +2008,7 @@ abstract class AppLocalizations {
   /// No description provided for @settings_clientRepeatOffGridSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Repeat others\' packets on the off-grid channel (918 MHz, 62.5 kHz in the US), with MediaMesh beside it on 918.250 MHz. Your settings come back when you turn it off.'**
+  /// **'Repeat others\' packets on the off-grid channel (918 MHz, 62.5 kHz in the US), with MediaMesh beside it on 918.800 MHz. Your settings come back when you turn it off.'**
   String get settings_clientRepeatOffGridSubtitle;
 
   /// No description provided for @settings_clientRepeatRadio2Failed.

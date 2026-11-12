@@ -1078,7 +1078,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get settings_clientRepeatOffGridSubtitle =>
-      'Repeat others\' packets on the off-grid channel (918 MHz, 62.5 kHz in the US), with MediaMesh beside it on 918.250 MHz. Your settings come back when you turn it off.';
+      'Repeat others\' packets on the off-grid channel (918 MHz, 62.5 kHz in the US), with MediaMesh beside it on 918.800 MHz. Your settings come back when you turn it off.';
 
   @override
   String get settings_clientRepeatRadio2Failed =>
