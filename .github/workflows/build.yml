@@ -17,6 +17,7 @@ on:
       - ".github/workflows/vox-fetch-aom.yml"
       - ".github/workflows/aeic-ncnn-models.yml"
       - ".github/workflows/aeic-hd-native.yml"
+      - ".github/workflows/aeic-hd-desktop.yml"
   workflow_dispatch:
 
 # MeshCore Open TAK builds Android, Windows, macOS and Linux; the publish job
@@ -204,7 +205,7 @@ jobs:
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
-          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-yasm perl
+          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-yasm mingw-w64-x86_64-zlib git perl
       # Photo messages: libaom (BSD-2) built with MinGW like Codec2, the same
       # pinned source as the Android build, into vox_av1.dll next to the exe
       # (lib/vox/av1_ffi.dart).
@@ -247,6 +248,19 @@ jobs:
           gcc -O2 -std=gnu11 -shared third_party/vox_av1/vox_av1.c -I$a/include $a/lib/libaom.a \
             -o vox_av1.dll -static-libgcc -static -lm
           ls -la vox_av1.dll
+      # AI sketch HD: the codec program, static, next to the exe
+      # (lib/vox/aeic_hd_runner_io.dart; self-tested in aeic-hd-desktop.yml).
+      - name: Cache AI sketch HD codec (Windows)
+        id: aeicwin
+        uses: actions/cache@v4
+        with:
+          path: third_party/aeic-windows
+          key: aeic-windows-x86_64-${{ hashFiles('tool/build_aeic_hd_desktop.sh', 'tool/aeic_desktop/**') }}
+      - name: Build AI sketch HD codec (Windows)
+        if: steps.aeicwin.outputs.cache-hit != 'true'
+        timeout-minutes: 40
+        shell: msys2 {0}
+        run: bash tool/build_aeic_hd_desktop.sh windows third_party/aeic-windows
       - name: Build libggwave.dll (share by sound)
         shell: msys2 {0}
         run: |
@@ -280,6 +294,7 @@ jobs:
             --dart-define=APP_VERSION="${upstream}-tak" --dart-define=APP_BUILD=$build \
             --dart-define=APP_BUILD_DATE="$(date -u '+%d %b %Y')" --dart-define=APP_COMMIT="${GITHUB_SHA::7}"
           cp libcodec2.dll libggwave.dll vox_av1.dll build/windows/x64/runner/Release/
+          cp third_party/aeic-windows/aeic_codec.exe build/windows/x64/runner/Release/
           echo "VERSION=${upstream}-tak" >> "$GITHUB_ENV"
           echo "NUMERIC_VERSION=$upstream" >> "$GITHUB_ENV"
           echo "BUILD=$build" >> "$GITHUB_ENV"
@@ -350,6 +365,31 @@ jobs:
           flutter build macos --release --no-pub --build-name="$upstream" --build-number=$build \
             --dart-define=APP_VERSION="${upstream}-tak" --dart-define=APP_BUILD=$build \
             --dart-define=APP_BUILD_DATE="$(date -u '+%d %b %Y')" --dart-define=APP_COMMIT="${GITHUB_SHA::7}"
+      # AI sketch HD: the codec program, universal, in Contents/MacOS with the
+      # sandbox it inherits from the app (macos/Runner/AeicCodec.entitlements);
+      # the app is re-sealed ad hoc around it, keeping its own entitlements.
+      - name: Cache AI sketch HD codec (macOS)
+        id: aeicmac
+        uses: actions/cache@v4
+        with:
+          path: third_party/aeic-macos
+          key: aeic-macos-universal-${{ hashFiles('tool/build_aeic_hd_desktop.sh', 'tool/aeic_desktop/**') }}
+      - name: Build AI sketch HD codec (macOS)
+        if: steps.aeicmac.outputs.cache-hit != 'true'
+        timeout-minutes: 50
+        run: |
+          brew install ninja > /dev/null || true
+          bash tool/build_aeic_hd_desktop.sh macos third_party/aeic-macos
+      - name: Add the AI sketch HD codec to the app
+        run: |
+          set -euo pipefail
+          app=$(ls -d build/macos/Build/Products/Release/*.app | head -1)
+          cp third_party/aeic-macos/aeic_codec "$app/Contents/MacOS/aeic_codec"
+          codesign --force --sign - --entitlements macos/Runner/AeicCodec.entitlements "$app/Contents/MacOS/aeic_codec"
+          codesign --force --sign - --preserve-metadata=entitlements,requirements,flags "$app"
+          codesign --verify --strict "$app"
+          codesign -d --entitlements - "$app/Contents/MacOS/aeic_codec" 2>/dev/null | grep -q com.apple.security.inherit
+          lipo -info "$app/Contents/MacOS/aeic_codec"
       - name: Check photo messages are in the app
         run: |
           set -euo pipefail
@@ -465,7 +505,7 @@ jobs:
         run: |
           # A broken third-party source on the runner must not stop the build.
           sudo apt-get update -q 2>&1 | tail -5 || true
-          pkgs="clang cmake ninja-build nasm pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev \
+          pkgs="clang cmake ninja-build nasm pkg-config zlib1g-dev libgtk-3-dev liblzma-dev libstdc++-12-dev \
             libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libsecret-1-dev libudev-dev libfuse2 file desktop-file-utils"
           # The runner's LLVM libunwind-14-dev conflicts with libgstreamer1.0-dev's
           # libunwind-dev ("held broken packages"); GStreamer is needed for audio.
@@ -504,6 +544,18 @@ jobs:
           mkdir -p $out/lib $out/include/aom
           cp /tmp/aom-build/libaom.a $out/lib/
           cp /tmp/aom/aom/*.h $out/include/aom/
+      # AI sketch HD: the codec program in the bundle's lib/
+      # (lib/vox/aeic_hd_runner_io.dart; self-tested in aeic-hd-desktop.yml).
+      - name: Cache AI sketch HD codec (Linux)
+        id: aeiclinux
+        uses: actions/cache@v4
+        with:
+          path: third_party/aeic-linux
+          key: aeic-linux-x86_64-${{ hashFiles('tool/build_aeic_hd_desktop.sh', 'tool/aeic_desktop/**') }}
+      - name: Build AI sketch HD codec (Linux)
+        if: steps.aeiclinux.outputs.cache-hit != 'true'
+        timeout-minutes: 40
+        run: bash tool/build_aeic_hd_desktop.sh linux third_party/aeic-linux
       - run: flutter pub get --enforce-lockfile
       - name: Build
         # Upstream's CMake install step now builds its own AppImage (with
@@ -532,6 +584,7 @@ jobs:
           a=third_party/aom-linux
           gcc -O2 -std=gnu11 -shared -fPIC third_party/vox_av1/vox_av1.c -I$a/include $a/lib/libaom.a \
             -o build/linux/x64/release/bundle/lib/libvox_av1.so -lm -lpthread -Wl,--exclude-libs,ALL
+          install -m 755 third_party/aeic-linux/aeic_codec build/linux/x64/release/bundle/lib/aeic_codec
       - name: Package (tar.gz and AppImage)
         run: |
           set -euo pipefail

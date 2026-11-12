@@ -22,7 +22,9 @@ class AeicHdRunner {
   Future<void> install({
     required void Function(int bytes) onTotal,
     required void Function(double progress) onProgress,
-  }) => throw UnsupportedError('AI sketch HD needs the Android app.');
+  }) => throw UnsupportedError(
+    'AI sketch HD needs the Android, Windows, macOS or Linux app.',
+  );
 
   void cancelDownload() {}
 

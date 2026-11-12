@@ -1,10 +1,13 @@
 // MeshCore Open TAK - AEIC HD: model pack download and the codec program.
 //
 // The program is mikecarper/AEIC's `aeic_decode` (it also encodes), shipped
-// in the APK as libaeic_codec_exec.so (tool/build_aeic_hd_android.sh). Each
-// job runs it once: it loads, runs and frees one model stage at a time, each
-// stage in a child process of its own, and prints a line per stage, which is
-// where the progress figure comes from.
+// in the APK as libaeic_codec_exec.so (tool/build_aeic_hd_android.sh), and
+// next to the desktop app as aeic_codec (tool/build_aeic_hd_desktop.sh):
+// Windows beside the .exe, Linux in the bundle's lib/, macOS in
+// Contents/MacOS. Each job runs it once: it loads, runs and frees one model
+// stage at a time, each stage in a child process of its own (in-process on
+// Windows), and prints a line per stage, which is where the progress figure
+// comes from.
 
 import 'dart:async';
 import 'dart:convert';
@@ -44,7 +47,23 @@ class AeicHdRunner {
   final String baseUrl;
   AeicHdRunner(this.baseUrl);
 
-  bool get supported => Platform.isAndroid;
+  bool get supported => Platform.isAndroid || _desktopProgram() != null;
+
+  /// The desktop app's bundled codec program, or null when this build (or
+  /// platform) has none.
+  static String? _desktopProgram() {
+    if (!(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+      return null;
+    }
+    final exeDir = File(Platform.resolvedExecutable).parent.path;
+    final sep = Platform.pathSeparator;
+    final path = Platform.isWindows
+        ? '$exeDir${sep}aeic_codec.exe'
+        : Platform.isLinux
+        ? '$exeDir${sep}lib${sep}aeic_codec'
+        : '$exeDir${sep}aeic_codec';
+    return File(path).existsSync() ? path : null;
+  }
 
   bool _cancelDownload = false;
   Process? _process;
@@ -61,6 +80,7 @@ class AeicHdRunner {
       File('${(await _packDir()).path}/.complete');
 
   Future<int?> totalMemory() async {
+    if (!Platform.isAndroid) return _desktopMemory();
     try {
       final m = await _channel.invokeMapMethod<String, Object?>('memory');
       return (m?['total'] as num?)?.toInt();
@@ -73,7 +93,42 @@ class AeicHdRunner {
 
   Future<bool> installed() async => (await _completeMarker).exists();
 
+  /// The computer's RAM in bytes, or null when it can't be read.
+  static Future<int?> _desktopMemory() async {
+    try {
+      if (Platform.isLinux) {
+        for (final line in await File('/proc/meminfo').readAsLines()) {
+          final m = RegExp(r'^MemTotal:\s+(\d+)\s*kB').firstMatch(line);
+          if (m != null) return int.parse(m.group(1)!) * 1024;
+        }
+        return null;
+      }
+      if (Platform.isMacOS) {
+        final r = await Process.run('/usr/sbin/sysctl', ['-n', 'hw.memsize']);
+        return int.tryParse('${r.stdout}'.trim());
+      }
+      if (Platform.isWindows) {
+        final r = await Process.run('powershell', [
+          '-NoProfile',
+          '-Command',
+          '(Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory',
+        ]);
+        return int.tryParse('${r.stdout}'.trim());
+      }
+    } catch (_) {}
+    return null;
+  }
+
   Future<String> _program() async {
+    if (!Platform.isAndroid) {
+      final path = _desktopProgram();
+      if (path == null) {
+        throw StateError(
+          'This build of the app doesn\'t include the AI sketch HD codec.',
+        );
+      }
+      return path;
+    }
     final dir = await _channel.invokeMethod<String>('nativeLibraryDir');
     final path = '$dir/libaeic_codec_exec.so';
     if (dir == null || !File(path).existsSync()) {
@@ -406,7 +461,7 @@ class AeicHdRunner {
         same = want[i] == got[i];
       }
       if (!same) {
-        return 'FAILED: this phone encodes the test photo differently from '
+        return 'FAILED: this device encodes the test photo differently from '
             'the reference codec (${got.length} vs ${want.length} bytes). '
             'Don\'t send AI sketch HD photos from it.';
       }
@@ -478,8 +533,12 @@ class AeicHdRunner {
     _process?.kill(ProcessSignal.sigkill);
   }
 
-  static int get _threads =>
-      math.max(1, math.min(4, Platform.numberOfProcessors));
+  // Four on a phone (its big cores); up to eight on a computer. ncnn gives
+  // the same numbers whatever the thread count.
+  static int get _threads => math.max(
+    1,
+    math.min(Platform.isAndroid ? 4 : 8, Platform.numberOfProcessors),
+  );
 
   static bool _contextStage(String name) =>
       name == 'h_s' || name.startsWith('ctx');

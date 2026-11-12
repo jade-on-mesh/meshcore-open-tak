@@ -200,7 +200,7 @@ class AeicHdService extends ChangeNotifier {
     await init();
     if (!isReady) {
       throw const AeicHdException(
-        'The AI sketch HD model isn\'t downloaded on this phone.',
+        'The AI sketch HD model isn\'t downloaded on this device.',
       );
     }
     // One at a time: two would each want hundreds of MB.

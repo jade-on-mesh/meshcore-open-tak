@@ -42,7 +42,7 @@ class AeicHdScreen extends StatelessWidget {
                 'A third way to send a photo, next to Mesh photos and AI '
                 'sketch. The picture is squeezed to about 1-2 KB (roughly '
                 '8-15 packets) and redrawn by an image model on the '
-                'receiving phone: far closer to the real photo than an AI '
+                'receiving device: far closer to the real photo than an AI '
                 'sketch, still about half the airtime of a Mesh photo. In '
                 'channels it goes out on MediaMesh (radio2), like Mesh '
                 'photos.',
@@ -64,7 +64,7 @@ class AeicHdScreen extends StatelessWidget {
               if (ram != null) ...[
                 const SizedBox(height: 16),
                 Text(
-                  'This phone has ${(ram / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB of memory.',
+                  'This device has ${(ram / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB of memory.',
                   style: theme.textTheme.bodySmall,
                 ),
               ],
@@ -213,7 +213,7 @@ class _SelfTestButtonState extends State<_SelfTestButton> {
       children: [
         OutlinedButton.icon(
           icon: const Icon(Icons.fact_check_outlined),
-          label: const Text('Check this phone (a few minutes)'),
+          label: const Text('Check this device (a few minutes)'),
           onPressed: _running ? null : _run,
         ),
         if (result != null) ...[
@@ -374,7 +374,7 @@ class _AeicHdSendSheetState extends State<_AeicHdSendSheet> {
                   '${payload.length} bytes, ${estimate!.chunkCount} packets'
                   '${estimate.includesParity ? ' (with parity)' : ''}, '
                   'about ${_duration(estimate.pacedWallClock)} to send. '
-                  'The receiving phone takes a few minutes to draw it.',
+                  'The receiving device takes a few minutes to draw it.',
                 ),
               const SizedBox(height: 12),
               Row(
