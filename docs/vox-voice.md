@@ -185,7 +185,7 @@ Short clips ride the same transport as photos, with the same budgets, so a
 video never costs more airtime than a Super Sharp photo. They're announced
 with `VV1:` (same fields as `VE3:`, mode id 41 = `15`, the last field is the
 clip's length in seconds), then the word `VIDEO` and any caption. Sent from
-Android; played wherever photos show.
+Android and iPhone; played wherever photos show.
 
 - **Codec.** One AV1 sequence (libaom good-quality mode, a key frame then
   inter frames, constant quantizer), 4:2:0 like the photos. Each encoder
@@ -206,9 +206,12 @@ Android; played wherever photos show.
   (from 96 px at 6 fps up to 256 px at 12 fps), then the quantizer is found
   by bisection at speed 6 and re-encoded at speed 4. A 10 s clip at Max comes
   out about 160×120 at 12 fps. The preview is the decoded result.
-- **Reading the clip** (`VoxVideoChannel.kt`): frames through
+- **Reading the clip.** Android (`VoxVideoChannel.kt`): frames through
   `MediaMetadataRetriever` (in order, a few at a time, on Android 9+), sound
-  through `MediaExtractor`/`MediaCodec` to 48 kHz mono.
+  through `MediaExtractor`/`MediaCodec` to 48 kHz mono. iPhone
+  (`MeshVideoReader` in `ios/Runner/AppDelegate.swift`): frames through
+  `AVAssetImageGenerator` in one batch (upright, SDR), sound through
+  `AVAssetReader`, which resamples to 48 kHz mono itself.
 - **Not on Wadamesh.** Standalone radios show the envelope as text.
 
 ## Testing: force voice through repeaters

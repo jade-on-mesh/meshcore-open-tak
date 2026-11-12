@@ -30,7 +30,7 @@ Future<void> showVoxVideoPicker(
   if (!VoxVideoSource.isSupported || !voice.videosAvailable) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Video messages can only be sent from Android.'),
+        content: Text('Video messages can only be sent from Android and iPhone.'),
       ),
     );
     return;
