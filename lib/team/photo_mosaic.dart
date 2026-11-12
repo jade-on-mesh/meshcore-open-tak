@@ -108,7 +108,8 @@ List<MosaicPhoto> collectMosaicPhotos(
   TeamService team, {
   bool voice = false,
 }) {
-  bool wanted(VoxVoiceEnvelope env) => voice ? !env.isImage : env.isImage;
+  bool wanted(VoxVoiceEnvelope env) =>
+      voice ? env.mode.isAudio : env.isImage;
   final out = <String, MosaicPhoto>{};
 
   (double, double)? senderAt(String name, DateTime t, bool own) {
@@ -168,7 +169,7 @@ List<MosaicPhoto> collectMosaicPhotos(
   VoxVoiceEnvelope? attached(TeamAttachment? a) {
     if (a == null) return null;
     final mode = VoxVoiceMode.fromWireId(a.modeWireId);
-    if (mode == null || mode.isImage == voice) return null;
+    if (mode == null || (voice ? !mode.isAudio : !mode.isImage)) return null;
     return VoxVoiceEnvelope(
       sessionId: a.sessionId,
       mode: mode,

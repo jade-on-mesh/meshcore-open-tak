@@ -63,6 +63,18 @@ enum VoxVoiceMode {
     label: 'AV1 image',
     bytesPerFrame: 1,
     frameMs: 1,
+  ),
+
+  /// AV1 video clip with its sound (VOX only), announced with `VV1:`. Sent
+  /// like a photo (one byte per "frame", whole packets of
+  /// [voxMaxCodecBytesPerPacket]); the envelope's last field is the clip's
+  /// length in seconds. Payload: video_codec.dart.
+  av1Video(
+    wireId: 41,
+    codec2Id: -1,
+    label: 'AV1 video',
+    bytesPerFrame: 1,
+    frameMs: 1,
   );
 
   const VoxVoiceMode({
@@ -84,8 +96,13 @@ enum VoxVoiceMode {
 
   bool get isMimi => this == mimi;
   bool get isImage => this == av1Image;
-  bool get isAudio => !isImage;
-  bool get isCodec2 => !isMimi && !isImage;
+  bool get isVideo => this == av1Video;
+
+  /// A photo or video: one blob, shown once all of it is here, rather than
+  /// a voice clip.
+  bool get isMedia => isImage || isVideo;
+  bool get isAudio => !isMedia;
+  bool get isCodec2 => !isMimi && !isMedia;
 
   int get samplesPerFrame => sampleRateHz * frameMs ~/ 1000;
   int get bytesPerSecond => bytesPerFrame * 1000 ~/ frameMs;
@@ -254,6 +271,9 @@ const String voxVoiceLabel = 'VOICE';
 /// The plain word after a photo's envelope: `VI1:1ps9wxb:k:i:4b IMAGE caption`.
 const String voxImageLabel = 'IMAGE';
 
+/// The plain word after a video's envelope: `VV1:1ps9wxb:15:6v:a VIDEO`.
+const String voxVideoLabel = 'VIDEO';
+
 /// The longest of the labels above (bytes).
 const int voxKindLabelMaxLength = 5;
 
@@ -277,8 +297,14 @@ class VoxVoiceEnvelope {
   /// the aspect ratio (width * 100 / height) rather than a duration.
   static const String imagePrefix = 'VI1:';
 
+  /// AV1 video clips (VOX only). Same fields as VE3; the last is the clip's
+  /// length in seconds.
+  static const String videoPrefix = 'VV1:';
+
   static String prefixFor(VoxVoiceMode mode) => mode.isImage
       ? imagePrefix
+      : mode.isVideo
+      ? videoPrefix
       : mode.isMimi
       ? mimiPrefix
       : prefix;
@@ -314,20 +340,28 @@ class VoxVoiceEnvelope {
     final env = tryParse(text);
     if (env == null) return null;
     if (env.isTalk) return '🎙 Talk';
-    final kind = env.isImage ? '📷 Photo' : '🎙 Voice message';
+    final kind = env.isImage
+        ? '📷 Photo'
+        : env.isVideo
+        ? '🎬 Video'
+        : '🎙 Voice message';
     return env.caption.isEmpty ? kind : '$kind: ${env.caption}';
   }
 
   static bool looksLikeEnvelope(String text) =>
       text.startsWith(prefix) ||
       text.startsWith(mimiPrefix) ||
-      text.startsWith(imagePrefix);
+      text.startsWith(imagePrefix) ||
+      text.startsWith(videoPrefix);
 
   static VoxVoiceEnvelope? tryParse(String text) {
     final t = text.trim();
     if (t.length < prefix.length) return null;
     final head = t.substring(0, prefix.length);
-    if (head != prefix && head != mimiPrefix && head != imagePrefix) {
+    if (head != prefix &&
+        head != mimiPrefix &&
+        head != imagePrefix &&
+        head != videoPrefix) {
       return null;
     }
     // The envelope ends at the first whitespace; any text after it is the
@@ -362,6 +396,8 @@ class VoxVoiceEnvelope {
   /// The plain word that follows [mode]'s envelope; null for Codec2 (VE3).
   static String? labelFor(VoxVoiceMode mode) => mode.isImage
       ? voxImageLabel
+      : mode.isVideo
+      ? voxVideoLabel
       : mode.isMimi
       ? voxVoiceLabel
       : null;
@@ -396,16 +432,20 @@ class VoxVoiceEnvelope {
   }
 
   bool get isImage => mode.isImage;
+  bool get isVideo => mode.isVideo;
+
+  /// A photo or video (see [VoxVoiceMode.isMedia]).
+  bool get isMedia => mode.isMedia;
 
   /// A push-to-talk, announced with the [walkieTalkCaption] caption.
-  bool get isTalk => !isImage && caption == walkieTalkCaption;
+  bool get isTalk => !isMedia && caption == walkieTalkCaption;
 
   /// Image aspect ratio (width / height); 1 for audio or unknown.
   double get imageAspect =>
       isImage && durationSeconds > 0 ? durationSeconds / 100 : 1;
 
   /// Estimated payload bytes for the whole clip (for airtime display).
-  int get estimatedCodecBytes => isImage
+  int get estimatedCodecBytes => isMedia
       ? totalPackets * mode.bytesPerPacket
       : min(
           totalPackets * mode.bytesPerPacket,

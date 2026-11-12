@@ -15,6 +15,7 @@ format, so other VE3 apps can exchange them.
 | `lib/vox/voice_record_sheet.dart` | Record / Play / Discard / Send sheet and mic button |
 | `lib/vox/voice_message_bubble.dart` | Voice bubble: download, progress, playback |
 | `lib/vox/voice_clip_store*.dart` | On-disk cache of complete clips |
+| `lib/vox/video_codec.dart`, `video_send_sheet.dart`, `video_message_bubble.dart`, `video_player.dart`, `video_source.dart` | Video messages: payload and fitting, send sheet, bubble, player, reading a picked clip |
 | `third_party/codec2`, `android/app/src/main/cpp` | Vendored Codec2 and its Android build |
 
 ## Codecs
@@ -177,6 +178,38 @@ ratio, width × 100 / height). Android only.
   detail, the sheet suggests More detail.
 - **Receiving** follows the auto-play setting: new photo DMs download on
   arrival; channel photos download on tap unless channel auto-download is on.
+
+## Video messages
+
+Short clips ride the same transport as photos, with the same budgets, so a
+video never costs more airtime than a Super Sharp photo. They're announced
+with `VV1:` (same fields as `VE3:`, mode id 41 = `15`, the last field is the
+clip's length in seconds), then the word `VIDEO` and any caption. Sent from
+Android; played wherever photos show.
+
+- **Codec.** One AV1 sequence (libaom good-quality mode, a key frame then
+  inter frames, constant quantizer), 4:2:0 like the photos. Each encoder
+  packet is stored as a LEB128 length and its OBUs, temporal delimiter
+  removed. Native code: `vox_av1_clip_encode` / `vox_av1_clip_decode` in
+  `third_party/vox_av1/vox_av1.c`.
+- **Payload** (version 3, `lib/vox/video_codec.dart`):
+  `[3][thumb len][thumb][w:2][h:2][fps][frames:2][ms:2][sound mode][sound len:2][sound][video]`.
+  The thumbnail is the first frame as a photo thumbnail, in the same place, so
+  bubbles show it from the first two packets exactly as for photos. The
+  sound is a voice message's bits (Mimi or Codec2, `sound mode` is its wire
+  id, 255 for none).
+- **Budgets.** Quick 11 KB (71 packets, 6 s), Clear 22 KB (141 packets,
+  10 s), Max 38.5 KB (247 packets, 15 s: Super Sharp). A longer clip sends
+  its start.
+- **Fitting.** The sound comes off the top of the budget. The frame size and
+  rate are the most pixels per second that still get 0.12 bits per pixel
+  (from 96 px at 6 fps up to 256 px at 12 fps), then the quantizer is found
+  by bisection at speed 6 and re-encoded at speed 4. A 10 s clip at Max comes
+  out about 160×120 at 12 fps. The preview is the decoded result.
+- **Reading the clip** (`VoxVideoChannel.kt`): frames through
+  `MediaMetadataRetriever` (in order, a few at a time, on Android 9+), sound
+  through `MediaExtractor`/`MediaCodec` to 48 kHz mono.
+- **Not on Wadamesh.** Standalone radios show the envelope as text.
 
 ## Testing: force voice through repeaters
 

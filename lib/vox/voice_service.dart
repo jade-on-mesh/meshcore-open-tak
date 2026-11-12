@@ -37,6 +37,7 @@ import '../services/image_chunk_transport.dart'
 import 'voice_clip_store.dart';
 import 'av1_ffi.dart';
 import 'image_codec.dart';
+import 'video_codec.dart';
 import 'mimi.dart';
 import 'resample.dart';
 import 'voice_codec.dart';
@@ -785,7 +786,7 @@ class VoxVoiceService extends ChangeNotifier {
     final cached = _waves[sid];
     if (cached != null) return cached;
     final bits = _bits[sid];
-    if (env.mode.isMimi || env.isImage) return null;
+    if (env.mode.isMimi || env.isMedia) return null;
     if (bits == null) return _partialWaveform(env);
     _partialWaves.remove(sid);
     try {
@@ -1097,7 +1098,7 @@ class VoxVoiceService extends ChangeNotifier {
     unawaited(_refreshMediaAir()); // ready before the first request
     _logEvent(
       'sent ${env.totalPackets}-packet ${clip.mode.label} '
-      '${clip.mode.isImage ? '(${clip.bits.length}B)' : 'clip'} to ${contact.name} '
+      '${clip.mode.isMedia ? '(${clip.bits.length}B)' : 'clip'} to ${contact.name} '
       '(route ${contact.pathLength < 0 ? 'flood' : '${contact.pathLength} hops'})',
       env.sessionId,
     );
@@ -1184,7 +1185,7 @@ class VoxVoiceService extends ChangeNotifier {
       () => _ChannelBurst(sid, channel),
     );
     burst.pending.addAll(List<int>.generate(total, (i) => i));
-    burst.addParity(total, image: _modes[sid]!.isImage);
+    burst.addParity(total, image: _modes[sid]!.isMedia);
     burst.pushing = true;
     _pushedAt[sid] = DateTime.now();
     _pushedAt.removeWhere(
@@ -1688,7 +1689,7 @@ class VoxVoiceService extends ChangeNotifier {
     _fail(
       clip,
       clip.packets.isEmpty
-          ? '${clip.envelope.isImage ? 'Photo' : 'Voice'} unavailable right now. Tap to retry.'
+          ? '${_kindWord(clip.envelope)} unavailable right now. Tap to retry.'
           : 'Got ${clip.packets.length}/${clip.envelope.totalPackets}. '
                 'Tap to retry.',
     );
@@ -1739,7 +1740,7 @@ class VoxVoiceService extends ChangeNotifier {
   final Map<String, Future<Uint8List?>> _decoding = {};
 
   /// Whether this device can decode [env]'s codec right now.
-  bool canPlay(VoxVoiceEnvelope env) => env.mode.isImage
+  bool canPlay(VoxVoiceEnvelope env) => env.mode.isMedia
       ? false
       : env.mode.isMimi
       ? mimi.isReady
@@ -1796,7 +1797,7 @@ class VoxVoiceService extends ChangeNotifier {
   /// a photo from a version that sends none); decoding starts on the first
   /// call and [notifyListeners] says when it's ready.
   VoxRgbImage? thumbFor(VoxVoiceEnvelope env) {
-    if (!env.isImage || !imagesAvailable) return null;
+    if (!env.isMedia || !imagesAvailable) return null;
     final sid = env.sessionId;
     final cached = _thumbCache[sid];
     if (cached != null ||
@@ -1873,6 +1874,152 @@ class VoxVoiceService extends ChangeNotifier {
     image.payload,
     voxAspectCode(image.aspect),
   );
+
+  static String _kindWord(VoxVoiceEnvelope env) => env.isImage
+      ? 'Photo'
+      : env.isVideo
+      ? 'Video'
+      : 'Voice';
+
+  // ----------------------------------------------------------------- videos
+
+  /// Whether this build can encode and show video messages.
+  bool get videosAvailable => VoxAv1.instanceOrNull?.hasClips ?? false;
+
+  /// Decoded clips, most recently used last (a few: they are big).
+  final Map<String, VoxPlayableVideo> _videoCache = {};
+  final Map<String, Future<VoxPlayableVideo?>> _videoDecoding = {};
+
+  /// The received (or sent) clip for [env], frames and sound decoded off the
+  /// UI thread. Null until it is complete, or if it can't be decoded.
+  Future<VoxPlayableVideo?> videoFor(VoxVoiceEnvelope env) {
+    final sid = env.sessionId;
+    final cached = _videoCache.remove(sid);
+    if (cached != null) {
+      _videoCache[sid] = cached;
+      return Future.value(cached);
+    }
+    return _videoDecoding[sid] ??= () async {
+      try {
+        await _loadFromStore(sid);
+        final bits = _bits[sid];
+        if (bits == null || !videosAvailable) return null;
+        final info = voxVideoInfo(bits);
+        if (info == null) {
+          _logEvent('video is not in a format this build reads', sid);
+          return null;
+        }
+        final sw = Stopwatch()..start();
+        final frames = await compute(_decodeVideoJob, bits);
+        if (frames == null) {
+          _logEvent('video did not decode', sid);
+          return null;
+        }
+        _logEvent(
+          'video decoded in ${sw.elapsedMilliseconds}ms: '
+          '${frames.count} frames ${frames.width}x${frames.height} '
+          '@${frames.fps}fps',
+          sid,
+        );
+        Uint8List? wav;
+        String? soundNote;
+        final sm = info.soundMode;
+        if (sm != null && info.sound.isNotEmpty) {
+          if (sm.isMimi && !mimi.isReady) {
+            soundNote = 'Sound needs the Mimi voice model';
+          } else if (sm.isCodec2 && !voxCodecAvailable) {
+            soundNote = 'Sound can\'t play on this device';
+          } else {
+            try {
+              wav = await _decodeToWav(sm, Uint8List.fromList(info.sound));
+            } catch (e) {
+              _logEvent('video sound did not decode: $e', sid);
+              soundNote = 'Sound did not decode';
+            }
+          }
+        }
+        final v = VoxPlayableVideo(
+          frames: frames,
+          durationMs: info.durationMs,
+          wav: wav,
+          soundNote: soundNote,
+          hasSound: sm != null,
+        );
+        _videoCache[sid] = v;
+        while (_videoCache.length > 4) {
+          _videoCache.remove(_videoCache.keys.first);
+        }
+        notifyListeners();
+        return v;
+      } finally {
+        _videoDecoding.remove(sid);
+      }
+    }();
+  }
+
+  /// A decoded clip from the cache, without decoding (null if not there).
+  VoxPlayableVideo? cachedVideo(VoxVoiceEnvelope env) =>
+      _videoCache[env.sessionId];
+
+  /// Codes [pcm48k] (a picked clip's sound) as a voice message would be,
+  /// cut to [seconds]. Null when there is nothing to hear or no voice codec
+  /// here.
+  Future<VoxEncodedClip?> encodeVideoSound(Int16List pcm48k, int seconds) async {
+    if (pcm48k.isEmpty) return null;
+    final n = min(pcm48k.length, seconds * voxRecordSampleRate);
+    try {
+      return await encodeRecording(Int16List.sublistView(pcm48k, 0, n));
+    } catch (e) {
+      _logEvent('video sound not coded: $e');
+      return null;
+    }
+  }
+
+  /// Encodes a clip for sending, off the UI thread.
+  Future<VoxEncodedVideo> encodeVideo(
+    VoxVideoFrames source,
+    VoxVideoDetail detail, {
+    VoxEncodedClip? sound,
+  }) async {
+    final sw = Stopwatch()..start();
+    final enc = await compute(
+      _encodeVideoJob,
+      _VideoEncodeJob(source, detail, sound?.mode, sound?.bits),
+    );
+    _logEvent(
+      'video encoded in ${sw.elapsedMilliseconds}ms: ${enc.payload.length}B, '
+      '${enc.preview.width}x${enc.preview.height} @${enc.preview.fps}fps, '
+      'q${enc.q}, sound ${enc.soundMode?.label ?? 'none'} '
+      '(${enc.sound.length}B)',
+    );
+    return enc;
+  }
+
+  /// The clip's sound as the receiver will hear it, as a WAV file.
+  Future<Uint8List?> videoSoundPreview(VoxEncodedVideo video) async {
+    final m = video.soundMode;
+    if (m == null || video.sound.isEmpty) return null;
+    try {
+      return await _decodeToWav(m, video.sound, enhance: false);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<VoxVoiceEnvelope> sendVideoToContact(
+    Contact contact,
+    VoxEncodedVideo video, {
+    String caption = '',
+  }) => sendClipToContact(contact, _videoClip(video), caption: caption);
+
+  Future<VoxVoiceEnvelope> sendVideoToChannel(
+    Channel channel,
+    VoxEncodedVideo video, {
+    String caption = '',
+  }) => sendClipToChannel(channel, _videoClip(video), caption: caption);
+
+  VoxEncodedClip _videoClip(VoxEncodedVideo video) =>
+      VoxEncodedClip(VoxVoiceMode.av1Video, video.payload, video.seconds);
 
   // --------------------------------------------------------------- playback
 
@@ -2057,6 +2204,8 @@ class VoxVoiceService extends ChangeNotifier {
     if (_bits.containsKey(env.sessionId) && _tapSids.remove(env.sessionId)) {
       if (env.isImage) {
         unawaited(imageFor(env));
+      } else if (env.isVideo) {
+        unawaited(videoFor(env));
       } else {
         unawaited(play(env));
       }
@@ -2103,7 +2252,7 @@ class VoxVoiceService extends ChangeNotifier {
       return;
     }
     if (channelIndex != null &&
-        !env.isImage &&
+        !env.isMedia &&
         (channelVoiceMuted?.call(channelIndex) ?? false)) {
       // Voice muted in this channel: shown, played on a tap.
       _logEvent('auto-play skipped: voice muted in this channel', sid);
@@ -2115,8 +2264,8 @@ class VoxVoiceService extends ChangeNotifier {
       return;
     }
     _autoSids.add(sid);
-    if (env.isImage) {
-      if (!imagesAvailable) {
+    if (env.isMedia) {
+      if (env.isVideo ? !videosAvailable : !imagesAvailable) {
         _autoSids.remove(sid);
         return;
       }
@@ -2145,7 +2294,7 @@ class VoxVoiceService extends ChangeNotifier {
   /// ask brings them to everyone on the channel, so each waits a little
   /// (spread out) first.
   void _probeThumb(VoxVoiceEnvelope env, {Contact? sender, int? channelIndex}) {
-    if (!env.isImage || !imagesAvailable) return;
+    if (!env.isMedia || !imagesAvailable) return;
     final sid = env.sessionId;
     if (!_thumbProbed.add(sid)) return;
     if (_thumbProbed.length > 64) _thumbProbed.remove(_thumbProbed.first);
@@ -2259,7 +2408,7 @@ class VoxVoiceService extends ChangeNotifier {
         sid,
       );
     }
-    if (!env.isImage && _partialPlayed.contains(sid)) {
+    if (!env.isMedia && _partialPlayed.contains(sid)) {
       // Heard already with gaps: ready to play whole, not played again.
       _tapSids.remove(sid);
       _autoSids.remove(sid);
@@ -2267,10 +2416,11 @@ class VoxVoiceService extends ChangeNotifier {
       if (canPlay(env)) unawaited(wavFor(env));
       return;
     }
-    if (env.isImage) {
+    if (env.isMedia) {
       _tapSids.remove(sid);
       _autoSids.remove(sid);
-      unawaited(imageFor(env)); // decode now so it shows at once
+      // Decode now so it shows at once.
+      unawaited(env.isVideo ? videoFor(env) : imageFor(env));
       return;
     }
     if (_tapSids.remove(sid)) {
@@ -2654,7 +2804,7 @@ class VoxVoiceService extends ChangeNotifier {
         {for (final p in pk) p.index: p.codecData},
         pk.length,
         whole: true,
-        image: mode.isImage,
+        image: mode.isMedia,
       );
     }
     final clip = _incoming[sid];
@@ -2663,7 +2813,7 @@ class VoxVoiceService extends ChangeNotifier {
       Map.of(clip.packets),
       clip.envelope.totalPackets,
       whole: false,
-      image: clip.envelope.isImage,
+      image: clip.envelope.isMedia,
     );
   }
 
@@ -4146,6 +4296,40 @@ VoxRgbImage? _decodeImageJob(Uint8List payload) {
   final av1 = VoxAv1.instanceOrNull;
   if (av1 == null) return null;
   return voxDecodeImagePayload(payload, (obus) => av1.decode(obus));
+}
+
+class _VideoEncodeJob {
+  final VoxVideoFrames source;
+  final VoxVideoDetail detail;
+  final VoxVoiceMode? soundMode;
+  final Uint8List? sound;
+  _VideoEncodeJob(this.source, this.detail, this.soundMode, this.sound);
+}
+
+VoxEncodedVideo _encodeVideoJob(_VideoEncodeJob j) {
+  final av1 = VoxAv1.instanceOrNull;
+  if (av1 == null || !av1.hasClips) {
+    throw StateError('Video is not in this build (${VoxAv1.loadError})');
+  }
+  return voxEncodeVideo(
+    source: j.source,
+    detail: j.detail,
+    soundMode: j.soundMode,
+    sound: j.sound,
+    encode: (f, q, speed) =>
+        av1.encodeClip(f.rgb, f.width, f.height, f.count, f.fps, q, speed: speed),
+    decode: (stream, w, h, n) => av1.decodeClip(stream, w, h, n),
+    encodeStill: (img, q, speed) => av1.encode(img, q, speed: speed),
+  );
+}
+
+VoxVideoFrames? _decodeVideoJob(Uint8List payload) {
+  final av1 = VoxAv1.instanceOrNull;
+  if (av1 == null || !av1.hasClips) return null;
+  return voxDecodeVideoPayload(
+    payload,
+    (stream, w, h, n) => av1.decodeClip(stream, w, h, n),
+  );
 }
 
 /// One listener's asks for one clip (VoiceService._noteAsk).

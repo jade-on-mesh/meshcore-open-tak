@@ -16,6 +16,7 @@ import '../services/app_settings_service.dart';
 import '../services/chat_text_scale_service.dart';
 import 'image_message_bubble.dart';
 import 'mimi.dart';
+import 'video_message_bubble.dart';
 import 'voice_service.dart';
 import 'voice_wire.dart';
 import 'vox_voice_enhance.dart';
@@ -141,7 +142,7 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
     final caption = widget.envelope.caption;
     // A photo puts its caption under the picture itself; a talk's caption is
     // only its marker.
-    if (caption.isEmpty || widget.envelope.isImage || widget.envelope.isTalk) {
+    if (caption.isEmpty || widget.envelope.isMedia || widget.envelope.isTalk) {
       return media;
     }
     return Column(
@@ -156,6 +157,16 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
   }
 
   Widget _buildMedia(BuildContext context) {
+    if (widget.envelope.isVideo) {
+      return VoxVideoMessageContent(
+        key: ValueKey('vox-video-${widget.envelope.sessionId}'),
+        envelope: widget.envelope,
+        isOutgoing: widget.isOutgoing,
+        textColor: widget.textColor,
+        sender: widget.sender,
+        channelIndex: widget.channelIndex,
+      );
+    }
     if (widget.envelope.isImage) {
       return VoxImageMessageContent(
         key: ValueKey('vox-image-${widget.envelope.sessionId}'),

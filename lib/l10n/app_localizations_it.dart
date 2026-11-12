@@ -2396,6 +2396,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get chat_sendPhoto => 'Send a photo';
 
   @override
+  String get chat_sendVideo => 'Send a video';
+
+  @override
   String get chat_originalMessageNotFound => 'Messaggio originale non trovato';
 
   @override

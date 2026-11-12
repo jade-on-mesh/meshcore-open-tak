@@ -81,6 +81,8 @@ import 'telemetry_screen.dart';
 import '../vox/aeic_hd_screens.dart';
 import '../vox/caption_field.dart';
 import '../vox/image_send_sheet.dart';
+import '../vox/video_send_sheet.dart';
+import '../vox/video_source.dart';
 import '../vox/voice_message_bubble.dart';
 import '../vox/voice_record_sheet.dart';
 import '../vox/walkie_service.dart';
@@ -1056,6 +1058,13 @@ class _ChatScreenState extends State<ChatScreen> {
             icon: Icons.add_photo_alternate_outlined,
             label: context.l10n.chat_sendPhoto,
           ),
+          if (VoxVideoSource.isSupported &&
+              context.read<VoxVoiceService>().videosAvailable)
+            ChatComposerAction(
+              id: 'video',
+              icon: Icons.videocam_outlined,
+              label: context.l10n.chat_sendVideo,
+            ),
           if (context.read<WalkieService>().available)
             ChatComposerAction(
               id: 'walkie',
@@ -1121,6 +1130,18 @@ class _ChatScreenState extends State<ChatScreen> {
                   context.read<VoxVoiceService>().sendImageToContact(
                     _resolveContact(connector),
                     image,
+                    caption: text,
+                  ),
+            );
+          case 'video':
+            showVoxVideoPicker(
+              context,
+              recipientLabel: _resolveContact(connector).name,
+              caption: caption,
+              onSend: (video, text) =>
+                  context.read<VoxVoiceService>().sendVideoToContact(
+                    _resolveContact(connector),
+                    video,
                     caption: text,
                   ),
             );

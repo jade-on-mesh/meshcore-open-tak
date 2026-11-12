@@ -50,6 +50,51 @@ typedef _DecodeD =
       Pointer<Int32> hOut,
     );
 
+typedef _ClipEncodeC =
+    Int32 Function(
+      Pointer<Uint8> rgb,
+      Int32 w,
+      Int32 h,
+      Int32 frames,
+      Int32 fps,
+      Int32 q,
+      Int32 speed,
+      Int32 threads,
+      Pointer<Uint8> out,
+      Int32 outCap,
+    );
+typedef _ClipEncodeD =
+    int Function(
+      Pointer<Uint8> rgb,
+      int w,
+      int h,
+      int frames,
+      int fps,
+      int q,
+      int speed,
+      int threads,
+      Pointer<Uint8> out,
+      int outCap,
+    );
+typedef _ClipDecodeC =
+    Int32 Function(
+      Pointer<Uint8> data,
+      Int32 len,
+      Pointer<Uint8> rgbOut,
+      Int32 maxFrames,
+      Int32 w,
+      Int32 h,
+    );
+typedef _ClipDecodeD =
+    int Function(
+      Pointer<Uint8> data,
+      int len,
+      Pointer<Uint8> rgbOut,
+      int maxFrames,
+      int w,
+      int h,
+    );
+
 /// An RGB888 picture.
 class VoxRgbImage {
   final int width;
@@ -61,10 +106,25 @@ class VoxRgbImage {
 class VoxAv1 {
   VoxAv1._(DynamicLibrary lib)
     : _encode = lib.lookupFunction<_EncodeC, _EncodeD>('vox_av1_encode'),
-      _decode = lib.lookupFunction<_DecodeC, _DecodeD>('vox_av1_decode');
+      _decode = lib.lookupFunction<_DecodeC, _DecodeD>('vox_av1_decode'),
+      _clipEncode = lib.providesSymbol('vox_av1_clip_encode')
+          ? lib.lookupFunction<_ClipEncodeC, _ClipEncodeD>(
+              'vox_av1_clip_encode',
+            )
+          : null,
+      _clipDecode = lib.providesSymbol('vox_av1_clip_decode')
+          ? lib.lookupFunction<_ClipDecodeC, _ClipDecodeD>(
+              'vox_av1_clip_decode',
+            )
+          : null;
 
   final _EncodeD _encode;
   final _DecodeD _decode;
+  final _ClipEncodeD? _clipEncode;
+  final _ClipDecodeD? _clipDecode;
+
+  /// This build's library codes video clips too.
+  bool get hasClips => _clipEncode != null && _clipDecode != null;
 
   static VoxAv1? _instance;
   static Object? _loadError;
@@ -158,6 +218,61 @@ class VoxAv1 {
       calloc.free(wOut);
       calloc.free(hOut);
       if (rgb != nullptr) malloc.free(rgb);
+    }
+  }
+
+  /// Encodes [frames] RGB888 pictures of [w] x [h] (back to back in [rgb])
+  /// shown at [fps], at quantizer [q] (0 best .. 63 smallest). Returns the
+  /// packed stream (vox_av1.c), or null on failure.
+  Uint8List? encodeClip(
+    Uint8List rgb,
+    int w,
+    int h,
+    int frames,
+    int fps,
+    int q, {
+    int speed = 6,
+    int threads = 4,
+  }) {
+    final enc = _clipEncode;
+    if (enc == null) return null;
+    final n = rgb.length;
+    final src = calloc<Uint8>(n);
+    var cap = 65536;
+    var out = calloc<Uint8>(cap);
+    try {
+      src.asTypedList(n).setAll(0, rgb);
+      var r = enc(src, w, h, frames, fps, q, speed, threads, out, cap);
+      if (r < 0) {
+        calloc.free(out);
+        cap = -r;
+        out = calloc<Uint8>(cap);
+        r = enc(src, w, h, frames, fps, q, speed, threads, out, cap);
+      }
+      if (r <= 0) return null;
+      return Uint8List.fromList(out.asTypedList(r));
+    } finally {
+      calloc.free(src);
+      calloc.free(out);
+    }
+  }
+
+  /// Decodes a stream from [encodeClip] into at most [maxFrames] pictures of
+  /// [w] x [h], back to back. Null if it doesn't decode.
+  Uint8List? decodeClip(Uint8List stream, int w, int h, int maxFrames) {
+    final dec = _clipDecode;
+    if (dec == null || w < 1 || h < 1 || maxFrames < 1) return null;
+    final data = calloc<Uint8>(stream.length);
+    final frameBytes = w * h * 3;
+    final rgb = malloc<Uint8>(frameBytes * maxFrames);
+    try {
+      data.asTypedList(stream.length).setAll(0, stream);
+      final r = dec(data, stream.length, rgb, maxFrames, w, h);
+      if (r < 1) return null;
+      return Uint8List.fromList(rgb.asTypedList(frameBytes * r));
+    } finally {
+      calloc.free(data);
+      malloc.free(rgb);
     }
   }
 

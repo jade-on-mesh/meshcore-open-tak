@@ -73,6 +73,20 @@ The source is `third_party/vox_av1/vox_av1.c`.
 
 Voice uses Codec2, which the Windows, macOS and Linux builds include.
 
+## Video messages (MeshCore Open TAK)
+
+Send a short clip from the chat's **+** menu: **Send a video**, then record one or choose one from the gallery. The sheet shows and plays exactly what the receiver will get, sound included.
+
+| Choice | Bytes | Packets | Longest clip | Air at 250 kHz SF7 |
+|---|---|---|---|---|
+| Quick | 11 KB | 71 | 6 s | ~11 s |
+| Clear | 22 KB | 141 | 10 s | ~23 s |
+| Max | 38.5 KB | 247 | 15 s | ~40 s |
+
+Max is the same size as a Super Sharp photo: the most one transfer can carry. Clips are small (a 10 s clip at Max is about 160×120 at 12 frames a second) and the app picks the size and frame rate for the length and choice. The sound is coded like a voice message (Mimi, or Codec2 without the Mimi model); turn **Sound** off to give the picture all the bytes. A longer clip sends its first part.
+
+A video goes out as `VV1:<id>:15:<packets>:<seconds> VIDEO`, then any caption, and travels like a photo, on MediaMesh where photos go there. The bubble shows the first frame as soon as the first two packets arrive; tap to download, tap again to play, or open it full screen. Videos are sent from Android and play on every app that shows Mesh photos. Wadamesh standalones and older versions of the app show the text.
+
 ## Voice restorer (MeshCore Open TAK)
 
 Codec2 sounds buzzy and robotic, and it carries speech only up to 4 kHz, so

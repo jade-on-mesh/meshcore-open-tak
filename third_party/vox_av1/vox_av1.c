@@ -232,3 +232,207 @@ VOX_EXPORT int vox_av1_decode(const uint8_t *data, int len, uint8_t *rgb_out,
   free(tu);
   return result;
 }
+
+// ---------------------------------------------------------------- clips
+//
+// Short video clips: the same 4:2:0 full-range BT.601 frames as the stills,
+// coded as one AV1 sequence (a key frame, then inter frames). The stream is
+// packed as one record per encoder packet: LEB128 length, then the OBUs of
+// that temporal unit with its temporal delimiter removed (the decoder adds
+// it back). A clip is only ever shown once all of it is here, so nothing in
+// it needs to survive loss.
+
+static size_t leb128_put(uint8_t *p, size_t v) {
+  size_t n = 0;
+  do {
+    uint8_t b = (uint8_t)(v & 0x7f);
+    v >>= 7;
+    if (v) b |= 0x80;
+    if (p) p[n] = b;
+    n++;
+  } while (v);
+  return n;
+}
+
+static int leb128_get(const uint8_t *p, size_t len, size_t *pos, size_t *v) {
+  size_t out = 0;
+  for (int i = 0; i < 8; i++) {
+    if (*pos >= len) return 0;
+    uint8_t b = p[(*pos)++];
+    out |= (size_t)(b & 0x7f) << (7 * i);
+    if (!(b & 0x80)) {
+      *v = out;
+      return 1;
+    }
+  }
+  return 0;
+}
+
+// Encodes `frames` RGB888 pictures (w*h*3 bytes each, back to back) shown at
+// `fps`, at constant quantizer q (0 best .. 63 smallest) and libaom speed
+// (0 slowest .. 9 fastest). Writes the packed stream to out. Returns the
+// bytes written, -(bytes needed) if out_cap is too small, or 0 on error.
+VOX_EXPORT int vox_av1_clip_encode(const uint8_t *rgb, int w, int h,
+                                   int frames, int fps, int q, int speed,
+                                   int threads, uint8_t *out, int out_cap) {
+  if (!rgb || w < 2 || h < 2 || frames < 1 || fps < 1 || q < 0 || q > 63) {
+    return 0;
+  }
+  if (speed < 0) speed = 0;
+  if (speed > 9) speed = 9;
+  aom_codec_iface_t *iface = aom_codec_av1_cx();
+  aom_codec_enc_cfg_t cfg;
+  if (aom_codec_enc_config_default(iface, &cfg, AOM_USAGE_GOOD_QUALITY)) {
+    return 0;
+  }
+  cfg.g_w = (unsigned)w;
+  cfg.g_h = (unsigned)h;
+  cfg.g_bit_depth = AOM_BITS_8;
+  cfg.g_input_bit_depth = 8;
+  cfg.g_profile = 0;
+  cfg.g_threads = (unsigned)(threads > 0 ? threads : 1);
+  cfg.g_timebase.num = 1;
+  cfg.g_timebase.den = fps;
+  cfg.g_limit = (unsigned)frames;
+  cfg.g_lag_in_frames = frames < 19 ? (unsigned)frames : 19;
+  cfg.g_error_resilient = 0;
+  cfg.rc_dropframe_thresh = 0;
+  cfg.kf_mode = AOM_KF_AUTO;
+  cfg.kf_min_dist = 0;
+  cfg.kf_max_dist = (unsigned)frames + 1;  // one key frame, at the start
+  cfg.rc_end_usage = AOM_Q;
+  cfg.rc_min_quantizer = (unsigned)q;
+  cfg.rc_max_quantizer = (unsigned)q;
+
+  aom_codec_ctx_t ctx;
+  if (aom_codec_enc_init(&ctx, iface, &cfg, 0)) return 0;
+  aom_codec_control(&ctx, AOME_SET_CPUUSED, speed);
+  aom_codec_control(&ctx, AOME_SET_CQ_LEVEL, q);
+  aom_codec_control(&ctx, AOME_SET_TUNING, AOM_TUNE_SSIM);
+  aom_codec_control(&ctx, AV1E_SET_COLOR_RANGE, AOM_CR_FULL_RANGE);
+  aom_codec_control(&ctx, AV1E_SET_MATRIX_COEFFICIENTS, AOM_CICP_MC_BT_601);
+  aom_codec_control(&ctx, AV1E_SET_ROW_MT, 1);
+
+  aom_image_t img;
+  if (!aom_img_alloc(&img, AOM_IMG_FMT_I420, (unsigned)w, (unsigned)h, 16)) {
+    aom_codec_destroy(&ctx);
+    return 0;
+  }
+  img.range = AOM_CR_FULL_RANGE;
+  img.mc = AOM_CICP_MC_BT_601;
+
+  size_t cap = 16384, len = 0;
+  uint8_t *buf = (uint8_t *)malloc(cap);
+  int ok = buf != NULL;
+  const size_t frame_bytes = (size_t)w * h * 3;
+  // frames inputs, then flushes until the encoder has nothing left.
+  for (int i = 0; ok; i++) {
+    const int flushing = i >= frames;
+    if (!flushing) rgb_to_i420(rgb + frame_bytes * (size_t)i, w, h, &img);
+    if (aom_codec_encode(&ctx, flushing ? NULL : &img, i, 1, 0)) {
+      ok = 0;
+      break;
+    }
+    int got = 0;
+    aom_codec_iter_t iter = NULL;
+    const aom_codec_cx_pkt_t *pkt;
+    while ((pkt = aom_codec_get_cx_data(&ctx, &iter)) != NULL) {
+      if (pkt->kind != AOM_CODEC_CX_FRAME_PKT) continue;
+      got = 1;
+      const uint8_t *d = (const uint8_t *)pkt->data.frame.buf;
+      size_t n = pkt->data.frame.sz;
+      if (n >= 2 && d[0] == 0x12 && d[1] == 0x00) {
+        d += 2;
+        n -= 2;
+      }
+      size_t need = len + leb128_put(NULL, n) + n;
+      if (need > cap) {
+        while (need > cap) cap *= 2;
+        uint8_t *nb = (uint8_t *)realloc(buf, cap);
+        if (!nb) {
+          ok = 0;
+          break;
+        }
+        buf = nb;
+      }
+      len += leb128_put(buf + len, n);
+      memcpy(buf + len, d, n);
+      len += n;
+    }
+    if (flushing && !got) break;
+    if (i > frames + 64) break;  // a flush that never ends
+  }
+  aom_img_free(&img);
+  aom_codec_destroy(&ctx);
+  if (!ok || len == 0) {
+    free(buf);
+    return 0;
+  }
+  if (!out || (int)len > out_cap) {
+    free(buf);
+    return -(int)len;
+  }
+  memcpy(out, buf, len);
+  free(buf);
+  return (int)len;
+}
+
+// Decodes a stream from vox_av1_clip_encode into up to max_frames RGB888
+// pictures of w*h (rgb_out holds max_frames*w*h*3 bytes). Returns the number
+// of frames decoded, -1 if a frame isn't w*h, or 0 on error.
+VOX_EXPORT int vox_av1_clip_decode(const uint8_t *data, int len,
+                                   uint8_t *rgb_out, int max_frames, int w,
+                                   int h) {
+  if (!data || len < 1 || !rgb_out || max_frames < 1 || w < 1 || h < 1) {
+    return 0;
+  }
+  aom_codec_ctx_t ctx;
+  aom_codec_dec_cfg_t cfg;
+  memset(&cfg, 0, sizeof(cfg));
+  cfg.threads = 2;
+  cfg.allow_lowbitdepth = 1;
+  if (aom_codec_dec_init(&ctx, aom_codec_av1_dx(), &cfg, 0) != AOM_CODEC_OK) {
+    return 0;
+  }
+  uint8_t *tu = NULL;
+  size_t tu_cap = 0, pos = 0;
+  int frames = 0, result = 0;
+  const size_t frame_bytes = (size_t)w * h * 3;
+  while (pos < (size_t)len) {
+    size_t n;
+    if (!leb128_get(data, (size_t)len, &pos, &n) || n > (size_t)len - pos) {
+      goto out;
+    }
+    if (n + 2 > tu_cap) {
+      tu_cap = n + 2;
+      uint8_t *nb = (uint8_t *)realloc(tu, tu_cap);
+      if (!nb) goto out;
+      tu = nb;
+    }
+    tu[0] = 0x12;
+    tu[1] = 0x00;
+    memcpy(tu + 2, data + pos, n);
+    pos += n;
+    if (aom_codec_decode(&ctx, tu, n + 2, NULL) != AOM_CODEC_OK) goto out;
+    aom_codec_iter_t iter = NULL;
+    aom_image_t *img;
+    while ((img = aom_codec_get_frame(&ctx, &iter)) != NULL) {
+      if ((img->fmt & ~AOM_IMG_FMT_HIGHBITDEPTH) != AOM_IMG_FMT_I420) {
+        goto out;
+      }
+      if ((int)img->d_w != w || (int)img->d_h != h) {
+        result = -1;
+        goto out;
+      }
+      if (frames < max_frames) {
+        i420_to_rgb(img, rgb_out + frame_bytes * (size_t)frames);
+        frames++;
+      }
+    }
+  }
+  result = frames;
+out:
+  free(tu);
+  aom_codec_destroy(&ctx);
+  return result;
+}

@@ -4249,6 +4249,12 @@ abstract class AppLocalizations {
   /// **'Send a photo'**
   String get chat_sendPhoto;
 
+  /// No description provided for @chat_sendVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a video'**
+  String get chat_sendVideo;
+
   /// No description provided for @chat_originalMessageNotFound.
   ///
   /// In en, this message translates to:

@@ -94,6 +94,8 @@ import '../vox/aeic_hd_repair.dart';
 import '../vox/aeic_hd_screens.dart';
 import '../vox/caption_field.dart';
 import '../vox/image_send_sheet.dart';
+import '../vox/video_send_sheet.dart';
+import '../vox/video_source.dart';
 import '../vox/voice_message_bubble.dart';
 import '../vox/voice_record_sheet.dart';
 import '../vox/voice_service.dart';
@@ -3597,6 +3599,13 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             icon: Icons.add_photo_alternate_outlined,
             label: context.l10n.chat_sendPhoto,
           ),
+          if (VoxVideoSource.isSupported &&
+              context.read<VoxVoiceService>().videosAvailable)
+            ChatComposerAction(
+              id: 'video',
+              icon: Icons.videocam_outlined,
+              label: context.l10n.chat_sendVideo,
+            ),
           if (walkieAvailable)
             ChatComposerAction(
               id: 'walkie',
@@ -3639,6 +3648,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             !MediaLockdown.publicAllowed.value;
         switch (action) {
           case 'photo' when mediaOff:
+          case 'video' when mediaOff:
           case 'walkie' when mediaOff:
             showPublicMediaOff(context);
           case 'photo':
@@ -3650,6 +3660,18 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
               onSend: (image, text) => context
                   .read<VoxVoiceService>()
                   .sendImageToChannel(widget.channel, image, caption: text),
+            );
+          case 'video':
+            showVoxVideoPicker(
+              context,
+              recipientLabel: widget.channel.name,
+              caption: caption,
+              onSend: (video, text) =>
+                  context.read<VoxVoiceService>().sendVideoToChannel(
+                    widget.channel,
+                    video,
+                    caption: text,
+                  ),
             );
           case 'walkie':
             showWalkieSheet(context, widget.channel);
