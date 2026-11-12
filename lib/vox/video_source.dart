@@ -1,5 +1,6 @@
 // MeshCore Open TAK - reads a picked video as frames and sound for
-// video_codec.dart (android/.../VoxVideoChannel.kt). Android only.
+// video_codec.dart: android/.../VoxVideoChannel.kt on Android,
+// MeshVideoReader in ios/Runner/AppDelegate.swift on iPhone.
 
 import 'dart:async';
 import 'dart:io';
@@ -27,7 +28,9 @@ class VoxVideoSource {
 
   /// Videos can be picked and sent from this device.
   static bool get isSupported =>
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
 
   /// Reads the first [voxVideoMaxSeconds] of the video at [path].
   static Future<VoxPickedVideo> read(String path) async {
