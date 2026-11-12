@@ -2269,6 +2269,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get chat_resend => 'Resend';
+
+  @override
   String chat_replyTo(String name) {
     return '回复 $name';
   }

@@ -4261,6 +4261,12 @@ abstract class AppLocalizations {
   /// **'Replying to {name}'**
   String chat_replyingTo(String name);
 
+  /// No description provided for @chat_resend.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend'**
+  String get chat_resend;
+
   /// No description provided for @chat_replyTo.
   ///
   /// In en, this message translates to:

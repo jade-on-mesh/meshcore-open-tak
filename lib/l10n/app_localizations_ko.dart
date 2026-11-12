@@ -2298,6 +2298,9 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
+  String get chat_resend => 'Resend';
+
+  @override
   String chat_replyTo(String name) {
     return '$name님께 회신';
   }

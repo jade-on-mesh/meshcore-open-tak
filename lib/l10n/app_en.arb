@@ -1163,6 +1163,7 @@
       }
     }
   },
+  "chat_resend": "Resend",
   "chat_replyTo": "Reply to {name}",
   "@chat_replyTo": {
     "placeholders": {

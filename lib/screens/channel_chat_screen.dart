@@ -3689,6 +3689,29 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     return _sendGuard.runExclusive(_sendMessageInner);
   }
 
+  /// Sends one of your messages to the channel again, as it went the first
+  /// time (its reply mention included; an OTP message is encrypted again
+  /// from its plaintext). A failed one is taken out first, as a DM's retry
+  /// does, so it isn't shown twice.
+  Future<void> _resendMessage(ChannelMessage message) {
+    return _sendGuard.runExclusive(() async {
+      if (!ensureRadioConnected(context)) return;
+      if (!_sendGuard.checkCooldown(context)) return;
+      final connector = context.read<MeshCoreConnector>();
+      final text = message.otpPlaintext ?? message.text;
+      if (text.trim().isEmpty) return;
+      if (message.status == ChannelMessageStatus.failed) {
+        await connector.deleteChannelMessage(message);
+        if (!mounted) return;
+      }
+      await connector.sendChannelMessage(
+        widget.channel,
+        text,
+        region: message.region,
+      );
+    });
+  }
+
   Future<void> _sendMessageInner() async {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
@@ -3869,6 +3892,18 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                   _setReplyingTo(message);
                 },
               ),
+              // Send it again: a failed one is replaced, a sent one is sent
+              // once more (a channel has no delivery receipt to go by).
+              if (message.isOutgoing)
+                ListTile(
+                  enabled: !readOnly,
+                  leading: const Icon(Icons.refresh),
+                  title: Text(context.l10n.chat_resend),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    unawaited(_resendMessage(message));
+                  },
+                ),
               if (message.isOutgoing)
                 ListTile(
                   leading: const Icon(Icons.wifi_tethering),

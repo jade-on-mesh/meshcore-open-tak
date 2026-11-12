@@ -2407,6 +2407,9 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get chat_resend => 'Resend';
+
+  @override
   String chat_replyTo(String name) {
     return 'Répondre à $name';
   }
