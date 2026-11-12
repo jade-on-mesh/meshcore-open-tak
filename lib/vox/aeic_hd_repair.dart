@@ -6,8 +6,8 @@
 // type so nothing else reads them, add what they lack:
 //
 //   'N' announce  [0x4E][prefix:2][imgId][name utf-8, up to 32 bytes]
-//       sent by the sender just before an HD image's chunks: receivers show
-//       the name instead of "Node 8c41".
+//       sent by the sender just before an AI sketch's chunks (HD or not):
+//       receivers show the name instead of "Node 8c41".
 //   'Q' request   [0x51][prefix:2][imgId][total][missing:2][salt]
 //       sent by a receiver whose copy is incomplete: `missing` has bit i set
 //       for each data chunk i it lacks, bit 15 for the parity chunk.
@@ -390,8 +390,8 @@ class AeicHdRepairService {
     unawaited(_answer(parsed.channelIndex, p));
   }
 
-  /// Sends the sender's name for an HD image about to go out on [slot].
-  /// Call inside the image's radio2 hold.
+  /// Sends the sender's name for an AI sketch about to go out on [slot] (an
+  /// HD one: call inside the image's radio2 hold).
   Future<void> announce(int slot, int senderPrefix, int imgId) async {
     final name = connector.selfName;
     if (name == null || name.trim().isEmpty) return;

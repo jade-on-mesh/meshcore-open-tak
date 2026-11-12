@@ -2616,13 +2616,13 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     Duration? packetAirtime,
   }) async {
     final l10n = context.l10n;
+    // Open TAK's own packets beside the image: its sender's name (every AI
+    // sketch) and, for HD, answers to "ask for the rest".
     AeicHdRepairService? repair;
-    if (hd) {
-      try {
-        repair = context.read<AeicHdRepairService>();
-      } on ProviderNotFoundException {
-        repair = null;
-      }
+    try {
+      repair = context.read<AeicHdRepairService>();
+    } on ProviderNotFoundException {
+      repair = null;
     }
 
     // The image preview may still be open when the link drops.
@@ -2687,7 +2687,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       _imageSendSent = 0;
     });
     try {
-      // AI sketch HD: its sender's name first, so receivers can show it.
+      // Its sender's name first, so Open TAK receivers show it instead of
+      // "Node 2108" when the sender isn't in their contacts. A few bytes on
+      // the channel the image goes on; MeshCore Open ignores the data type.
       await repair?.announce(
         widget.channel.index,
         senderPrefix,
