@@ -214,7 +214,8 @@ List<double> voxSmoothPath(List<double> path, int fps) {
   // Grain from within single frames (Immerkaer's estimate), so a moving
   // clip doesn't read as grainy: the median over its first, middle and last.
   final est = [
-    for (final i in {0, f.count ~/ 2, f.count - 1}) voxGrainEstimate(ys[i], w, h),
+    for (final i in {0, f.count ~/ 2, f.count - 1})
+      voxGrainEstimate(ys[i], w, h),
   ]..sort();
   final grain = est[est.length ~/ 2];
   final limit = max(3.0, min(2.5 * grain, 20.0));
