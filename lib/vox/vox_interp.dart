@@ -31,7 +31,7 @@ class VoxInterpModel {
   static const name = 'rife49.onnx';
   static const sha256Hex =
       '5c5db0d4c18459fcbeb41cf48a336e579ddeda31cc622c6dc54bc5f4aaa3ae5b';
-  static const bytes = 21432760;
+  static const bytes = 21432542;
   static const url =
       'https://github.com/jade-on-mesh/meshcore-open-tak/releases/download/'
       'interp-onnx-v1/$name';
@@ -59,7 +59,8 @@ Float32List voxInterpInput(VoxVideoFrames f, int i, int pw, int ph) {
   for (var y = 0; y < ph; y++) {
     final sy = min(y, h - 1);
     for (var x = 0; x < pw; x++) {
-      final s = base + (sy * w + min(x, w - 1)) * 3;
+      final sx = min(x, w - 1);
+      final s = base + (sy * w + sx) * 3;
       final d = y * pw + x;
       out[d] = f.rgb[s] / 255.0;
       out[plane + d] = f.rgb[s + 1] / 255.0;
