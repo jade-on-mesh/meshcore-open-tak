@@ -45,7 +45,10 @@ class TeamAttachmentField extends StatelessWidget {
     if (v != null) {
       final env = teamAttachmentEnvelope(v);
       final (IconData icon, String text) = env?.isImage == true
-          ? (Icons.photo, 'Photo attached (${v.packets} packets, sent on request)')
+          ? (
+              Icons.photo,
+              'Photo attached (${v.packets} packets, sent on request)',
+            )
           : env?.isVideo == true
           ? (
               Icons.videocam,
