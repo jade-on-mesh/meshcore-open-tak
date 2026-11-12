@@ -146,7 +146,10 @@ void main() {
         soundMode: VoxVoiceMode.mimi,
         sound: sound,
       );
-      expect(enc.payload.length, lessThanOrEqualTo(VoxVideoDetail.maximum.budget));
+      expect(
+        enc.payload.length,
+        lessThanOrEqualTo(VoxVideoDetail.maximum.budget),
+      );
       expect(enc.payload[0], voxVideoPayloadVersion);
       expect(enc.durationMs, 10000);
       expect(enc.seconds, 10);

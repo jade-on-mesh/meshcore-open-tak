@@ -200,12 +200,7 @@ class VoxVideoScreen extends StatelessWidget {
   /// Shown under the clip (sound missing, size).
   final String? note;
 
-  const VoxVideoScreen({
-    super.key,
-    required this.frames,
-    this.wav,
-    this.note,
-  });
+  const VoxVideoScreen({super.key, required this.frames, this.wav, this.note});
 
   static Future<void> open(
     BuildContext context,

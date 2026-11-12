@@ -3666,12 +3666,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
               context,
               recipientLabel: widget.channel.name,
               caption: caption,
-              onSend: (video, text) =>
-                  context.read<VoxVoiceService>().sendVideoToChannel(
-                    widget.channel,
-                    video,
-                    caption: text,
-                  ),
+              onSend: (video, text) => context
+                  .read<VoxVoiceService>()
+                  .sendVideoToChannel(widget.channel, video, caption: text),
             );
           case 'walkie':
             showWalkieSheet(context, widget.channel);

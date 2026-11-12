@@ -196,12 +196,13 @@ class _VoxVideoMessageContentState extends State<VoxVideoMessageContent> {
         ? null
         : '~${(air.inMilliseconds / 1000).toStringAsFixed(0)}s air';
     final video = _video;
-    final aspect = (video != null
-            ? video.frames.width / video.frames.height
-            : _thumb != null
-            ? _thumb!.width / _thumb!.height
-            : 4 / 3)
-        .clamp(0.4, 2.5);
+    final aspect =
+        (video != null
+                ? video.frames.width / video.frames.height
+                : _thumb != null
+                ? _thumb!.width / _thumb!.height
+                : 4 / 3)
+            .clamp(0.4, 2.5);
 
     final soundBit = video == null
         ? ''

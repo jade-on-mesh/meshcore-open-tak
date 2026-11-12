@@ -108,8 +108,7 @@ List<MosaicPhoto> collectMosaicPhotos(
   TeamService team, {
   bool voice = false,
 }) {
-  bool wanted(VoxVoiceEnvelope env) =>
-      voice ? env.mode.isAudio : env.isImage;
+  bool wanted(VoxVoiceEnvelope env) => voice ? env.mode.isAudio : env.isImage;
   final out = <String, MosaicPhoto>{};
 
   (double, double)? senderAt(String name, DateTime t, bool own) {

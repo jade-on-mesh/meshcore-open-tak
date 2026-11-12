@@ -1964,7 +1964,10 @@ class VoxVoiceService extends ChangeNotifier {
   /// Codes [pcm48k] (a picked clip's sound) as a voice message would be,
   /// cut to [seconds]. Null when there is nothing to hear or no voice codec
   /// here.
-  Future<VoxEncodedClip?> encodeVideoSound(Int16List pcm48k, int seconds) async {
+  Future<VoxEncodedClip?> encodeVideoSound(
+    Int16List pcm48k,
+    int seconds,
+  ) async {
     if (pcm48k.isEmpty) return null;
     final n = min(pcm48k.length, seconds * voxRecordSampleRate);
     try {
@@ -4316,8 +4319,15 @@ VoxEncodedVideo _encodeVideoJob(_VideoEncodeJob j) {
     detail: j.detail,
     soundMode: j.soundMode,
     sound: j.sound,
-    encode: (f, q, speed) =>
-        av1.encodeClip(f.rgb, f.width, f.height, f.count, f.fps, q, speed: speed),
+    encode: (f, q, speed) => av1.encodeClip(
+      f.rgb,
+      f.width,
+      f.height,
+      f.count,
+      f.fps,
+      q,
+      speed: speed,
+    ),
     decode: (stream, w, h, n) => av1.decodeClip(stream, w, h, n),
     encodeStill: (img, q, speed) => av1.encode(img, q, speed: speed),
   );
