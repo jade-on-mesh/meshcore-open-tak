@@ -5345,6 +5345,11 @@ class AppLocalizationsUk extends AppLocalizations {
   String get community_updateSecret => 'Оновити секретний ключ';
 
   @override
+  String connectSheet_bluetoothOff(String name) {
+    return 'Bluetooth is off. Turn it on to connect to $name.';
+  }
+
+  @override
   String community_secretUpdated(String name) {
     return 'Секретний ключ для «$name» оновлено';
   }

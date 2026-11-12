@@ -9143,6 +9143,12 @@ abstract class AppLocalizations {
   /// **'Update Secret'**
   String get community_updateSecret;
 
+  /// No description provided for @connectSheet_bluetoothOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Bluetooth is off. Turn it on to connect to {name}.'**
+  String connectSheet_bluetoothOff(String name);
+
   /// No description provided for @community_secretUpdated.
   ///
   /// In en, this message translates to:

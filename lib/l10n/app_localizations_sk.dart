@@ -5326,6 +5326,11 @@ class AppLocalizationsSk extends AppLocalizations {
   String get community_updateSecret => 'Aktualizovať tajné heslo';
 
   @override
+  String connectSheet_bluetoothOff(String name) {
+    return 'Bluetooth is off. Turn it on to connect to $name.';
+  }
+
+  @override
   String community_secretUpdated(String name) {
     return 'Zmena tajnej slova pre \"$name\"';
   }
