@@ -385,7 +385,7 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
         _clientRepeat = true;
         // The off-grid channel, as Wadamesh TAK standalones use: the allowed
         // frequency nearest the current one (918 MHz in the US), 62.5 kHz,
-        // SF7, CR 4/5. Saving also sets MediaMesh beside it (918.250 MHz).
+        // SF7, CR 4/5. Saving also sets MediaMesh beside it (918.800 MHz).
         _frequencyController.text = _offGridFrequencyForBaseFrequency(
           baseSnapshot.frequencyMHz,
         ).toStringAsFixed(3);
@@ -572,7 +572,7 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
   }
 
   /// Off-Grid Repeat and MediaMesh: turning it on puts radio2 beside the
-  /// off-grid channel in the US band (918.250 MHz, 250 kHz, photos and voice
+  /// off-grid channel in the US band (918.800 MHz, 250 kHz, photos and voice
   /// on it, cross off), or off elsewhere; turning it off puts radio2, cross
   /// and `tx.media` back. What was replaced is kept per radio with the main
   /// radio settings ([OffGridRepeatStore]), so it survives an app restart.

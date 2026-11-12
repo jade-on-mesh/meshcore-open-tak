@@ -36,7 +36,7 @@ sent on each profile, the measured switch time, and the radio's timing warnings.
 
 ### Find MediaMesh
 
-**Off-Grid Repeat** (Radio Settings) sets radio2 while it's on, on any radio: beside the off-grid channel in the US band (918.250 MHz, 250 kHz, photos and voice on it), off elsewhere, and puts it back when it's turned off; see [Radio Settings](settings.md#radio-settings).
+**Off-Grid Repeat** (Radio Settings) sets radio2 while it's on, on any radio: beside the off-grid channel in the US band (918.800 MHz, 250 kHz, photos and voice on it), off elsewhere, and puts it back when it's turned off; see [Radio Settings](settings.md#radio-settings).
 
 **Find MediaMesh** works like Discover Repeaters: it asks the repeaters in
 direct range which radio2 profile they run, and lists them with what each said
