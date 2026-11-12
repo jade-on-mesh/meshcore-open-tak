@@ -105,8 +105,10 @@ build_one() {
     cp "$here/aeic_desktop/recovery_inprocess.cpp" "$src/recovery.cpp"
     test "$(grep -c '^#include <sys/resource.h>$' "$src/main.cpp")" = 1
     sed -i 's|^#include <sys/resource.h>$|#ifndef _WIN32\n#include <sys/resource.h>\n#endif|' "$src/main.cpp"
+    # The GUI subsystem: the app starts it with its output piped, and a
+    # console program would flash a console window each time.
     extra=(-DZLIB_USE_STATIC_LIBS=ON
-      "-DCMAKE_EXE_LINKER_FLAGS=-static -static-libgcc -static-libstdc++")
+      "-DCMAKE_EXE_LINKER_FLAGS=-static -static-libgcc -static-libstdc++ -Wl,--subsystem,windows")
   fi
   quiet "codec-configure-$tag" cmake -S "$src" -B "$work/codec-$tag" ${gen[@]+"${gen[@]}"} \
     -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \

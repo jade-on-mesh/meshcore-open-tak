@@ -11,11 +11,13 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ffi' as ffi;
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data' show Endian;
 
 import 'package:crypto/crypto.dart';
+import 'package:ffi/ffi.dart' as pffi;
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -107,16 +109,30 @@ class AeicHdRunner {
         final r = await Process.run('/usr/sbin/sysctl', ['-n', 'hw.memsize']);
         return int.tryParse('${r.stdout}'.trim());
       }
-      if (Platform.isWindows) {
-        final r = await Process.run('powershell', [
-          '-NoProfile',
-          '-Command',
-          '(Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory',
-        ]);
-        return int.tryParse('${r.stdout}'.trim());
-      }
+      if (Platform.isWindows) return _windowsMemory();
     } catch (_) {}
     return null;
+  }
+
+  /// kernel32's GlobalMemoryStatusEx (no console window, unlike asking
+  /// PowerShell): MEMORYSTATUSEX is dwLength, dwMemoryLoad, then
+  /// ullTotalPhys at byte 8.
+  static int? _windowsMemory() {
+    final kernel32 = ffi.DynamicLibrary.open('kernel32.dll');
+    final status = kernel32
+        .lookupFunction<
+          ffi.Int32 Function(ffi.Pointer<ffi.Uint8>),
+          int Function(ffi.Pointer<ffi.Uint8>)
+        >('GlobalMemoryStatusEx');
+    const size = 64;
+    final buf = pffi.calloc<ffi.Uint8>(size);
+    try {
+      buf.cast<ffi.Uint32>().value = size;
+      if (status(buf) == 0) return null;
+      return (buf + 8).cast<ffi.Uint64>().value;
+    } finally {
+      pffi.calloc.free(buf);
+    }
   }
 
   Future<String> _program() async {
