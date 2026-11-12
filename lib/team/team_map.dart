@@ -667,7 +667,11 @@ class TeamMapLayer extends StatelessWidget {
                 children: [
                   Icon(markerKindIcon(m.kind), color: c, size: 18),
                   if (env != null && !env.isImage)
-                    const Icon(Icons.mic, color: Colors.white70, size: 12),
+                    Icon(
+                      env.isVideo ? Icons.videocam : Icons.mic,
+                      color: Colors.white70,
+                      size: 12,
+                    ),
                 ],
               ),
             ),

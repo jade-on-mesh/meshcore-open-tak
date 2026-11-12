@@ -14,6 +14,8 @@ import '../l10n/contact_localization.dart';
 import '../l10n/l10n.dart';
 import '../screens/map_packs_screen.dart';
 import '../vox/image_send_sheet.dart';
+import '../vox/video_send_sheet.dart';
+import '../vox/video_source.dart';
 import '../vox/voice_service.dart';
 import 'ar_view.dart';
 import 'road_directions.dart' show roadDistance;
@@ -103,6 +105,13 @@ Future<void> showMapTools(
       (c) => _quickPic(c, team, mapCenter),
       needsTeam: true,
     ),
+    if (VoxVideoSource.isSupported)
+      _Tool(
+        Icons.video_call_outlined,
+        'Quick Video',
+        (c) => _quickVideo(c, team, mapCenter),
+        needsTeam: true,
+      ),
     _Tool(Icons.assignment_outlined, 'SALUTE', (c) {
       final (lat, lon, _) = _here(team, mapCenter);
       showSaluteForm(c, lat: lat, lon: lon);
@@ -425,6 +434,45 @@ Future<void> _quickPic(
       );
       messenger.showSnackBar(
         const SnackBar(content: Text('Quick Pic pin shared with your team')),
+      );
+    },
+  );
+}
+
+// ------------------------------------------------------------ quick video
+
+/// Quick Pic with a video: record or pick a short clip and drop a pin with it
+/// where you are (or at the map centre). Only the clip's reference goes on
+/// air with the pin; teammates fetch the video when they open it.
+Future<void> _quickVideo(
+  BuildContext context,
+  TeamService team,
+  LatLng mapCenter,
+) async {
+  final voice = context.read<VoxVoiceService>();
+  final (lat, lon, mine) = _here(team, mapCenter);
+  final messenger = ScaffoldMessenger.of(context);
+  await showVoxVideoPicker(
+    context,
+    recipientLabel: mine ? 'a pin at your position' : 'a pin at map centre',
+    onSend: (video, _) async {
+      final env = voice.registerClip(voice.videoClip(video));
+      final now = DateTime.now();
+      await team.putMarker(
+        kind: MarkerKind.point,
+        lat: lat,
+        lon: lon,
+        label:
+            'Quick Video ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
+        attachment: TeamAttachment(
+          env.mode.wireId,
+          env.sessionId,
+          env.totalPackets,
+          env.durationSeconds,
+        ),
+      );
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Quick Video pin shared with your team')),
       );
     },
   );

@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../vox/image_send_sheet.dart';
+import '../vox/video_send_sheet.dart';
+import '../vox/video_source.dart';
 import '../vox/voice_record_sheet.dart';
 import '../vox/voice_service.dart';
 import '../vox/voice_wire.dart';
@@ -14,7 +16,7 @@ import 'team_map.dart';
 import 'team_service.dart';
 import 'team_wire.dart';
 
-/// Photo or voice note picker for pins and reports. The clip is registered
+/// Photo, video or voice note picker for pins and reports. The clip is registered
 /// with the voice service (kept ready to serve) and only its reference goes
 /// on air with the pin; teammates fetch it when they open the pin.
 class TeamAttachmentField extends StatelessWidget {
@@ -42,17 +44,19 @@ class TeamAttachmentField extends StatelessWidget {
     final v = value;
     if (v != null) {
       final env = teamAttachmentEnvelope(v);
+      final (IconData icon, String text) = env?.isImage == true
+          ? (Icons.photo, 'Photo attached (${v.packets} packets, sent on request)')
+          : env?.isVideo == true
+          ? (
+              Icons.videocam,
+              'Video attached (${v.extra}s, ${v.packets} packets, sent on request)',
+            )
+          : (Icons.mic, 'Voice note attached (${v.extra}s, sent on request)');
       return Row(
         children: [
-          Icon(env?.isImage == true ? Icons.photo : Icons.mic),
+          Icon(icon),
           const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              env?.isImage == true
-                  ? 'Photo attached (${v.packets} packets, sent on request)'
-                  : 'Voice note attached (${v.extra}s, sent on request)',
-            ),
-          ),
+          Expanded(child: Text(text)),
           IconButton(
             icon: const Icon(Icons.close),
             tooltip: 'Remove attachment',
@@ -74,6 +78,19 @@ class TeamAttachmentField extends StatelessWidget {
               sendLabel: 'Attach',
               onSend: (image, _) async {
                 final env = voice.registerClip(voice.imageClip(image));
+                onChanged(_fromEnvelope(env));
+              },
+            ),
+          ),
+        if (voice.videosAvailable && VoxVideoSource.isSupported)
+          OutlinedButton.icon(
+            icon: const Icon(Icons.videocam_outlined),
+            label: const Text('Video'),
+            onPressed: () => showVoxVideoPicker(
+              context,
+              recipientLabel: label,
+              onSend: (video, _) async {
+                final env = voice.registerClip(voice.videoClip(video));
                 onChanged(_fromEnvelope(env));
               },
             ),
