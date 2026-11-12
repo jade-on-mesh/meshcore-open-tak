@@ -611,7 +611,10 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
       }
       return true;
     } catch (e) {
-      _appLog.warn('Off-grid repeat radio2 step failed: $e', tag: 'RadioSettings');
+      _appLog.warn(
+        'Off-grid repeat radio2 step failed: $e',
+        tag: 'RadioSettings',
+      );
       return false;
     }
   }
@@ -753,14 +756,16 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
               onChanged: _clientRepeat
                   ? null
                   : (value) {
-                if (value != null) {
-                  setState(() {
-                    _bandwidth = value;
-                    _syncPresetSelection();
-                  });
-                  _logRadioSettingsState('Manual settings edit: bandwidth');
-                }
-              },
+                      if (value != null) {
+                        setState(() {
+                          _bandwidth = value;
+                          _syncPresetSelection();
+                        });
+                        _logRadioSettingsState(
+                          'Manual settings edit: bandwidth',
+                        );
+                      }
+                    },
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<LoRaSpreadingFactor>(
@@ -781,16 +786,16 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
               onChanged: _clientRepeat
                   ? null
                   : (value) {
-                if (value != null) {
-                  setState(() {
-                    _spreadingFactor = value;
-                    _syncPresetSelection();
-                  });
-                  _logRadioSettingsState(
-                    'Manual settings edit: spreading factor',
-                  );
-                }
-              },
+                      if (value != null) {
+                        setState(() {
+                          _spreadingFactor = value;
+                          _syncPresetSelection();
+                        });
+                        _logRadioSettingsState(
+                          'Manual settings edit: spreading factor',
+                        );
+                      }
+                    },
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<LoRaCodingRate>(
@@ -811,14 +816,16 @@ class _RadioSettingsDialogState extends State<RadioSettingsDialog> {
               onChanged: _clientRepeat
                   ? null
                   : (value) {
-                if (value != null) {
-                  setState(() {
-                    _codingRate = value;
-                    _syncPresetSelection();
-                  });
-                  _logRadioSettingsState('Manual settings edit: coding rate');
-                }
-              },
+                      if (value != null) {
+                        setState(() {
+                          _codingRate = value;
+                          _syncPresetSelection();
+                        });
+                        _logRadioSettingsState(
+                          'Manual settings edit: coding rate',
+                        );
+                      }
+                    },
             ),
             const SizedBox(height: 16),
             if (_supportsPathHashMode) ...[

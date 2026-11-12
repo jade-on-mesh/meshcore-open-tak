@@ -32,10 +32,7 @@ void main() {
         'set radio2 910.500,500,8,5,rx,88',
       );
       final auto = Radio2Reply.tryParse('> 910.500,500.00,8,5,rx,32 (auto)')!;
-      expect(
-        buildRadio2RestoreCommand(auto),
-        'set radio2 910.500,500,8,5,rx',
-      );
+      expect(buildRadio2RestoreCommand(auto), 'set radio2 910.500,500,8,5,rx');
     });
 
     test('nothing to put back for radio2 off', () {

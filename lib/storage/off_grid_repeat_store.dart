@@ -82,7 +82,9 @@ class OffGridRepeatStore {
     if (key == null) return null;
     try {
       final text = PrefsManager.instance.getString(key);
-      return text == null ? null : OffGridRepeatMemory.fromJson(jsonDecode(text));
+      return text == null
+          ? null
+          : OffGridRepeatMemory.fromJson(jsonDecode(text));
     } catch (_) {
       return null;
     }
