@@ -25,7 +25,7 @@ The result is a lossy, AI-reconstructed image and can differ materially from the
 
 ## Receive, reconstruct, and save
 
-Chunks are reassembled into an image entry in channel chat. A partially received stream is retained for up to 60 seconds before expiry. An optional XOR parity packet can recover **one missing data chunk**, provided the parity and other required chunks arrive; it does not guarantee delivery.
+Chunks are reassembled into an image entry in channel chat. An image's chunks carry only the first 2 bytes of its sender's key, so the bubble names the sender from your contacts or the nodes you've heard. MeshCore Open TAK also sends the sender's name in a small packet of its own just before an AI sketch (HD or not), so receivers running Open TAK show the name even for a sender they've never heard advertise. Images from other apps, from senders you haven't heard, still read "Node 2108". A partially received stream is retained for up to 60 seconds before expiry. An optional XOR parity packet can recover **one missing data chunk**, provided the parity and other required chunks arrive; it does not guarantee delivery.
 
 With Process images automatically enabled, complete images are queued for local reconstruction. Automatic decoding runs only while the app is in the foreground, one image at a time, with at most 3 images queued; when more arrive, the newest 3 are kept and the rest wait for a tap. Otherwise, tap an image entry to process it. Download/enable the model if prompted. A failed reconstruction can be retried; missing chunks and inference errors are different failures.
 
