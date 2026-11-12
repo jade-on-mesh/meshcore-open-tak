@@ -2834,6 +2834,8 @@
     }
   },
   "community_updateSecret": "Update Secret",
+  "connectSheet_bluetoothOff": "Bluetooth is off. Turn it on to connect to {name}.",
+  "@connectSheet_bluetoothOff": {"placeholders": {"name": {"type": "String"}}},
   "community_secretUpdated": "Secret updated for \"{name}\"",
   "@community_secretUpdated": {
     "placeholders": {

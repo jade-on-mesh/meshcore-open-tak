@@ -203,6 +203,17 @@ class RepeaterBatterySnapshot {
   });
 }
 
+/// Thrown by [MeshCoreConnector.connect] when the phone's Bluetooth is off.
+/// Nothing is attempted: the connection state doesn't change and no
+/// automatic reconnect is scheduled (#191: with Bluetooth off, each attempt
+/// failed at once and re-armed the reconnect, so the app bar flipped between
+/// Reconnecting and Connect).
+class BluetoothOffException implements Exception {
+  const BluetoothOffException();
+  @override
+  String toString() => 'Bluetooth is off';
+}
+
 class MeshCoreRadioStateSnapshot {
   final int freqHz;
   final int bwHz;
@@ -837,7 +848,26 @@ class MeshCoreConnector extends ChangeNotifier {
       _activeTransport == MeshCoreTransportType.usb;
   bool get isAutoReconnectScheduled =>
       (_shouldAutoReconnect || _shouldAutoReconnectTcp) &&
-      (_reconnectTimer?.isActive ?? false);
+      ((_reconnectTimer?.isActive ?? false) ||
+          _bluetoothOnSubscription != null);
+
+  /// True while an automatic Bluetooth reconnect waits for the phone's
+  /// Bluetooth to be turned back on.
+  bool get isWaitingForBluetooth => _bluetoothOnSubscription != null;
+
+  /// Whether the phone's Bluetooth is off. False when it's on, still unknown
+  /// after a moment, or not reported (web, tests).
+  Future<bool> bluetoothIsOff() async {
+    if (PlatformInfo.isWeb) return false;
+    try {
+      final state = await FlutterBluePlus.adapterState
+          .firstWhere((s) => s != BluetoothAdapterState.unknown)
+          .timeout(const Duration(seconds: 2));
+      return state == BluetoothAdapterState.off;
+    } catch (_) {
+      return false;
+    }
+  }
 
   /// Reconnects scheduled since the link was last up (each backoff step).
   @visibleForTesting
@@ -6290,6 +6320,20 @@ class MeshCoreConnector extends ChangeNotifier {
       return;
     }
 
+    // Bluetooth off: the connect would fail at once and tear down through
+    // disconnect(manual: false), which schedules another try (#191).
+    if (await bluetoothIsOff()) {
+      _appDebugLogService?.warn(
+        'Bluetooth is off: not connecting',
+        tag: 'BLE Connect',
+      );
+      throw const BluetoothOffException();
+    }
+    if (_state == MeshCoreConnectionState.connecting ||
+        _state == MeshCoreConnectionState.connected) {
+      return;
+    }
+
     _activeTransport = MeshCoreTransportType.bluetooth;
 
     await stopScan();
@@ -7041,6 +7085,38 @@ class MeshCoreConnector extends ChangeNotifier {
   void _cancelReconnectTimer() {
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
+    _stopWaitingForBluetooth();
+  }
+
+  StreamSubscription<BluetoothAdapterState>? _bluetoothOnSubscription;
+
+  /// Automatic reconnect with Bluetooth off: rather than retrying (each try
+  /// fails at once), wait for Bluetooth to come back on, then reconnect.
+  void _waitForBluetoothThenReconnect() {
+    if (_bluetoothOnSubscription != null) return;
+    _appDebugLogService?.info(
+      'Bluetooth is off: reconnecting when it is turned back on',
+      tag: 'BLE Connect',
+    );
+    try {
+      _bluetoothOnSubscription = FlutterBluePlus.adapterState.listen((state) {
+        if (state != BluetoothAdapterState.on) return;
+        _stopWaitingForBluetooth();
+        if (!_shouldAutoReconnect) return;
+        _reconnectAttempts = 0;
+        _scheduleReconnect();
+      }, onError: (Object _) => _stopWaitingForBluetooth());
+    } catch (_) {
+      _bluetoothOnSubscription = null;
+    }
+    notifyListeners();
+  }
+
+  void _stopWaitingForBluetooth() {
+    final sub = _bluetoothOnSubscription;
+    if (sub == null) return;
+    _bluetoothOnSubscription = null;
+    unawaited(sub.cancel());
   }
 
   int _nextReconnectDelayMs() {
@@ -7071,6 +7147,8 @@ class MeshCoreConnector extends ChangeNotifier {
 
       try {
         await connect(device, displayName: _lastDeviceDisplayName);
+      } on BluetoothOffException {
+        _waitForBluetoothThenReconnect();
       } catch (_) {
         _scheduleReconnect();
       }
@@ -13491,7 +13569,8 @@ class MeshCoreConnector extends ChangeNotifier {
   }
 
   /// Connects to the remembered radio over BLE or TCP. Returns whether a
-  /// connection was made; USB and web need the user to pick a port.
+  /// connection was made; USB and web need the user to pick a port. Throws
+  /// [BluetoothOffException] for a Bluetooth radio while Bluetooth is off.
   Future<bool> reconnectToLastRadio() async {
     final radio = _lastRadio;
     if (radio == null || PlatformInfo.isWeb) return false;
@@ -13506,6 +13585,8 @@ class MeshCoreConnector extends ChangeNotifier {
       } else {
         return false;
       }
+    } on BluetoothOffException {
+      rethrow; // the caller says so and offers to turn it on
     } catch (e) {
       _appDebugLogService?.warn(
         'Reconnect to last radio failed: $e',
@@ -13652,6 +13733,7 @@ class MeshCoreConnector extends ChangeNotifier {
     _messageFilterService?.removeListener(_onMessageFilterChanged);
     _disposed = true;
     _appSettingsService?.removeListener(_onAppSettingsChanged);
+    _stopWaitingForBluetooth();
     _scanSubscription?.cancel();
     _isScanningSubscription?.cancel();
     _connectionSubscription?.cancel();

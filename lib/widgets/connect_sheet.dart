@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:provider/provider.dart';
 
 import '../connector/meshcore_connector.dart';
@@ -29,12 +32,39 @@ class _ConnectSheet extends StatelessWidget {
   Future<void> _reconnect(BuildContext context, String name) async {
     final connector = context.read<MeshCoreConnector>();
     Navigator.of(context).pop();
-    final connected = await connector.reconnectToLastRadio();
+    bool connected;
+    try {
+      connected = await connector.reconnectToLastRadio();
+    } on BluetoothOffException {
+      // Nothing was attempted (#191): say so, and offer to turn it on where
+      // the app can (Android).
+      if (!hostContext.mounted) return;
+      final l10n = hostContext.l10n;
+      showDismissibleSnackBar(
+        hostContext,
+        content: Text(l10n.connectSheet_bluetoothOff(name)),
+        action: PlatformInfo.isAndroid
+            ? SnackBarAction(
+                label: l10n.scanner_enableBluetooth,
+                onPressed: () => unawaited(_turnOnBluetooth()),
+              )
+            : null,
+      );
+      return;
+    }
     if (connected || !hostContext.mounted) return;
     showDismissibleSnackBar(
       hostContext,
       content: Text(hostContext.l10n.connectSheet_reconnectFailed(name)),
     );
+  }
+
+  static Future<void> _turnOnBluetooth() async {
+    try {
+      await FlutterBluePlus.turnOn();
+    } catch (_) {
+      // The user declined, or the platform can't: the snackbar said what to do.
+    }
   }
 
   void _chooseRadio(BuildContext context, LastRadio? lastRadio) {
