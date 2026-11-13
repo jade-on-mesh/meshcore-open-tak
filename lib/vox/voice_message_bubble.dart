@@ -808,6 +808,14 @@ class VoxAutoPlayTile extends StatelessWidget {
             value: service.pushChannelClips,
             onChanged: service.setPushChannelClips,
           ),
+          if (service.videosAvailable)
+            SwitchListTile(
+              secondary: const Icon(Icons.settings_input_antenna),
+              title: Text(context.l10n.vox_modemSoundsTitle),
+              subtitle: Text(context.l10n.vox_modemSoundsSubtitle),
+              value: service.modemSounds,
+              onChanged: service.setModemSounds,
+            ),
         ],
       ),
     );

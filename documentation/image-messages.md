@@ -96,6 +96,8 @@ Both run on the phone after the clip has arrived and can take a while on long cl
 
 A video goes out as `VV1:<id>:15:<packets>:<seconds> VIDEO`, then any caption, and travels like a photo, on MediaMesh where photos go there. The bubble shows the first frame as soon as the first two packets arrive; tap to download, tap again to play, or open it full screen. Videos are sent from Android and iPhone (record or pick) and from Windows, macOS and Linux (pick a file; Linux reads it with the `ffmpeg` program, which needs to be installed), and play on every app that shows Mesh photos. Wadamesh standalones and older versions of the app show the text.
 
+**Modem sounds for incoming video** (Settings, beside auto-play; off by default): a video arriving sounds like a 2400 bps modem. Its first packet plays the connect handshake (the 2100 Hz answer tone, then the warble), and every new packet after it a short burst of its own bytes, sent as a V.22bis modem would (scrambled, 16-QAM at 600 baud on the 2400 Hz carrier, the other side's idle carrier at 1200 Hz under it). Bursts that would start more than 2 s late are dropped, so the sound keeps up with the radio, and it stays quiet while you record or a voice clip plays (`lib/vox/modem_sound.dart`).
+
 ## Voice restorer (MeshCore Open TAK)
 
 Codec2 sounds buzzy and robotic, and it carries speech only up to 4 kHz, so

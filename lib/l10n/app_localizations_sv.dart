@@ -413,6 +413,12 @@ class AppLocalizationsSv extends AppLocalizations {
   String get voiceMute_unmutedNote => 'Voice unmuted in this channel';
 
   @override
+  String get vox_modemSoundsTitle => 'Modem sounds for incoming video';
+
+  @override
+  String get vox_modemSoundsSubtitle => 'A 2400 bps modem connects when a video starts coming in, then you hear each packet\'s data as it arrives.';
+
+  @override
   String usbConnectionFailed(String error) {
     return 'Fel vid USB-anslutning: $error';
   }
