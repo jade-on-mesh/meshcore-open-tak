@@ -8533,6 +8533,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get mediaMesh_presetRange => '125 kHz · range';
 
   @override
+  String mediaMesh_radio2Answer(String answer) {
+    return 'Asked \"get radio2\", the radio gave $answer. Close this and try again; if it keeps happening, share the App Debug Log.';
+  }
+
+  @override
   String get mediaMesh_presetHelp =>
       '250 kHz sends photos and voice about twice as fast; 125 kHz reaches about 40% farther. Every radio on MediaMesh must use the same settings.';
 

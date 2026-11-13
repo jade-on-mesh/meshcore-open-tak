@@ -437,10 +437,25 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
                 child: Center(child: CircularProgressIndicator()),
               )
             : !usable
-            ? Text(
-                state.detail != null
-                    ? l10n.mediaMesh_cantRun
-                    : l10n.mediaMesh_noFirmware,
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    state.detail != null
+                        ? l10n.mediaMesh_cantRun
+                        : l10n.mediaMesh_noFirmware,
+                  ),
+                  // What the radio actually said to `get radio2`, so a radio
+                  // that has radio2 but didn't answer can be told apart.
+                  if (state.radio2Answer case final said?) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      l10n.mediaMesh_radio2Answer(said),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ],
               )
             : _buildForm(context, state),
       ),
