@@ -2090,6 +2090,7 @@ class VoxVoiceService extends ChangeNotifier {
     );
     m.onVideoPacket(sid, data);
   }
+
   bool _pushChannelClips = true;
 
   /// Send a channel photo or voice clip to the radios in range straight

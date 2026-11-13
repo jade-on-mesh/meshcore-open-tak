@@ -415,7 +415,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vox_modemSoundsTitle => 'Modem sounds for incoming video';
 
   @override
-  String get vox_modemSoundsSubtitle => 'A 2400 bps modem connects when a video starts coming in, then you hear each packet\'s data as it arrives.';
+  String get vox_modemSoundsSubtitle =>
+      'A 2400 bps modem connects when a video starts coming in, then you hear each packet\'s data as it arrives.';
 
   @override
   String usbConnectionFailed(String error) {
