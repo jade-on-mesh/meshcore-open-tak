@@ -1290,6 +1290,8 @@
   "chat_receivedGif": "Received a GIF",
   "chat_reply": "Reply",
   "chat_replyPhoto": "Photo",
+  "chat_replyPlay": "Play",
+  "chat_replyStop": "Stop",
   "chat_replyVideo": "Video ({seconds}s)",
   "@chat_replyVideo": {"placeholders": {"seconds": {"type": "int"}}},
   "chat_replyVoice": "Voice message ({seconds}s)",

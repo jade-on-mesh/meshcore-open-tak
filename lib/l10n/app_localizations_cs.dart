@@ -2592,6 +2592,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get chat_replyPhoto => 'Photo';
 
   @override
+  String get chat_replyPlay => 'Play';
+
+  @override
+  String get chat_replyStop => 'Stop';
+
+  @override
   String chat_replyVideo(int seconds) {
     return 'Video (${seconds}s)';
   }

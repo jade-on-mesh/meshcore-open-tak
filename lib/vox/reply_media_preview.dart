@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../l10n/l10n.dart';
+import 'av1_ffi.dart' show VoxRgbImage;
 import 'image_message_bubble.dart' show voxRgbToUiImage;
 import 'voice_service.dart';
 import 'voice_wire.dart';
@@ -54,6 +55,7 @@ class _VoxReplyMediaPreviewState extends State<VoxReplyMediaPreview> {
   ui.Image? _picture;
   bool _full = false; // _picture is the downloaded photo, not the thumbnail
   bool _askedFull = false;
+  bool _thumbLoading = false;
   int _gen = 0;
 
   @override
@@ -92,6 +94,7 @@ class _VoxReplyMediaPreviewState extends State<VoxReplyMediaPreview> {
     _picture = null;
     _full = false;
     _askedFull = false;
+    _thumbLoading = false;
     _gen++;
     _warmUp();
   }
@@ -104,16 +107,30 @@ class _VoxReplyMediaPreviewState extends State<VoxReplyMediaPreview> {
   }
 
   void _onChanged() {
-    if (mounted) _load();
+    if (!mounted) return;
+    if (widget.envelope.isMedia) {
+      _load();
+    } else {
+      setState(() {}); // a voice message's play / stop
+    }
   }
 
-  /// The downloaded photo when there is one (decoded once, cached by the
-  /// service), else the thumbnail its first packets carry.
+  /// The thumbnail its first packets carry until the photo is downloaded, then
+  /// the downloaded photo (decoded once, cached by the service). A video: its
+  /// thumbnail, then its own first frame once it has been decoded to play.
   void _load() {
     final s = _service;
     final env = widget.envelope;
     if (s == null || !env.isMedia || _full) return;
     final gen = _gen;
+    if (env.isVideo) {
+      final video = s.decodedVideo(env);
+      if (video != null && video.frames.count > 0) {
+        _full = true;
+        unawaited(_show(video.frames.frame(0), gen, full: true));
+        return;
+      }
+    }
     if (env.isImage &&
         !_askedFull &&
         s.stateFor(env).status == VoxClipStatus.complete) {
@@ -124,16 +141,7 @@ class _VoxReplyMediaPreviewState extends State<VoxReplyMediaPreview> {
             _showThumb(s, gen);
             return;
           }
-          final img = await voxRgbToUiImage(rgb);
-          if (!mounted || gen != _gen) {
-            img.dispose();
-            return;
-          }
-          setState(() {
-            _picture?.dispose();
-            _picture = img;
-            _full = true;
-          });
+          await _show(rgb, gen, full: true);
         }),
       );
       return;
@@ -141,12 +149,27 @@ class _VoxReplyMediaPreviewState extends State<VoxReplyMediaPreview> {
     _showThumb(s, gen);
   }
 
+  Future<void> _show(VoxRgbImage rgb, int gen, {required bool full}) async {
+    final img = await voxRgbToUiImage(rgb);
+    if (!mounted || gen != _gen) {
+      img.dispose();
+      return;
+    }
+    setState(() {
+      _picture?.dispose();
+      _picture = img;
+      _full = full;
+    });
+  }
+
   void _showThumb(VoxVoiceService s, int gen) {
-    if (_picture != null || !mounted) return;
+    if (_picture != null || _thumbLoading || !mounted) return;
     final rgb = s.thumbFor(widget.envelope);
     if (rgb == null) return;
+    _thumbLoading = true;
     unawaited(
       voxRgbToUiImage(rgb).then((img) {
+        if (gen == _gen) _thumbLoading = false;
         if (!mounted || gen != _gen || _picture != null) {
           img.dispose();
           return;
@@ -203,18 +226,50 @@ class _VoxReplyMediaPreviewState extends State<VoxReplyMediaPreview> {
     );
   }
 
+  /// A voice message's play / stop, as in its bubble: plays it, fetching it
+  /// first when it isn't here yet.
+  Widget _voiceButton(BuildContext context) {
+    final s = _service;
+    final env = widget.envelope;
+    final scheme = Theme.of(context).colorScheme;
+    final phase = s?.playbackFor(env) ?? VoxPlayback.idle;
+    final busy = phase != VoxPlayback.idle;
+    return SizedBox(
+      width: 32,
+      height: 32,
+      child: IconButton(
+        padding: EdgeInsets.zero,
+        iconSize: 22 * widget.textScale,
+        color: scheme.primary,
+        tooltip: busy ? context.l10n.chat_replyStop : context.l10n.chat_replyPlay,
+        icon: Icon(
+          phase == VoxPlayback.preparing
+              ? Icons.hourglass_top
+              : busy
+              ? Icons.stop_circle_outlined
+              : Icons.play_circle_outline,
+        ),
+        onPressed: s == null
+            ? null
+            : () {
+                if (busy) {
+                  unawaited(s.stopPlayback());
+                } else if (s.stateFor(env).status == VoxClipStatus.complete) {
+                  unawaited(s.play(env));
+                } else {
+                  unawaited(s.requestAndPlay(env));
+                }
+              },
+      ),
+    );
+  }
+
   Widget _thumb(BuildContext context) {
     final env = widget.envelope;
     final scheme = Theme.of(context).colorScheme;
     final s = widget.size;
     final picture = _picture;
-    if (!env.isMedia) {
-      return Icon(
-        Icons.mic_none,
-        size: 18 * widget.textScale,
-        color: widget.color,
-      );
-    }
+    if (!env.isMedia) return _voiceButton(context);
     Widget body = picture != null
         ? RawImage(image: picture, fit: BoxFit.cover, width: s, height: s)
         : Container(

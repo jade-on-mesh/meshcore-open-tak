@@ -1898,6 +1898,11 @@ class VoxVoiceService extends ChangeNotifier {
 
   /// The received (or sent) clip for [env], frames and sound decoded off the
   /// UI thread. Null until it is complete, or if it can't be decoded.
+  /// [env]'s video when it has already been decoded (played or opened), else
+  /// null: never starts a decode.
+  VoxPlayableVideo? decodedVideo(VoxVoiceEnvelope env) =>
+      _videoCache[env.sessionId];
+
   Future<VoxPlayableVideo?> videoFor(VoxVoiceEnvelope env) {
     final sid = env.sessionId;
     final cached = _videoCache.remove(sid);
