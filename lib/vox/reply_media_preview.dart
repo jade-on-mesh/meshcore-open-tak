@@ -209,7 +209,11 @@ class _VoxReplyMediaPreviewState extends State<VoxReplyMediaPreview> {
     final s = widget.size;
     final picture = _picture;
     if (!env.isMedia) {
-      return Icon(Icons.mic_none, size: 18 * widget.textScale, color: widget.color);
+      return Icon(
+        Icons.mic_none,
+        size: 18 * widget.textScale,
+        color: widget.color,
+      );
     }
     Widget body = picture != null
         ? RawImage(image: picture, fit: BoxFit.cover, width: s, height: s)
