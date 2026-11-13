@@ -131,12 +131,18 @@ class MediaMeshState {
   /// The radio's own reason when it cannot run radio2 (e.g. an LR1110 board).
   final String? detail;
 
+  /// With [MediaMeshSupport.none] from an unreadable `get radio2`: what the
+  /// radio said to it (its reply, or why there was none), so a radio that does
+  /// have radio2 but answered badly isn't simply called one without.
+  final String? radio2Answer;
+
   const MediaMeshState({
     required this.support,
     required this.settings,
     this.status,
     this.temp,
     this.detail,
+    this.radio2Answer,
   });
 }
 
@@ -553,21 +559,42 @@ class MediaMeshController {
   final MeshCoreConnector connector;
   MediaMeshController(this.connector);
 
+  /// Why the last [_cli] returned null.
+  String? _lastCliError;
+
   Future<String?> _cli(String command) async {
+    _lastCliError = null;
     try {
       return await connector.runLocalCliCommand(command);
-    } catch (_) {
+    } catch (e) {
+      _lastCliError = '$e';
       return null; // no local CLI, or no answer
     }
   }
 
+  /// Pause before asking `get radio2` again (tests set zero).
+  static Duration retryDelay = const Duration(milliseconds: 800);
+
   Future<MediaMeshState> load() async {
-    final radio2Text = await _cli('get radio2');
-    final radio2 = radio2Text == null ? null : Radio2Reply.tryParse(radio2Text);
+    // A radio busy syncing (or a reply lost on a weak link) can miss the
+    // first ask: ask once more before calling it a radio without radio2.
+    var radio2Text = await _cli('get radio2');
+    var radio2 = radio2Text == null ? null : Radio2Reply.tryParse(radio2Text);
     if (radio2 == null) {
-      return const MediaMeshState(
+      await Future<void>.delayed(retryDelay);
+      radio2Text = await _cli('get radio2');
+      radio2 = radio2Text == null ? null : Radio2Reply.tryParse(radio2Text);
+    }
+    if (radio2 == null) {
+      final said = radio2Text?.trim() ?? '';
+      return MediaMeshState(
         support: MediaMeshSupport.none,
         settings: MediaMeshSettings.defaults,
+        radio2Answer: radio2Text == null
+            ? 'no answer (${_lastCliError ?? 'unknown'})'
+            : said.isEmpty
+            ? 'an empty reply'
+            : '"$said"',
       );
     }
     final summary = await _cli('get mediamesh');
