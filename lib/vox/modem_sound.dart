@@ -4,8 +4,8 @@ import 'dart:typed_data';
 
 /// The sound of a 2400 bps modem (V.22bis) for video arriving over the mesh:
 /// the connect handshake when a video's first packet comes in, then a burst of
-/// data for each packet after it. Off unless chosen (Settings > voice and
-/// photos: "Modem sounds for incoming video").
+/// data for each packet after it. Off unless chosen (Data Audio, beside
+/// the auto-play settings).
 ///
 /// The data bursts are the packets' own bytes, sent the way a V.22bis modem
 /// would: scrambled (x^-14 + x^-17, as the standard's self-synchronising

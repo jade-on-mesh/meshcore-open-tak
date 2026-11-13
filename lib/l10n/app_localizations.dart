@@ -841,17 +841,17 @@ abstract class AppLocalizations {
   /// **'Voice unmuted in this channel'**
   String get voiceMute_unmutedNote;
 
-  /// No description provided for @vox_modemSoundsTitle.
+  /// No description provided for @vox_dataAudioTitle.
   ///
   /// In en, this message translates to:
-  /// **'Modem sounds for incoming video'**
-  String get vox_modemSoundsTitle;
+  /// **'Data Audio'**
+  String get vox_dataAudioTitle;
 
-  /// No description provided for @vox_modemSoundsSubtitle.
+  /// No description provided for @vox_dataAudioSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'A 2400 bps modem connects when a video starts coming in, then you hear each packet\'s data as it arrives.'**
-  String get vox_modemSoundsSubtitle;
+  /// **'Hear incoming video as a 2400 bps modem: it connects when a video starts coming in, then you hear each packet\'s data as it arrives.'**
+  String get vox_dataAudioSubtitle;
 
   /// No description provided for @usbConnectionFailed.
   ///

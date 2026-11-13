@@ -418,11 +418,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get voiceMute_unmutedNote => 'Voice unmuted in this channel';
 
   @override
-  String get vox_modemSoundsTitle => 'Modem sounds for incoming video';
+  String get vox_dataAudioTitle => 'Data Audio';
 
   @override
-  String get vox_modemSoundsSubtitle =>
-      'A 2400 bps modem connects when a video starts coming in, then you hear each packet\'s data as it arrives.';
+  String get vox_dataAudioSubtitle =>
+      'Hear incoming video as a 2400 bps modem: it connects when a video starts coming in, then you hear each packet\'s data as it arrives.';
 
   @override
   String usbConnectionFailed(String error) {

@@ -565,7 +565,7 @@ class VoxVoiceService extends ChangeNotifier {
         ..clear()
         ..addAll(prefs.getStringList(_kOwnMimi) ?? const []);
       _pushChannelClips = prefs.getBool(_kPushChannel) ?? true;
-      _modemSounds = prefs.getBool(_kModemSounds) ?? false;
+      _dataAudio = prefs.getBool(_kDataAudio) ?? false;
       notifyListeners();
     } catch (_) {}
   }
@@ -2052,21 +2052,21 @@ class VoxVoiceService extends ChangeNotifier {
   static const _kAutoPlay = 'vox_autoplay';
   static const _kAutoChannels = 'vox_autoplay_channels';
   static const _kPushChannel = 'vox_push_channel';
-  static const _kModemSounds = 'vox_modem_sounds';
-  bool _modemSounds = false;
+  static const _kDataAudio = 'vox_data_audio';
+  bool _dataAudio = false;
 
-  /// Play a 2400 bps modem's sounds as video comes in (modem_sound.dart): its
+  /// Data Audio: play a 2400 bps modem's sounds as video comes in (modem_sound.dart): its
   /// connect handshake on a video's first packet, then a burst of the
   /// packets' own data as each one arrives. Off by default.
-  bool get modemSounds => _modemSounds;
+  bool get dataAudio => _dataAudio;
 
-  Future<void> setModemSounds(bool v) async {
-    _modemSounds = v;
+  Future<void> setDataAudio(bool v) async {
+    _dataAudio = v;
     if (!v) _modem?.clear();
     notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_kModemSounds, v);
+      await prefs.setBool(_kDataAudio, v);
     } catch (_) {}
   }
 
@@ -2075,8 +2075,8 @@ class VoxVoiceService extends ChangeNotifier {
 
   /// A new packet of an incoming video: its modem sound, when chosen, and not
   /// over a recording or a voice clip playing.
-  void _modemSoundFor(String sid, Uint8List data) {
-    if (!_modemSounds || _micBusy || _phase != VoxPlayback.idle) return;
+  void _dataAudioFor(String sid, Uint8List data) {
+    if (!_dataAudio || _micBusy || _phase != VoxPlayback.idle) return;
     final m = _modem ??= VoxModemPlayer(
       play: (wav) async {
         try {
@@ -2743,7 +2743,7 @@ class VoxVoiceService extends ChangeNotifier {
     // the wait: a trickle of them held off asking again for over 2 minutes.
     if (!fresh) return;
     final sid = clip.envelope.sessionId;
-    if (clip.envelope.isVideo) _modemSoundFor(sid, data);
+    if (clip.envelope.isVideo) _dataAudioFor(sid, data);
     if (clip.isComplete) {
       clip.watchdog?.cancel();
       clip.status = VoxClipStatus.complete;
