@@ -8502,7 +8502,7 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String mediaMesh_radio2Answer(String answer) {
-    return 'Asked "get radio2", the radio gave $answer. Close this and try again; if it keeps happening, share the App Debug Log.';
+    return 'Asked \"get radio2\", the radio gave $answer. Close this and try again; if it keeps happening, share the App Debug Log.';
   }
 
   @override

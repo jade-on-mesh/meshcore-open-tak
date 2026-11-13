@@ -14257,7 +14257,7 @@ abstract class AppLocalizations {
   /// No description provided for @mediaMesh_radio2Answer.
   ///
   /// In en, this message translates to:
-  /// **'Asked "get radio2", the radio gave {answer}. Close this and try again; if it keeps happening, share the App Debug Log.'**
+  /// **'Asked \"get radio2\", the radio gave {answer}. Close this and try again; if it keeps happening, share the App Debug Log.'**
   String mediaMesh_radio2Answer(String answer);
 
   /// No description provided for @mediaMesh_presetHelp.
