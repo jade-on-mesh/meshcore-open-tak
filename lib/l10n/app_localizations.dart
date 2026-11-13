@@ -4531,6 +4531,24 @@ abstract class AppLocalizations {
   /// **'Reply'**
   String get chat_reply;
 
+  /// No description provided for @chat_replyPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get chat_replyPhoto;
+
+  /// No description provided for @chat_replyVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Video ({seconds}s)'**
+  String chat_replyVideo(int seconds);
+
+  /// No description provided for @chat_replyVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice message ({seconds}s)'**
+  String chat_replyVoice(int seconds);
+
   /// No description provided for @chat_addReaction.
   ///
   /// In en, this message translates to:

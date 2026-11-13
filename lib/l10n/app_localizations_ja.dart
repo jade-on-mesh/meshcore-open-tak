@@ -2478,6 +2478,19 @@ class AppLocalizationsJa extends AppLocalizations {
   String get chat_reply => '返信';
 
   @override
+  String get chat_replyPhoto => 'Photo';
+
+  @override
+  String chat_replyVideo(int seconds) {
+    return 'Video (${seconds}s)';
+  }
+
+  @override
+  String chat_replyVoice(int seconds) {
+    return 'Voice message (${seconds}s)';
+  }
+
+  @override
   String get chat_addReaction => 'リアクションを追加';
 
   @override

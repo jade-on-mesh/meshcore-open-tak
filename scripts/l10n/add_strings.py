@@ -36,9 +36,12 @@ def dart_str(t):
 
 
 def interp(t, phs):
+    """Placeholders as flutter gen-l10n writes them: $name, or ${name} when a
+    letter, digit or _ follows (else "{seconds}s" would read $secondss)."""
     out = dart_str(t)
     for ph in phs:
-        out = out.replace('{' + ph + '}', '$' + ph)
+        out = re.sub(r'\{' + re.escape(ph) + r'\}(?=([A-Za-z0-9_]?))',
+                     lambda m: '${' + ph + '}' if m.group(1) else '$' + ph, out)
     return out
 
 
