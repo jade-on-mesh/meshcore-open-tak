@@ -104,6 +104,7 @@ import '../vox/vox_rx_path.dart' show VoxPathRadio, VoxRxPath;
 import '../team/message_reach_screen.dart';
 import '../vox/walkie_service.dart';
 import '../vox/walkie_sheet.dart';
+import '../vox/reply_media_preview.dart';
 import '../utils/share_origin.dart';
 import '../services/chat_background_service.dart';
 import '../widgets/chat_background.dart';
@@ -2080,6 +2081,16 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     double gifSize = 80,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
+    // A photo, video or voice message: its picture and caption, not its
+    // wire text.
+    final media = voxReplyMediaPreview(
+      context,
+      replyText,
+      textScale: textScale,
+      color: color,
+      size: maxLines == 1 ? 32 : 44,
+    );
+    if (media != null) return media;
     final gifId = GifHelper.parseGif(replyText);
     final poi = parseMarkerText(replyText);
     if (gifId != null) {
