@@ -241,7 +241,9 @@ class _VoxReplyMediaPreviewState extends State<VoxReplyMediaPreview> {
         padding: EdgeInsets.zero,
         iconSize: 22 * widget.textScale,
         color: scheme.primary,
-        tooltip: busy ? context.l10n.chat_replyStop : context.l10n.chat_replyPlay,
+        tooltip: busy
+            ? context.l10n.chat_replyStop
+            : context.l10n.chat_replyPlay,
         icon: Icon(
           phase == VoxPlayback.preparing
               ? Icons.hourglass_top
