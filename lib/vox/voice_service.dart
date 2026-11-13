@@ -50,6 +50,7 @@ import 'vox_voice_enhance.dart';
 import 'voice_wire.dart';
 import 'walkie_wire.dart';
 import 'wav_source.dart';
+import 'modem_sound.dart';
 import 'vox_timing.dart';
 import 'transfer_test.dart';
 import '../utils/lora_airtime.dart';
@@ -564,6 +565,7 @@ class VoxVoiceService extends ChangeNotifier {
         ..clear()
         ..addAll(prefs.getStringList(_kOwnMimi) ?? const []);
       _pushChannelClips = prefs.getBool(_kPushChannel) ?? true;
+      _dataAudio = prefs.getBool(_kDataAudio) ?? false;
       notifyListeners();
     } catch (_) {}
   }
@@ -2050,6 +2052,45 @@ class VoxVoiceService extends ChangeNotifier {
   static const _kAutoPlay = 'vox_autoplay';
   static const _kAutoChannels = 'vox_autoplay_channels';
   static const _kPushChannel = 'vox_push_channel';
+  static const _kDataAudio = 'vox_data_audio';
+  bool _dataAudio = false;
+
+  /// Data Audio: play a 2400 bps modem's sounds as video comes in (modem_sound.dart): its
+  /// connect handshake on a video's first packet, then a burst of the
+  /// packets' own data as each one arrives. Off by default.
+  bool get dataAudio => _dataAudio;
+
+  Future<void> setDataAudio(bool v) async {
+    _dataAudio = v;
+    if (!v) _modem?.clear();
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kDataAudio, v);
+    } catch (_) {}
+  }
+
+  AudioPlayer? _modemPlayer;
+  VoxModemPlayer? _modem;
+
+  /// A new packet of an incoming video: its modem sound, when chosen, and not
+  /// over a recording or a voice clip playing.
+  void _dataAudioFor(String sid, Uint8List data) {
+    if (!_dataAudio || _micBusy || _phase != VoxPlayback.idle) return;
+    final m = _modem ??= VoxModemPlayer(
+      play: (wav) async {
+        try {
+          final p = _modemPlayer ??= AudioPlayer();
+          await p.stop();
+          await p.play(await voxWavSource(wav));
+        } catch (_) {
+          // No audio output (a test, a desktop without sound): stay quiet.
+        }
+      },
+    );
+    m.onVideoPacket(sid, data);
+  }
+
   bool _pushChannelClips = true;
 
   /// Send a channel photo or voice clip to the radios in range straight
@@ -2702,6 +2743,7 @@ class VoxVoiceService extends ChangeNotifier {
     // the wait: a trickle of them held off asking again for over 2 minutes.
     if (!fresh) return;
     final sid = clip.envelope.sessionId;
+    if (clip.envelope.isVideo) _dataAudioFor(sid, data);
     if (clip.isComplete) {
       clip.watchdog?.cancel();
       clip.status = VoxClipStatus.complete;
@@ -4233,6 +4275,8 @@ class VoxVoiceService extends ChangeNotifier {
       c.watchdog?.cancel();
     }
     _player?.dispose();
+    _modem?.clear();
+    _modemPlayer?.dispose();
     playbackFraction.dispose();
     super.dispose();
   }

@@ -178,6 +178,8 @@
   "voiceMute_menuUnmute": "Unmute voice",
   "voiceMute_mutedNote": "Voice muted in this channel",
   "voiceMute_unmutedNote": "Voice unmuted in this channel",
+  "vox_dataAudioTitle": "Data Audio",
+  "vox_dataAudioSubtitle": "Hear incoming video as a 2400 bps modem: it connects when a video starts coming in, then you hear each packet's data as it arrives.",
   "usbConnectionFailed": "USB connection failed: {error}",
   "@usbConnectionFailed": {
     "placeholders": {
