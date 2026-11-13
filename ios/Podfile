@@ -57,9 +57,11 @@ post_install do |installer|
     ggwave_init ggwave_free ggwave_encode ggwave_ndecode
     ggwave_getDefaultParameters ggwave_setLogFile
   ]
-  # Only when libaom is there: the stub has no vox_av1_* to keep.
+  # Only when libaom is there: the stub has no vox_av1_* to keep. The clip
+  # pair is video messages (lib/vox/av1_ffi.dart hasClips): without it the
+  # linker drops them, and iPhones had no video.
   if File.exist?(File.join(__dir__, '..', 'third_party', 'vox_av1', 'aom-ios', 'lib', 'libaom.a'))
-    ffi_symbols += %w[vox_av1_encode vox_av1_decode]
+    ffi_symbols += %w[vox_av1_encode vox_av1_decode vox_av1_clip_encode vox_av1_clip_decode]
   end
   # -u pulls each one out of its static library; -exported_symbol makes it a
   # dead-strip root and keeps it in Runner's export table for dlsym.
