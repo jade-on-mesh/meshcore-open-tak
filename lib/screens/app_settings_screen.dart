@@ -28,6 +28,7 @@ import '../widgets/sync_progress_overlay.dart';
 import '../widgets/translation_settings_section.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../vox/aeic_hd_screens.dart';
+import '../vox/voice_service.dart';
 import 'map_cache_screen.dart';
 import 'map_packs_screen.dart';
 import 'themes_screen.dart';
@@ -829,6 +830,25 @@ class AppSettingsScreen extends StatelessWidget {
           trailing: const Icon(Icons.chevron_right),
           onTap: () => AeicHdScreen.open(context),
         ),
+        // MeshCore Open TAK: Data Audio (lib/vox/modem_sound.dart).
+        if (_voxVoiceService(context) case final voice?) ...[
+          const Divider(height: 1, indent: 16),
+          ListenableBuilder(
+            listenable: voice,
+            builder: (context, _) => SwitchListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 4,
+              ),
+              secondary: const Icon(Icons.settings_input_antenna, size: 24),
+              title: Text(context.l10n.vox_dataAudioTitle),
+              subtitle: Text(context.l10n.vox_dataAudioSubtitle),
+              value: voice.dataAudio,
+              // Greyed out where this build or phone can't play videos.
+              onChanged: voice.videosAvailable ? voice.setDataAudio : null,
+            ),
+          ),
+        ],
         if (settingsService.settings.imageMessagesEnabled) ...[
           SwitchListTile(
             contentPadding: const EdgeInsets.symmetric(
@@ -846,6 +866,16 @@ class AppSettingsScreen extends StatelessWidget {
         ],
       ],
     );
+  }
+
+  /// The voice, photo and video service, or null when it is not registered
+  /// (screen tests).
+  VoxVoiceService? _voxVoiceService(BuildContext context) {
+    try {
+      return Provider.of<VoxVoiceService>(context, listen: false);
+    } on ProviderNotFoundException {
+      return null;
+    }
   }
 
   /// The image codec, or null when it is not registered (screen tests).
