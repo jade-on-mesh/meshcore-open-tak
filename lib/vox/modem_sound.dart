@@ -224,11 +224,13 @@ class VoxModemPlayer {
     _pump();
   }
 
+  /// [always]: the handshake, which is queued whatever is waiting and doesn't
+  /// count as backlog (else the burst after it was always dropped).
   void _enqueue(Int16List s, {bool always = false}) {
     if (s.isEmpty) return;
     if (!always && _queued > maxBacklog) return;
     _queue.add(s);
-    _queued += VoxModemSound.durationOf(s);
+    if (!always) _queued += VoxModemSound.durationOf(s);
   }
 
   void _pump() {
