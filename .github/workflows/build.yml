@@ -736,6 +736,12 @@ jobs:
           # Move the tag to this commit, then create or update the release.
           git tag -f latest-build "$GITHUB_SHA"
           git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" refs/tags/latest-build
+          # A release tag for every published build (v99.0.2-tak.1304): the
+          # iPhone TestFlight beta (ahalekelly/meshcore-open-tak-testflight)
+          # builds each new v... tag, so iPhones get what Android gets.
+          git tag "v${version}.${build}" "$GITHUB_SHA" 2>/dev/null || true
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "refs/tags/v${version}.${build}" || \
+            echo "::warning::couldn't push the release tag v${version}.${build}"
           if gh release view latest-build >/dev/null 2>&1; then
             gh release edit latest-build --title "MeshCore Open TAK $version (build $build)" --notes-file notes.md --latest
           else
