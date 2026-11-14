@@ -1,0 +1,9 @@
+Resolving dependencies...
+The current Flutter SDK version is 3.50.0.
+
+Because meshcore_open requires Flutter SDK version 3.47.9, version solving failed.
+
+
+You can try the following suggestion to make the pubspec resolve:
+* Try using the Flutter SDK version: 3.47.9. 
+Failed to update packages.
