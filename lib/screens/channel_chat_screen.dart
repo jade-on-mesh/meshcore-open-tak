@@ -2538,7 +2538,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       await release?.call();
       return;
     }
-    if (release == null && !MediaLockdown.devAllowMain.value) {
+    if (release == null) {
       showDismissibleSnackBar(
         context,
         content: const Text(MediaLockdown.blockedMessage),

@@ -1,9 +1,8 @@
 // MeshCore Open TAK - photos and voice stay off the main mesh.
 //
-// A photo burst on the main mesh is minutes of everyone's airtime, so photos
-// and voice only go out when the connected radio sends them on MediaMesh
-// (radio2) alone. Developers can still allow the main mesh: a hidden switch
-// (long-press the MediaMesh settings title) until this is locked down fully.
+// A photo burst on the main mesh is minutes of everyone's airtime, so photos,
+// voice and video only go out when the connected radio sends them on
+// MediaMesh (radio2) alone. There is no switch to allow the main mesh.
 //
 // Public and #public: everyone on the mesh shares them, so photos, voice
 // messages and push-to-talk stay off there unless the user switches them on
@@ -17,11 +16,9 @@ import '../models/channel.dart';
 class MediaLockdown {
   MediaLockdown._();
 
-  static const _key = 'media_main_dev';
+  /// The removed developer switch's preference, cleared on load.
+  static const _oldDevKey = 'media_main_dev';
   static const _publicKey = 'media_public_allowed';
-
-  /// Developer switch: photos and voice may use the main mesh.
-  static final ValueNotifier<bool> devAllowMain = ValueNotifier(false);
 
   static const String blockedMessage =
       'Photos and voice only go out on MediaMesh (radio2). In MediaMesh '
@@ -48,7 +45,7 @@ class MediaLockdown {
   static Future<void> load() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      devAllowMain.value = prefs.getBool(_key) ?? false;
+      await prefs.remove(_oldDevKey);
       publicAllowed.value = prefs.getBool(_publicKey) ?? false;
     } catch (_) {}
   }
@@ -58,14 +55,6 @@ class MediaLockdown {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_publicKey, v);
-    } catch (_) {}
-  }
-
-  static Future<void> set(bool v) async {
-    devAllowMain.value = v;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_key, v);
     } catch (_) {}
   }
 }

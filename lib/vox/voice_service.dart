@@ -3884,14 +3884,12 @@ class VoxVoiceService extends ChangeNotifier {
   /// before the next transfer.
   void mediaRoutingChanged() => _mediaAirAt = null;
 
-  /// Photos and voice go out only on MediaMesh (radio2) alone, unless the
-  /// developer switch allows the main mesh (MediaLockdown).
-  bool get _mediaAllowed =>
-      MediaLockdown.devAllowMain.value || _mediaAir != null;
+  /// Photos and voice go out only on MediaMesh (radio2) alone
+  /// (MediaLockdown).
+  bool get _mediaAllowed => _mediaAir != null;
 
   /// Whether this radio can send photos and voice now (asks it if needed).
   Future<bool> canSendMedia() async {
-    if (MediaLockdown.devAllowMain.value) return true;
     _mediaAirAt = null; // ask afresh: the user may just have set it up
     await _refreshMediaAir();
     return _mediaAir != null;

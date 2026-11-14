@@ -92,7 +92,10 @@ version may append more; the first twelve bytes keep their meaning.
 **Photos and voice stay off the main mesh.** They only go out when the
 connected radio sends them on radio2 alone (*On*, *Photos & voice*).
 Otherwise the app says so instead of sending, and doesn't answer other
-people's requests for them either. This covers Open TAK's photos and voice
+people's requests for them either. There is no setting to allow the main mesh:
+*Everything* isn't offered (it only shows when the radio is already set that
+way from the console), and saving MediaMesh settings turns a Wadamesh
+standalone's `mediamesh.share` off. This covers Open TAK's photos and voice
 only: upstream MeshCore Open's channel image messages and OTP photo DMs (sent
 direct, never flooded) are unchanged.
 

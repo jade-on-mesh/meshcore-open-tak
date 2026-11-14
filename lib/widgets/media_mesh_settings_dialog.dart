@@ -9,7 +9,6 @@ import '../helpers/snack_bar_builder.dart';
 import '../l10n/l10n.dart';
 import '../models/radio_settings.dart';
 import '../screens/radio_console_screen.dart';
-import '../services/media_lockdown.dart';
 import '../services/media_mesh.dart';
 import '../services/media_mesh_find.dart';
 import '../vox/voice_message_bubble.dart' show VoxForcedRouteTile;
@@ -119,8 +118,6 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
   bool get _profileValid =>
       !_frequencyInvalid && !_frequencyOnMain && _conflict == null;
 
-  bool get _devMain => MediaLockdown.devAllowMain.value;
-
   /// The preset these settings match (SF7, CR 4/5 at 250 or 125 kHz), if any.
   static Set<LoRaBandwidth> _presetOf(MediaMeshSettings s) {
     final standard =
@@ -134,27 +131,17 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
     return {};
   }
 
-  Future<void> _toggleDeveloperMain() async {
-    final on = !_devMain;
-    await MediaLockdown.set(on);
-    if (!mounted) return;
-    setState(() {});
-    showDismissibleSnackBar(
-      context,
-      content: Text(
-        on
-            ? 'Developer: photos and voice may use the main mesh'
-            : 'Photos and voice on MediaMesh (radio2) only',
-      ),
-    );
-  }
-
   Future<void> _save() async {
     _validateFrequency(_frequencyController.text);
     if (!_profileValid) return;
     setState(() => _saving = true);
     try {
-      await _controller.apply(_settings);
+      // Photos and voice stay on radio2: never save mediamesh.share on.
+      await _controller.apply(
+        _settings.shareWithMain == true
+            ? _settings.copyWith(shareWithMain: false)
+            : _settings,
+      );
       if (!mounted) return;
       showDismissibleSnackBar(
         context,
@@ -424,12 +411,7 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
     final state = _state;
     final usable = state != null && state.support != MediaMeshSupport.none;
     return AlertDialog(
-      // Long-press: the developer switch that lets photos and voice use the
-      // main mesh (MediaLockdown). Hidden until this is locked down fully.
-      title: GestureDetector(
-        onLongPress: _toggleDeveloperMain,
-        child: Text(l10n.mediaMesh_title),
-      ),
+      title: Text(l10n.mediaMesh_title),
       content: SingleChildScrollView(
         child: state == null
             ? const Padding(
@@ -550,8 +532,9 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
                   label: Text(l10n.mediaMesh_photosVoice),
                 ),
                 // Everything (tx.media auto) sends photos and voice on the
-                // main mesh too: developers only (MediaLockdown).
-                if (_devMain || media == MediaChoice.everything)
+                // main mesh too, so it isn't offered; it only shows when the
+                // radio is already set that way (MediaLockdown).
+                if (media == MediaChoice.everything)
                   ButtonSegment(
                     value: MediaChoice.everything,
                     label: Text(l10n.mediaMesh_everything),
@@ -570,22 +553,6 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
           ),
           const SizedBox(height: 6),
           Text(mediaHelp, style: small),
-          if (_settings.shareWithMain != null &&
-              media == MediaChoice.photosAndVoice &&
-              _devMain)
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(l10n.mediaMesh_shareMain),
-              subtitle: Text(
-                _settings.shareWithMain!
-                    ? l10n.mediaMesh_shareMainOn
-                    : l10n.mediaMesh_shareMainOff,
-              ),
-              value: _settings.shareWithMain!,
-              onChanged: (v) => setState(
-                () => _settings = _settings.copyWith(shareWithMain: v),
-              ),
-            ),
         ],
         const SizedBox(height: 20),
         TextField(
