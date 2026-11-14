@@ -114,4 +114,53 @@ void main() {
     final hissIn = _rms([for (final v in f.sublist(20000)) v * 32768 * gain]);
     expect(_rms(y.sublist(20000)), lessThan(hissIn * 0.25));
   });
+
+  test('prep takes out DC, rumble and hum below 150 Hz', () {
+    // Speech-band tone with a DC offset and 50 Hz hum under it.
+    final f = Float32List(16000);
+    for (var i = 0; i < f.length; i++) {
+      f[i] = 0.15 +
+          0.1 * sin(2 * pi * 50 * i / 8000) +
+          0.05 * sin(2 * pi * 1000 * i / 8000);
+    }
+    final hp = Float32List.fromList(f);
+    voxHighPass(hp);
+    double amp(List<double> x, double hz) {
+      var re = 0.0, im = 0.0;
+      for (var i = 0; i < x.length; i++) {
+        re += x[i] * cos(2 * pi * hz * i / 8000);
+        im += x[i] * sin(2 * pi * hz * i / 8000);
+      }
+      return 2 * sqrt(re * re + im * im) / x.length;
+    }
+
+    final tail = hp.sublist(4000); // past the filter's settling
+    expect(amp(tail, 0), lessThan(0.002)); // DC gone
+    expect(amp(tail, 50), lessThan(0.1 * 0.15)); // hum down > 16 dB
+    expect(amp(tail, 1000), closeTo(0.05, 0.003)); // speech untouched
+  });
+
+  test('prep levels the speech, not one click', () {
+    final f = Float32List(16000);
+    for (var i = 0; i < f.length; i++) {
+      f[i] = 0.05 * sin(2 * pi * 400 * i / 8000);
+    }
+    f[9000] = 0.9; // a bump on the phone
+    final y = voxPrepClip(f);
+    // A single highest sample (0.9) would have left the gain at ~1x, the
+    // speech near 1600; it's levelled to ~13000 as without the click.
+    final speech = y.sublist(2000, 8000).map((v) => v.abs()).reduce(max);
+    expect(speech, inInclusiveRange(11000, 14000));
+    expect(y.reduce(max), lessThan(32767)); // the click is limited, not clipped
+  });
+
+  test('prep fades in over the first 30 ms (the mic\'s start-up click)', () {
+    final f = Float32List(8000)..fillRange(0, 8000, 0.0);
+    for (var i = 0; i < f.length; i++) {
+      f[i] = 0.1 * sin(2 * pi * 500 * i / 8000);
+    }
+    f[1] = 0.9; // the click at the very start
+    final y = voxPrepClip(f);
+    expect(y.sublist(0, 4).map((v) => v.abs()).reduce(max), lessThan(1500));
+  });
 }

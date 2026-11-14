@@ -147,22 +147,61 @@ class VoxMicGate {
   }
 }
 
-/// A whole 8 kHz recording ([-1, 1] floats) ready for Codec2: levelled
-/// towards a peak of about -8 dBFS (at most 8x; never turned down), gated
-/// and soft-limited. Returns PCM16.
-Int16List voxPrepClip(Float32List audio8k) {
-  var peak = 0.0;
-  for (final s in audio8k) {
-    final a = s.abs();
-    if (a > peak) peak = a;
+/// A 2nd-order Butterworth high-pass at [hz] (RBJ biquad), in place on
+/// [rate] Hz samples. Takes out DC, handling rumble and mains hum, which
+/// Codec2's low rates spend bits on and turn into a muddy buzz.
+void voxHighPass(Float32List x, {double hz = 150, int rate = voxCodecRate}) {
+  final w = 2 * pi * hz / rate;
+  final alpha = sin(w) / (2 * sqrt1_2); // Q = 1/sqrt(2)
+  final cw = cos(w);
+  final a0 = 1 + alpha;
+  final b0 = (1 + cw) / 2 / a0, b1 = -(1 + cw) / a0, b2 = b0;
+  final a1 = -2 * cw / a0, a2 = (1 - alpha) / a0;
+  var x1 = 0.0, x2 = 0.0, y1 = 0.0, y2 = 0.0;
+  for (var i = 0; i < x.length; i++) {
+    final x0 = x[i].toDouble();
+    final y0 = b0 * x0 + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+    x2 = x1;
+    x1 = x0;
+    y2 = y1;
+    y1 = y0;
+    x[i] = y0;
   }
-  final p16 = peak * 32768;
-  final gain = p16 <= 0 ? 1.0 : (13000 / p16).clamp(1.0, 8.0);
-  // Gate threshold ~30 dB below the levelled peak.
-  final gate = VoxMicGate(openAt: max(180.0, p16 * gain / 32));
-  final out = Int16List(audio8k.length);
-  for (var i = 0; i < audio8k.length; i++) {
-    final v = gate.process(audio8k[i] * 32768 * gain);
+}
+
+/// The level ([0, 1]) that [permille] in 1000 of [x]'s samples sit at or
+/// below: the loud part of the speech, not one click or bump.
+double voxLevelAt(Float32List x, {int permille = 999}) {
+  if (x.isEmpty) return 0;
+  final a = Float32List(x.length);
+  for (var i = 0; i < x.length; i++) {
+    a[i] = x[i].abs();
+  }
+  a.sort();
+  return a[min(a.length - 1, a.length * permille ~/ 1000)];
+}
+
+/// A whole 8 kHz recording ([-1, 1] floats) ready for Codec2: high-passed
+/// at 150 Hz, faded in over 30 ms (the mic's start-up click), levelled so the
+/// loud part of the speech (99.9% of samples) sits at about -8 dBFS (at most
+/// 8x; never turned down), gated and soft-limited. Returns PCM16.
+Int16List voxPrepClip(Float32List audio8k) {
+  final x = Float32List.fromList(audio8k);
+  voxHighPass(x);
+  final ramp = min(x.length, voxCodecRate * 30 ~/ 1000);
+  for (var i = 0; i < ramp; i++) {
+    x[i] *= i / ramp;
+  }
+  // From the loud part, not the single highest sample: one click used to set
+  // the gain for the whole clip and leave the speech quiet. The few samples
+  // above it are rounded off by the soft limiter.
+  final l16 = voxLevelAt(x) * 32768;
+  final gain = l16 <= 0 ? 1.0 : (13000 / l16).clamp(1.0, 8.0);
+  // Gate threshold ~30 dB below the levelled speech.
+  final gate = VoxMicGate(openAt: max(180.0, l16 * gain / 32));
+  final out = Int16List(x.length);
+  for (var i = 0; i < x.length; i++) {
+    final v = gate.process(x[i] * 32768 * gain);
     out[i] = voxSoftLimit(v).round().clamp(-32768, 32767);
   }
   return out;
