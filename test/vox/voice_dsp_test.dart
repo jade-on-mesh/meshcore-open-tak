@@ -119,7 +119,8 @@ void main() {
     // Speech-band tone with a DC offset and 50 Hz hum under it.
     final f = Float32List(16000);
     for (var i = 0; i < f.length; i++) {
-      f[i] = 0.15 +
+      f[i] =
+          0.15 +
           0.1 * sin(2 * pi * 50 * i / 8000) +
           0.05 * sin(2 * pi * 1000 * i / 8000);
     }
