@@ -4064,7 +4064,7 @@
   "mediaMesh_custom": "Custom",
   "mediaMesh_photosVoiceHelp": "Photos and voice clips go on radio2. Text, adverts and ACKs stay on the main mesh.",
   "mediaMesh_everythingHelp": "Messages go on both radios and media follows each contact or channel, so radio2-only nodes hear everything.",
-  "mediaMesh_customHelp": "Set from the radio console. Saving leaves it as it is.",
+  "mediaMesh_customHelp": "Set from the radio console. Saving keeps it, and keeps radio2 separate from the main mesh.",
   "mediaMesh_frequency": "radio2 frequency (MHz)",
   "mediaMesh_frequencyRange": "Enter a frequency between 150 and 960 MHz",
   "mediaMesh_frequencyMain": "Must differ from the main radio",

@@ -179,10 +179,9 @@ void main() {
         MediaChoice.from(media: 'radio2', cross: 'off'),
         MediaChoice.photosAndVoice,
       );
-      expect(
-        MediaChoice.from(media: 'auto', cross: 'on'),
-        MediaChoice.everything,
-      );
+      // No "everything" choice: a radio set that way reads as custom, and
+      // saving it sets radio2.cross off.
+      expect(MediaChoice.from(media: 'auto', cross: 'on'), MediaChoice.custom);
       expect(MediaChoice.from(media: 'both', cross: 'off'), MediaChoice.custom);
       expect(parseCrossReply('> off'), 'off');
       expect(parseCrossReply('ab|> auto'), 'auto');

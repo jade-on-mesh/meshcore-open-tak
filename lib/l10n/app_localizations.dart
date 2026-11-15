@@ -12709,7 +12709,7 @@ abstract class AppLocalizations {
   /// No description provided for @mediaMesh_customHelp.
   ///
   /// In en, this message translates to:
-  /// **'Set from the radio console. Saving leaves it as it is.'**
+  /// **'Set from the radio console. Saving keeps it, and keeps radio2 separate from the main mesh.'**
   String get mediaMesh_customHelp;
 
   /// No description provided for @mediaMesh_frequency.

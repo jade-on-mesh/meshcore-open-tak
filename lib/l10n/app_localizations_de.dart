@@ -7597,7 +7597,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get mediaMesh_customHelp =>
-      'Set from the radio console. Saving leaves it as it is.';
+      'Set from the radio console. Saving keeps it, and keeps radio2 separate from the main mesh.';
 
   @override
   String get mediaMesh_frequency => 'radio2 frequency (MHz)';
