@@ -474,7 +474,6 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
     final media = _settings.media;
     final mediaHelp = switch (media) {
       MediaChoice.photosAndVoice => l10n.mediaMesh_photosVoiceHelp,
-      MediaChoice.everything => l10n.mediaMesh_everythingHelp,
       MediaChoice.custom => l10n.mediaMesh_customHelp,
     };
     return Column(
@@ -531,14 +530,6 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
                   value: MediaChoice.photosAndVoice,
                   label: Text(l10n.mediaMesh_photosVoice),
                 ),
-                // Everything (tx.media auto) sends photos and voice on the
-                // main mesh too, so it isn't offered; it only shows when the
-                // radio is already set that way (MediaLockdown).
-                if (media == MediaChoice.everything)
-                  ButtonSegment(
-                    value: MediaChoice.everything,
-                    label: Text(l10n.mediaMesh_everything),
-                  ),
                 if (state.settings.media == MediaChoice.custom)
                   ButtonSegment(
                     value: MediaChoice.custom,

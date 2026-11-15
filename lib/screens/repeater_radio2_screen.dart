@@ -36,7 +36,7 @@ class RepeaterRadio2Screen extends StatefulWidget {
   State<RepeaterRadio2Screen> createState() => _RepeaterRadio2ScreenState();
 }
 
-enum _Busy { none, profile, cross, reply, temp, status }
+enum _Busy { none, profile, reply, temp, status }
 
 class _RepeaterRadio2ScreenState extends State<RepeaterRadio2Screen> {
   static const _mainColor = MeshPalette.blue;
@@ -255,6 +255,13 @@ class _RepeaterRadio2ScreenState extends State<RepeaterRadio2Screen> {
     if (ok != true || !mounted) return;
     await _write(_Busy.profile, () async {
       final reply = await _ctl.applyProfile(_edit);
+      // radio2 traffic never crosses onto the main mesh, nor main-mesh traffic
+      // onto radio2: the app has no bridging choice, and "auto" (the
+      // firmware's default) bridges a saved radio2.
+      if (_edit.mode != Radio2Mode.off && _cross != Radio2Cross.off) {
+        await _ctl.setCross(Radio2Cross.off);
+        if (mounted) setState(() => _cross = Radio2Cross.off);
+      }
       if (!mounted) return;
       _toast(
         _edit.mode == Radio2Mode.off
@@ -272,16 +279,6 @@ class _RepeaterRadio2ScreenState extends State<RepeaterRadio2Screen> {
         );
       }
       await _loadLive();
-    });
-  }
-
-  Future<void> _setCross(Radio2Cross c) async {
-    if (_cross == c) return;
-    await _write(_Busy.cross, () async {
-      await _ctl.setCross(c);
-      if (!mounted) return;
-      setState(() => _cross = c);
-      _toast(context.l10n.rr2_saved);
     });
   }
 
@@ -508,8 +505,6 @@ class _RepeaterRadio2ScreenState extends State<RepeaterRadio2Screen> {
       ..._live(context),
       SectionHeader(l10n.rr2_profileSection),
       ListEntrance(index: i++, child: _profileCard(context)),
-      SectionHeader(l10n.rr2_crossSection),
-      ListEntrance(index: i++, child: _crossCard(context)),
       SectionHeader(l10n.rr2_replySection),
       ListEntrance(index: i++, child: _replyCard(context)),
       SectionHeader(l10n.rr2_tempSection),
@@ -1027,47 +1022,6 @@ class _RepeaterRadio2ScreenState extends State<RepeaterRadio2Screen> {
           Text(l10n.rr2_sharedNote, style: small),
         ],
       ),
-    );
-  }
-
-  // ---------------------------------------------------------------- cross
-
-  Widget _crossCard(BuildContext context) {
-    final l10n = context.l10n;
-    final busy = _busy == _Busy.cross;
-    if (_cross == null && !_loading) {
-      return MeshCard(child: Text(l10n.rr2_notReported));
-    }
-    return Column(
-      children: [
-        _ChoiceTile(
-          icon: Icons.sync_alt,
-          color: MeshPalette.signal,
-          title: l10n.rr2_crossOn,
-          subtitle: l10n.rr2_crossOnHelp,
-          selected: _cross == Radio2Cross.on,
-          busy: busy,
-          onTap: _busy == _Busy.none ? () => _setCross(Radio2Cross.on) : null,
-        ),
-        _ChoiceTile(
-          icon: Icons.auto_mode,
-          color: _mainColor,
-          title: l10n.rr2_crossAuto,
-          subtitle: l10n.rr2_crossAutoHelp,
-          selected: _cross == Radio2Cross.auto,
-          busy: busy,
-          onTap: _busy == _Busy.none ? () => _setCross(Radio2Cross.auto) : null,
-        ),
-        _ChoiceTile(
-          icon: Icons.link_off,
-          color: MeshPalette.warn,
-          title: l10n.rr2_crossOff,
-          subtitle: l10n.rr2_crossOffHelp,
-          selected: _cross == Radio2Cross.off,
-          busy: busy,
-          onTap: _busy == _Busy.none ? () => _setCross(Radio2Cross.off) : null,
-        ),
-      ],
     );
   }
 

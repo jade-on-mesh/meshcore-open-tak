@@ -35,16 +35,13 @@ enum MediaChoice {
   /// Photos and voice only: `tx.media radio2`, `radio2.cross off`.
   photosAndVoice,
 
-  /// Everything, photos and voice included: `tx.media auto`,
-  /// `radio2.cross on`.
-  everything,
-
-  /// Any other mix, set from the radio console.
+  /// Any other `tx.media`, set from the radio console. (There's no
+  /// "everything on both radios" choice: radio2 and the main mesh are always
+  /// kept separate, `radio2.cross off`.)
   custom;
 
   static MediaChoice from({required String? media, required String? cross}) {
     if (media == 'radio2' && cross == 'off') return MediaChoice.photosAndVoice;
-    if (media == 'auto' && cross == 'on') return MediaChoice.everything;
     return MediaChoice.custom;
   }
 }
@@ -653,20 +650,19 @@ class MediaMeshController {
 
   /// Applies [s]: the radio2 profile and mode, then (with radio2 on) what
   /// goes on it. Off sends media back to the main radio and turns radio2 off.
-  /// A [MediaChoice.custom] choice leaves the routing as the radio has it.
+  /// On always keeps radio2 and the main mesh separate (`radio2.cross off`);
+  /// a [MediaChoice.custom] choice leaves `tx.media` as the radio has it.
   Future<void> apply(MediaMeshSettings s) async {
     if (s.enabled) {
       await _ok(buildSetRadio2Command(s), 'The radio rejected radio2');
+      // Never bridged: what's heard on one radio isn't sent on the other.
+      await _ok('set radio2.cross off', 'The radio kept radio2.cross');
       switch (s.media) {
         case MediaChoice.photosAndVoice:
-          await _ok('set radio2.cross off', 'The radio kept radio2.cross');
           await _ok(
             'set tx.media radio2',
             'This firmware cannot send media on radio2',
           );
-        case MediaChoice.everything:
-          await _ok('set radio2.cross on', 'The radio kept radio2.cross');
-          await _ok('set tx.media auto', 'The radio kept tx.media');
         case MediaChoice.custom:
           break;
       }
