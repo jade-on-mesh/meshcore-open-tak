@@ -1225,6 +1225,17 @@ Future<void> showTeamMemberSheet(
               ),
               const SizedBox(height: 12),
               _houndButton(context, () => team.houndMember(key4)),
+              // Teammates are kept for a day across restarts; one who left
+              // the team can go sooner.
+              if (m.freshness != TeamFreshness.live)
+                TextButton.icon(
+                  icon: const Icon(Icons.person_remove_outlined),
+                  label: const Text('Remove from the team list'),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    team.forgetMember(key4);
+                  },
+                ),
             ],
           ),
         ),
