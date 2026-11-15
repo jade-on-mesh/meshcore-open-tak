@@ -31,8 +31,7 @@ const kP3 = '5001020304201b224618b6e10d380000000000fff300064b392d52657814';
 
 // The beacon number (flag 0x80) and an alert repeat's nonce (flag 0x04): new
 // bytes for each send, which the mesh would otherwise drop as already seen.
-const kP4 =
-    '500102030498ebd0073b5a20b51b0000000000ff8b0507416c7068612d311234';
+const kP4 = '500102030498ebd0073b5a20b51b0000000000ff8b0507416c7068612d311234';
 const kA3 = '53aabbccdd000104000000000000000000000007';
 
 // Routes (team_shape_wire.dart): Wadamesh TAK's test/test_team_wire.cpp
