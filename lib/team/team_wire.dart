@@ -421,7 +421,8 @@ class TeamPosition {
 
   static TeamPosition? tryParse(Uint8List p) {
     final r = _R(p);
-    if (!r.has(25) || r.u8() != teamMsgPosition) return null;
+    // 23: every fixed field and an empty callsign (25 dropped short ones).
+    if (!r.has(23) || r.u8() != teamMsgPosition) return null;
     final key = teamKey4Hex(r.take(4));
     final flags = r.u8();
     final lat = _undeg(r.i32()), lon = _undeg(r.i32());

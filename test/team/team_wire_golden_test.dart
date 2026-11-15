@@ -210,6 +210,11 @@ void main() {
     );
     expect(_hex(next.encode()), isNot(_hex(same.encode())));
     expect(TeamPosition.tryParse(_unhex(kP2))!.seq, isNull);
+    // A one-letter callsign is 24 bytes: still a position.
+    const short = TeamPosition(senderKey4: '01020304', lat: 1, lon: 2, callsign: 'J');
+    final bytes = short.encode();
+    expect(bytes.length, 24);
+    expect(TeamPosition.tryParse(bytes)!.callsign, 'J');
   });
 
   test('a repeat number goes after a CASEVAC when there is room', () {
