@@ -44,15 +44,22 @@ class TeamMember {
 
   Duration get age => DateTime.now().difference(heard);
 
-  /// ATAK-style freshness: live, stale, or lost.
-  TeamFreshness get freshness => age < const Duration(minutes: 12)
+  /// ATAK-style freshness: live, stale, or lost. A member who isn't moving
+  /// beacons every 10 minutes, so live covers two of those going missing
+  /// (a busy mesh loses some) and stale an hour.
+  TeamFreshness get freshness => age < teamLiveFor
       ? TeamFreshness.live
-      : age < const Duration(minutes: 30)
+      : age < teamStaleFor
       ? TeamFreshness.stale
       : TeamFreshness.lost;
 }
 
 enum TeamFreshness { live, stale, lost }
+
+/// How long a teammate counts as live, then stale, after their last beacon
+/// (Wadamesh TAK's TeamCore uses the same).
+const Duration teamLiveFor = Duration(minutes: 25);
+const Duration teamStaleFor = Duration(minutes: 60);
 
 /// Where this phone's position comes from right now.
 enum TeamFixSource { none, phone, radio, atak }
@@ -121,6 +128,7 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
   static const _kEnabled = 'team_enabled';
   static const _kChannelIdx = 'team_channel_index';
   static const _kChannelName = 'team_channel_name';
+  static const _kChannelId = 'team_channel_id';
   static const _kCallsign = 'team_callsign';
   static const _kRole = 'team_role';
   static const _kColor = 'team_color';
@@ -135,6 +143,8 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
   bool _enabled = false;
   int? _channelIndex;
   String? _channelName;
+  String? _channelId; // the channel's storageId (from its key)
+  Channel? _lastTeamChannel; // kept while the radio's channel list reloads
   String _callsign = '';
   int _roleId = 0;
   TeamColor _color = TeamColor.cyan;
@@ -151,16 +161,65 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
   bool get sharePosition => _sharePosition;
   TeamStatus get status => _status;
 
-  /// The team channel, if it still exists on the radio with the same name.
+  /// The team channel: the slot it was picked in, while that slot still holds
+  /// it (by name, or by its key when renamed); else wherever its key is now
+  /// (moved to another slot). While the radio's channel list is reloading it
+  /// is the last one found, so beacons and teammates' traffic aren't lost
+  /// meanwhile.
   Channel? get teamChannel {
     final i = _channelIndex;
     if (i == null) return null;
+    final id = _channelId;
+    Channel? found;
     for (final c in _connector.channels) {
-      if (c.index == i && (_channelName == null || c.name == _channelName)) {
-        return c;
+      if (c.index == i &&
+          ((_channelName != null && c.name == _channelName) ||
+              (id != null && c.storageId == id) ||
+              (_channelName == null && id == null))) {
+        found = c;
+        break;
       }
     }
+    if (found == null && id != null) {
+      for (final c in _connector.channels) {
+        if (c.storageId == id) {
+          found = c;
+          break;
+        }
+      }
+    }
+    if (found != null) {
+      _adoptChannel(found);
+      return found;
+    }
+    final last = _lastTeamChannel;
+    if (last != null &&
+        last.index == i &&
+        (_connector.isLoadingChannels || _connector.isSyncingChannels)) {
+      return last;
+    }
     return null;
+  }
+
+  /// Follows the team channel to its slot and name now, and learns its key.
+  void _adoptChannel(Channel c) {
+    _lastTeamChannel = c;
+    if (_channelIndex == c.index &&
+        _channelName == c.name &&
+        _channelId == c.storageId) {
+      return;
+    }
+    _channelIndex = c.index;
+    _channelName = c.name;
+    _channelId = c.storageId;
+    final id = c.storageId;
+    unawaited(
+      _save((p) {
+        p.setInt(_kChannelIdx, c.index);
+        p.setString(_kChannelName, c.name);
+        if (id != null) p.setString(_kChannelId, id);
+      }),
+    );
   }
 
   /// Channels that can be a team channel (private ones; public and hashtag
@@ -190,6 +249,7 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
       _enabled = p.getBool(_kEnabled) ?? false;
       _channelIndex = p.getInt(_kChannelIdx);
       _channelName = p.getString(_kChannelName);
+      _channelId = p.getString(_kChannelId);
       _callsign = p.getString(_kCallsign) ?? '';
       _roleId = (p.getInt(_kRole) ?? 0).clamp(0, teamMaxRoleId);
       for (final b64 in p.getStringList(_kRoles) ?? const <String>[]) {
@@ -205,6 +265,7 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
       _routingServer = p.getString(_kRoutingServer) ?? '';
       _voice = p.getBool(_kRoadVoice) ?? true;
       _myTrack.addAll(decodeTeamTrack(p.getString(_kMyTrack) ?? ''));
+      _loadMembers(p);
       _hidden.addAll(p.getStringList(_kHidden) ?? const <String>[]);
       for (final b64 in p.getStringList(_kMarkers) ?? const <String>[]) {
         final m = TeamMarker.tryParse(base64Decode(b64));
@@ -257,6 +318,8 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
     if (channel != null) {
       _channelIndex = channel.index;
       _channelName = channel.name;
+      _channelId = channel.storageId;
+      _lastTeamChannel = channel;
     }
     if (callsign != null) _callsign = callsign.trim();
     if (roleId != null) _roleId = roleId.clamp(0, teamMaxRoleId);
@@ -267,6 +330,7 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
       p.setBool(_kEnabled, _enabled);
       if (_channelIndex != null) p.setInt(_kChannelIdx, _channelIndex!);
       if (_channelName != null) p.setString(_kChannelName, _channelName!);
+      if (_channelId != null) p.setString(_kChannelId, _channelId!);
       p.setString(_kCallsign, _callsign);
       p.setInt(_kRole, _roleId);
       p.setInt(_kColor, _color.index);
@@ -388,7 +452,10 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
 
   @override
   void forgetCompatMember(String key4) {
-    if (_members.remove(key4) != null) notifyListeners();
+    if (_members.remove(key4) != null) {
+      _saveMembers(now: true);
+      notifyListeners();
+    }
   }
 
   @override
@@ -406,6 +473,39 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
   StreamSubscription<Position>? _gpsSub;
   Position? _phoneFix;
   String? _gpsProblem;
+  DateTime? _gpsRefreshAt;
+
+  /// How long a still phone's last fix stands for its position.
+  static const Duration _phoneFixHeldFor = Duration(minutes: 30);
+
+  /// A still phone asks for a fresh fix this often, so its position (and
+  /// accuracy) doesn't go stale while it waits for the distance filter.
+  static const Duration _gpsRefreshEvery = Duration(minutes: 5);
+
+  void _refreshStillFix() {
+    final p = _phoneFix;
+    if (_gpsSub == null || p == null) return;
+    final now = DateTime.now();
+    if (now.difference(p.timestamp) < _gpsRefreshEvery) return;
+    final last = _gpsRefreshAt;
+    if (last != null && now.difference(last) < _gpsRefreshEvery) return;
+    _gpsRefreshAt = now;
+    unawaited(() async {
+      try {
+        final f = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 30),
+          ),
+        );
+        _phoneFix = f;
+        _onSelfMoved();
+        notifyListeners();
+      } catch (_) {
+        // Keep the last fix; the stream is still the source.
+      }
+    }());
+  }
 
   /// Why the phone's GPS isn't in use, if it isn't.
   String? get gpsProblem => _gpsProblem;
@@ -501,8 +601,14 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
       );
     }
     final p = _phoneFix;
+    // A phone that isn't moving gets no new fixes (the 5 m distance filter),
+    // so while its GPS stream is running its last fix is where it still is.
+    // Without this a still phone had no position after 2 minutes and, with a
+    // radio that has none either, stopped beaconing altogether.
+    final phoneAge = p == null ? null : DateTime.now().difference(p.timestamp);
     if (p != null &&
-        DateTime.now().difference(p.timestamp) < const Duration(minutes: 2)) {
+        (phoneAge! < const Duration(minutes: 2) ||
+            (_gpsSub != null && phoneAge < _phoneFixHeldFor))) {
       return TeamFix(
         lat: p.latitude,
         lon: p.longitude,
@@ -530,6 +636,62 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
 
   final Map<String, TeamMember> _members = {};
 
+  // Teammates are kept across restarts (their last position and when it was
+  // heard), so the list and map don't start empty and wait up to 10 minutes
+  // for each still teammate's next beacon.
+  static const _kMembers = 'team_members_v1';
+  static const Duration _membersKeptFor = Duration(hours: 24);
+  DateTime _membersSaved = DateTime.fromMillisecondsSinceEpoch(0);
+  bool _membersDirty = false;
+
+  void _loadMembers(SharedPreferences p) {
+    final now = DateTime.now();
+    for (final line in p.getStringList(_kMembers) ?? const <String>[]) {
+      final i = line.indexOf('|');
+      if (i <= 0) continue;
+      final ms = int.tryParse(line.substring(0, i));
+      if (ms == null) continue;
+      final heard = DateTime.fromMillisecondsSinceEpoch(ms);
+      if (now.difference(heard) > _membersKeptFor) continue;
+      try {
+        final pos = TeamPosition.tryParse(base64Decode(line.substring(i + 1)));
+        if (pos == null || _members.containsKey(pos.senderKey4)) continue;
+        _members[pos.senderKey4] = TeamMember(
+          key4: pos.senderKey4,
+          position: pos,
+          heard: heard,
+          trail: [(pos.lat, pos.lon, heard)],
+        );
+      } catch (_) {}
+    }
+  }
+
+  void _saveMembers({bool now = false}) {
+    _membersDirty = true;
+    if (!now &&
+        DateTime.now().difference(_membersSaved) < const Duration(minutes: 1)) {
+      return;
+    }
+    _membersSaved = DateTime.now();
+    _membersDirty = false;
+    final cutoff = DateTime.now().subtract(_membersKeptFor);
+    final lines = [
+      for (final m in _members.values)
+        if (m.heard.isAfter(cutoff))
+          '${m.heard.millisecondsSinceEpoch}|'
+              '${base64Encode(m.position.encode())}',
+    ];
+    unawaited(_save((p) => p.setStringList(_kMembers, lines)));
+  }
+
+  /// Forgets a teammate (they left the team, or a radio was replaced).
+  void forgetMember(String key4) {
+    if (_members.remove(key4) == null) return;
+    if (_houndMember == key4) _houndMember = null;
+    _saveMembers(now: true);
+    notifyListeners();
+  }
+
   /// Teammates heard on the team channel, newest first (not including me).
   List<TeamMember> get members =>
       _members.values.toList()..sort((a, b) => b.heard.compareTo(a.heard));
@@ -554,6 +716,7 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
       heard: DateTime.now(),
       trail: trail,
     );
+    _saveMembers();
     onRemotePosition?.call(_members[p.senderKey4]!);
     if (_houndMember == p.senderKey4) _updateRoad();
     _checkGeofences(
@@ -983,6 +1146,8 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
   }
 
   void _onTick() {
+    _refreshStillFix();
+    if (_membersDirty) _saveMembers();
     _onSelfMoved();
     if (!active || !_sharePosition || _sending) return;
     final f = fix;
@@ -1077,7 +1242,11 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
     ];
   }
 
-  TeamPosition? _selfPosition() {
+  /// The beacon number each beacon carries (TeamPosition.seq), from a random
+  /// start so a restart doesn't repeat the last run's.
+  late int _beaconSeq = _rng.nextInt(1 << 16);
+
+  TeamPosition? _selfPosition({int? seq}) {
     final f = fix;
     if (f == null) return null;
     final atak = atakLinked ? _atakSelf : null;
@@ -1105,12 +1274,14 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
       sosActive: _activeOwnAlert != null,
       nameHash: nameHash(_connector.selfName ?? ''),
       heard: List.of(_heardRecent),
+      seq: seq,
     );
   }
 
   /// Sends this phone's position now.
   Future<bool> sendPosition() async {
-    final p = _selfPosition();
+    _beaconSeq = (_beaconSeq + 1) & 0xFFFF;
+    final p = _selfPosition(seq: _beaconSeq);
     if (p == null || !active) return false;
     _sending = true;
     _forceBeacon = false;
@@ -1407,14 +1578,26 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
   }
 
   /// Re-sends my pins, e.g. for someone who joined late.
+  /// Each goes with its time moved to now: the same bytes again would be
+  /// dropped by every radio that forwarded the first copy.
   Future<int> resendMyMarkers() async {
     var n = 0;
-    for (final m in _markers.values) {
+    for (final m in _markers.values.toList()) {
       if (!isMine(m)) continue;
-      if (await _send(m.encode())) n++;
+      final r = m.copyWith(time: _resendTime(m.time));
+      _markers[r.key] = r;
+      if (await _send(r.encode())) n++;
       await Future<void>.delayed(const Duration(seconds: 3));
     }
+    unawaited(_persistMarkers());
     return n;
+  }
+
+  /// Now, or a second after [t] if that's later (times go in whole seconds).
+  static DateTime _resendTime(DateTime t) {
+    final now = DateTime.now();
+    final next = t.add(const Duration(seconds: 1));
+    return now.isAfter(next) ? now : next;
   }
 
   /// Adds a marker that came from outside the mesh (TAK), without sending.
@@ -1753,9 +1936,12 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
     var n = 0;
     for (final s in shapes) {
       if (!isMyShape(s)) continue;
-      if (await _send(s.encode())) n++;
+      final r = s.copyWith(time: _resendTime(s.time));
+      _shapes[r.key] = r;
+      if (await _send(r.encode())) n++;
       await Future<void>.delayed(const Duration(seconds: 3));
     }
+    unawaited(_persistShapes());
     return n;
   }
 
@@ -1884,10 +2070,11 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
     onCasevacChanged?.call(c);
     notifyListeners();
     unawaited(() async {
+      var repeat = 0;
       for (final delay in const [0, 20, 60]) {
         if (delay > 0) await Future<void>.delayed(Duration(seconds: delay));
         if (_casevacs[c.key]?.deleted != false) return;
-        await _send(c.encode());
+        await _send(teamRepeatBytes(c.encode(), repeat++));
       }
     }());
     final ch = teamChannel;
@@ -2073,11 +2260,13 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
     _activeOwnAlert = a;
     onAlertChanged?.call(a);
     notifyListeners();
+    var repeat = 0;
     for (final delay in const [0, 15, 45]) {
       if (_activeOwnAlert?.alertId != a.alertId) return;
       if (delay > 0) await Future<void>.delayed(Duration(seconds: delay));
       if (_activeOwnAlert?.alertId != a.alertId) return;
-      await _send(a.encode());
+      // Each repeat's bytes differ, or the mesh drops it as already seen.
+      await _send(a.withNonce(repeat++).encode());
     }
   }
 
@@ -2097,19 +2286,43 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
     );
     onAlertChanged?.call(c);
     notifyListeners();
-    await _send(c.encode());
+    await _send(c.withNonce(0).encode());
     await Future<void>.delayed(const Duration(seconds: 10));
-    await _send(c.encode());
+    await _send(c.withNonce(1).encode());
   }
 
   // ---------------------------------------------------------- receiving
+
+  // What has arrived, for the Team screen when nobody shows up: none at all
+  // (nothing reaches this radio), or team data on another channel (the team
+  // channel differs between phones).
+  int _packetsHeard = 0;
+  DateTime? _lastPacketAt;
+  int _otherChannelPackets = 0;
+  int? _otherChannel;
+
+  /// Team payloads heard on the team channel this session.
+  int get packetsHeard => _packetsHeard;
+  DateTime? get lastPacketAt => _lastPacketAt;
+
+  /// Team payloads heard on a channel that isn't the team channel, and the
+  /// last such channel's slot.
+  int get otherChannelPackets => _otherChannelPackets;
+  int? get otherChannel => _otherChannel;
 
   void _onFrame(Uint8List frame) {
     if (frame.isEmpty || frame[0] != respCodeChannelDataRecv) return;
     final parsed = parseChannelDataFrame(frame);
     if (parsed == null || parsed.dataType != teamChannelDataType) return;
     final ch = teamChannel;
-    if (ch == null || parsed.channelIndex != ch.index) return;
+    if (ch == null || parsed.channelIndex != ch.index) {
+      _otherChannelPackets++;
+      _otherChannel = parsed.channelIndex;
+      notifyListeners();
+      return;
+    }
+    _packetsHeard++;
+    _lastPacketAt = DateTime.now();
     handlePayload(parsed.payload);
   }
 
@@ -2173,6 +2386,7 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
       final enc = encodeTeamTrack(_myTrack);
       unawaited(_save((p) => p.setString(_kMyTrack, enc)));
     }
+    if (_membersDirty) _saveMembers(now: true);
     _tick.cancel();
     _roleShareTimer?.cancel();
     unawaited(_sub.cancel());

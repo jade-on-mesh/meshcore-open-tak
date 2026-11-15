@@ -43,6 +43,15 @@
 // heard are the reaction hashes of the last teammates' channel messages this
 // member heard. Older readers stop at the callsign.
 //
+// Flag 0x80 adds, last, a beacon number [seq u16] that goes up with every
+// beacon. GRP_DATA carries no timestamp and channel encryption is
+// deterministic, so without it a member who isn't moving sends the same bytes
+// each time, and every radio drops the repeats as packets it has already seen
+// (MeshCore remembers the last 160). Older readers ignore it.
+//
+// An alert's flag 0x04 does the same for its repeats: [nonce u8] after the
+// note.
+//
 // Added with the ATAK plugin (atak-plugin/), which also speaks position,
 // alert, marker and report; formats in team_wire_atak.dart:
 //   point     [0x4F] any single-point CoT item (spot marker, 2525 unit...)
@@ -343,6 +352,9 @@ class TeamPosition {
   /// Reaction hashes of teammates' channel messages this member heard last.
   final List<int> heard;
 
+  /// The beacon number (flag 0x80), which makes each beacon's bytes new.
+  final int? seq;
+
   const TeamPosition({
     required this.senderKey4,
     required this.lat,
@@ -361,6 +373,7 @@ class TeamPosition {
     this.relayed = false,
     this.nameHash,
     this.heard = const [],
+    this.seq,
   });
 
   /// The default role, or [TeamRole.member] for an added one.
@@ -379,7 +392,8 @@ class TeamPosition {
             (sosActive ? 0x08 : 0) |
             (relayed ? 0x10 : 0) |
             (extended ? 0x20 : 0) |
-            (nameHash != null ? 0x40 : 0),
+            (nameHash != null ? 0x40 : 0) |
+            (seq != null ? 0x80 : 0),
       )
       ..i32(_deg(lat))
       ..i32(_deg(lon))
@@ -401,6 +415,7 @@ class TeamPosition {
         w.u16(x & 0xFFFF);
       }
     }
+    if (seq != null) w.u16(seq! & 0xFFFF);
     return w.done();
   }
 
@@ -433,6 +448,7 @@ class TeamPosition {
         heard.add(r.u16());
       }
     }
+    final seq = flags & 0x80 != 0 && r.has(2) ? r.u16() : null;
     return TeamPosition(
       senderKey4: key,
       lat: lat,
@@ -451,6 +467,7 @@ class TeamPosition {
       relayed: flags & 0x10 != 0,
       nameHash: nameHash,
       heard: heard,
+      seq: seq,
     );
   }
 }
@@ -482,6 +499,10 @@ class TeamAlert {
   final String callsign;
   final String note;
 
+  /// Differs between an alert's repeats (flag 0x04), so the mesh doesn't drop
+  /// them as already seen.
+  final int? nonce;
+
   const TeamAlert({
     required this.senderKey4,
     required this.alertId,
@@ -492,7 +513,22 @@ class TeamAlert {
     this.accuracyM = 0,
     this.callsign = '',
     this.note = '',
+    this.nonce,
   });
+
+  /// This alert with another [nonce] (for a repeat).
+  TeamAlert withNonce(int n) => TeamAlert(
+    senderKey4: senderKey4,
+    alertId: alertId,
+    active: active,
+    type: type,
+    lat: lat,
+    lon: lon,
+    accuracyM: accuracyM,
+    callsign: callsign,
+    note: note,
+    nonce: n & 0xFF,
+  );
 
   /// Unique per sender and alert.
   String get key => '$senderKey4:$alertId';
@@ -503,12 +539,18 @@ class TeamAlert {
       ..u8(teamMsgAlert)
       ..bytes(_key4(senderKey4))
       ..u16(alertId)
-      ..u8((active ? 0x01 : 0) | (hasPos ? 0x02 : 0) | (type.index << 4))
+      ..u8(
+        (active ? 0x01 : 0) |
+            (hasPos ? 0x02 : 0) |
+            (nonce != null ? 0x04 : 0) |
+            (type.index << 4),
+      )
       ..i32(hasPos ? _deg(lat!) : 0)
       ..i32(hasPos ? _deg(lon!) : 0)
       ..u8(accuracyM.clamp(0, 255))
       ..str(callsign, teamMaxCallsignBytes)
       ..str(note, teamMaxAlertNoteBytes);
+    if (nonce != null) w.u8(nonce! & 0xFF);
     return w.done();
   }
 
@@ -521,6 +563,8 @@ class TeamAlert {
     final lat = _undeg(r.i32()), lon = _undeg(r.i32());
     final acc = r.u8();
     final hasPos = state & 0x02 != 0 && lat.abs() <= 90 && lon.abs() <= 180;
+    final callsign = r.str() ?? '';
+    final note = r.str() ?? '';
     return TeamAlert(
       senderKey4: key,
       alertId: id,
@@ -529,8 +573,9 @@ class TeamAlert {
       lat: hasPos ? lat : null,
       lon: hasPos ? lon : null,
       accuracyM: acc,
-      callsign: r.str() ?? '',
-      note: r.str() ?? '',
+      callsign: callsign,
+      note: note,
+      nonce: state & 0x04 != 0 && r.has(1) ? r.u8() : null,
     );
   }
 }
@@ -701,6 +746,15 @@ class TeamBeaconPolicy {
     if (moving && sinceLast >= movingInterval) return true;
     return sinceLast >= stillInterval;
   }
+}
+
+/// [payload] with a [repeat] number appended, for a repeat of a message whose
+/// readers ignore what follows it (a CASEVAC after its remarks): the same bytes
+/// again would be dropped by every radio that saw the first. Unchanged when
+/// there's no room.
+Uint8List teamRepeatBytes(Uint8List payload, int repeat) {
+  if (repeat == 0 || payload.length >= teamMaxPayload) return payload;
+  return Uint8List.fromList([...payload, repeat & 0xFF]);
 }
 
 /// Great-circle distance in metres.

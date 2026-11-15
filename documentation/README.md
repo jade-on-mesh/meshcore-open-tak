@@ -49,6 +49,7 @@ MeshCore Open is an open-source Flutter client for MeshCore LoRa mesh networking
 34. [Photos on the map](photo-mosaic.md) - Photos received over MediaMesh as thumbnails where they were taken, with a timeline (a toggle)
 35. [AR view](ar-view.md) - Hold the phone up to see teammates, pins and watched reports as labels with their distance
 36. [Transit cards](transit-watch.md) - A watched transit bot channel (BusBot's #transit) as full cards: ticking arrivals, alerts, trip plans, stops on the map
+37. [Team presence](team-presence.md) - How teammates stay on the list: beacons, live/stale/lost, and what the Team tab says when nobody shows up
 
 ## App Overview
 

@@ -29,6 +29,12 @@ const kR1 = '4ca1b2c3d4020068ec0be0007b07454d5420e29c9a';
 const kR2 = '4c0a0b0c0d110168ec0c44000000';
 const kP3 = '5001020304201b224618b6e10d380000000000fff300064b392d52657814';
 
+// The beacon number (flag 0x80) and an alert repeat's nonce (flag 0x04): new
+// bytes for each send, which the mesh would otherwise drop as already seen.
+const kP4 =
+    '500102030498ebd0073b5a20b51b0000000000ff8b0507416c7068612d311234';
+const kA3 = '53aabbccdd000104000000000000000000000007';
+
 // Routes (team_shape_wire.dart): Wadamesh TAK's test/test_team_wire.cpp
 // parses and re-encodes these same bytes.
 const kS1 =
@@ -164,6 +170,55 @@ void main() {
     expect(_hex(a1.encode()), kA1);
     const a2 = TeamAlert(senderKey4: 'aabbccdd', alertId: 1, active: false);
     expect(_hex(a2.encode()), kA2);
+    expect(_hex(a2.withNonce(7).encode()), kA3);
+    final back = TeamAlert.tryParse(_unhex(kA3))!;
+    expect(back.nonce, 7);
+    expect(back.active, isFalse);
+    expect(back.alertId, 1);
+    expect(TeamAlert.tryParse(_unhex(kA2))!.nonce, isNull);
+  });
+
+  test('a beacon number makes each beacon new, and old readers skip it', () {
+    final p = TeamPosition(
+      senderKey4: '01020304',
+      lat: -33.8688197,
+      lon: 151.2092955,
+      roleId: TeamRole.command.index,
+      color: TeamColor.green,
+      status: TeamStatus.resting,
+      callsign: '  Alpha-1  ',
+      sosActive: true,
+      relayed: true,
+      seq: 0x1234,
+    );
+    expect(_hex(p.encode()), kP4);
+    final back = TeamPosition.tryParse(_unhex(kP4))!;
+    expect(back.seq, 0x1234);
+    expect(back.callsign, 'Alpha-1');
+    expect(back.sosActive, isTrue);
+    // Same place, next beacon: different bytes.
+    final next = TeamPosition(
+      senderKey4: '01020304',
+      lat: -33.8688197,
+      lon: 151.2092955,
+      seq: 0x1235,
+    );
+    final same = TeamPosition(
+      senderKey4: '01020304',
+      lat: -33.8688197,
+      lon: 151.2092955,
+      seq: 0x1234,
+    );
+    expect(_hex(next.encode()), isNot(_hex(same.encode())));
+    expect(TeamPosition.tryParse(_unhex(kP2))!.seq, isNull);
+  });
+
+  test('a repeat number goes after a CASEVAC when there is room', () {
+    final b = Uint8List.fromList([1, 2, 3]);
+    expect(teamRepeatBytes(b, 0), b);
+    expect(teamRepeatBytes(b, 2), [1, 2, 3, 2]);
+    final full = Uint8List(teamMaxPayload);
+    expect(teamRepeatBytes(full, 1), full);
   });
 
   test('pins match the radio', () {

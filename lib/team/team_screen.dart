@@ -1087,11 +1087,12 @@ class _RosterTab extends StatelessWidget {
             ),
           ),
         if (team.members.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(24),
+          Padding(
+            padding: const EdgeInsets.all(24),
             child: Text(
-              'No teammates heard yet. Everyone on the team needs MeshCore Open TAK with '
-              'team mode on, using the same team channel.',
+              'No teammates heard yet. Everyone on the team needs '
+              'MeshCore Open TAK or Wadamesh TAK with team mode on, using the '
+              'same team channel.\n\n${_teamTrafficLine(team)}',
               textAlign: TextAlign.center,
             ),
           ),
@@ -1153,6 +1154,23 @@ class _RosterTab extends StatelessWidget {
       ],
     );
   }
+}
+
+/// What this radio has heard of team traffic, for an empty team list.
+String _teamTrafficLine(TeamService team) {
+  final other = team.otherChannelPackets;
+  if (other > 0 && team.packetsHeard == 0) {
+    final slot = team.otherChannel;
+    return 'Team data was heard on another channel'
+        '${slot == null ? '' : ' (slot ${slot + 1})'}, not this one: '
+        'check everyone picked the same team channel.';
+  }
+  final last = team.lastPacketAt;
+  if (team.packetsHeard == 0 || last == null) {
+    return 'No team data has reached this radio since the app started.';
+  }
+  return '${team.packetsHeard} team messages heard, the last '
+      '${teamAgo(last)}.';
 }
 
 class _Empty extends StatelessWidget {
