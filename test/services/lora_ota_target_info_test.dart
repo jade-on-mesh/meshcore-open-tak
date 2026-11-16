@@ -63,6 +63,44 @@ void main() {
     },
   );
 
+  test('an application update works without bootloader details', () async {
+    // A build that can't update its bootloader over the air answers this
+    // instead of BL target=/caps= (the iPhone report: "Target did not
+    // report bootloader target").
+    final info = LoraOtaTargetInfo.parse(
+      status:
+          'OTA | this fw C2CFC98C hw=RAK_4631 | target:0A9DBBF0 | '
+          'maxblk:4 | bl:QSPI blrc:00 | idle | serving:off (0) | keys:1 | '
+          'env:RAK_4631_repeater',
+      self: 'self body=487288 base_hash=C2CFC98C42CBEFDB',
+      bootloader:
+          'Bootloader update unavailable: installed bootloader supports '
+          'application OTA only',
+      keys: 'trusted signer keys (1): F9344B3A400221D1',
+    );
+    expect(info.applicationTargetId, 0x0A9DBBF0);
+    expect(info.bootloaderTargetId, isNull);
+    expect(info.bootloaderUpdatable, isFalse);
+    expect(info.receiverStorage, 'external_qspi');
+    // A bootloader package is refused with a reason.
+    final bytes = await buildTestBootloaderMotaContainer(storageCaps: 0x0E);
+    final file = await BleMotaFile.load(
+      XFile.fromData(Uint8List.fromList(bytes), name: 'bl.mota'),
+    );
+    expect(() => info.validatePackage(file), throwsStateError);
+    // ESP32 says nothing about staging storage.
+    final esp = LoraOtaTargetInfo.parse(
+      status:
+          'OTA | this fw C2CFC98C hw=heltec_v4 | target:0A9DBBF0 | '
+          'maxblk:4 | idle | serving:off (0) | keys:0 | env:heltec_v4_repeater',
+      self: 'self base_hash=C2CFC98C42CBEFDB',
+      bootloader: 'ERR usage: ota bootloader update',
+      keys: '',
+    );
+    expect(esp.receiverStorage, isNull);
+    expect(esp.bootloaderUpdatable, isFalse);
+  });
+
   test('refuses malformed target identity instead of guessing', () {
     expect(
       () => LoraOtaTargetInfo.parse(

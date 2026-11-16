@@ -97,7 +97,11 @@ class _NrfBluetoothDfuScreenState extends State<NrfBluetoothDfuScreen> {
   }
 
   Future<void> _choosePackage() => _run(() async {
-    const group = XTypeGroup(label: 'Nordic DFU ZIP', extensions: ['zip']);
+    const group = XTypeGroup(
+      label: 'Nordic DFU ZIP',
+      extensions: ['zip'],
+      uniformTypeIdentifiers: ['public.zip-archive'],
+    );
     final file = await openFile(acceptedTypeGroups: [group]);
     if (file != null) await _loadPackage(file);
   });

@@ -4,7 +4,7 @@
 
 This is a screenshot walkthrough of a real test on the Mercerwood Pi Zero mesh. The Android 5.1.1 phone was connected by Bluetooth to a RAK3401 Full Companion, which served the update over LoRa to a Heltec Tower V2 SD repeater. The repeater started on firmware `v1.17.1.5`; the selected replacement was `v1.17.1.6` for the **same** `Heltec_tower_v2_sdcard_repeater_lora_ota_no_external_sensors` target. The package manifest ID in these screenshots is `6BE07A6F`. Your manifest ID, board, radio settings, and timing will differ.
 
-Keep the phone charging and the app in the foreground throughout the transfer. Use a legal frequency for your region. Do not use a package for a different board or storage layout. A bootloader update is a separate, higher-risk operation; this walkthrough updates the repeater application only.
+Keep the phone charging and the app in the foreground throughout the transfer. Use a legal frequency for your region. Do not use a package for a different board or storage layout. A bootloader update is a separate, higher-risk operation; this walkthrough updates the repeater application only. Only repeaters whose build can update their bootloader over the air report their bootloader (`ota bootloader`); others answer "Bootloader update unavailable" (or, on ESP32, nothing useful). Application updates don't need it, so the app goes ahead without it and hides the bootloader package. Where a repeater stages the download comes from `ota status` (`bl:SD`, `bl:QSPI` or `bl:internal`) when the bootloader reply doesn't say.
 
 ## 1. Open the repeater's LoRa OTA screen
 

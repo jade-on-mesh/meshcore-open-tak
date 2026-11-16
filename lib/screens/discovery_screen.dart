@@ -492,7 +492,11 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     try {
       final file = await openFile(
         acceptedTypeGroups: [
-          const XTypeGroup(label: 'JSON', extensions: ['json']),
+          const XTypeGroup(
+            label: 'JSON',
+            extensions: ['json'],
+            uniformTypeIdentifiers: ['public.json'],
+          ),
         ],
       );
       // A null file means the picker was cancelled.

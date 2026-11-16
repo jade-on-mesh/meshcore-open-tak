@@ -714,7 +714,9 @@ class _LoRaOtaScreenState extends State<LoRaOtaScreen> {
             : 'Matching release found, but it has no usable phone update image.';
       });
       _addEvent(
-        'Target build profile: ${target.environment}; storage: ${target.receiverStorage}.',
+        'Target build profile: ${target.environment}; storage: '
+        '${target.receiverStorage ?? 'not reported'}; bootloader update: '
+        '${target.bootloaderUpdatable ? 'supported' : 'not in this build'}.',
       );
       _addEvent('GitHub release check: $_releaseStatus');
     });
@@ -727,11 +729,16 @@ class _LoRaOtaScreenState extends State<LoRaOtaScreen> {
       if (discovery == null || target == null) {
         throw StateError('Check GitHub releases first.');
       }
+      if (bootloader && !target.bootloaderUpdatable) {
+        throw StateError(
+          "This repeater's firmware can't update its bootloader over the air.",
+        );
+      }
       final file = bootloader
           ? await _githubReleases.downloadBootloader(
               discovery,
-              targetId: target.bootloaderTargetId,
-              storageCaps: target.bootloaderStorageCaps,
+              targetId: target.bootloaderTargetId!,
+              storageCaps: target.bootloaderStorageCaps!,
             )
           : await _githubReleases.downloadApplication(
               discovery,
@@ -2119,7 +2126,8 @@ class _LoRaOtaScreenState extends State<LoRaOtaScreen> {
                         '${_releaseDiscovery!.bootloaderName}',
                       ),
                     ],
-                    if (_releaseDiscovery?.hasBootloaderBundle == true)
+                    if (_releaseDiscovery?.hasBootloaderBundle == true &&
+                        _releaseTarget?.bootloaderUpdatable == true)
                       TextButton(
                         onPressed: _busy || _sessionActive
                             ? null

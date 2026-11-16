@@ -112,7 +112,11 @@ Future<void> _import(BuildContext context) async {
   final messenger = ScaffoldMessenger.of(context);
   final f = await openFile(
     acceptedTypeGroups: const [
-      XTypeGroup(label: 'TAK data package', extensions: ['zip', 'dpk']),
+      XTypeGroup(
+        label: 'TAK data package',
+        extensions: ['zip', 'dpk'],
+        uniformTypeIdentifiers: ['public.zip-archive', 'public.data'],
+      ),
     ],
   );
   if (f == null) return;

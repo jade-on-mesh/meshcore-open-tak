@@ -37,6 +37,7 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
     label: 'MeshCore backup',
     extensions: ['json'],
     mimeTypes: ['application/json'],
+    uniformTypeIdentifiers: ['public.json'],
   );
   static const Set<BackupItem> _defaultUncheckedItems = {
     BackupItem.privateKey,

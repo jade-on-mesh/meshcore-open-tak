@@ -170,6 +170,10 @@ class _CompanionUpdateScreenState extends State<CompanionUpdateScreen> {
               XTypeGroup(
                 label: 'Companion firmware',
                 extensions: extension == null ? ['zip', 'bin'] : [extension],
+                // iOS needs these: extensions alone throw there.
+                uniformTypeIdentifiers: extension == 'zip'
+                    ? const ['public.zip-archive']
+                    : const ['public.zip-archive', 'public.data'],
               ),
             ],
           );

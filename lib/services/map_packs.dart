@@ -144,7 +144,11 @@ class MapPackService extends ChangeNotifier {
   Future<MapPackInfo?> pickAndImport() async {
     final file = await openFile(
       acceptedTypeGroups: const [
-        XTypeGroup(label: 'Map packs (MBTiles)', extensions: ['mbtiles']),
+        XTypeGroup(
+          label: 'Map packs (MBTiles)',
+          extensions: ['mbtiles'],
+          uniformTypeIdentifiers: ['public.data'],
+        ),
         // Android pickers often don't know the extension: allow anything.
         XTypeGroup(label: 'All files'),
       ],
