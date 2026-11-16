@@ -164,6 +164,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       unawaited(PrefsManager.instance.setString(_freshnessKey, value.name));
     } catch (_) {}
   }
+
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
   String _searchQuery = '';
