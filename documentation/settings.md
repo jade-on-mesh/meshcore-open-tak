@@ -45,7 +45,8 @@ Battery shows an alert icon and orange text when at 15% or below. The toggle onl
 
 These settings are sent directly to the connected device firmware.
 
-### Node Name
+### Name
+- The node's mesh identity name (the Device Info card lists it as Node Name)
 - Opens a dialog with a text field (max 31 characters)
 - Sends the new name to the device
 - Confirmed via snackbar
