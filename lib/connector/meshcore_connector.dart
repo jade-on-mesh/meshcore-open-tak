@@ -10127,7 +10127,8 @@ class MeshCoreConnector extends ChangeNotifier {
     for (final frame in frames) {
       if (frame[0] != respCodeChannelDataRecv) {
         _handleIncomingChannelMessage(frame);
-      } else if (_appSettingsService?.settings.imageMessagesEnabled ?? false) {
+      } else {
+        // As on the live path: AI sketches are kept whatever the setting.
         _handleIncomingChannelData(frame);
       }
     }

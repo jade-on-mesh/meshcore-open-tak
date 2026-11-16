@@ -50,6 +50,7 @@ Future<ReceivedImageStore> _awaitingStore({
   ReceivedImageDecoder? decoder,
   int bytes = 156,
   int packets = 2,
+  AeicRatePoint rate = AeicRatePoint.ft2,
 }) async {
   final blobs = InMemoryReceivedImageBlobStore();
   await blobs.writeBitstream('await1', Uint8List(bytes));
@@ -67,6 +68,7 @@ Future<ReceivedImageStore> _awaitingStore({
       'needsManualDecode': true,
       'bitstreamStored': true,
       'bitstreamByteCount': bytes,
+      'rate': rate.wireValue,
     }),
   );
   final store = ReceivedImageStore(blobs: blobs, decoder: decoder);
@@ -79,6 +81,7 @@ Future<void> _pumpBubble(
   ReceivedImageStore store, {
   String streamId = 'await1',
   VoidCallback? onOpenCodecSettings,
+  bool codecSupported = true,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -91,6 +94,7 @@ Future<void> _pumpBubble(
           fallbackTextColor: Colors.black,
           store: store,
           onOpenCodecSettings: onOpenCodecSettings,
+          codecSupported: codecSupported,
         ),
       ),
     ),
@@ -319,6 +323,53 @@ void main() {
     );
   });
 
+  testWidgets('an old-style AI sketch says so, with nothing to tap', (
+    tester,
+  ) async {
+    final decoder = _FakeDecoder(ImageCodecAvailability.ready);
+    final store = await _awaitingStore(
+      decoder: decoder,
+      rate: AeicRatePoint.ft32,
+    );
+    var settingsOpened = 0;
+    await _pumpBubble(
+      tester,
+      store,
+      onOpenCodecSettings: () => settingsOpened++,
+    );
+
+    expect(
+      find.text('Old-style AI sketch: this app only draws AI sketch HD'),
+      findsOneWidget,
+    );
+    expect(find.text('Tap to process'), findsNothing);
+    await tester.tap(find.byType(ReceivedImageMessage));
+    await tester.pump();
+    expect(settingsOpened, 0);
+    expect(decoder.decodeCalls, 0);
+  });
+
+  testWidgets('AI sketch HD on a device without the codec says so', (
+    tester,
+  ) async {
+    final store = await _awaitingStore(
+      decoder: _FakeDecoder(ImageCodecAvailability.unavailable),
+    );
+    await _pumpBubble(
+      tester,
+      store,
+      onOpenCodecSettings: () {},
+      codecSupported: false,
+    );
+
+    expect(
+      find.text('AI sketch HD can\'t be drawn on this device'),
+      findsOneWidget,
+    );
+    expect(find.text('Set up'), findsNothing);
+    expect(find.text('Tap to process'), findsNothing);
+  });
+
   testWidgets('a queued (auto-decode) card is still tappable', (tester) async {
     final blobs = InMemoryReceivedImageBlobStore();
     await blobs.writeBitstream('queued1', Uint8List(120));
@@ -336,6 +387,7 @@ void main() {
         'needsManualDecode': false,
         'bitstreamStored': true,
         'bitstreamByteCount': 120,
+        'rate': AeicRatePoint.ft2.wireValue,
       }),
     );
     final decoder = _FakeDecoder(ImageCodecAvailability.ready);
@@ -359,7 +411,8 @@ void main() {
     const cases = <String, String>{
       'failedIncomplete': 'Image incomplete — 1 of 3 packets arrived',
       'failedCorrupt': 'Image could not be reconstructed',
-      'decoderUnavailable': 'Image received — image decoding is off',
+      'decoderUnavailable':
+          'AI sketch HD received: download the model to see it',
       'evicted': 'Image no longer stored',
       'decoding': 'Reconstructing… about 1 s',
     };
@@ -380,6 +433,7 @@ void main() {
           'state': entry.key,
           'receivedChunks': 1,
           'totalChunks': 3,
+          'rate': AeicRatePoint.ft2.wireValue,
         }),
       );
       final store = ReceivedImageStore(blobs: blobs, decoder: null);

@@ -20,30 +20,15 @@ import 'image_message_bubble.dart' show voxRgbToUiImage;
 import 'voice_service.dart';
 import 'voice_wire.dart';
 
-/// The other way to send a picture: AEIC, MeshCore Open's neural image
-/// codec. About 150 bytes (1-2 packets) instead of a Mesh photo's 2,750, but
-/// the receiver's phone redraws the picture from a description, so details
-/// can be invented, and only phones with the image model can show it.
+/// The other way to send a picture: AI sketch HD (aeic_hd_service.dart),
+/// about 1-2 KB, redrawn by an image model on the receiving device. MeshCore
+/// Open's ~150-byte AI sketch (AEIC ft32) is no longer offered: too far from
+/// the real photo to be worth sending.
 class VoxAiSketchOption {
-  /// The image model is installed and enabled.
-  final bool Function() ready;
+  /// Encodes and sends the picked file as an AI sketch HD.
+  final Future<void> Function(Uint8List bytes, int fileBytes) sendHd;
 
-  /// Says why it isn't, with a way to set it up.
-  final VoidCallback explainNotReady;
-
-  /// Previews and sends the picked file as an AI sketch.
-  final Future<void> Function(Uint8List bytes, int fileBytes) send;
-
-  /// Encodes and sends the picked file as an AI sketch HD
-  /// (aeic_hd_service.dart); null where the chat can't carry one.
-  final Future<void> Function(Uint8List bytes, int fileBytes)? sendHd;
-
-  const VoxAiSketchOption({
-    required this.ready,
-    required this.explainNotReady,
-    required this.send,
-    this.sendHd,
-  });
+  const VoxAiSketchOption({required this.sendHd});
 }
 
 /// Sends a Mesh photo, with the caption typed in the sheet ('' for none).
@@ -121,8 +106,7 @@ Future<void> showVoxImagePicker(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (aiSketch != null)
-                    _PhotoKindChooser(hd: aiSketch.sendHd != null),
+                  if (aiSketch != null) const _PhotoKindChooser(),
                   if (!desktop)
                     ListTile(
                       leading: const Icon(Icons.photo_camera_outlined),
@@ -144,18 +128,13 @@ Future<void> showVoxImagePicker(
   if (source == null || !context.mounted) return;
   final sketch =
       aiSketch != null && (voice.photoAiSketch || !voice.imagesAvailable);
-  final sendHd = aiSketch?.sendHd;
-  final hd = sketch && voice.photoAiSketchHd && sendHd != null;
-  if (hd) {
+  if (sketch) {
     await AeicHdService.instance.init();
     if (!context.mounted) return;
     if (!AeicHdService.instance.isReady) {
       await AeicHdScreen.open(context);
       return;
     }
-  } else if (sketch && !aiSketch.ready()) {
-    aiSketch.explainNotReady();
-    return;
   }
   XFile? picked;
   try {
@@ -188,7 +167,7 @@ Future<void> showVoxImagePicker(
       }
       return;
     }
-    await (hd ? sendHd : aiSketch.send)(bytes, fileBytes);
+    await aiSketch.sendHd(bytes, fileBytes);
     return;
   }
   VoxRgbImage ref;
@@ -594,22 +573,18 @@ class _VoxImageSendSheetState extends State<VoxImageSendSheet> {
   }
 }
 
-/// Mesh photo (default), AI sketch, or AI sketch HD, remembered like the
-/// Mimi choice.
-enum _PhotoKind { vox, sketch, hd }
+/// Mesh photo (default) or AI sketch HD, remembered like the Mimi choice
+/// (VoxVoiceService.photoAiSketch).
+enum _PhotoKind { vox, hd }
 
 class _PhotoKindChooser extends StatelessWidget {
-  /// Offer AI sketch HD as well.
-  final bool hd;
-  const _PhotoKindChooser({required this.hd});
+  const _PhotoKindChooser();
 
   @override
   Widget build(BuildContext context) {
     final voice = context.watch<VoxVoiceService>();
     final sketch = voice.photoAiSketch || !voice.imagesAvailable;
-    final kind = !sketch
-        ? _PhotoKind.vox
-        : (hd && voice.photoAiSketchHd ? _PhotoKind.hd : _PhotoKind.sketch);
+    final kind = sketch ? _PhotoKind.hd : _PhotoKind.vox;
     final theme = Theme.of(context);
     final String about;
     switch (kind) {
@@ -617,16 +592,10 @@ class _PhotoKindChooser extends StatelessWidget {
         about =
             'Real pixels, about 2.7 KB (up to 11 KB at Sharp). Everyone '
             'can view it, Wadamesh radios included. The default.';
-      case _PhotoKind.sketch:
-        about =
-            'AEIC, about 150 bytes (1-2 packets). The receiver\'s phone '
-            'redraws the picture from a description, so faces, text '
-            'and small details can be invented. Phones with the '
-            'image model only; radios can\'t show it.';
       case _PhotoKind.hd:
         about =
-            'AEIC HD, about 1-2 KB (8-15 packets): much closer to the real '
-            'photo than an AI sketch, half the airtime of a Mesh photo. The '
+            'AEIC HD, about 1-2 KB (8-15 packets), redrawn by an image '
+            'model: half the airtime of a Mesh photo. The '
             'receiver\'s phone takes a few minutes to draw it and needs the '
             'AI sketch HD model; radios can\'t show it. In channels it goes '
             'on MediaMesh (radio2), like Mesh photos.';
@@ -644,25 +613,16 @@ class _PhotoKindChooser extends StatelessWidget {
                 label: Text('Mesh photo'),
               ),
               const ButtonSegment(
-                value: _PhotoKind.sketch,
-                icon: Icon(Icons.auto_awesome_outlined),
-                label: Text('AI sketch'),
+                value: _PhotoKind.hd,
+                icon: Icon(Icons.hd_outlined),
+                label: Text('AI sketch HD'),
               ),
-              if (hd)
-                const ButtonSegment(
-                  value: _PhotoKind.hd,
-                  icon: Icon(Icons.hd_outlined),
-                  label: Text('Sketch HD'),
-                ),
             ],
             selected: {kind},
             onSelectionChanged: (s) {
               final k = s.first;
               if (k == _PhotoKind.vox && !voice.imagesAvailable) return;
-              voice.setPhotoAiSketch(k != _PhotoKind.vox);
-              if (k != _PhotoKind.vox) {
-                voice.setPhotoAiSketchHd(k == _PhotoKind.hd);
-              }
+              voice.setPhotoAiSketch(k == _PhotoKind.hd);
             },
           ),
           const SizedBox(height: 6),
