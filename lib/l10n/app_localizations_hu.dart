@@ -7408,10 +7408,16 @@ class AppLocalizationsHu extends AppLocalizations {
       'Törli a parancselőzményeket? A művelet nem vonható vissza.';
 
   @override
+  String get repeater_cliCommandCopied => 'Command copied';
+
+  @override
   String get repeater_cliSearchCommands => 'Parancsok keresése';
 
   @override
   String get repeater_cliNoMatchingCommands => 'Nincs egyező parancs';
+
+  @override
+  String get repeater_cliPaste => 'Paste';
 
   @override
   String get debugLog_clearConfirm =>

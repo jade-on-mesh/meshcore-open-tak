@@ -6939,10 +6939,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get repeater_cliClearHistoryConfirm => '清除命令历史?此操作无法撤销。';
 
   @override
+  String get repeater_cliCommandCopied => 'Command copied';
+
+  @override
   String get repeater_cliSearchCommands => '搜索命令';
 
   @override
   String get repeater_cliNoMatchingCommands => '没有匹配的命令';
+
+  @override
+  String get repeater_cliPaste => 'Paste';
 
   @override
   String get debugLog_clearConfirm => '清除所有日志条目?此操作无法撤销。';

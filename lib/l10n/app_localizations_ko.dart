@@ -7102,10 +7102,16 @@ class AppLocalizationsKo extends AppLocalizations {
   String get repeater_cliClearHistoryConfirm => '명령 기록을 지울까요? 되돌릴 수 없습니다.';
 
   @override
+  String get repeater_cliCommandCopied => 'Command copied';
+
+  @override
   String get repeater_cliSearchCommands => '명령 검색';
 
   @override
   String get repeater_cliNoMatchingCommands => '일치하는 명령이 없습니다';
+
+  @override
+  String get repeater_cliPaste => 'Paste';
 
   @override
   String get debugLog_clearConfirm => '모든 로그 항목을 지울까요? 되돌릴 수 없습니다.';

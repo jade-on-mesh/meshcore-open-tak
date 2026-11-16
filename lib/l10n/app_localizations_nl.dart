@@ -7381,11 +7381,17 @@ class AppLocalizationsNl extends AppLocalizations {
       'Commandogeschiedenis wissen? Dit kan niet ongedaan worden gemaakt.';
 
   @override
+  String get repeater_cliCommandCopied => 'Command copied';
+
+  @override
   String get repeater_cliSearchCommands => 'Commando\'s zoeken';
 
   @override
   String get repeater_cliNoMatchingCommands =>
       'Geen overeenkomende commando\'s';
+
+  @override
+  String get repeater_cliPaste => 'Paste';
 
   @override
   String get debugLog_clearConfirm =>

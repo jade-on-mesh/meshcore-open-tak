@@ -7432,10 +7432,16 @@ class AppLocalizationsRu extends AppLocalizations {
       'Очистить историю команд? Действие нельзя отменить.';
 
   @override
+  String get repeater_cliCommandCopied => 'Command copied';
+
+  @override
   String get repeater_cliSearchCommands => 'Поиск команд';
 
   @override
   String get repeater_cliNoMatchingCommands => 'Нет подходящих команд';
+
+  @override
+  String get repeater_cliPaste => 'Paste';
 
   @override
   String get debugLog_clearConfirm =>

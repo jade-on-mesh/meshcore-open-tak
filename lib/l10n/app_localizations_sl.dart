@@ -7393,10 +7393,16 @@ class AppLocalizationsSl extends AppLocalizations {
       'Počistim zgodovino ukazov? Dejanja ni mogoče razveljaviti.';
 
   @override
+  String get repeater_cliCommandCopied => 'Command copied';
+
+  @override
   String get repeater_cliSearchCommands => 'Išči ukaze';
 
   @override
   String get repeater_cliNoMatchingCommands => 'Ni ustreznih ukazov';
+
+  @override
+  String get repeater_cliPaste => 'Paste';
 
   @override
   String get debugLog_clearConfirm =>

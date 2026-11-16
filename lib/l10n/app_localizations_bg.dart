@@ -7417,10 +7417,16 @@ class AppLocalizationsBg extends AppLocalizations {
       'Да се изчисти ли историята на командите? Действието не може да бъде отменено.';
 
   @override
+  String get repeater_cliCommandCopied => 'Command copied';
+
+  @override
   String get repeater_cliSearchCommands => 'Търсене на команди';
 
   @override
   String get repeater_cliNoMatchingCommands => 'Няма съвпадащи команди';
+
+  @override
+  String get repeater_cliPaste => 'Paste';
 
   @override
   String get debugLog_clearConfirm =>

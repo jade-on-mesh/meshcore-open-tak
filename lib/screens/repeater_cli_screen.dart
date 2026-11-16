@@ -513,9 +513,15 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
                     ),
                   ),
                   Expanded(
-                    child: _commandHistory.isEmpty
-                        ? _buildEmptyState()
-                        : _buildCommandHistory(),
+                    // Long press on empty space (not on a command or a
+                    // reply, which have their own) pastes.
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onLongPressStart: (d) => _showPasteMenu(d.globalPosition),
+                      child: _commandHistory.isEmpty
+                          ? _buildEmptyState()
+                          : _buildCommandHistory(),
+                    ),
                   ),
                 ],
               ),
@@ -682,19 +688,99 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
               ),
               const SizedBox(width: 6),
               Expanded(
-                child: SelectableText(
-                  entry['text']!,
-                  style: MeshTheme.mono(
-                    fontSize: 14,
-                    color: isCommand ? accent : scheme.onSurface,
-                  ),
-                ),
+                // A command: long press to copy or resend it, as in the
+                // official app. Replies stay selectable.
+                child: isCommand
+                    ? GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onLongPressStart: (d) =>
+                            _showCommandMenu(d.globalPosition, entry['text']!),
+                        child: Text(
+                          entry['text']!,
+                          style: MeshTheme.mono(fontSize: 14, color: accent),
+                        ),
+                      )
+                    : SelectableText(
+                        entry['text']!,
+                        style: MeshTheme.mono(
+                          fontSize: 14,
+                          color: scheme.onSurface,
+                        ),
+                      ),
               ),
             ],
           ),
         );
       },
     );
+  }
+
+  /// Long press on a sent command: Copy, or Resend it as it was.
+  Future<void> _showCommandMenu(Offset at, String command) async {
+    final l10n = context.l10n;
+    final connected = context.read<MeshCoreConnector>().isConnected;
+    HapticFeedback.selectionClick();
+    final choice = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(at.dx, at.dy, at.dx, at.dy),
+      items: [
+        PopupMenuItem(
+          value: 'copy',
+          child: MeshMenuItemRow(icon: Icons.copy, label: l10n.common_copy),
+        ),
+        PopupMenuItem(
+          value: 'resend',
+          enabled: connected && !_regionLoadActive,
+          child: MeshMenuItemRow(icon: Icons.replay, label: l10n.chat_resend),
+        ),
+      ],
+    );
+    if (!mounted || choice == null) return;
+    if (choice == 'copy') {
+      await Clipboard.setData(ClipboardData(text: command));
+      if (!mounted) return;
+      showDismissibleSnackBar(
+        context,
+        content: Text(l10n.repeater_cliCommandCopied),
+      );
+    } else if (choice == 'resend') {
+      _commandController.text = command;
+      _sendCommand();
+    }
+  }
+
+  /// Long press on empty space in the output: Paste into the command line.
+  Future<void> _showPasteMenu(Offset at) async {
+    final l10n = context.l10n;
+    final clip = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = clip?.text ?? '';
+    if (!mounted) return;
+    HapticFeedback.selectionClick();
+    final choice = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(at.dx, at.dy, at.dx, at.dy),
+      items: [
+        PopupMenuItem(
+          value: 'paste',
+          enabled: text.isNotEmpty,
+          child: MeshMenuItemRow(
+            icon: Icons.content_paste,
+            label: l10n.repeater_cliPaste,
+          ),
+        ),
+      ],
+    );
+    if (!mounted || choice != 'paste' || text.isEmpty) return;
+    final value = _commandController.value;
+    final sel = value.selection.isValid
+        ? value.selection
+        : TextSelection.collapsed(offset: value.text.length);
+    final next = value.text.replaceRange(sel.start, sel.end, text);
+    _commandController.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: sel.start + text.length),
+    );
+    _commandFocusNode.requestFocus();
   }
 
   void _applyHelpCommand(String command) {

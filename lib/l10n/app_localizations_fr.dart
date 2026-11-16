@@ -7438,10 +7438,16 @@ class AppLocalizationsFr extends AppLocalizations {
       'Effacer l\'historique des commandes ? Action irréversible.';
 
   @override
+  String get repeater_cliCommandCopied => 'Command copied';
+
+  @override
   String get repeater_cliSearchCommands => 'Rechercher des commandes';
 
   @override
   String get repeater_cliNoMatchingCommands => 'Aucune commande correspondante';
+
+  @override
+  String get repeater_cliPaste => 'Paste';
 
   @override
   String get debugLog_clearConfirm =>

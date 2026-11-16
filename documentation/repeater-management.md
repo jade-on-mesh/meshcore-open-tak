@@ -89,6 +89,8 @@ A terminal-style interface for sending commands directly to the repeater.
 
 - Type a command and press send (or Enter on desktop)
 - Up/down arrows navigate through command history
+- Long press a sent command: **Copy** or **Resend** (as in the official app). Replies stay selectable
+- Long press empty space in the output: **Paste** into the command line. The radio console (Settings → your radio's own CLI) works the same way
 - Quick-command buttons populate and send common commands
 - Overflow menu (three-dot icon): "Debug next command" option shows raw frame debug info for the next typed command (shows error snackbar if input field is empty)
 - Help icon: Opens a scrollable reference of all known CLI commands. Tapping any command populates the input field immediately

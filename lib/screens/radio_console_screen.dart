@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../connector/meshcore_connector.dart';
+import '../helpers/snack_bar_builder.dart';
 import '../l10n/l10n.dart';
+import '../widgets/mesh_ui.dart';
 
 /// A terminal for the connected radio's own local CLI (`CMD_RUN_CLI_COMMAND`):
 /// radio2, tempradio, schedules, tx.* routing and diagnostics. Up/down in the
@@ -120,6 +124,72 @@ class _RadioConsoleScreenState extends State<RadioConsoleScreen> {
     return KeyEventResult.handled;
   }
 
+  /// Long press on a sent command: Copy, or Resend it (as in the official
+  /// app). [line] is shown as `> command`.
+  Future<void> _commandMenu(Offset at, String line) async {
+    final l10n = context.l10n;
+    final command = line.startsWith('> ') ? line.substring(2) : line;
+    HapticFeedback.selectionClick();
+    final choice = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(at.dx, at.dy, at.dx, at.dy),
+      items: [
+        PopupMenuItem(
+          value: 'copy',
+          child: MeshMenuItemRow(icon: Icons.copy, label: l10n.common_copy),
+        ),
+        PopupMenuItem(
+          value: 'resend',
+          enabled: !_running,
+          child: MeshMenuItemRow(icon: Icons.replay, label: l10n.chat_resend),
+        ),
+      ],
+    );
+    if (!mounted || choice == null) return;
+    if (choice == 'copy') {
+      await Clipboard.setData(ClipboardData(text: command));
+      if (!mounted) return;
+      showDismissibleSnackBar(
+        context,
+        content: Text(l10n.repeater_cliCommandCopied),
+      );
+    } else if (choice == 'resend') {
+      unawaited(_run(command));
+    }
+  }
+
+  /// Long press on empty space in the output: Paste into the command line.
+  Future<void> _pasteMenu(Offset at) async {
+    final l10n = context.l10n;
+    final text = (await Clipboard.getData(Clipboard.kTextPlain))?.text ?? '';
+    if (!mounted) return;
+    HapticFeedback.selectionClick();
+    final choice = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(at.dx, at.dy, at.dx, at.dy),
+      items: [
+        PopupMenuItem(
+          value: 'paste',
+          enabled: text.isNotEmpty,
+          child: MeshMenuItemRow(
+            icon: Icons.content_paste,
+            label: l10n.repeater_cliPaste,
+          ),
+        ),
+      ],
+    );
+    if (!mounted || choice != 'paste' || text.isEmpty) return;
+    final value = _input.value;
+    final sel = value.selection.isValid
+        ? value.selection
+        : TextSelection.collapsed(offset: value.text.length);
+    _input.value = TextEditingValue(
+      text: value.text.replaceRange(sel.start, sel.end, text),
+      selection: TextSelection.collapsed(offset: sel.start + text.length),
+    );
+    _focus.requestFocus();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -132,30 +202,47 @@ class _RadioConsoleScreenState extends State<RadioConsoleScreen> {
         child: Column(
           children: [
             Expanded(
-              child: ListView(
-                controller: _scroll,
-                padding: const EdgeInsets.all(16),
-                children: [
-                  Text(
-                    l10n.radioConsole_intro,
-                    style: theme.textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 12),
-                  for (final line in _lines)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: SelectableText(
-                        line.text,
-                        style: mono?.copyWith(
-                          color: line.command
-                              ? theme.colorScheme.primary
-                              : line.error
-                              ? theme.colorScheme.error
-                              : null,
-                        ),
-                      ),
+              // Long press on empty space (not on a line) pastes.
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onLongPressStart: (d) => _pasteMenu(d.globalPosition),
+                child: ListView(
+                  controller: _scroll,
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    Text(
+                      l10n.radioConsole_intro,
+                      style: theme.textTheme.bodySmall,
                     ),
-                ],
+                    const SizedBox(height: 12),
+                    for (final line in _lines)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        // A command: long press to copy or resend. Replies
+                        // stay selectable.
+                        child: line.command
+                            ? GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onLongPressStart: (d) =>
+                                    _commandMenu(d.globalPosition, line.text),
+                                child: Text(
+                                  line.text,
+                                  style: mono?.copyWith(
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ),
+                              )
+                            : SelectableText(
+                                line.text,
+                                style: mono?.copyWith(
+                                  color: line.error
+                                      ? theme.colorScheme.error
+                                      : null,
+                                ),
+                              ),
+                      ),
+                  ],
+                ),
               ),
             ),
             if (recent.isNotEmpty)

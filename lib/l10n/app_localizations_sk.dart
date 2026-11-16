@@ -7405,10 +7405,16 @@ class AppLocalizationsSk extends AppLocalizations {
       'Vymazať históriu príkazov? Túto akciu nie je možné vrátiť späť.';
 
   @override
+  String get repeater_cliCommandCopied => 'Command copied';
+
+  @override
   String get repeater_cliSearchCommands => 'Hľadať príkazy';
 
   @override
   String get repeater_cliNoMatchingCommands => 'Žiadne zodpovedajúce príkazy';
+
+  @override
+  String get repeater_cliPaste => 'Paste';
 
   @override
   String get debugLog_clearConfirm =>

@@ -7360,10 +7360,16 @@ class AppLocalizationsSv extends AppLocalizations {
       'Rensa kommandohistoriken? Det går inte att ångra.';
 
   @override
+  String get repeater_cliCommandCopied => 'Command copied';
+
+  @override
   String get repeater_cliSearchCommands => 'Sök kommandon';
 
   @override
   String get repeater_cliNoMatchingCommands => 'Inga matchande kommandon';
+
+  @override
+  String get repeater_cliPaste => 'Paste';
 
   @override
   String get debugLog_clearConfirm =>
