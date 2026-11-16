@@ -1524,8 +1524,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     final otpActive = context.read<MeshCoreConnector>().isChannelOtpEnabled(
       widget.channel.index,
     );
-    // mIRC chat style: a log, every line on the left, no avatars.
-    final log = MeshChatLook.of(context).isLog;
+    // Log chat styles (mIRC, ICQ, Discord): every line on the left.
+    final look = MeshChatLook.of(context);
+    final log = look.isLog;
     final layoutOutgoing = log ? false : (otpActive ? !isOutgoing : isOutgoing);
     final scheme = Theme.of(context).colorScheme;
     final voxEnvelope = VoxVoiceEnvelope.tryParse(message.displayText);
@@ -1615,7 +1616,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             child: TranslatedMessageContent(
               displayText: translatedDisplayText,
               originalText: originalDisplayText,
-              style: log
+              style: look.logMono
                   ? MeshTheme.mono(
                       color: textColor,
                       fontSize: bodyFontSize * textScale,
@@ -1652,7 +1653,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                 : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (!layoutOutgoing && !log) ...[
+              if (!layoutOutgoing && (!log || look.logAvatars)) ...[
                 _buildAvatar(message.senderName, textScale),
                 const SizedBox(width: 6),
               ],
@@ -1688,9 +1689,18 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                                 : EdgeInsets.zero,
                             child: Text(
                               log
-                                  ? '<${message.senderName}>'
+                                  ? look.logNick(
+                                      message.senderName,
+                                      time: MaterialLocalizations.of(
+                                        context,
+                                      ).formatTimeOfDay(
+                                        TimeOfDay.fromDateTime(
+                                          message.timestamp,
+                                        ),
+                                      ),
+                                    )
                                   : message.senderName,
-                              style: log
+                              style: look.logMono
                                   ? MeshTheme.mono(
                                       fontSize: 13 * textScale,
                                       fontWeight: FontWeight.w700,
@@ -3021,7 +3031,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     final otpActive = context.read<MeshCoreConnector>().isChannelOtpEnabled(
       widget.channel.index,
     );
-    final log = MeshChatLook.of(context).isLog; // mIRC: every line left
+    final look = MeshChatLook.of(context);
+    final log = look.isLog; // log chat styles: every line left
     final layoutOutgoing = log ? false : (otpActive ? !isOutgoing : isOutgoing);
     // Same OTP-theme recoloring as _buildMessageBubble above. An AEIC
     // image's state machine (receiving/decoding/decoded/...) has no
@@ -3062,7 +3073,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          if (!layoutOutgoing && !log) ...[
+          if (!layoutOutgoing && (!log || look.logAvatars)) ...[
             _buildAvatar(_imageSenderLabel(entry), textScale),
             const SizedBox(width: 6),
           ],

@@ -1,15 +1,140 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/l10n.dart';
+import '../theme/chat_look.dart';
 import '../theme/mesh_theme.dart';
 
+/// The "New messages" line above the first unread message, drawn the way the
+/// chat style's app draws it (Settings > Appearance > Chat style).
 class UnreadDivider extends StatelessWidget {
   const UnreadDivider({super.key});
 
+  /// Discord's and mIRC's red.
+  static const Color red = Color(0xFFF23F43);
+
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final color = scheme.primary;
+    final label = context.l10n.chat_newMessages;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    switch (MeshChatLook.of(context).style) {
+      case ChatStyle.discord:
+        // A thin red line across, a red "NEW" tag at its right end.
+        return Semantics(
+          label: label,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(
+              children: [
+                Expanded(child: Container(height: 1, color: red)),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 1,
+                  ),
+                  decoration: const BoxDecoration(
+                    color: red,
+                    borderRadius: BorderRadius.horizontal(
+                      left: Radius.circular(3),
+                      right: Radius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    context.l10n.chat_newBadge,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      case ChatStyle.mirc:
+        // mIRC's marker line: a plain red line across.
+        return Semantics(
+          label: label,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Container(height: 1.5, color: red),
+          ),
+        );
+      case ChatStyle.signal:
+        // A grey chip in the middle, no lines.
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: dark ? signalRecvNight : signalRecvDay,
+                borderRadius: BorderRadius.circular(MeshRadii.pill),
+              ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: dark ? signalInkNight : signalInkDay,
+                ),
+              ),
+            ),
+          ),
+        );
+      case ChatStyle.iphone:
+        // iMessage has no divider: a small grey caption, centred, as its
+        // timestamps are.
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Center(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: iphoneName,
+              ),
+            ),
+          ),
+        );
+      case ChatStyle.icq:
+        // A quiet grey rule with the words, as an old message window.
+        final grey = dark ? const Color(0xFF8A8A8A) : const Color(0xFF808080);
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: [
+              Expanded(child: Container(height: 1, color: grey)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  label,
+                  style: TextStyle(fontSize: 11, color: grey),
+                ),
+              ),
+              Expanded(child: Container(height: 1, color: grey)),
+            ],
+          ),
+        );
+      case ChatStyle.wadamesh:
+        return _pill(context, const Color(0xFF4DD0C4), label);
+      case ChatStyle.android:
+        return _pill(
+          context,
+          dark ? androidSentInkNight : const Color(0xFF0B57D0),
+          label,
+        );
+      case ChatStyle.standard:
+      case ChatStyle.openClassic:
+      case ChatStyle.classic:
+        return _pill(context, Theme.of(context).colorScheme.primary, label);
+    }
+  }
+
+  /// The app's own: a pill between two faint lines.
+  static Widget _pill(BuildContext context, Color color, String label) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
@@ -26,7 +151,7 @@ class UnreadDivider extends StatelessWidget {
               border: Border.all(color: color.withValues(alpha: 0.35)),
             ),
             child: Text(
-              context.l10n.chat_newMessages,
+              label,
               style: MeshTheme.mono(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,

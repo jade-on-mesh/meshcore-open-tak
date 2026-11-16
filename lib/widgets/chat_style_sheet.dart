@@ -24,6 +24,8 @@ String chatStyleLabel(BuildContext context, ChatStyle style) {
     ChatStyle.iphone => l10n.appSettings_chatStyleIphone,
     ChatStyle.android => l10n.appSettings_chatStyleAndroid,
     ChatStyle.mirc => l10n.appSettings_chatStyleMirc,
+    ChatStyle.icq => l10n.appSettings_chatStyleIcq,
+    ChatStyle.discord => l10n.appSettings_chatStyleDiscord,
   };
 }
 
@@ -38,6 +40,8 @@ String _chatStyleHelp(BuildContext context, ChatStyle style) {
     ChatStyle.iphone => l10n.appSettings_chatStyleIphoneHelp,
     ChatStyle.android => l10n.appSettings_chatStyleAndroidHelp,
     ChatStyle.mirc => l10n.appSettings_chatStyleMircHelp,
+    ChatStyle.icq => l10n.appSettings_chatStyleIcqHelp,
+    ChatStyle.discord => l10n.appSettings_chatStyleDiscordHelp,
   };
 }
 
@@ -164,47 +168,71 @@ class _ChatStylePreview extends StatelessWidget {
           final sent = MessageBubbleColors.of(context, isOutgoing: true);
           final l10n = context.l10n;
           if (look.isLog) {
-            // mIRC: a log, `<nick> message` on the left, mine too.
+            // A log: mIRC `<nick> text` lines; ICQ `Name (time):` over the
+            // text; Discord an avatar, the name, the text.
             const me = 'Me';
             final mine = MessageBubbleColors.of(
               context,
               isOutgoing: true,
               senderName: me,
             );
-            Widget line(
-              String nick,
-              Color? nickColor,
-              String text,
-              Color ink,
-            ) => Text.rich(
-              TextSpan(
+            const time = '2:03 PM';
+            TextStyle font(double size, Color color, {bool bold = false}) =>
+                look.logMono
+                ? MeshTheme.mono(
+                    fontSize: size,
+                    fontWeight: bold ? FontWeight.w700 : null,
+                    color: color,
+                  )
+                : TextStyle(
+                    fontSize: size,
+                    fontWeight: bold ? FontWeight.w700 : null,
+                    color: color,
+                  );
+            Widget entry(String nick, Color? nickColor, String text, Color ink) {
+              final label = look.logNick(nick, time: time);
+              if (look.style == ChatStyle.mirc) {
+                return Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: '$label ',
+                        style: font(12, nickColor ?? ink, bold: true),
+                      ),
+                      TextSpan(text: text, style: font(12, ink)),
+                    ],
+                  ),
+                );
+              }
+              final body = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextSpan(
-                    text: '<$nick> ',
-                    style: MeshTheme.mono(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: nickColor ?? ink,
-                    ),
-                  ),
-                  TextSpan(
-                    text: text,
-                    style: MeshTheme.mono(fontSize: 12, color: ink),
-                  ),
+                  Text(label, style: font(12, nickColor ?? ink, bold: true)),
+                  Text(text, style: font(13, ink)),
                 ],
-              ),
-            );
+              );
+              if (!look.logAvatars) return body;
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AvatarCircle(name: nick, size: 28),
+                  const SizedBox(width: 8),
+                  Flexible(child: body),
+                ],
+              );
+            }
+
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                line(
+                entry(
                   sender,
                   recv.name,
                   l10n.appSettings_chatStylePreviewReceived,
                   recv.text,
                 ),
-                const SizedBox(height: 4),
-                line(
+                const SizedBox(height: 6),
+                entry(
                   me,
                   mine.name,
                   l10n.appSettings_chatStylePreviewSent,
