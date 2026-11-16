@@ -1528,13 +1528,15 @@ class AppLocalizationsSk extends AppLocalizations {
   String get appSettings_chatStyleWadamesh => 'Wadamesh TAK';
 
   @override
-  String get appSettings_chatStyleWadameshHelp => 'Frosted glass bubbles, each sender\'s in their own colour, the same as on a standalone';
+  String get appSettings_chatStyleWadameshHelp =>
+      'Frosted glass bubbles, each sender\'s in their own colour, the same as on a standalone';
 
   @override
   String get appSettings_chatStyleClassic => 'MeshCore classic';
 
   @override
-  String get appSettings_chatStyleClassicHelp => 'Blue bubbles for yours and grey for others, like the official MeshCore app';
+  String get appSettings_chatStyleClassicHelp =>
+      'Blue bubbles for yours and grey for others, like the official MeshCore app';
 
   @override
   String get appSettings_chatStylePreviewReceived => 'Are you on the ridge?';
@@ -1546,7 +1548,8 @@ class AppLocalizationsSk extends AppLocalizations {
   String get appSettings_brightChatIcons => 'Brighter chat icons';
 
   @override
-  String get appSettings_brightChatIconsSubtitle => 'Fill each avatar with its colour';
+  String get appSettings_brightChatIconsSubtitle =>
+      'Fill each avatar with its colour';
 
   @override
   String get appSettings_channelMessageNotifications =>

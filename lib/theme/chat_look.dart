@@ -43,7 +43,10 @@ class MeshChatLook extends ThemeExtension<MeshChatLook> {
   /// white on it, in place of a faint tint.
   final bool brightIcons;
 
-  const MeshChatLook({this.style = ChatStyle.standard, this.brightIcons = false});
+  const MeshChatLook({
+    this.style = ChatStyle.standard,
+    this.brightIcons = false,
+  });
 
   static const standard = MeshChatLook();
 
