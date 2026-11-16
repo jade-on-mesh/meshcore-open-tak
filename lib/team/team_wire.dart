@@ -444,8 +444,8 @@ class TeamPosition {
     final key = teamKey4Hex(r.take(4));
     final flags = r.u8();
     final rawLat = r.i32(), rawLon = r.i32();
-    final hasPosition = !(rawLat == teamNoPositionRaw &&
-        rawLon == teamNoPositionRaw);
+    final hasPosition =
+        !(rawLat == teamNoPositionRaw && rawLon == teamNoPositionRaw);
     final lat = hasPosition ? _undeg(rawLat) : 0.0;
     final lon = hasPosition ? _undeg(rawLon) : 0.0;
     if (lat.abs() > 90 || lon.abs() > 180) return null;

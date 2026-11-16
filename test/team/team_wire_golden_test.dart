@@ -225,30 +225,32 @@ void main() {
     expect(TeamPosition.tryParse(bytes)!.callsign, 'J');
   });
 
-  test('a teammate with no position still beacons, and old readers drop it',
-      () {
-    const p = TeamPosition(
-      senderKey4: '01020304',
-      lat: 0,
-      lon: 0,
-      hasPosition: false,
-      batteryPct: 42,
-      callsign: 'TDeck',
-      fromRadio: true,
-      seq: 1,
-    );
-    expect(_hex(p.encode()), kP5);
-    final back = TeamPosition.tryParse(_unhex(kP5))!;
-    expect(back.hasPosition, isFalse);
-    expect(back.callsign, 'TDeck');
-    expect(back.batteryPct, 42);
-    expect(back.seq, 1);
-    // A real position is still one.
-    expect(TeamPosition.tryParse(_unhex(kP1))!.hasPosition, isTrue);
-    // Anything else out of range is still rejected, as before.
-    final bad = _unhex(kP5)..[6] = 0x7E;
-    expect(TeamPosition.tryParse(bad), isNull);
-  });
+  test(
+    'a teammate with no position still beacons, and old readers drop it',
+    () {
+      const p = TeamPosition(
+        senderKey4: '01020304',
+        lat: 0,
+        lon: 0,
+        hasPosition: false,
+        batteryPct: 42,
+        callsign: 'TDeck',
+        fromRadio: true,
+        seq: 1,
+      );
+      expect(_hex(p.encode()), kP5);
+      final back = TeamPosition.tryParse(_unhex(kP5))!;
+      expect(back.hasPosition, isFalse);
+      expect(back.callsign, 'TDeck');
+      expect(back.batteryPct, 42);
+      expect(back.seq, 1);
+      // A real position is still one.
+      expect(TeamPosition.tryParse(_unhex(kP1))!.hasPosition, isTrue);
+      // Anything else out of range is still rejected, as before.
+      final bad = _unhex(kP5)..[6] = 0x7E;
+      expect(TeamPosition.tryParse(bad), isNull);
+    },
+  );
 
   test('a repeat number goes after a CASEVAC when there is room', () {
     final b = Uint8List.fromList([1, 2, 3]);
