@@ -7421,10 +7421,16 @@ class AppLocalizationsIt extends AppLocalizations {
       'Cancellare la cronologia dei comandi? Non può essere annullato.';
 
   @override
+  String get repeater_cliCommandCopied => 'Command copied';
+
+  @override
   String get repeater_cliSearchCommands => 'Cerca comandi';
 
   @override
   String get repeater_cliNoMatchingCommands => 'Nessun comando corrispondente';
+
+  @override
+  String get repeater_cliPaste => 'Paste';
 
   @override
   String get debugLog_clearConfirm =>

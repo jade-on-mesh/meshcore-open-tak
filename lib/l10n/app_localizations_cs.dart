@@ -7397,10 +7397,16 @@ class AppLocalizationsCs extends AppLocalizations {
       'Vymazat historii příkazů? Nelze vrátit zpět.';
 
   @override
+  String get repeater_cliCommandCopied => 'Command copied';
+
+  @override
   String get repeater_cliSearchCommands => 'Hledat příkazy';
 
   @override
   String get repeater_cliNoMatchingCommands => 'Žádné odpovídající příkazy';
+
+  @override
+  String get repeater_cliPaste => 'Paste';
 
   @override
   String get debugLog_clearConfirm =>

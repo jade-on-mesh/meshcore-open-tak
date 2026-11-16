@@ -7413,10 +7413,16 @@ class AppLocalizationsEs extends AppLocalizations {
       '¿Borrar el historial de comandos? No se puede deshacer.';
 
   @override
+  String get repeater_cliCommandCopied => 'Command copied';
+
+  @override
   String get repeater_cliSearchCommands => 'Buscar comandos';
 
   @override
   String get repeater_cliNoMatchingCommands => 'Ningún comando coincide';
+
+  @override
+  String get repeater_cliPaste => 'Paste';
 
   @override
   String get debugLog_clearConfirm =>

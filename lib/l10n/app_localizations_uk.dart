@@ -7440,10 +7440,16 @@ class AppLocalizationsUk extends AppLocalizations {
       'Очистити історію команд? Дію не можна скасувати.';
 
   @override
+  String get repeater_cliCommandCopied => 'Command copied';
+
+  @override
   String get repeater_cliSearchCommands => 'Пошук команд';
 
   @override
   String get repeater_cliNoMatchingCommands => 'Немає відповідних команд';
+
+  @override
+  String get repeater_cliPaste => 'Paste';
 
   @override
   String get debugLog_clearConfirm =>

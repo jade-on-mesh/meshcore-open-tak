@@ -7432,10 +7432,16 @@ class AppLocalizationsDe extends AppLocalizations {
       'Befehlsverlauf löschen? Das kann nicht rückgängig gemacht werden.';
 
   @override
+  String get repeater_cliCommandCopied => 'Command copied';
+
+  @override
   String get repeater_cliSearchCommands => 'Befehle suchen';
 
   @override
   String get repeater_cliNoMatchingCommands => 'Keine passenden Befehle';
+
+  @override
+  String get repeater_cliPaste => 'Paste';
 
   @override
   String get debugLog_clearConfirm =>

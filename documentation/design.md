@@ -131,6 +131,7 @@ Icon sizes in use: 24 for tile and banner icons, 20 for menu icons and small act
 | Need | Use | Notes |
 |---|---|---|
 | Group of related content | `MeshCard` | `onTap`/`onLongPress` give ink feedback; long-press adds a selection haptic |
+| Terminal line actions | Long press a sent command for a `showMenu` of **Copy** / **Resend** (`MeshMenuItemRow`); long press empty output for **Paste** into the input. Replies stay `SelectableText` (`repeater_cli_screen.dart`, `radio_console_screen.dart`) | |
 | Label above a group | `SectionHeader(label, trailing:)` | Upper-cases for you; pass the normal-case l10n string |
 | Settings navigation row | `MeshNavTile` | `onTap: null` dims it to 50 % and reports it as disabled; use `subtitle` to say why |
 | Settings switch | `SwitchListTile` inside `MeshSettingsTileTheme` | Wrap the settings screen body once in `MeshSettingsTileTheme` |

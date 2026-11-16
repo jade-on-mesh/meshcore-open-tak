@@ -7317,10 +7317,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Clear the command history? This cannot be undone.';
 
   @override
+  String get repeater_cliCommandCopied => 'Command copied';
+
+  @override
   String get repeater_cliSearchCommands => 'Search commands';
 
   @override
   String get repeater_cliNoMatchingCommands => 'No matching commands';
+
+  @override
+  String get repeater_cliPaste => 'Paste';
 
   @override
   String get debugLog_clearConfirm =>

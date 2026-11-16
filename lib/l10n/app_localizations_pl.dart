@@ -7455,10 +7455,16 @@ class AppLocalizationsPl extends AppLocalizations {
       'Wyczyścić historię poleceń? Tej operacji nie można cofnąć.';
 
   @override
+  String get repeater_cliCommandCopied => 'Command copied';
+
+  @override
   String get repeater_cliSearchCommands => 'Szukaj poleceń';
 
   @override
   String get repeater_cliNoMatchingCommands => 'Brak pasujących poleceń';
+
+  @override
+  String get repeater_cliPaste => 'Paste';
 
   @override
   String get debugLog_clearConfirm =>

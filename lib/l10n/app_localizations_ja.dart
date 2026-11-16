@@ -7087,10 +7087,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get repeater_cliClearHistoryConfirm => 'コマンド履歴を消去しますか?元に戻せません。';
 
   @override
+  String get repeater_cliCommandCopied => 'Command copied';
+
+  @override
   String get repeater_cliSearchCommands => 'コマンドを検索';
 
   @override
   String get repeater_cliNoMatchingCommands => '一致するコマンドがありません';
+
+  @override
+  String get repeater_cliPaste => 'Paste';
 
   @override
   String get debugLog_clearConfirm => 'すべてのログを消去しますか?元に戻せません。';

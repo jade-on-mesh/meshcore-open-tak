@@ -7406,10 +7406,16 @@ class AppLocalizationsPt extends AppLocalizations {
       'Limpar o histórico de comandos? Não é possível desfazer.';
 
   @override
+  String get repeater_cliCommandCopied => 'Command copied';
+
+  @override
   String get repeater_cliSearchCommands => 'Pesquisar comandos';
 
   @override
   String get repeater_cliNoMatchingCommands => 'Nenhum comando correspondente';
+
+  @override
+  String get repeater_cliPaste => 'Paste';
 
   @override
   String get debugLog_clearConfirm =>

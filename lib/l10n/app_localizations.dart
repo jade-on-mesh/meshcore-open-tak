@@ -12424,6 +12424,12 @@ abstract class AppLocalizations {
   /// **'Clear the command history? This cannot be undone.'**
   String get repeater_cliClearHistoryConfirm;
 
+  /// No description provided for @repeater_cliCommandCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Command copied'**
+  String get repeater_cliCommandCopied;
+
   /// No description provided for @repeater_cliSearchCommands.
   ///
   /// In en, this message translates to:
@@ -12435,6 +12441,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No matching commands'**
   String get repeater_cliNoMatchingCommands;
+
+  /// No description provided for @repeater_cliPaste.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste'**
+  String get repeater_cliPaste;
 
   /// No description provided for @debugLog_clearConfirm.
   ///
