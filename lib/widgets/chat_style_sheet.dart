@@ -19,6 +19,7 @@ String chatStyleLabel(BuildContext context, ChatStyle style) {
     ChatStyle.wadamesh => l10n.appSettings_chatStyleWadamesh,
     ChatStyle.classic => l10n.appSettings_chatStyleClassic,
     ChatStyle.openClassic => l10n.appSettings_chatStyleOpenClassic,
+    ChatStyle.signal => l10n.appSettings_chatStyleSignal,
   };
 }
 
@@ -29,6 +30,7 @@ String _chatStyleHelp(BuildContext context, ChatStyle style) {
     ChatStyle.wadamesh => l10n.appSettings_chatStyleWadameshHelp,
     ChatStyle.classic => l10n.appSettings_chatStyleClassicHelp,
     ChatStyle.openClassic => l10n.appSettings_chatStyleOpenClassicHelp,
+    ChatStyle.signal => l10n.appSettings_chatStyleSignalHelp,
   };
 }
 

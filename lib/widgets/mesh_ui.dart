@@ -357,6 +357,33 @@ class AvatarCircle extends StatelessWidget {
         ),
       );
     }
+    // Signal: a pastel circle with the initials in a deeper shade of it.
+    // Node-type avatars (a fixed colour or an icon) stay as they are.
+    if (look.style == ChatStyle.signal &&
+        color == null &&
+        icon == null &&
+        iconSlot == null) {
+      final text = classicAvatarText(name);
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: signalAvatarColor(name),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          text,
+          maxLines: 1,
+          style: TextStyle(
+            fontSize: size * (text.runes.first >= 0x2190 ? 0.5 : 0.4),
+            fontWeight: FontWeight.w600,
+            color: signalAvatarInk(name),
+            height: 1,
+          ),
+        ),
+      );
+    }
     // In Wadamesh TAK's chat style a person's circle takes the colour their
     // name and bubbles have (as on the standalone's initials balls).
     final accent =

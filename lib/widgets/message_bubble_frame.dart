@@ -64,6 +64,23 @@ class MessageBubbleColors {
                 : wadameshNameColor(name, dark: dark),
             glass: true,
           );
+        case ChatStyle.signal:
+          final name = senderName?.trim() ?? '';
+          final bg = isOutgoing
+              ? signalSent
+              : (dark ? signalRecvNight : signalRecvDay);
+          final ink = isOutgoing
+              ? signalSentInk
+              : (dark ? signalInkNight : signalInkDay);
+          return MessageBubbleColors(
+            background: bg,
+            border: bg,
+            text: ink,
+            meta: ink.withValues(alpha: 0.7),
+            name: isOutgoing || name.isEmpty
+                ? null
+                : signalNameColor(name, dark: dark),
+          );
         case ChatStyle.classic:
           final name = senderName?.trim() ?? '';
           final bg = isOutgoing ? classicSent : classicRecv;
@@ -108,6 +125,9 @@ BorderRadius messageBubbleRadius({
 }) {
   if (style == ChatStyle.classic) {
     return BorderRadius.circular(classicRadius);
+  }
+  if (style == ChatStyle.signal) {
+    return BorderRadius.circular(signalRadius);
   }
   return isOutgoing
       ? const BorderRadius.only(

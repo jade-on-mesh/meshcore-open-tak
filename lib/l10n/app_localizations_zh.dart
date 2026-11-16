@@ -1504,6 +1504,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appSettings_chatStylePreviewSent => 'Yes, heading down now';
 
   @override
+  String get appSettings_chatStyleSignal => 'Signal';
+
+  @override
+  String get appSettings_chatStyleSignalHelp => 'Like the Signal app: blue bubbles for yours, plain grey for others, round corners, names in colour';
+
+  @override
   String get appSettings_brightChatIcons => 'Brighter chat icons';
 
   @override

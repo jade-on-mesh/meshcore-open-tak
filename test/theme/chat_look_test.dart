@@ -82,6 +82,39 @@ void main() {
     expect(day.background, wadameshSentDay);
   });
 
+  testWidgets('Signal style: blue for mine, grey for others, names coloured', (
+    tester,
+  ) async {
+    final sent = await colorsIn(tester, ChatStyle.signal, outgoing: true);
+    expect(sent.background, signalSent);
+    expect(sent.text, signalSentInk);
+    expect(sent.name, isNull);
+    expect(sent.glass, isFalse);
+    final night = await colorsIn(tester, ChatStyle.signal, outgoing: false);
+    expect(night.background, signalRecvNight);
+    expect(night.text, signalInkNight);
+    expect(night.name, signalNameColor('Alpha-1', dark: true));
+    final day = await colorsIn(
+      tester,
+      ChatStyle.signal,
+      outgoing: false,
+      brightness: Brightness.light,
+    );
+    expect(day.background, signalRecvDay);
+    expect(day.text, signalInkDay);
+    // No border: the bubble is one colour.
+    expect(day.border, day.background);
+    expect(
+      messageBubbleRadius(isOutgoing: true, style: ChatStyle.signal),
+      BorderRadius.circular(signalRadius),
+    );
+    // A person keeps their hue: Signal's avatar is a pastel of it.
+    expect(
+      HSVColor.fromColor(signalAvatarColor('Jade ✨')).hue.round(),
+      classicNameHue('Jade ✨'),
+    );
+  });
+
   // Hues measured from the official MeshCore app's avatars (a public channel,
   // dark mode): the avatar is HSV(hue, 75%, 80%), the name HSV(hue, 75%, 56%).
   test('every style takes its hue from the official app', () {

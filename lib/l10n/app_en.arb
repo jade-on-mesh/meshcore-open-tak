@@ -666,6 +666,8 @@
   "appSettings_chatStyleOpenClassicHelp": "MeshCore Open as it was: the app's own bubbles and its own colours for people",
   "appSettings_chatStylePreviewReceived": "Are you on the ridge?",
   "appSettings_chatStylePreviewSent": "Yes, heading down now",
+  "appSettings_chatStyleSignal": "Signal",
+  "appSettings_chatStyleSignalHelp": "Like the Signal app: blue bubbles for yours, plain grey for others, round corners, names in colour",
   "appSettings_brightChatIcons": "Brighter chat icons",
   "appSettings_brightChatIconsSubtitle": "Fill each avatar with its colour",
   "appSettings_channelMessageNotifications": "Channel Message Notifications",
