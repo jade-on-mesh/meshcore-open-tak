@@ -6787,13 +6787,16 @@ class AppLocalizationsHu extends AppLocalizations {
   String get receivedImage_evicted => 'Fény nem tartalmazva';
 
   @override
-  String get receivedImage_oldSketch => 'Old-style AI sketch: this app only draws AI sketch HD';
+  String get receivedImage_oldSketch =>
+      'Old-style AI sketch: this app only draws AI sketch HD';
 
   @override
-  String get receivedImage_hdNotOnThisDevice => 'AI sketch HD can\'t be drawn on this device';
+  String get receivedImage_hdNotOnThisDevice =>
+      'AI sketch HD can\'t be drawn on this device';
 
   @override
-  String get receivedImage_hdNeedsModel => 'AI sketch HD received: download the model to see it';
+  String get receivedImage_hdNeedsModel =>
+      'AI sketch HD received: download the model to see it';
 
   @override
   String get receivedImage_retry => 'Kérem kell próbálni';
