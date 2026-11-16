@@ -56,7 +56,9 @@ class LoraOtaTargetInfo {
     );
     // Only builds that can update their bootloader over the air report it;
     // an application update doesn't need it.
-    final blTarget = RegExp(r'\btarget=([0-9A-Fa-f]{8})').firstMatch(bootloader);
+    final blTarget = RegExp(
+      r'\btarget=([0-9A-Fa-f]{8})',
+    ).firstMatch(bootloader);
     final blCaps = RegExp(r'\bcaps=([0-9A-Fa-f]{2})').firstMatch(bootloader);
     final bootloaderId = blTarget == null
         ? null
