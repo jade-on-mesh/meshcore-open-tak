@@ -53,6 +53,7 @@ import 'services/chat_background_service.dart';
 import 'services/timeout_prediction_service.dart';
 import 'storage/prefs_manager.dart';
 import 'storage/history_store.dart';
+import 'theme/chat_look.dart';
 import 'theme/mesh_theme.dart';
 import 'utils/app_logger.dart';
 import 'widgets/image_send_codec_binding.dart';
@@ -734,6 +735,11 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
           final customTheme = settingsService.settings.redLight
               ? null
               : settingsService.activeCustomTheme;
+          // Chat style and brighter chat icons (Settings > Appearance).
+          final chatLook = MeshChatLook(
+            style: ChatStyle.fromId(settingsService.settings.chatStyle),
+            brightIcons: settingsService.settings.brightChatIcons,
+          );
           return MaterialApp(
             title: 'MeshCore Open TAK',
             navigatorKey: appNavigatorKey,
@@ -748,12 +754,16 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
             locale: _localeFromSetting(
               settingsService.settings.languageOverride,
             ),
-            theme: customTheme != null
-                ? MeshTheme.fromCustom(customTheme)
-                : MeshTheme.light(),
-            darkTheme: customTheme != null
-                ? MeshTheme.fromCustom(customTheme)
-                : MeshTheme.dark(),
+            theme: chatLook.applyTo(
+              customTheme != null
+                  ? MeshTheme.fromCustom(customTheme)
+                  : MeshTheme.light(),
+            ),
+            darkTheme: chatLook.applyTo(
+              customTheme != null
+                  ? MeshTheme.fromCustom(customTheme)
+                  : MeshTheme.dark(),
+            ),
             // Red light: the dark theme, under the red filter below.
             themeMode: settingsService.settings.redLight
                 ? ThemeMode.dark

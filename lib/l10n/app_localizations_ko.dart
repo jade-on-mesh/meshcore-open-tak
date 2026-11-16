@@ -1459,6 +1459,50 @@ class AppLocalizationsKo extends AppLocalizations {
       '배터리 설정에서 MeshCore Open을 \"최적화 안 함\"으로 지정하면 백그라운드에서도 메시지가 계속 수신됩니다';
 
   @override
+  String get appSettings_chatStyle => 'Chat style';
+
+  @override
+  String get appSettings_chatStyleStandard => 'MeshCore Open TAK';
+
+  @override
+  String get appSettings_chatStyleStandardHelp =>
+      'The app\'s own bubbles, each person in the colour the official MeshCore app gives them';
+
+  @override
+  String get appSettings_chatStyleWadamesh => 'Wadamesh TAK';
+
+  @override
+  String get appSettings_chatStyleWadameshHelp =>
+      'Frosted glass bubbles, each sender\'s in their own colour, the same as on a standalone';
+
+  @override
+  String get appSettings_chatStyleClassic => 'MeshCore Classic';
+
+  @override
+  String get appSettings_chatStyleClassicHelp =>
+      'Blue bubbles for yours and grey for others, like the official MeshCore app';
+
+  @override
+  String get appSettings_chatStyleOpenClassic => 'MeshCore Open Classic';
+
+  @override
+  String get appSettings_chatStyleOpenClassicHelp =>
+      'MeshCore Open as it was: the app\'s own bubbles and its own colours for people';
+
+  @override
+  String get appSettings_chatStylePreviewReceived => 'Are you on the ridge?';
+
+  @override
+  String get appSettings_chatStylePreviewSent => 'Yes, heading down now';
+
+  @override
+  String get appSettings_brightChatIcons => 'Brighter chat icons';
+
+  @override
+  String get appSettings_brightChatIconsSubtitle =>
+      'Fill each avatar with its colour';
+
+  @override
   String get appSettings_channelMessageNotifications => '채널 메시지 알림';
 
   @override

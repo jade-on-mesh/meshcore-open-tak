@@ -28,6 +28,7 @@ The source of truth is `lib/theme/mesh_theme.dart` (theme), `lib/widgets/mesh_ui
 | Warning | `scheme.tertiary` (amber), or `MeshPalette.warn` |
 | Good / bad signal | `MeshTheme.snrColor(snr, blocked:)`; `MeshPalette.signal`, `.warn`, `.alert` for status ramps (e.g. battery in `repeater_status_screen.dart`) |
 | Own chat bubbles | `MeshBubbleTheme.of(context)` |
+| Chat bubble colours | `MessageBubbleColors.of(context, isOutgoing:, isFailed:, senderName:)` and `MessageBubbleFrame`: they follow the chat style (`MeshChatLook.of(context)`, `lib/theme/chat_look.dart`). Use `colors.name` for a received message's sender name when it is set |
 | Map overlays and markers | `MapPalette`, `MeshMapTheme.of(context)`; line-of-sight charts use `LosPalette` |
 | Coloured text or icon on a tinted background | pass it through `readableAccent(color, background, minContrast:)` (`mesh_ui.dart`), 4.5 for text, 3 for icons |
 
@@ -37,6 +38,22 @@ Rules:
 - Do not use raw `Colors.red`, `Colors.grey[600]` and so on for UI chrome.
 - Status colours (`error`, `tertiary`, `secondary`) are copied from the stock scheme of the same brightness in `fromCustom`, so they keep their meaning in custom themes.
 - `StatusChip` shows how to colour a status: the label keeps `onSurface`, and only the dot or icon carries the colour.
+
+**A person's colour.** Every style but MeshCore Open Classic takes a person's colour from their name the way the official MeshCore app does: FNV-1a over the name's UTF-16 code units, mod 360, as a hue (`classicNameHue`, `lib/theme/chat_look.dart`). Wadamesh TAK uses the same hue (its `NameHue.h`), so a person has one colour everywhere. `AvatarCircle` and `senderNameColor` use the official app's colour, HSV (hue, 75%, 80%). Pass `senderNameColor` through `readableAccent` on a light surface.
+
+**Chat style.** Settings > Appearance > **Chat style** picks how bubbles look, independently of the colour theme. The look travels as the `MeshChatLook` theme extension, which `main.dart` adds to both themes. Draw bubbles only through `MessageBubbleColors.of` and `MessageBubbleFrame`, so every style reaches them.
+
+- **MeshCore Open TAK** (the default): the theme's bubbles.
+- **Wadamesh TAK:** frosted glass. A `BackdropFilter` blur shows through the bubble colour, with a light sheen at the top, a thin white edge and a soft shadow.
+  - Mine are dark teal (slate by day).
+  - Each sender's bubble, name and avatar take their own colour, computed exactly as Wadamesh TAK computes it, so a teammate is the same colour on a standalone and in the app.
+- **MeshCore Open Classic:** the default's bubbles with the six-colour palette people had before (`openClassicColor`, the name's 31-hash). `senderNameColor(name, style:)` and `AvatarCircle` follow it.
+- **MeshCore Classic:** the official MeshCore app's look, measured from it.
+  - Bubbles: others' are light grey `#E0E0E0` with black text in both modes, and every corner has a 20 radius. Mine are blue.
+  - Person colours: the name's hue is FNV-1a over its UTF-16 code units, mod 360. `AvatarCircle` fills a person's avatar at HSV (hue, 75%, 80%) and shows the name's first emoji, or its initials in white. The sender name is HSV (hue, 75%, 56%).
+  - Node-type avatars (a fixed colour or an icon) are unchanged.
+
+A failed send stays an error bubble in every style, and an OTP theme's bubbles override the style.
 
 Custom, preset and holiday themes (colours, icons, map markers, chat backgrounds) are described in [themes.md](themes.md). Use `ThemedIcon(ThemeIconSlot.…)` for the icons a theme can replace (tabs, send, settings, node avatars).
 
@@ -102,7 +119,7 @@ Minimum sizes: no hard-coded `fontSize` below 12 exists in `lib/screens` or `lib
 | Sheet header | padding 20, 8, 8, 4 (LTRB), 36×4 drag handle | `BottomSheetHeader` |
 | Radii | `MeshRadii.xs` 6, `sm` 10, `md` 14 (cards, inputs, menus, snackbars, list tiles), `lg` 18 (sheets, dialogs), `xl` 24, `pill` 999 (buttons, chips, FAB) | `MeshRadii` |
 | Default icon size | 22 | `iconTheme` |
-| Avatar | 40 | `AvatarCircle`; pass `photoKey` (a contact's public key hex) to show that contact's photo, clipped to a circle with an `outlineVariant` border (`ContactPhotoCircle`) |
+| Avatar | 40 | `AvatarCircle`; pass `photoKey` (a contact's public key hex) to show that contact's photo, clipped to a circle with an `outlineVariant` border (`ContactPhotoCircle`). With **Brighter chat icons** on, the circle is filled with its colour and the initials or icon are black or white, whichever reads better |
 | List bottom padding under a FAB | 88 | `channels_screen.dart` |
 
 Icon sizes in use: 24 for tile and banner icons, 20 for menu icons and small action buttons, 18 for inline refresh icons and spinners. Keep tappable icons at 20 or more.

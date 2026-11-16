@@ -2773,6 +2773,84 @@ abstract class AppLocalizations {
   /// **'Set MeshCore Open to \"Don\'t optimize\" in battery settings so messages keep arriving in the background'**
   String get appSettings_batteryOptimizationSubtitle;
 
+  /// No description provided for @appSettings_chatStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat style'**
+  String get appSettings_chatStyle;
+
+  /// No description provided for @appSettings_chatStyleStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'MeshCore Open TAK'**
+  String get appSettings_chatStyleStandard;
+
+  /// No description provided for @appSettings_chatStyleStandardHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'The app\'s own bubbles, each person in the colour the official MeshCore app gives them'**
+  String get appSettings_chatStyleStandardHelp;
+
+  /// No description provided for @appSettings_chatStyleWadamesh.
+  ///
+  /// In en, this message translates to:
+  /// **'Wadamesh TAK'**
+  String get appSettings_chatStyleWadamesh;
+
+  /// No description provided for @appSettings_chatStyleWadameshHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Frosted glass bubbles, each sender\'s in their own colour, the same as on a standalone'**
+  String get appSettings_chatStyleWadameshHelp;
+
+  /// No description provided for @appSettings_chatStyleClassic.
+  ///
+  /// In en, this message translates to:
+  /// **'MeshCore Classic'**
+  String get appSettings_chatStyleClassic;
+
+  /// No description provided for @appSettings_chatStyleClassicHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Blue bubbles for yours and grey for others, like the official MeshCore app'**
+  String get appSettings_chatStyleClassicHelp;
+
+  /// No description provided for @appSettings_chatStyleOpenClassic.
+  ///
+  /// In en, this message translates to:
+  /// **'MeshCore Open Classic'**
+  String get appSettings_chatStyleOpenClassic;
+
+  /// No description provided for @appSettings_chatStyleOpenClassicHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'MeshCore Open as it was: the app\'s own bubbles and its own colours for people'**
+  String get appSettings_chatStyleOpenClassicHelp;
+
+  /// No description provided for @appSettings_chatStylePreviewReceived.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you on the ridge?'**
+  String get appSettings_chatStylePreviewReceived;
+
+  /// No description provided for @appSettings_chatStylePreviewSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes, heading down now'**
+  String get appSettings_chatStylePreviewSent;
+
+  /// No description provided for @appSettings_brightChatIcons.
+  ///
+  /// In en, this message translates to:
+  /// **'Brighter chat icons'**
+  String get appSettings_brightChatIcons;
+
+  /// No description provided for @appSettings_brightChatIconsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill each avatar with its colour'**
+  String get appSettings_brightChatIconsSubtitle;
+
   /// No description provided for @appSettings_channelMessageNotifications.
   ///
   /// In en, this message translates to:

@@ -167,6 +167,12 @@ class AppSettings {
   /// Night vision: everything shown in dim red (Settings > App settings).
   final bool redLight;
 
+  /// How chats look (Settings > Appearance > Chat style): a [ChatStyle] id.
+  final String chatStyle;
+
+  /// Avatars filled with their colour (Settings > Appearance).
+  final bool brightChatIcons;
+
   /// Keep the screen from sleeping or locking while the app is open
   /// (Android and iOS). Off by default.
   final bool keepScreenOn;
@@ -343,6 +349,8 @@ class AppSettings {
     this.channelMinHopsCountRepeaters = false,
     this.themeMode = 'system',
     this.redLight = false,
+    this.chatStyle = 'standard',
+    this.brightChatIcons = false,
     this.keepScreenOn = false,
     this.customThemes = const [],
     this.activeThemeId,
@@ -452,6 +460,8 @@ class AppSettings {
       'channel_min_hops_count_repeaters': channelMinHopsCountRepeaters,
       'theme_mode': themeMode,
       'red_light': redLight,
+      'chat_style': chatStyle,
+      'bright_chat_icons': brightChatIcons,
       'keep_screen_on': keepScreenOn,
       'custom_themes': customThemes.map((t) => t.toJson()).toList(),
       'active_theme_id': activeThemeId,
@@ -633,6 +643,8 @@ class AppSettings {
           json['channel_min_hops_count_repeaters'] as bool? ?? false,
       themeMode: json['theme_mode'] as String? ?? 'system',
       redLight: json['red_light'] as bool? ?? false,
+      chatStyle: json['chat_style'] as String? ?? 'standard',
+      brightChatIcons: json['bright_chat_icons'] as bool? ?? false,
       keepScreenOn: json['keep_screen_on'] as bool? ?? false,
       customThemes:
           (json['custom_themes'] as List<dynamic>?)
@@ -801,6 +813,8 @@ class AppSettings {
     bool? channelMinHopsCountRepeaters,
     String? themeMode,
     bool? redLight,
+    String? chatStyle,
+    bool? brightChatIcons,
     bool? keepScreenOn,
     List<CustomTheme>? customThemes,
     Object? activeThemeId = _unset,
@@ -907,6 +921,8 @@ class AppSettings {
           channelMinHopsCountRepeaters ?? this.channelMinHopsCountRepeaters,
       themeMode: themeMode ?? this.themeMode,
       redLight: redLight ?? this.redLight,
+      chatStyle: chatStyle ?? this.chatStyle,
+      brightChatIcons: brightChatIcons ?? this.brightChatIcons,
       keepScreenOn: keepScreenOn ?? this.keepScreenOn,
       customThemes: customThemes ?? this.customThemes,
       activeThemeId: activeThemeId == _unset

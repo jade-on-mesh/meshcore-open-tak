@@ -488,6 +488,14 @@ class AppSettingsService extends ChangeNotifier {
     await updateSettings(_settings.copyWith(redLight: value));
   }
 
+  Future<void> setChatStyle(String value) async {
+    await updateSettings(_settings.copyWith(chatStyle: value));
+  }
+
+  Future<void> setBrightChatIcons(bool value) async {
+    await updateSettings(_settings.copyWith(brightChatIcons: value));
+  }
+
   Future<void> setKeepScreenOn(bool value) async {
     await updateSettings(_settings.copyWith(keepScreenOn: value));
   }

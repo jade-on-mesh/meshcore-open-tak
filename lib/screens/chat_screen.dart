@@ -72,6 +72,7 @@ import '../widgets/translated_message_content.dart';
 import '../l10n/l10n.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../widgets/unread_divider.dart';
+import '../theme/chat_look.dart';
 import '../theme/mesh_theme.dart';
 import '../widgets/future_timestamp_indicator.dart';
 import '../widgets/mesh_ui.dart';
@@ -2236,6 +2237,7 @@ class _MessageBubble extends StatelessWidget {
             context,
             isOutgoing: isOutgoing,
             isFailed: isFailed,
+            senderName: senderName,
           );
     final textColor = colors.text;
     final metaColor = colors.meta;
@@ -2326,7 +2328,15 @@ class _MessageBubble extends StatelessWidget {
                                 style: MeshTheme.mono(
                                   fontSize: 13 * textScale,
                                   fontWeight: FontWeight.w700,
-                                  color: senderNameColor(senderName),
+                                  color:
+                                      colors.name ??
+                                      readableAccent(
+                                        senderNameColor(
+                                          senderName,
+                                          style: MeshChatLook.of(context).style,
+                                        ),
+                                        colors.background,
+                                      ),
                                 ),
                               ),
                             ),
