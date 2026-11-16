@@ -1777,7 +1777,8 @@ class _CompanionUpdateTileState extends State<_CompanionUpdateTile> {
         );
         // The board's name, when there is one: the update screen shows it, so
         // this never claims a board it names there wasn't identified.
-        final named = board != null &&
+        final named =
+            board != null &&
                 board.trim().isNotEmpty &&
                 !board.trim().toLowerCase().startsWith('unknown')
             ? board.trim()

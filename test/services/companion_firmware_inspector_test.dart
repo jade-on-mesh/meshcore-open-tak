@@ -44,11 +44,15 @@ void main() {
     );
     // ThinkNodes come in both chips: the name alone used to say nRF52.
     expect(
-      CompanionFirmwareInspector.updateExtensionForBoard('Elecrow ThinkNode M2'),
+      CompanionFirmwareInspector.updateExtensionForBoard(
+        'Elecrow ThinkNode M2',
+      ),
       'bin',
     );
     expect(
-      CompanionFirmwareInspector.updateExtensionForBoard('Elecrow ThinkNode-M1'),
+      CompanionFirmwareInspector.updateExtensionForBoard(
+        'Elecrow ThinkNode-M1',
+      ),
       'zip',
     );
     expect(
