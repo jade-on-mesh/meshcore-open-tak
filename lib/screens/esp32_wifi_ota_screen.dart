@@ -92,7 +92,11 @@ class _Esp32WifiOtaScreenState extends State<Esp32WifiOtaScreen> {
   }
 
   Future<void> _chooseImage() => _run(() async {
-    const group = XTypeGroup(label: 'ESP32 application', extensions: ['bin']);
+    const group = XTypeGroup(
+      label: 'ESP32 application',
+      extensions: ['bin'],
+      uniformTypeIdentifiers: ['public.data'],
+    );
     final file = widget.pickApplication == null
         ? await openFile(acceptedTypeGroups: [group])
         : await widget.pickApplication!();
@@ -155,7 +159,11 @@ class _Esp32WifiOtaScreenState extends State<Esp32WifiOtaScreen> {
         } else {
           file = await openFile(
             acceptedTypeGroups: const [
-              XTypeGroup(label: 'ESP32 migration bundle', extensions: ['zip']),
+              XTypeGroup(
+                label: 'ESP32 migration bundle',
+                extensions: ['zip'],
+                uniformTypeIdentifiers: ['public.zip-archive'],
+              ),
             ],
           );
         }

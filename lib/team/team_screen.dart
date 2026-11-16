@@ -1925,7 +1925,11 @@ class _TakSettingsState extends State<_TakSettings> {
   Future<void> _importPackage() async {
     final f = await openFile(
       acceptedTypeGroups: const [
-        XTypeGroup(label: 'TAK data package', extensions: ['zip']),
+        XTypeGroup(
+          label: 'TAK data package',
+          extensions: ['zip'],
+          uniformTypeIdentifiers: ['public.zip-archive'],
+        ),
       ],
     );
     if (f == null || !mounted) return;
@@ -1951,7 +1955,11 @@ class _TakSettingsState extends State<_TakSettings> {
   Future<void> _pickCert({required bool trust}) async {
     final f = await openFile(
       acceptedTypeGroups: const [
-        XTypeGroup(label: 'PKCS#12 certificate', extensions: ['p12', 'pfx']),
+        XTypeGroup(
+          label: 'PKCS#12 certificate',
+          extensions: ['p12', 'pfx'],
+          uniformTypeIdentifiers: ['com.rsa.pkcs-12', 'public.data'],
+        ),
       ],
     );
     if (f == null || !mounted) return;
