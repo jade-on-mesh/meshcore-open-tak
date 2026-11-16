@@ -77,7 +77,10 @@ add_library(aeic_hd STATIC aeic_hd_ios.cpp png_writer.cpp mat_diagnostics.cpp
 target_include_directories(aeic_hd PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(aeic_hd PUBLIC ncnn)
 # ncnn exports -fno-exceptions; the program validates files with exceptions.
-target_compile_options(aeic_hd PRIVATE -fexceptions)
+# A per-source flag comes after the imported target's (as in AEIC's own
+# CMakeLists); a target option would come before it and lose.
+set_source_files_properties(aeic_hd_ios.cpp host_driver.cpp png_writer.cpp
+  mat_diagnostics.cpp tiled_attention.cpp recovery.cpp PROPERTIES COMPILE_FLAGS "-fexceptions")
 if(AEIC_HD_HOST_DRIVER)
   find_package(ZLIB REQUIRED)
   add_executable(aeic_hd_host host_driver.cpp)
