@@ -454,18 +454,14 @@ class _ConfirmSheetState extends State<_ConfirmSheet> {
     for (final c in connector.channels) {
       if (c.pskHex.toLowerCase() == key) return c;
     }
-    final used = {
-      ...connector.channels.map((c) => c.index),
-      ...connector.unconfirmedChannelSlots,
-    };
-    int? slot;
-    for (var i = 0; i < connector.maxChannels; i++) {
-      if (!used.contains(i)) {
-        slot = i;
-        break;
-      }
-    }
+    // Only a slot the radio's full channel list shows free: the channel
+    // added just before this one started a re-read, and mid-read the slots
+    // not read yet look empty (writing one replaced a channel the radio had).
+    final slot = await connector.freeChannelSlotWhenKnown();
     if (slot == null) return null;
+    for (final c in connector.channels) {
+      if (c.pskHex.toLowerCase() == key) return c;
+    }
     final psk = Uint8List.fromList([
       for (var i = 0; i < 32; i += 2)
         int.parse(key.substring(i, i + 2), radix: 16),

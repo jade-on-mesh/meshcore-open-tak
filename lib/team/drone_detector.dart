@@ -152,22 +152,18 @@ class DroneDetectorService extends ChangeNotifier {
   /// Joins [defaultChannel] in the first free slot, with the same key as
   /// Channels > Add > hashtag. False when every slot is in use.
   Future<bool> joinDefaultChannel() async {
-    final used = {
-      ..._connector.channels.map((c) => c.index),
-      ..._connector.unconfirmedChannelSlots,
-    };
-    for (var i = 0; i < _connector.maxChannels; i++) {
-      if (used.contains(i)) continue;
-      await _connector.setChannel(
-        i,
-        defaultChannel,
-        Channel.derivePskFromHashtag(defaultChannel),
-      );
-      _shareError = null;
-      notifyListeners();
-      return true;
-    }
-    return false;
+    // A slot the radio's full channel list shows free (mid-sync, unread
+    // slots look empty and writing one would replace a channel).
+    final i = await _connector.freeChannelSlotWhenKnown();
+    if (i == null || channel != null) return channel != null;
+    await _connector.setChannel(
+      i,
+      defaultChannel,
+      Channel.derivePskFromHashtag(defaultChannel),
+    );
+    _shareError = null;
+    notifyListeners();
+    return true;
   }
 
   void clear() {

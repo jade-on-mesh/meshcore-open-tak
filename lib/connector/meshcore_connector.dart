@@ -1006,6 +1006,30 @@ class MeshCoreConnector extends ChangeNotifier {
   Set<int> get unconfirmedChannelSlots =>
       Set.unmodifiable(_unconfirmedChannelSlots);
 
+  /// The first free channel slot, once the radio's channel list is fully
+  /// known: waits (up to [timeout]) for a running channel sync to finish.
+  /// Mid-sync, slots not read yet look empty, and writing one overwrites a
+  /// channel the radio has. Each [setChannel] starts such a sync, so code
+  /// adding several channels in a row must come back here before each one.
+  /// Null when every slot is in use, or the list didn't settle in time.
+  Future<int?> freeChannelSlotWhenKnown({
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    final until = DateTime.now().add(timeout);
+    while (!hasLoadedChannels || isSyncingChannels) {
+      if (!isConnected || DateTime.now().isAfter(until)) return null;
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    final used = {
+      for (final c in _channels) c.index,
+      ..._unconfirmedChannelSlots,
+    };
+    for (var i = 0; i < maxChannels; i++) {
+      if (!used.contains(i)) return i;
+    }
+    return null;
+  }
+
   /// [Channel.storageId] of the channel in radio slot [slot], as of the last
   /// channel sync, or null for an empty or unknown slot.
   String? channelIdForSlot(int slot) => _slotChannelIds[slot];
