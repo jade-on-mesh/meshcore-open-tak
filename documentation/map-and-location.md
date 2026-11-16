@@ -92,7 +92,7 @@ In a mesh network, every message hops through one or more repeaters on its way t
 ## Map Interactions
 
 ### Zoom and Pan
-Standard pinch-to-zoom (range 2–18). Initial camera position is calculated from the statistical spread of all plotted points.
+Standard pinch-to-zoom (range 2–18). The map opens where you left it, at the same zoom, even after the app restarts. The first time, or if nothing is saved, it fits all plotted points. Opening the map at a place (a pin, a pack, a chat's location link) still goes there, and the center-map control fits all points on demand.
 
 ### Tap on a Node Marker
 Opens a card at the bottom of the map showing the node's status, type, last-seen time, path, node ID, and coordinates, with buttons to center on the node or close the card. Action buttons vary by type:
@@ -124,6 +124,8 @@ Toggle visibility of: chat nodes, repeaters, other nodes, guessed locations, dis
 Additional filters:
 - **Key prefix filter**: Show only contacts whose public key starts with a given prefix
 - **Last-seen time slider**: Exponential scale from near-zero to 6 months, with "all time" at the top end
+
+Every filter is remembered, including **MediaMesh** (only repeaters known to run MediaMesh) and the freshness chips (All / Online / Recent / Stale): leaving the map or restarting the app doesn't reset them.
 
 ### Legend Card (Top-Right)
 Shows node count and pin count. Tappable to expand a legend of all marker types.
