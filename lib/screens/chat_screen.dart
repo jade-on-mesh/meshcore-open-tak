@@ -2236,6 +2236,7 @@ class _MessageBubble extends StatelessWidget {
             context,
             isOutgoing: isOutgoing,
             isFailed: isFailed,
+            senderName: senderName,
           );
     final textColor = colors.text;
     final metaColor = colors.meta;
@@ -2326,7 +2327,9 @@ class _MessageBubble extends StatelessWidget {
                                 style: MeshTheme.mono(
                                   fontSize: 13 * textScale,
                                   fontWeight: FontWeight.w700,
-                                  color: senderNameColor(senderName),
+                                  color:
+                                      colors.name ??
+                                      senderNameColor(senderName),
                                 ),
                               ),
                             ),

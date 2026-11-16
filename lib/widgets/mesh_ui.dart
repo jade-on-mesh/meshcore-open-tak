@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../l10n/l10n.dart';
 import '../services/contact_photos.dart';
+import '../theme/chat_look.dart';
 import '../theme/mesh_theme.dart';
 import '../theme/theme_icons.dart';
 
@@ -336,9 +337,31 @@ class AvatarCircle extends StatelessWidget {
   }
 
   Widget _plain(BuildContext context) {
-    final accent = color ?? _colorFor(name);
+    final look = MeshChatLook.of(context);
+    // In Wadamesh TAK's chat style a person's circle takes the colour their
+    // name and bubbles have (as on the standalone's initials balls).
+    final accent =
+        color ??
+        (look.style == ChatStyle.wadamesh
+            ? wadameshNameColor(
+                name,
+                dark: Theme.of(context).brightness == Brightness.dark,
+              )
+            : _colorFor(name));
     final initials = _initials(name);
-    final background = _tintedCardBackground(context, accent, 0.14);
+    final bright = look.brightIcons;
+    // Brighter chat icons (Settings > Appearance): the circle filled with its
+    // colour and the initials or icon in black or white on it, whichever
+    // reads better, in place of a faint tint.
+    final background = bright
+        ? accent
+        : _tintedCardBackground(context, accent, 0.14);
+    final ink = bright
+        ? (meshContrastRatio(Colors.black, accent) >=
+                  meshContrastRatio(Colors.white, accent)
+              ? Colors.black
+              : Colors.white)
+        : null;
     // A theme picture (e.g. a holiday marker) fills the whole circle, the
     // same as on the map, rather than sitting small inside the tint.
     final picture = iconSlot == null
@@ -356,7 +379,7 @@ class AvatarCircle extends StatelessWidget {
             errorBuilder: (_, _, _) => Icon(
               iconSlot!.icon,
               size: size * 0.5,
-              color: readableAccent(accent, background, minContrast: 3),
+              color: ink ?? readableAccent(accent, background, minContrast: 3),
             ),
           ),
         ),
@@ -367,28 +390,30 @@ class AvatarCircle extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: accent.withValues(alpha: 0.14),
-        border: Border.all(color: accent.withValues(alpha: 0.4)),
+        color: bright ? accent : accent.withValues(alpha: 0.14),
+        border: Border.all(
+          color: bright ? accent : accent.withValues(alpha: 0.4),
+        ),
       ),
       alignment: Alignment.center,
       child: iconSlot != null
           ? ThemedIcon(
               iconSlot!,
               size: size * 0.55,
-              color: readableAccent(accent, background, minContrast: 3),
+              color: ink ?? readableAccent(accent, background, minContrast: 3),
             )
           : icon != null
           ? Icon(
               icon,
               size: size * 0.5,
-              color: readableAccent(accent, background, minContrast: 3),
+              color: ink ?? readableAccent(accent, background, minContrast: 3),
             )
           : Text(
               initials,
               style: MeshTheme.mono(
                 fontSize: size * 0.36,
                 fontWeight: FontWeight.w700,
-                color: readableAccent(accent, background),
+                color: ink ?? readableAccent(accent, background),
               ),
             ),
     );

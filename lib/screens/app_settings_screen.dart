@@ -15,10 +15,12 @@ import '../team/map_highlights.dart';
 import '../services/map_tile_cache_service.dart';
 import '../services/notification_service.dart';
 import '../services/screen_awake_service.dart';
+import '../theme/chat_look.dart';
 import '../theme/mesh_theme.dart';
 import '../utils/platform_info.dart';
 import '../widgets/public_media_switch.dart';
 import '../widgets/adaptive_app_bar_title.dart';
+import '../widgets/chat_style_sheet.dart';
 import '../widgets/cyr2lat_profile_dialog.dart';
 import '../widgets/language_picker_sheet.dart';
 import '../widgets/mesh_nav_tile.dart';
@@ -251,6 +253,28 @@ class AppSettingsScreen extends StatelessWidget {
           onTap: () => Navigator.of(
             context,
           ).push(MaterialPageRoute(builder: (_) => const ThemesScreen())),
+        ),
+        const Divider(height: 1, indent: 16),
+        MeshNavTile(
+          icon: Icons.chat_bubble_outline,
+          title: context.l10n.appSettings_chatStyle,
+          subtitle: chatStyleLabel(
+            context,
+            ChatStyle.fromId(settingsService.settings.chatStyle),
+          ),
+          onTap: () => showChatStyleSheet(context, settingsService),
+        ),
+        const Divider(height: 1, indent: 16),
+        SwitchListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
+          secondary: const Icon(Icons.account_circle_outlined, size: 24),
+          title: Text(context.l10n.appSettings_brightChatIcons),
+          subtitle: Text(context.l10n.appSettings_brightChatIconsSubtitle),
+          value: settingsService.settings.brightChatIcons,
+          onChanged: settingsService.setBrightChatIcons,
         ),
         const Divider(height: 1, indent: 16),
         SwitchListTile(

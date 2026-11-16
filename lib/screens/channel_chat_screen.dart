@@ -1592,7 +1592,11 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             text: otpColors.text,
             meta: otpColors.text.withValues(alpha: 0.65),
           )
-        : MessageBubbleColors.of(context, isOutgoing: isOutgoing);
+        : MessageBubbleColors.of(
+            context,
+            isOutgoing: isOutgoing,
+            senderName: message.senderName,
+          );
     final textColor = colors.text;
     final metaColor = colors.meta;
     const bodyFontSize = 14.0;
@@ -1677,7 +1681,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                               style: TextStyle(
                                 fontSize: 13 * textScale,
                                 fontWeight: FontWeight.w700,
-                                color: textColor,
+                                color: colors.name ?? textColor,
                               ),
                             ),
                           ),

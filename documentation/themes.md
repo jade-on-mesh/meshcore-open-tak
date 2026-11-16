@@ -6,6 +6,16 @@ Themes change the app's colors, icons, map markers, and (optionally) chat backgr
 
 **Settings → App Settings → Appearance → Color theme** opens the Themes screen. The tile's subtitle shows the theme in use ("MeshCore" for the standard theme), with a color swatch when a custom or preset theme is active.
 
+## Chat Style and Chat Icons
+
+Two more Appearance controls change only the chats, and work with any theme:
+
+- **Chat style:** the tile opens a picker with a preview of each style, in light or dark as the app is now.
+  - **MeshCore Open TAK** is the theme's own bubbles.
+  - **Wadamesh TAK** gives frosted-glass bubbles: the chat background shows blurred through them. Yours are dark teal, and each sender's bubbles, name and avatar are in their own colour, the same colour a Wadamesh TAK standalone gives them.
+  - **MeshCore classic** gives blue bubbles for yours and grey for everyone else's, like the official MeshCore app.
+- **Brighter chat icons:** fills each avatar circle with its colour, with the initials or icon in black or white, in place of the faint tint.
+
 ## Light / Dark and Color Theme
 
 Appearance has two related controls:

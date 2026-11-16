@@ -1,5 +1,8 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 
+import '../theme/chat_look.dart';
 import '../theme/mesh_theme.dart';
 
 /// Colours shared by the direct-message and channel chat bubbles.
@@ -10,21 +13,69 @@ class MessageBubbleColors {
   final Color text;
   final Color meta;
 
+  /// The sender's name above a received message, when the chat style gives
+  /// it a colour of its own (else the screen picks one).
+  final Color? name;
+
+  /// Frosted glass (the Wadamesh TAK style): [background] see-through over a
+  /// blur of what's behind, a light sheen at the top and a thin bright edge.
+  final bool glass;
+
   const MessageBubbleColors({
     required this.background,
     required this.border,
     required this.text,
     required this.meta,
+    this.name,
+    this.glass = false,
   });
 
   /// Outgoing bubbles use the theme's [MeshBubbleTheme]; a failed send
-  /// switches to the error container.
+  /// switches to the error container. The chat style (Settings > Appearance)
+  /// can colour them its own way; [senderName] is who sent a received one.
   factory MessageBubbleColors.of(
     BuildContext context, {
     required bool isOutgoing,
     bool isFailed = false,
+    String? senderName,
   }) {
     final scheme = Theme.of(context).colorScheme;
+    if (!isFailed) {
+      final look = MeshChatLook.of(context).style;
+      final dark = Theme.of(context).brightness == Brightness.dark;
+      switch (look) {
+        case ChatStyle.standard:
+          break;
+        case ChatStyle.wadamesh:
+          final name = senderName?.trim() ?? '';
+          final bg = isOutgoing
+              ? (dark ? wadameshSentNight : wadameshSentDay)
+              : name.isNotEmpty
+              ? wadameshBubbleTint(name)
+              : (dark ? wadameshRecvNight : wadameshRecvDay);
+          return MessageBubbleColors(
+            background: bg,
+            border: Colors.white.withValues(alpha: 0.22),
+            text: wadameshBubbleInk,
+            meta: wadameshBubbleMeta,
+            name: isOutgoing || name.isEmpty
+                ? null
+                : wadameshNameColor(name, dark: dark),
+            glass: true,
+          );
+        case ChatStyle.classic:
+          final bg = isOutgoing
+              ? classicSent
+              : (dark ? classicRecvDark : classicRecvLight);
+          final ink = isOutgoing || dark ? Colors.white : Colors.black87;
+          return MessageBubbleColors(
+            background: bg,
+            border: bg,
+            text: ink,
+            meta: ink.withValues(alpha: 0.7),
+          );
+      }
+    }
     final bubble = MeshBubbleTheme.of(context);
     final text = isFailed
         ? scheme.onErrorContainer
@@ -48,8 +99,15 @@ class MessageBubbleColors {
   }
 }
 
-/// Asymmetric bubble radius: the corner nearest the sender is tight.
-BorderRadius messageBubbleRadius({required bool isOutgoing}) {
+/// Asymmetric bubble radius: the corner nearest the sender is tight. The
+/// classic MeshCore style rounds every corner the same.
+BorderRadius messageBubbleRadius({
+  required bool isOutgoing,
+  ChatStyle style = ChatStyle.standard,
+}) {
+  if (style == ChatStyle.classic) {
+    return BorderRadius.circular(MeshRadii.lg);
+  }
   return isOutgoing
       ? const BorderRadius.only(
           topLeft: Radius.circular(MeshRadii.lg),
@@ -122,17 +180,94 @@ class MessageBubbleFrame extends StatelessWidget {
           isOutgoing: isOutgoing,
           isFailed: isFailed,
         );
+    final radius = messageBubbleRadius(
+      isOutgoing: isOutgoing,
+      style: MeshChatLook.of(context).style,
+    );
+    final padding = compact
+        ? const EdgeInsets.all(4)
+        : const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+    final constraints = BoxConstraints(maxWidth: maxWidth * 0.72);
+    if (colors.glass) {
+      return _GlassBubble(
+        colors: colors,
+        radius: radius,
+        padding: padding,
+        constraints: constraints,
+        child: child,
+      );
+    }
     return Container(
-      padding: compact
-          ? const EdgeInsets.all(4)
-          : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      constraints: BoxConstraints(maxWidth: maxWidth * 0.72),
+      padding: padding,
+      constraints: constraints,
       decoration: BoxDecoration(
         color: colors.background,
-        borderRadius: messageBubbleRadius(isOutgoing: isOutgoing),
+        borderRadius: radius,
         border: Border.all(color: colors.border, width: 1),
       ),
       child: child,
+    );
+  }
+}
+
+/// A frosted-glass bubble, iOS style: what's behind (the chat background) is
+/// blurred and shows through the bubble's colour, with a light sheen across
+/// the top, a thin bright edge and a soft shadow under it.
+class _GlassBubble extends StatelessWidget {
+  final MessageBubbleColors colors;
+  final BorderRadius radius;
+  final EdgeInsets padding;
+  final BoxConstraints constraints;
+  final Widget child;
+
+  const _GlassBubble({
+    required this.colors,
+    required this.radius,
+    required this.padding,
+    required this.constraints,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = colors.background;
+    final sheen = Color.lerp(bg, Colors.white, 0.18)!;
+    return Container(
+      constraints: constraints,
+      decoration: BoxDecoration(
+        borderRadius: radius,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.22),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: radius,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+          child: Container(
+            padding: padding,
+            decoration: BoxDecoration(
+              borderRadius: radius,
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  sheen.withValues(alpha: 0.78),
+                  bg.withValues(alpha: 0.66),
+                  bg.withValues(alpha: 0.74),
+                ],
+                stops: const [0, 0.45, 1],
+              ),
+              border: Border.all(color: colors.border, width: 1),
+            ),
+            child: child,
+          ),
+        ),
+      ),
     );
   }
 }

@@ -1456,6 +1456,39 @@ class AppLocalizationsJa extends AppLocalizations {
       'バッテリー設定で MeshCore Open を「最適化しない」に設定すると、バックグラウンドでもメッセージを受信し続けられます';
 
   @override
+  String get appSettings_chatStyle => 'Chat style';
+
+  @override
+  String get appSettings_chatStyleStandard => 'MeshCore Open TAK';
+
+  @override
+  String get appSettings_chatStyleStandardHelp => 'The app\'s own bubbles';
+
+  @override
+  String get appSettings_chatStyleWadamesh => 'Wadamesh TAK';
+
+  @override
+  String get appSettings_chatStyleWadameshHelp => 'Frosted glass bubbles, each sender\'s in their own colour, the same as on a standalone';
+
+  @override
+  String get appSettings_chatStyleClassic => 'MeshCore classic';
+
+  @override
+  String get appSettings_chatStyleClassicHelp => 'Blue bubbles for yours and grey for others, like the official MeshCore app';
+
+  @override
+  String get appSettings_chatStylePreviewReceived => 'Are you on the ridge?';
+
+  @override
+  String get appSettings_chatStylePreviewSent => 'Yes, heading down now';
+
+  @override
+  String get appSettings_brightChatIcons => 'Brighter chat icons';
+
+  @override
+  String get appSettings_brightChatIconsSubtitle => 'Fill each avatar with its colour';
+
+  @override
   String get appSettings_channelMessageNotifications => 'チャネルメッセージの通知';
 
   @override
