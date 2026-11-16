@@ -1553,6 +1553,24 @@ class AppLocalizationsRu extends AppLocalizations {
   String get appSettings_chatStyle => 'Chat style';
 
   @override
+  String get appSettings_chatStyleIphone => 'iPhone';
+
+  @override
+  String get appSettings_chatStyleIphoneHelp => 'Like Messages on an iPhone: blue bubbles for yours, grey for others, grey names and avatars';
+
+  @override
+  String get appSettings_chatStyleAndroid => 'Android';
+
+  @override
+  String get appSettings_chatStyleAndroidHelp => 'Like Google Messages: soft blue bubbles for yours, grey for others, names and avatars in colour';
+
+  @override
+  String get appSettings_chatStyleMirc => 'mIRC';
+
+  @override
+  String get appSettings_chatStyleMircHelp => 'Like mIRC: no bubbles, every line on the left as <nick> message in a monospace font, nicks in colour';
+
+  @override
   String get appSettings_chatStyleStandard => 'MeshCore Open TAK';
 
   @override

@@ -2827,6 +2827,42 @@ abstract class AppLocalizations {
   /// **'Chat style'**
   String get appSettings_chatStyle;
 
+  /// No description provided for @appSettings_chatStyleIphone.
+  ///
+  /// In en, this message translates to:
+  /// **'iPhone'**
+  String get appSettings_chatStyleIphone;
+
+  /// No description provided for @appSettings_chatStyleIphoneHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Like Messages on an iPhone: blue bubbles for yours, grey for others, grey names and avatars'**
+  String get appSettings_chatStyleIphoneHelp;
+
+  /// No description provided for @appSettings_chatStyleAndroid.
+  ///
+  /// In en, this message translates to:
+  /// **'Android'**
+  String get appSettings_chatStyleAndroid;
+
+  /// No description provided for @appSettings_chatStyleAndroidHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Like Google Messages: soft blue bubbles for yours, grey for others, names and avatars in colour'**
+  String get appSettings_chatStyleAndroidHelp;
+
+  /// No description provided for @appSettings_chatStyleMirc.
+  ///
+  /// In en, this message translates to:
+  /// **'mIRC'**
+  String get appSettings_chatStyleMirc;
+
+  /// No description provided for @appSettings_chatStyleMircHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Like mIRC: no bubbles, every line on the left as <nick> message in a monospace font, nicks in colour'**
+  String get appSettings_chatStyleMircHelp;
+
   /// No description provided for @appSettings_chatStyleStandard.
   ///
   /// In en, this message translates to:

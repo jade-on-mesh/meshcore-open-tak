@@ -78,6 +78,7 @@ import '../widgets/signal_grade_indicator.dart';
 import '../widgets/sync_progress_overlay.dart';
 import '../widgets/translated_message_content.dart';
 import '../widgets/unread_divider.dart';
+import '../theme/chat_look.dart';
 import '../theme/mesh_theme.dart';
 import '../theme/otp_bubble_colors.dart';
 import '../widgets/future_timestamp_indicator.dart';
@@ -1523,7 +1524,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     final otpActive = context.read<MeshCoreConnector>().isChannelOtpEnabled(
       widget.channel.index,
     );
-    final layoutOutgoing = otpActive ? !isOutgoing : isOutgoing;
+    // mIRC chat style: a log, every line on the left, no avatars.
+    final log = MeshChatLook.of(context).isLog;
+    final layoutOutgoing = log ? false : (otpActive ? !isOutgoing : isOutgoing);
     final scheme = Theme.of(context).colorScheme;
     final voxEnvelope = VoxVoiceEnvelope.tryParse(message.displayText);
     final gifId = voxEnvelope != null ? null : GifHelper.parseGif(message.text);
@@ -1612,10 +1615,15 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             child: TranslatedMessageContent(
               displayText: translatedDisplayText,
               originalText: originalDisplayText,
-              style: TextStyle(
-                color: textColor,
-                fontSize: bodyFontSize * textScale,
-              ),
+              style: log
+                  ? MeshTheme.mono(
+                      color: textColor,
+                      fontSize: bodyFontSize * textScale,
+                    )
+                  : TextStyle(
+                      color: textColor,
+                      fontSize: bodyFontSize * textScale,
+                    ),
               originalStyle: TextStyle(
                 fontSize: bodyFontSize * textScale,
                 fontStyle: FontStyle.italic,
@@ -1644,7 +1652,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                 : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (!layoutOutgoing) ...[
+              if (!layoutOutgoing && !log) ...[
                 _buildAvatar(message.senderName, textScale),
                 const SizedBox(width: 6),
               ],
@@ -1669,7 +1677,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (!isOutgoing) ...[
+                        if (!isOutgoing || log) ...[
                           Padding(
                             padding: gifId != null
                                 ? const EdgeInsets.only(
@@ -1679,12 +1687,20 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                                   )
                                 : EdgeInsets.zero,
                             child: Text(
-                              message.senderName,
-                              style: TextStyle(
-                                fontSize: 13 * textScale,
-                                fontWeight: FontWeight.w700,
-                                color: colors.name ?? textColor,
-                              ),
+                              log
+                                  ? '<${message.senderName}>'
+                                  : message.senderName,
+                              style: log
+                                  ? MeshTheme.mono(
+                                      fontSize: 13 * textScale,
+                                      fontWeight: FontWeight.w700,
+                                      color: colors.name ?? textColor,
+                                    )
+                                  : TextStyle(
+                                      fontSize: 13 * textScale,
+                                      fontWeight: FontWeight.w700,
+                                      color: colors.name ?? textColor,
+                                    ),
                             ),
                           ),
                           if (gifId == null) const SizedBox(height: 2),
@@ -3005,7 +3021,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     final otpActive = context.read<MeshCoreConnector>().isChannelOtpEnabled(
       widget.channel.index,
     );
-    final layoutOutgoing = otpActive ? !isOutgoing : isOutgoing;
+    final log = MeshChatLook.of(context).isLog;   // mIRC: every line left
+    final layoutOutgoing = log ? false : (otpActive ? !isOutgoing : isOutgoing);
     // Same OTP-theme recoloring as _buildMessageBubble above. An AEIC
     // image's state machine (receiving/decoding/decoded/...) has no
     // delivered/retrying/waiting equivalent to carry over, so this only
@@ -3045,7 +3062,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          if (!layoutOutgoing) ...[
+          if (!layoutOutgoing && !log) ...[
             _buildAvatar(_imageSenderLabel(entry), textScale),
             const SizedBox(width: 6),
           ],

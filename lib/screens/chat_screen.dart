@@ -2164,7 +2164,12 @@ class _MessageBubble extends StatelessWidget {
     final otpActive = context.select<MeshCoreConnector, bool>(
       (connector) => connector.isContactOtpEnabled(sourceId),
     );
-    final layoutOutgoing = otpActive ? !isOutgoing : isOutgoing;
+    // mIRC chat style: a log, every line on the left as <nick>, mine too.
+    final log = MeshChatLook.of(context).isLog;
+    final layoutOutgoing = log ? false : (otpActive ? !isOutgoing : isOutgoing);
+    final lineName = log && isOutgoing
+        ? (context.read<MeshCoreConnector>().selfName ?? 'me')
+        : senderName;
     final scheme = Theme.of(context).colorScheme;
     final voxEnvelope = VoxVoiceEnvelope.tryParse(message.displayText);
     final gifId = voxEnvelope != null ? null : GifHelper.parseGif(message.text);
@@ -2223,7 +2228,7 @@ class _MessageBubble extends StatelessWidget {
             context,
             isOutgoing: isOutgoing,
             isFailed: isFailed,
-            senderName: senderName,
+            senderName: lineName,
           );
     final textColor = colors.text;
     final metaColor = colors.meta;
@@ -2252,10 +2257,15 @@ class _MessageBubble extends StatelessWidget {
             child: TranslatedMessageContent(
               displayText: translatedDisplayText,
               originalText: originalDisplayText,
-              style: TextStyle(
-                color: textColor,
-                fontSize: bodyFontSize * textScale,
-              ),
+              style: log
+                  ? MeshTheme.mono(
+                      color: textColor,
+                      fontSize: bodyFontSize * textScale,
+                    )
+                  : TextStyle(
+                      color: textColor,
+                      fontSize: bodyFontSize * textScale,
+                    ),
               originalStyle: TextStyle(
                 color: textColor.withValues(alpha: 0.72),
                 fontSize: bodyFontSize * textScale,
@@ -2286,7 +2296,7 @@ class _MessageBubble extends StatelessWidget {
                     : MainAxisAlignment.start,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  if (!layoutOutgoing) ...[
+                  if (!layoutOutgoing && !log) ...[
                     _buildAvatar(context, senderName),
                     const SizedBox(width: 6),
                   ],
@@ -2300,7 +2310,7 @@ class _MessageBubble extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (!isOutgoing) ...[
+                          if (!isOutgoing || log) ...[
                             Padding(
                               padding: compactChrome
                                   ? const EdgeInsets.only(
@@ -2310,7 +2320,7 @@ class _MessageBubble extends StatelessWidget {
                                     )
                                   : EdgeInsets.zero,
                               child: Text(
-                                senderName,
+                                log ? '<$lineName>' : senderName,
                                 style: MeshTheme.mono(
                                   fontSize: 13 * textScale,
                                   fontWeight: FontWeight.w700,
@@ -2318,7 +2328,7 @@ class _MessageBubble extends StatelessWidget {
                                       colors.name ??
                                       readableAccent(
                                         senderNameColor(
-                                          senderName,
+                                          lineName,
                                           style: MeshChatLook.of(context).style,
                                         ),
                                         colors.background,

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../l10n/l10n.dart';
 import '../services/app_settings_service.dart';
 import '../theme/chat_look.dart';
+import '../theme/mesh_theme.dart';
 import 'mesh_ui.dart';
 import 'message_bubble_frame.dart';
 
@@ -20,6 +21,9 @@ String chatStyleLabel(BuildContext context, ChatStyle style) {
     ChatStyle.classic => l10n.appSettings_chatStyleClassic,
     ChatStyle.openClassic => l10n.appSettings_chatStyleOpenClassic,
     ChatStyle.signal => l10n.appSettings_chatStyleSignal,
+    ChatStyle.iphone => l10n.appSettings_chatStyleIphone,
+    ChatStyle.android => l10n.appSettings_chatStyleAndroid,
+    ChatStyle.mirc => l10n.appSettings_chatStyleMirc,
   };
 }
 
@@ -31,6 +35,9 @@ String _chatStyleHelp(BuildContext context, ChatStyle style) {
     ChatStyle.classic => l10n.appSettings_chatStyleClassicHelp,
     ChatStyle.openClassic => l10n.appSettings_chatStyleOpenClassicHelp,
     ChatStyle.signal => l10n.appSettings_chatStyleSignalHelp,
+    ChatStyle.iphone => l10n.appSettings_chatStyleIphoneHelp,
+    ChatStyle.android => l10n.appSettings_chatStyleAndroidHelp,
+    ChatStyle.mirc => l10n.appSettings_chatStyleMircHelp,
   };
 }
 
@@ -156,6 +163,52 @@ class _ChatStylePreview extends StatelessWidget {
           );
           final sent = MessageBubbleColors.of(context, isOutgoing: true);
           final l10n = context.l10n;
+          if (look.isLog) {
+            // mIRC: a log, `<nick> message` on the left, mine too.
+            const me = 'Me';
+            final mine = MessageBubbleColors.of(
+              context,
+              isOutgoing: true,
+              senderName: me,
+            );
+            Widget line(String nick, Color? nickColor, String text, Color ink) =>
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: '<$nick> ',
+                        style: MeshTheme.mono(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: nickColor ?? ink,
+                        ),
+                      ),
+                      TextSpan(
+                        text: text,
+                        style: MeshTheme.mono(fontSize: 12, color: ink),
+                      ),
+                    ],
+                  ),
+                );
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                line(
+                  sender,
+                  recv.name,
+                  l10n.appSettings_chatStylePreviewReceived,
+                  recv.text,
+                ),
+                const SizedBox(height: 4),
+                line(
+                  me,
+                  mine.name,
+                  l10n.appSettings_chatStylePreviewSent,
+                  mine.text,
+                ),
+              ],
+            );
+          }
           return LayoutBuilder(
             builder: (context, constraints) {
               final w = constraints.maxWidth;

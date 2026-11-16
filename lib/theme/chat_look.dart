@@ -29,7 +29,19 @@ enum ChatStyle {
 
   /// Like the Signal app: Signal-blue bubbles of mine, plain grey for others,
   /// round corners and no borders, names in colour, pastel avatars.
-  signal('signal');
+  signal('signal'),
+
+  /// Like iMessage on an iPhone: blue bubbles of mine, light grey (dark grey
+  /// at night) for others, grey names, grey initials avatars.
+  iphone('iphone'),
+
+  /// Like Google Messages on Android (Material You): soft blue bubbles of
+  /// mine, grey for others, names and avatars in their colour.
+  android('android'),
+
+  /// Like mIRC: no bubbles, every line on the left as `<nick> message`,
+  /// mine too, in a monospace font, nicks in mIRC's colours.
+  mirc('mirc');
 
   const ChatStyle(this.id);
 
@@ -59,6 +71,10 @@ class MeshChatLook extends ThemeExtension<MeshChatLook> {
   });
 
   static const standard = MeshChatLook();
+
+  /// A flat chat log (mIRC): every line on the left, no bubbles or avatars,
+  /// each line's sender named, mine too.
+  bool get isLog => style == ChatStyle.mirc;
 
   static MeshChatLook of(BuildContext context) =>
       Theme.of(context).extension<MeshChatLook>() ?? standard;
@@ -241,3 +257,82 @@ Color signalAvatarColor(String name) =>
 /// ... with the initials in a deeper shade of the same colour.
 Color signalAvatarInk(String name) =>
     HSVColor.fromAHSV(1, classicNameHue(name).toDouble(), 0.85, 0.55).toColor();
+
+// ---- iPhone (iMessage) -------------------------------------------------------
+// Blue bubbles of mine (iOS system blue, a touch brighter at night), others'
+// light grey by day and dark grey at night, every corner 18, a sender's name
+// small and grey above, and avatars grey circles with white initials as in
+// Contacts.
+
+const Color iphoneSentDay = Color(0xFF007AFF);
+const Color iphoneSentNight = Color(0xFF0A84FF);
+const Color iphoneRecvDay = Color(0xFFE9E9EB);
+const Color iphoneRecvNight = Color(0xFF262629);
+const Color iphoneName = Color(0xFF8E8E93);
+const Color iphoneAvatarDay = Color(0xFFA0A6B1);
+const Color iphoneAvatarNight = Color(0xFF6C6C70);
+const double iphoneRadius = 18;
+
+// ---- Android (Google Messages, Material You) -----------------------------------
+// Mine soft blue with dark blue ink by day (deep blue with light ink at
+// night), others' grey, every corner 20, a sender's name and avatar in their
+// colour with a white initial.
+
+const Color androidSentDay = Color(0xFFD3E3FD);
+const Color androidSentInkDay = Color(0xFF041E49);
+const Color androidSentNight = Color(0xFF004A77);
+const Color androidSentInkNight = Color(0xFFC2E7FF);
+const Color androidRecvDay = Color(0xFFE9EEF6);
+const Color androidRecvInkDay = Color(0xFF1F1F1F);
+const Color androidRecvNight = Color(0xFF2A2A2D);
+const Color androidRecvInkNight = Color(0xFFE3E3E3);
+const double androidRadius = 20;
+
+/// A sender's name in the Android style.
+Color androidNameColor(String name, {required bool dark}) {
+  final h = classicNameHue(name).toDouble();
+  return dark
+      ? HSVColor.fromAHSV(1, h, 0.40, 0.92).toColor()
+      : HSVColor.fromAHSV(1, h, 0.65, 0.62).toColor();
+}
+
+/// A person's avatar in the Android style: their colour, a white initial.
+Color androidAvatarColor(String name) =>
+    HSVColor.fromAHSV(1, classicNameHue(name).toDouble(), 0.55, 0.75).toColor();
+
+// ---- mIRC ------------------------------------------------------------------------
+// A chat log, not bubbles: `<nick> message` lines on the left, a monospace
+// font, and each nick in one of mIRC's colours (its 16, less white, black and
+// the greys, which wouldn't read), picked by the official app's hue so a
+// person keeps it.
+
+const List<Color> mircNickColors = [
+  Color(0xFF00007F), // 2 navy
+  Color(0xFF009300), // 3 green
+  Color(0xFFFF0000), // 4 red
+  Color(0xFF7F0000), // 5 brown
+  Color(0xFF9C009C), // 6 purple
+  Color(0xFFFC7F00), // 7 orange
+  Color(0xFFFFFF00), // 8 yellow
+  Color(0xFF00FC00), // 9 light green
+  Color(0xFF009393), // 10 teal
+  Color(0xFF00FFFF), // 11 cyan
+  Color(0xFF0000FC), // 12 blue
+  Color(0xFFFF00FF), // 13 pink
+];
+
+/// A nick's mIRC colour. At night the dark ones (navy, brown, blue) are
+/// lifted so they read on a dark background; by day the light ones (yellow,
+/// light green, cyan) are deepened.
+Color mircNickColor(String name, {required bool dark}) {
+  final c = mircNickColors[classicNameHue(name) % mircNickColors.length];
+  final hsv = HSVColor.fromColor(c);
+  if (dark && hsv.value < 0.7) return hsv.withValue(0.95).withSaturation(0.6).toColor();
+  if (!dark && hsv.value > 0.9 && hsv.hue >= 55 && hsv.hue <= 185) {
+    return hsv.withValue(0.6).toColor();
+  }
+  return c;
+}
+
+const Color mircInkDay = Color(0xFF000000);
+const Color mircInkNight = Color(0xFFE0E0E0);

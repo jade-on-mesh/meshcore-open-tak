@@ -357,6 +357,41 @@ class AvatarCircle extends StatelessWidget {
         ),
       );
     }
+    // iPhone: a grey circle with white initials (Contacts); Android: the
+    // person's colour with a white initial (Google Messages). Node-type
+    // avatars stay as they are.
+    if ((look.style == ChatStyle.iphone || look.style == ChatStyle.android) &&
+        color == null &&
+        icon == null &&
+        iconSlot == null) {
+      final ios = look.style == ChatStyle.iphone;
+      final full = classicAvatarText(name);
+      final text = ios || full.runes.first >= 0x2190
+          ? full
+          : full.characters.first;
+      final dark = Theme.of(context).brightness == Brightness.dark;
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: ios
+              ? (dark ? iphoneAvatarNight : iphoneAvatarDay)
+              : androidAvatarColor(name),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          text,
+          maxLines: 1,
+          style: TextStyle(
+            fontSize: size * (text.runes.first >= 0x2190 ? 0.5 : 0.4),
+            fontWeight: ios ? FontWeight.w600 : FontWeight.w500,
+            color: Colors.white,
+            height: 1,
+          ),
+        ),
+      );
+    }
     // Signal: a pastel circle with the initials in a deeper shade of it.
     // Node-type avatars (a fixed colour or an icon) stay as they are.
     if (look.style == ChatStyle.signal &&
