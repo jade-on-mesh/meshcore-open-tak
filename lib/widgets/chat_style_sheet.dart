@@ -189,7 +189,12 @@ class _ChatStylePreview extends StatelessWidget {
                     fontWeight: bold ? FontWeight.w700 : null,
                     color: color,
                   );
-            Widget entry(String nick, Color? nickColor, String text, Color ink) {
+            Widget entry(
+              String nick,
+              Color? nickColor,
+              String text,
+              Color ink,
+            ) {
               final label = look.logNick(nick, time: time);
               if (look.style == ChatStyle.mirc) {
                 return Text.rich(

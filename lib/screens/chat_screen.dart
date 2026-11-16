@@ -2330,13 +2330,12 @@ class _MessageBubble extends StatelessWidget {
                                 log
                                     ? look.logNick(
                                         lineName,
-                                        time: MaterialLocalizations.of(
-                                          context,
-                                        ).formatTimeOfDay(
-                                          TimeOfDay.fromDateTime(
-                                            message.timestamp,
-                                          ),
-                                        ),
+                                        time: MaterialLocalizations.of(context)
+                                            .formatTimeOfDay(
+                                              TimeOfDay.fromDateTime(
+                                                message.timestamp,
+                                              ),
+                                            ),
                                       )
                                     : senderName,
                                 style: MeshTheme.mono(

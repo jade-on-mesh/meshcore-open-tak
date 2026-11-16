@@ -209,10 +209,7 @@ void main() {
     expect(look.logAvatars, isTrue);
     expect(look.logNick('Jade'), 'Jade');
     expect(const MeshChatLook(style: ChatStyle.mirc).logNick('Jade'), '<Jade>');
-    expect(
-      discordAvatarColors,
-      contains(discordAvatarColor('Jade ✨')),
-    );
+    expect(discordAvatarColors, contains(discordAvatarColor('Jade ✨')));
   });
 
   // Hues measured from the official MeshCore app's avatars (a public channel,

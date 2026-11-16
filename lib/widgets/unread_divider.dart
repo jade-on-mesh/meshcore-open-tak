@@ -109,10 +109,7 @@ class UnreadDivider extends StatelessWidget {
               Expanded(child: Container(height: 1, color: grey)),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  label,
-                  style: TextStyle(fontSize: 11, color: grey),
-                ),
+                child: Text(label, style: TextStyle(fontSize: 11, color: grey)),
               ),
               Expanded(child: Container(height: 1, color: grey)),
             ],

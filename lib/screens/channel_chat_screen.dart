@@ -1691,13 +1691,12 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                               log
                                   ? look.logNick(
                                       message.senderName,
-                                      time: MaterialLocalizations.of(
-                                        context,
-                                      ).formatTimeOfDay(
-                                        TimeOfDay.fromDateTime(
-                                          message.timestamp,
-                                        ),
-                                      ),
+                                      time: MaterialLocalizations.of(context)
+                                          .formatTimeOfDay(
+                                            TimeOfDay.fromDateTime(
+                                              message.timestamp,
+                                            ),
+                                          ),
                                     )
                                   : message.senderName,
                               style: look.logMono
