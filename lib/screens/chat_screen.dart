@@ -72,6 +72,7 @@ import '../widgets/translated_message_content.dart';
 import '../l10n/l10n.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../widgets/unread_divider.dart';
+import '../theme/chat_look.dart';
 import '../theme/mesh_theme.dart';
 import '../widgets/future_timestamp_indicator.dart';
 import '../widgets/mesh_ui.dart';
@@ -2330,7 +2331,12 @@ class _MessageBubble extends StatelessWidget {
                                   color:
                                       colors.name ??
                                       readableAccent(
-                                        senderNameColor(senderName),
+                                        senderNameColor(
+                                          senderName,
+                                          style: MeshChatLook.of(
+                                            context,
+                                          ).style,
+                                        ),
                                         colors.background,
                                       ),
                                 ),

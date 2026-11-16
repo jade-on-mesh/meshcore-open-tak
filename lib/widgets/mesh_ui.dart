@@ -305,8 +305,12 @@ class AvatarCircle extends StatelessWidget {
     this.photoKey,
   });
 
-  /// A person's colour: the one the official MeshCore app gives their name.
-  Color _colorFor(String s) => classicAvatarColor(s);
+  /// A person's colour: the one the official MeshCore app gives their name
+  /// (MeshCore Open Classic: its own six-colour palette).
+  static Color _colorFor(String s, ChatStyle style) =>
+      style == ChatStyle.openClassic
+      ? openClassicColor(s)
+      : classicAvatarColor(s);
 
   @override
   Widget build(BuildContext context) {
@@ -362,7 +366,7 @@ class AvatarCircle extends StatelessWidget {
                 name,
                 dark: Theme.of(context).brightness == Brightness.dark,
               )
-            : _colorFor(name));
+            : _colorFor(name, look.style));
     final initials = _initials(name);
     final bright = look.brightIcons;
     // Brighter chat icons (Settings > Appearance): the circle filled with its

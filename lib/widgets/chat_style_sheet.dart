@@ -18,6 +18,7 @@ String chatStyleLabel(BuildContext context, ChatStyle style) {
     ChatStyle.standard => l10n.appSettings_chatStyleStandard,
     ChatStyle.wadamesh => l10n.appSettings_chatStyleWadamesh,
     ChatStyle.classic => l10n.appSettings_chatStyleClassic,
+    ChatStyle.openClassic => l10n.appSettings_chatStyleOpenClassic,
   };
 }
 
@@ -27,6 +28,7 @@ String _chatStyleHelp(BuildContext context, ChatStyle style) {
     ChatStyle.standard => l10n.appSettings_chatStyleStandardHelp,
     ChatStyle.wadamesh => l10n.appSettings_chatStyleWadameshHelp,
     ChatStyle.classic => l10n.appSettings_chatStyleClassicHelp,
+    ChatStyle.openClassic => l10n.appSettings_chatStyleOpenClassicHelp,
   };
 }
 
@@ -175,7 +177,9 @@ class _ChatStylePreview extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
-                                  color: recv.name ?? senderNameColor(sender),
+                                  color:
+                                      recv.name ??
+                                      senderNameColor(sender, style: style),
                                 ),
                               ),
                               Text(

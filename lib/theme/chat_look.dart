@@ -7,6 +7,8 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+import 'mesh_theme.dart' show MeshPalette;
+
 /// The chat bubble styles to choose from.
 enum ChatStyle {
   /// The app's own: dusk-blue bubbles of mine, theme surfaces for others.
@@ -19,7 +21,11 @@ enum ChatStyle {
 
   /// The classic MeshCore app look: blue bubbles of mine, grey for others,
   /// rounded the same on every corner.
-  classic('classic');
+  classic('classic'),
+
+  /// MeshCore Open as it was: the app's own bubbles, and people's colours
+  /// from its six-colour palette rather than the official app's.
+  openClassic('open_classic');
 
   const ChatStyle(this.id);
 
@@ -177,3 +183,25 @@ const Color classicSent = Color(0xFF2196F3);
 const Color classicRecv = Color(0xFFE0E0E0);
 const Color classicRecvInk = Color(0xFF000000);
 const double classicRadius = 20;
+
+// ---- MeshCore Open Classic ----------------------------------------------------
+// The six colours people's avatars and names were drawn from before the app
+// took the official app's colours, picked by the name's 31-hash.
+
+const List<Color> openClassicHues = [
+  MeshPalette.blue,
+  MeshPalette.magenta,
+  MeshPalette.signal,
+  MeshPalette.warn,
+  Color(0xFF8FA8F0),
+  Color(0xFF6FD9CE),
+];
+
+/// A person's colour in MeshCore Open Classic.
+Color openClassicColor(String name) {
+  var h = 0;
+  for (final c in name.codeUnits) {
+    h = (h * 31 + c) & 0x7fffffff;
+  }
+  return openClassicHues[h % openClassicHues.length];
+}

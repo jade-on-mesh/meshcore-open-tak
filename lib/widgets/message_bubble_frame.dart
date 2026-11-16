@@ -45,6 +45,7 @@ class MessageBubbleColors {
       final dark = Theme.of(context).brightness == Brightness.dark;
       switch (look) {
         case ChatStyle.standard:
+        case ChatStyle.openClassic:
           break;
         case ChatStyle.wadamesh:
           final name = senderName?.trim() ?? '';
@@ -124,9 +125,13 @@ BorderRadius messageBubbleRadius({
 }
 
 /// A person's colour from their name: the one the official MeshCore app (and
-/// Wadamesh TAK) gives them, the same as their [AvatarCircle]. On a light
-/// surface pass it through `readableAccent`.
-Color senderNameColor(String name) => classicAvatarColor(name);
+/// Wadamesh TAK) gives them, the same as their [AvatarCircle] (MeshCore Open
+/// Classic: its own palette). On a light surface pass it through
+/// `readableAccent`.
+Color senderNameColor(String name, {ChatStyle style = ChatStyle.standard}) =>
+    style == ChatStyle.openClassic
+    ? openClassicColor(name)
+    : classicAvatarColor(name);
 
 /// The bubble container shared by both chat screens: colour, border,
 /// asymmetric radius, padding and the 72% max width.

@@ -1533,7 +1533,7 @@ class AppLocalizationsBg extends AppLocalizations {
   String get appSettings_chatStyleStandard => 'MeshCore Open TAK';
 
   @override
-  String get appSettings_chatStyleStandardHelp => 'The app\'s own bubbles';
+  String get appSettings_chatStyleStandardHelp => 'The app\'s own bubbles, each person in the colour the official MeshCore app gives them';
 
   @override
   String get appSettings_chatStyleWadamesh => 'Wadamesh TAK';
@@ -1548,6 +1548,12 @@ class AppLocalizationsBg extends AppLocalizations {
   @override
   String get appSettings_chatStyleClassicHelp =>
       'Blue bubbles for yours and grey for others, like the official MeshCore app';
+
+  @override
+  String get appSettings_chatStyleOpenClassic => 'MeshCore Open Classic';
+
+  @override
+  String get appSettings_chatStyleOpenClassicHelp => 'MeshCore Open as it was: the app\'s own bubbles and its own colours for people';
 
   @override
   String get appSettings_chatStylePreviewReceived => 'Are you on the ridge?';

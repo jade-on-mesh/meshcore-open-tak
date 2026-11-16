@@ -91,6 +91,28 @@ void main() {
     expect(senderNameColor('Chuck@🏠'), classicAvatarColor('Chuck@🏠'));
   });
 
+  test('MeshCore Open Classic keeps the old six-colour palette', () {
+    for (final n in ['Dupont C2b', 'BGMatt', 'Jade ✨']) {
+      var h = 0;
+      for (final c in n.codeUnits) {
+        h = (h * 31 + c) & 0x7fffffff;
+      }
+      expect(openClassicColor(n), openClassicHues[h % 6], reason: n);
+      expect(senderNameColor(n, style: ChatStyle.openClassic), openClassicColor(n));
+    }
+  });
+
+  testWidgets('MeshCore Open Classic has the standard bubbles', (tester) async {
+    for (final out in [true, false]) {
+      final a = await colorsIn(tester, ChatStyle.standard, outgoing: out);
+      final b = await colorsIn(tester, ChatStyle.openClassic, outgoing: out);
+      expect(b.background, a.background);
+      expect(b.text, a.text);
+      expect(b.name, isNull);
+      expect(b.glass, isFalse);
+    }
+  });
+
   test('classic colours match the official app', () {
     const hues = {
       'Dupont C2b': 4,

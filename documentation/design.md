@@ -39,7 +39,7 @@ Rules:
 - Status colours (`error`, `tertiary`, `secondary`) are copied from the stock scheme of the same brightness in `fromCustom`, so they keep their meaning in custom themes.
 - `StatusChip` shows how to colour a status: the label keeps `onSurface`, and only the dot or icon carries the colour.
 
-**A person's colour.** Every style takes a person's colour from their name the way the official MeshCore app does: FNV-1a over the name's UTF-16 code units, mod 360, as a hue (`classicNameHue`, `lib/theme/chat_look.dart`). Wadamesh TAK uses the same hue (its `NameHue.h`), so a person has one colour everywhere. `AvatarCircle` and `senderNameColor` use the official app's colour, HSV (hue, 75%, 80%). Pass `senderNameColor` through `readableAccent` on a light surface.
+**A person's colour.** Every style but MeshCore Open Classic takes a person's colour from their name the way the official MeshCore app does: FNV-1a over the name's UTF-16 code units, mod 360, as a hue (`classicNameHue`, `lib/theme/chat_look.dart`). Wadamesh TAK uses the same hue (its `NameHue.h`), so a person has one colour everywhere. `AvatarCircle` and `senderNameColor` use the official app's colour, HSV (hue, 75%, 80%). Pass `senderNameColor` through `readableAccent` on a light surface.
 
 **Chat style.** Settings > Appearance > **Chat style** picks how bubbles look, independently of the colour theme. The look travels as the `MeshChatLook` theme extension, which `main.dart` adds to both themes. Draw bubbles only through `MessageBubbleColors.of` and `MessageBubbleFrame`, so every style reaches them.
 
@@ -47,6 +47,7 @@ Rules:
 - **Wadamesh TAK:** frosted glass. A `BackdropFilter` blur shows through the bubble colour, with a light sheen at the top, a thin white edge and a soft shadow.
   - Mine are dark teal (slate by day).
   - Each sender's bubble, name and avatar take their own colour, computed exactly as Wadamesh TAK computes it, so a teammate is the same colour on a standalone and in the app.
+- **MeshCore Open Classic:** the default's bubbles with the six-colour palette people had before (`openClassicColor`, the name's 31-hash). `senderNameColor(name, style:)` and `AvatarCircle` follow it.
 - **MeshCore classic:** the official MeshCore app's look, measured from it.
   - Bubbles: others' are light grey `#E0E0E0` with black text in both modes, and every corner has a 20 radius. Mine are blue.
   - Person colours: the name's hue is FNV-1a over its UTF-16 code units, mod 360. `AvatarCircle` fills a person's avatar at HSV (hue, 75%, 80%) and shows the name's first emoji, or its initials in white. The sender name is HSV (hue, 75%, 56%).

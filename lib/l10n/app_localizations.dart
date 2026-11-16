@@ -2788,7 +2788,7 @@ abstract class AppLocalizations {
   /// No description provided for @appSettings_chatStyleStandardHelp.
   ///
   /// In en, this message translates to:
-  /// **'The app\'s own bubbles'**
+  /// **'The app\'s own bubbles, each person in the colour the official MeshCore app gives them'**
   String get appSettings_chatStyleStandardHelp;
 
   /// No description provided for @appSettings_chatStyleWadamesh.
@@ -2814,6 +2814,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Blue bubbles for yours and grey for others, like the official MeshCore app'**
   String get appSettings_chatStyleClassicHelp;
+
+  /// No description provided for @appSettings_chatStyleOpenClassic.
+  ///
+  /// In en, this message translates to:
+  /// **'MeshCore Open Classic'**
+  String get appSettings_chatStyleOpenClassic;
+
+  /// No description provided for @appSettings_chatStyleOpenClassicHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'MeshCore Open as it was: the app\'s own bubbles and its own colours for people'**
+  String get appSettings_chatStyleOpenClassicHelp;
 
   /// No description provided for @appSettings_chatStylePreviewReceived.
   ///
