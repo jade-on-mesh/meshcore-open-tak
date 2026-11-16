@@ -88,6 +88,8 @@ Groups are stored per radio identity (scoped by public key).
 | Add/Remove Favorite | All types | Toggles the favorite flag |
 | Share Contact | All types | Requests advert from device → copies `meshcore://<hex>` URI to clipboard |
 | Share Contact Zero-Hop | All types | Broadcasts the contact's advertisement one hop |
+| Show QR code | All types with a full key | The contact card (`meshcore://contact/add?name=…&public_key=…&type=…`, the official app's format) as a QR code, with **Play by sound** beneath it for a device that has no camera (`lib/widgets/contact_share_qr.dart`) |
+| Share by Sound Link | All types with a full key, not on web | Plays the same contact card as sound (Sound Link), for a phone or standalone listening nearby |
 | Delete Contact | All types | Confirmation dialog → removes from device and clears messages. If auto-add is on for that type, the radio adds it back the next time it advertises; the dialog warns about this |
 
 ## App Bar Menus
