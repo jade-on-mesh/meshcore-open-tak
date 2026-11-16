@@ -1138,7 +1138,7 @@ Future<void> showTeamMemberSheet(
     final m = team.memberByKey(key4);
     if (m == null) return const SizedBox(height: 120);
     final p = m.position;
-    final range = _rangeFromMe(team, p.lat, p.lon);
+    final range = p.hasPosition ? _rangeFromMe(team, p.lat, p.lon) : null;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -1219,12 +1219,16 @@ Future<void> showTeamMemberSheet(
                 ),
               if (p.altitudeM != null) Text('Altitude ${p.altitudeM} m'),
               if (p.batteryPct != null) Text('Battery ${p.batteryPct}%'),
-              Text(
-                '${p.lat.toStringAsFixed(5)}, ${p.lon.toStringAsFixed(5)}'
-                '${p.accuracyM > 0 ? ' ±${p.accuracyM} m' : ''}',
-              ),
+              if (p.hasPosition)
+                Text(
+                  '${p.lat.toStringAsFixed(5)}, ${p.lon.toStringAsFixed(5)}'
+                  '${p.accuracyM > 0 ? ' ±${p.accuracyM} m' : ''}',
+                )
+              else
+                const Text('No position: no GPS fix or location set'),
               const SizedBox(height: 12),
-              _houndButton(context, () => team.houndMember(key4)),
+              if (p.hasPosition)
+                _houndButton(context, () => team.houndMember(key4)),
               // Teammates are kept for a day across restarts; one who left
               // the team can go sooner.
               if (m.freshness != TeamFreshness.live)

@@ -660,7 +660,7 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
           key4: pos.senderKey4,
           position: pos,
           heard: heard,
-          trail: [(pos.lat, pos.lon, heard)],
+          trail: pos.hasPosition ? [(pos.lat, pos.lon, heard)] : const [],
         );
       } catch (_) {}
     }
@@ -692,8 +692,16 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
     notifyListeners();
   }
 
-  /// Teammates heard on the team channel, newest first (not including me).
-  List<TeamMember> get members =>
+  /// Teammates heard on the team channel with a position, newest first (not
+  /// including me): what the map, ranges and the TAK bridge draw.
+  List<TeamMember> get members => [
+    for (final m in allMembers)
+      if (m.position.hasPosition) m,
+  ];
+
+  /// Every teammate heard, newest first, including those with no GPS fix or
+  /// location set ("here, no position" beacons): the team list.
+  List<TeamMember> get allMembers =>
       _members.values.toList()..sort((a, b) => b.heard.compareTo(a.heard));
 
   TeamMember? memberByKey(String key4) => _members[key4];
@@ -704,6 +712,22 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
     _noteHeard(p);
     final prev = _members[p.senderKey4];
     if (prev == null) _newcomerHeard();
+    if (!p.hasPosition) {
+      // Here, but no fix or location set: listed, and heard now. A position
+      // heard from them before stays where it was (their last known).
+      final kept = prev != null && prev.position.hasPosition
+          ? _withPosition(p, prev.position)
+          : p;
+      _members[p.senderKey4] = TeamMember(
+        key4: p.senderKey4,
+        position: kept,
+        heard: DateTime.now(),
+        trail: prev?.trail ?? const [],
+      );
+      _saveMembers();
+      notifyListeners();
+      return;
+    }
     final trail = [...?prev?.trail];
     if (trail.isEmpty ||
         teamDistanceMeters(trail.last.$1, trail.last.$2, p.lat, p.lon) > 3) {
@@ -727,6 +751,29 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
     );
     notifyListeners();
   }
+
+  /// [p] (a "no position" beacon) with [where]'s position and motion.
+  static TeamPosition _withPosition(TeamPosition p, TeamPosition where) =>
+      TeamPosition(
+        senderKey4: p.senderKey4,
+        lat: where.lat,
+        lon: where.lon,
+        altitudeM: where.altitudeM,
+        speedMps: where.speedMps,
+        headingDeg: where.headingDeg,
+        accuracyM: where.accuracyM,
+        batteryPct: p.batteryPct,
+        roleId: p.roleId,
+        color: p.color,
+        status: p.status,
+        callsign: p.callsign,
+        fromRadio: p.fromRadio,
+        sosActive: p.sosActive,
+        relayed: p.relayed,
+        nameHash: p.nameHash,
+        heard: p.heard,
+        seq: p.seq,
+      );
 
   /// Hook for the TAK bridge.
   void Function(TeamMember m)? onRemotePosition;
@@ -762,7 +809,7 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
     final k = _houndMember;
     if (k != null) {
       final m = _members[k];
-      if (m == null) return null;
+      if (m == null || !m.position.hasPosition) return null;
       return (lat: m.position.lat, lon: m.position.lon, label: m.callsign);
     }
     final ck = _houndContact;
@@ -1151,7 +1198,20 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
     _onSelfMoved();
     if (!active || !_sharePosition || _sending) return;
     final f = fix;
-    if (f == null) return;
+    final since0 = _lastBeacon == null
+        ? null
+        : DateTime.now().difference(_lastBeacon!);
+    if (f == null) {
+      // No fix: still say we're here, so teammates list us. As often as a
+      // still member's beacons, sooner when asked or with an alert up.
+      final due =
+          since0 == null ||
+          (_forceBeacon && since0 >= const Duration(seconds: 5)) ||
+          since0 >= policy.stillInterval ||
+          (_activeOwnAlert != null && since0 >= const Duration(seconds: 60));
+      if (due) unawaited(sendPosition());
+      return;
+    }
     final last = _lastBeaconFix;
     final since = _lastBeacon == null
         ? null
@@ -1246,9 +1306,10 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
   /// start so a restart doesn't repeat the last run's.
   late int _beaconSeq = _rng.nextInt(1 << 16);
 
+  /// This radio's beacon; with no fix, a "here, no position" one so the team
+  /// still lists it.
   TeamPosition? _selfPosition({int? seq}) {
     final f = fix;
-    if (f == null) return null;
     final atak = atakLinked ? _atakSelf : null;
     final mv = _connector.batteryMillivolts;
     int? batt;
@@ -1257,12 +1318,13 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
     }
     return TeamPosition(
       senderKey4: selfKey4,
-      lat: f.lat,
-      lon: f.lon,
-      altitudeM: f.altitude?.round(),
-      speedMps: f.speed,
-      headingDeg: f.heading,
-      accuracyM: f.accuracy.round(),
+      lat: f?.lat ?? 0,
+      lon: f?.lon ?? 0,
+      hasPosition: f != null,
+      altitudeM: f?.altitude?.round(),
+      speedMps: f?.speed,
+      headingDeg: f?.heading,
+      accuracyM: f?.accuracy.round() ?? 0,
       batteryPct: batt,
       roleId: atak?.roleId ?? _roleId,
       color: atak?.color ?? _color,
@@ -1270,7 +1332,7 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
       callsign: atak != null && atak.callsign.isNotEmpty
           ? atak.callsign
           : callsign,
-      fromRadio: f.source == TeamFixSource.radio,
+      fromRadio: f?.source == TeamFixSource.radio,
       sosActive: _activeOwnAlert != null,
       nameHash: nameHash(_connector.selfName ?? ''),
       heard: List.of(_heardRecent),
@@ -1290,8 +1352,10 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
       if (ok) {
         _lastBeacon = DateTime.now();
         _lastBeaconFix = fix;
-        unawaited(compat.afterBeacon());
-        onSelfPosition?.call(p);
+        if (p.hasPosition) {
+          unawaited(compat.afterBeacon());
+          onSelfPosition?.call(p);
+        }
         notifyListeners();
       }
       return ok;
@@ -1462,7 +1526,10 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
   }
 
   /// Sends my own position to the TAK bridge even if the mesh is idle.
-  TeamPosition? get selfPositionForBridge => _selfPosition();
+  TeamPosition? get selfPositionForBridge {
+    final p = _selfPosition();
+    return p != null && p.hasPosition ? p : null;
+  }
 
   // -------------------------------------------------------------- markers
 

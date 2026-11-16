@@ -121,7 +121,7 @@ class MessageReachScreen extends StatelessWidget {
         : const <(TeamMember, DateTime)>[];
     final heardKeys = {for (final h in heard) h.$1.key4};
     final notYet = team.enabled
-        ? team.members.where((x) => !heardKeys.contains(x.key4)).toList()
+        ? team.allMembers.where((x) => !heardKeys.contains(x.key4)).toList()
         : const <TeamMember>[];
 
     const repeaterColor = Color(0xFFFF8F00);
@@ -159,6 +159,8 @@ class MessageReachScreen extends StatelessWidget {
       );
     }
     for (final (member, _) in heard) {
+      // A teammate with no position is in the list, not on the map.
+      if (!member.position.hasPosition) continue;
       final p = LatLng(member.position.lat, member.position.lon);
       pts.add(p);
       if (self != null) {

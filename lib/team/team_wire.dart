@@ -52,6 +52,11 @@
 // An alert's flag 0x04 does the same for its repeats: [nonce u8] after the
 // note.
 //
+// A member with no GPS fix and no location set still beacons, so they show
+// in the team list: lat and lon are both 0x7FFFFFFF (teamNoPositionRaw, out
+// of range), which builds before this drop as invalid. Wadamesh TAK's
+// TeamWire.h does the same.
+//
 // Added with the ATAK plugin (atak-plugin/), which also speaks position,
 // alert, marker and report; formats in team_wire_atak.dart:
 //   point     [0x4F] any single-point CoT item (spot marker, 2525 unit...)
@@ -283,6 +288,11 @@ Uint8List teamTruncateUtf8(String s, int maxBytes) {
   return Uint8List.fromList(out.sublist(0, cut));
 }
 
+/// Latitude and longitude of a "here, no position" beacon
+/// ([TeamPosition.hasPosition] false): about 214.7 degrees, out of range on
+/// purpose, so builds that predate it drop the beacon (they reject it).
+const int teamNoPositionRaw = 0x7FFFFFFF;
+
 int _deg(double v) => (v * 1e7).round();
 double _undeg(int v) => v / 1e7;
 
@@ -355,6 +365,13 @@ class TeamPosition {
   /// The beacon number (flag 0x80), which makes each beacon's bytes new.
   final int? seq;
 
+  /// False for a "here, no position" beacon: a teammate with no GPS fix or
+  /// location set, who still belongs in the team list. On the air its
+  /// latitude and longitude are both [teamNoPositionRaw], which every older
+  /// build rejects as out of range, so they drop it as they always did. [lat]
+  /// and [lon] are 0 then and mean nothing.
+  final bool hasPosition;
+
   const TeamPosition({
     required this.senderKey4,
     required this.lat,
@@ -374,6 +391,7 @@ class TeamPosition {
     this.nameHash,
     this.heard = const [],
     this.seq,
+    this.hasPosition = true,
   });
 
   /// The default role, or [TeamRole.member] for an added one.
@@ -395,8 +413,8 @@ class TeamPosition {
             (nameHash != null ? 0x40 : 0) |
             (seq != null ? 0x80 : 0),
       )
-      ..i32(_deg(lat))
-      ..i32(_deg(lon))
+      ..i32(hasPosition ? _deg(lat) : teamNoPositionRaw)
+      ..i32(hasPosition ? _deg(lon) : teamNoPositionRaw)
       ..i16((altitudeM ?? 0).clamp(-32768, 32767))
       ..u8(((speedMps ?? 0) * 2).round().clamp(0, 255))
       ..u8((((headingDeg ?? 0) % 360) * 256 / 360).round() & 0xFF)
@@ -425,7 +443,11 @@ class TeamPosition {
     if (!r.has(23) || r.u8() != teamMsgPosition) return null;
     final key = teamKey4Hex(r.take(4));
     final flags = r.u8();
-    final lat = _undeg(r.i32()), lon = _undeg(r.i32());
+    final rawLat = r.i32(), rawLon = r.i32();
+    final hasPosition = !(rawLat == teamNoPositionRaw &&
+        rawLon == teamNoPositionRaw);
+    final lat = hasPosition ? _undeg(rawLat) : 0.0;
+    final lon = hasPosition ? _undeg(rawLon) : 0.0;
     if (lat.abs() > 90 || lon.abs() > 180) return null;
     final alt = r.i16();
     final speed = r.u8() / 2;
@@ -469,6 +491,7 @@ class TeamPosition {
       nameHash: nameHash,
       heard: heard,
       seq: seq,
+      hasPosition: hasPosition,
     );
   }
 }
