@@ -7,6 +7,7 @@ import 'package:meshcore_open/models/image_codec_support.dart';
 import 'package:meshcore_open/services/image_chunk_transport.dart';
 import 'package:meshcore_open/services/received_image_store.dart';
 import 'package:meshcore_open/vox/aeic_hd_repair.dart';
+import 'package:meshcore_open/widgets/image_send_codec_binding.dart';
 
 class _Connector extends MeshCoreConnector {
   bool connected = true;
