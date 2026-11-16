@@ -5724,7 +5724,8 @@ class AppLocalizationsSk extends AppLocalizations {
   String get contacts_playBySound => 'Share by Sound Link';
 
   @override
-  String get contacts_shareQrInstructions => 'Scan with MeshCore Open TAK or the MeshCore app to add this contact.';
+  String get contacts_shareQrInstructions =>
+      'Scan with MeshCore Open TAK or the MeshCore app to add this contact.';
 
   @override
   String get contacts_repeaterPathTrace => 'Sledovanie cesty k opakovaču';

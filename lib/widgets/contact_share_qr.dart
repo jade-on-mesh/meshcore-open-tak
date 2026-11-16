@@ -85,4 +85,3 @@ Future<void> playContactBySound(BuildContext context, Contact contact) async {
 
 /// Whether this build can play Sound Link (not on the web).
 bool get soundShareAvailable => SoundLink.instance.available;
-
