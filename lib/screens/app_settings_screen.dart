@@ -14,7 +14,6 @@ import '../services/map_tile_cache_service.dart';
 import '../services/notification_service.dart';
 import '../services/screen_awake_service.dart';
 import '../theme/chat_look.dart';
-import '../theme/mesh_theme.dart';
 import '../utils/platform_info.dart';
 import '../widgets/public_media_switch.dart';
 import '../widgets/adaptive_app_bar_title.dart';
@@ -879,6 +878,16 @@ class AppSettingsScreen extends StatelessWidget {
     } on ProviderNotFoundException {
       return null;
     }
+  }
+
+  void _showIpfsImageLinksDialog(
+    BuildContext context,
+    AppSettingsService settingsService,
+  ) {
+    showDialog(
+      context: context,
+      builder: (_) => _IpfsImageLinksDialog(settingsService: settingsService),
+    );
   }
 
   Widget _buildBatteryContent(
