@@ -115,6 +115,65 @@ void main() {
     );
   });
 
+  testWidgets('iPhone style: system blue, grey others, grey names', (
+    tester,
+  ) async {
+    final sent = await colorsIn(tester, ChatStyle.iphone, outgoing: true);
+    expect(sent.background, iphoneSentNight);
+    expect(sent.text, Colors.white);
+    final day = await colorsIn(
+      tester,
+      ChatStyle.iphone,
+      outgoing: false,
+      brightness: Brightness.light,
+    );
+    expect(day.background, iphoneRecvDay);
+    expect(day.text, Colors.black);
+    expect(day.name, iphoneName);
+    expect(
+      messageBubbleRadius(isOutgoing: false, style: ChatStyle.iphone),
+      BorderRadius.circular(iphoneRadius),
+    );
+  });
+
+  testWidgets('Android style: Material blue, names in colour', (tester) async {
+    final day = await colorsIn(
+      tester,
+      ChatStyle.android,
+      outgoing: true,
+      brightness: Brightness.light,
+    );
+    expect(day.background, androidSentDay);
+    expect(day.text, androidSentInkDay);
+    final recv = await colorsIn(tester, ChatStyle.android, outgoing: false);
+    expect(recv.background, androidRecvNight);
+    expect(recv.name, androidNameColor('Alpha-1', dark: true));
+    expect(
+      HSVColor.fromColor(androidAvatarColor('Jade ✨')).hue.round(),
+      classicNameHue('Jade ✨'),
+    );
+  });
+
+  testWidgets('mIRC style: a flat log, every line named, nicks in colour', (
+    tester,
+  ) async {
+    final mine = await colorsIn(tester, ChatStyle.mirc, outgoing: true);
+    expect(mine.flat, isTrue);
+    expect(mine.background, Colors.transparent);
+    // Mine are named too (a log): the colour comes from the name passed.
+    expect(mine.name, mircNickColor('Alpha-1', dark: true));
+    final recv = await colorsIn(tester, ChatStyle.mirc, outgoing: false);
+    expect(recv.flat, isTrue);
+    expect(recv.text, mircInkNight);
+    expect(const MeshChatLook(style: ChatStyle.mirc).isLog, isTrue);
+    expect(const MeshChatLook(style: ChatStyle.iphone).isLog, isFalse);
+    // Every nick colour reads: lifted at night, deepened by day.
+    for (final n in ['Jade ✨', 'Dupont C2b', 'BGMatt', 'Alpha-1', 'TDeck']) {
+      final night = HSVColor.fromColor(mircNickColor(n, dark: true));
+      expect(night.value, greaterThanOrEqualTo(0.7), reason: n);
+    }
+  });
+
   // Hues measured from the official MeshCore app's avatars (a public channel,
   // dark mode): the avatar is HSV(hue, 75%, 80%), the name HSV(hue, 75%, 56%).
   test('every style takes its hue from the official app', () {

@@ -21,6 +21,9 @@ class MessageBubbleColors {
   /// blur of what's behind, a light sheen at the top and a thin bright edge.
   final bool glass;
 
+  /// A chat log line (mIRC): no bubble at all, the full width.
+  final bool flat;
+
   const MessageBubbleColors({
     required this.background,
     required this.border,
@@ -28,6 +31,7 @@ class MessageBubbleColors {
     required this.meta,
     this.name,
     this.glass = false,
+    this.flat = false,
   });
 
   /// Outgoing bubbles use the theme's [MeshBubbleTheme]; a failed send
@@ -81,6 +85,48 @@ class MessageBubbleColors {
                 ? null
                 : signalNameColor(name, dark: dark),
           );
+        case ChatStyle.iphone:
+          final name = senderName?.trim() ?? '';
+          final bg = isOutgoing
+              ? (dark ? iphoneSentNight : iphoneSentDay)
+              : (dark ? iphoneRecvNight : iphoneRecvDay);
+          final ink = isOutgoing || dark ? Colors.white : Colors.black;
+          return MessageBubbleColors(
+            background: bg,
+            border: bg,
+            text: ink,
+            meta: ink.withValues(alpha: 0.6),
+            name: isOutgoing || name.isEmpty ? null : iphoneName,
+          );
+        case ChatStyle.android:
+          final name = senderName?.trim() ?? '';
+          final bg = isOutgoing
+              ? (dark ? androidSentNight : androidSentDay)
+              : (dark ? androidRecvNight : androidRecvDay);
+          final ink = isOutgoing
+              ? (dark ? androidSentInkNight : androidSentInkDay)
+              : (dark ? androidRecvInkNight : androidRecvInkDay);
+          return MessageBubbleColors(
+            background: bg,
+            border: bg,
+            text: ink,
+            meta: ink.withValues(alpha: 0.65),
+            name: isOutgoing || name.isEmpty
+                ? null
+                : androidNameColor(name, dark: dark),
+          );
+        case ChatStyle.mirc:
+          final name = senderName?.trim() ?? '';
+          final ink = dark ? mircInkNight : mircInkDay;
+          return MessageBubbleColors(
+            background: Colors.transparent,
+            border: Colors.transparent,
+            text: ink,
+            meta: ink.withValues(alpha: 0.5),
+            // Mine named too, in a log: the screens pass my own name.
+            name: name.isEmpty ? null : mircNickColor(name, dark: dark),
+            flat: true,
+          );
         case ChatStyle.classic:
           final name = senderName?.trim() ?? '';
           final bg = isOutgoing ? classicSent : classicRecv;
@@ -129,6 +175,9 @@ BorderRadius messageBubbleRadius({
   if (style == ChatStyle.signal) {
     return BorderRadius.circular(signalRadius);
   }
+  if (style == ChatStyle.iphone) return BorderRadius.circular(iphoneRadius);
+  if (style == ChatStyle.android) return BorderRadius.circular(androidRadius);
+  if (style == ChatStyle.mirc) return BorderRadius.zero;
   return isOutgoing
       ? const BorderRadius.only(
           topLeft: Radius.circular(MeshRadii.lg),
@@ -149,9 +198,11 @@ BorderRadius messageBubbleRadius({
 /// Classic: its own palette). On a light surface pass it through
 /// `readableAccent`.
 Color senderNameColor(String name, {ChatStyle style = ChatStyle.standard}) =>
-    style == ChatStyle.openClassic
-    ? openClassicColor(name)
-    : classicAvatarColor(name);
+    switch (style) {
+      ChatStyle.openClassic => openClassicColor(name),
+      ChatStyle.mirc => mircNickColor(name, dark: true),
+      _ => classicAvatarColor(name),
+    };
 
 /// The bubble container shared by both chat screens: colour, border,
 /// asymmetric radius, padding and the 72% max width.
@@ -194,6 +245,16 @@ class MessageBubbleFrame extends StatelessWidget {
     final padding = compact
         ? const EdgeInsets.all(4)
         : const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+    if (colors.flat) {
+      // a chat log line: no bubble, the full width
+      return Container(
+        padding: compact
+            ? EdgeInsets.zero
+            : const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: child,
+      );
+    }
     final constraints = BoxConstraints(maxWidth: maxWidth * 0.72);
     if (colors.glass) {
       return _GlassBubble(
