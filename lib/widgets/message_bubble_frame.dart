@@ -245,7 +245,8 @@ class MessageBubbleFrame extends StatelessWidget {
     final padding = compact
         ? const EdgeInsets.all(4)
         : const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
-    if (colors.flat) {   // a chat log line: no bubble, the full width
+    if (colors.flat) {
+      // a chat log line: no bubble, the full width
       return Container(
         padding: compact
             ? EdgeInsets.zero

@@ -171,25 +171,29 @@ class _ChatStylePreview extends StatelessWidget {
               isOutgoing: true,
               senderName: me,
             );
-            Widget line(String nick, Color? nickColor, String text, Color ink) =>
-                Text.rich(
+            Widget line(
+              String nick,
+              Color? nickColor,
+              String text,
+              Color ink,
+            ) => Text.rich(
+              TextSpan(
+                children: [
                   TextSpan(
-                    children: [
-                      TextSpan(
-                        text: '<$nick> ',
-                        style: MeshTheme.mono(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: nickColor ?? ink,
-                        ),
-                      ),
-                      TextSpan(
-                        text: text,
-                        style: MeshTheme.mono(fontSize: 12, color: ink),
-                      ),
-                    ],
+                    text: '<$nick> ',
+                    style: MeshTheme.mono(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: nickColor ?? ink,
+                    ),
                   ),
-                );
+                  TextSpan(
+                    text: text,
+                    style: MeshTheme.mono(fontSize: 12, color: ink),
+                  ),
+                ],
+              ),
+            );
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

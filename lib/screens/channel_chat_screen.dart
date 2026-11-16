@@ -3021,7 +3021,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     final otpActive = context.read<MeshCoreConnector>().isChannelOtpEnabled(
       widget.channel.index,
     );
-    final log = MeshChatLook.of(context).isLog;   // mIRC: every line left
+    final log = MeshChatLook.of(context).isLog; // mIRC: every line left
     final layoutOutgoing = log ? false : (otpActive ? !isOutgoing : isOutgoing);
     // Same OTP-theme recoloring as _buildMessageBubble above. An AEIC
     // image's state machine (receiving/decoding/decoded/...) has no

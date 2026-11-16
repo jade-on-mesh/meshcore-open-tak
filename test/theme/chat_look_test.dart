@@ -136,9 +136,7 @@ void main() {
     );
   });
 
-  testWidgets('Android style: Material blue, names in colour', (
-    tester,
-  ) async {
+  testWidgets('Android style: Material blue, names in colour', (tester) async {
     final day = await colorsIn(
       tester,
       ChatStyle.android,

@@ -327,7 +327,8 @@ const List<Color> mircNickColors = [
 Color mircNickColor(String name, {required bool dark}) {
   final c = mircNickColors[classicNameHue(name) % mircNickColors.length];
   final hsv = HSVColor.fromColor(c);
-  if (dark && hsv.value < 0.7) return hsv.withValue(0.95).withSaturation(0.6).toColor();
+  if (dark && hsv.value < 0.7)
+    return hsv.withValue(0.95).withSaturation(0.6).toColor();
   if (!dark && hsv.value > 0.9 && hsv.hue >= 55 && hsv.hue <= 185) {
     return hsv.withValue(0.6).toColor();
   }
