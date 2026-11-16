@@ -859,10 +859,10 @@ class AppSettingsScreen extends StatelessWidget {
               ),
               secondary: const Icon(Icons.settings_input_antenna, size: 24),
               title: Text(context.l10n.vox_dataAudioTitle),
-              subtitle: Text(context.l10n.vox_dataAudioSubtitle),
+              subtitle: Text(context.l10n.vox_dataAudioMediaSubtitle),
               value: voice.dataAudio,
-              // Greyed out where this build or phone can't play videos.
-              onChanged: voice.videosAvailable ? voice.setDataAudio : null,
+              // Photos count too, so it isn't tied to playing videos.
+              onChanged: voice.setDataAudio,
             ),
           ),
         ],
