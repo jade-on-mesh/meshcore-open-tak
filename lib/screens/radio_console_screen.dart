@@ -207,42 +207,42 @@ class _RadioConsoleScreenState extends State<RadioConsoleScreen> {
                 behavior: HitTestBehavior.translucent,
                 onLongPressStart: (d) => _pasteMenu(d.globalPosition),
                 child: ListView(
-                controller: _scroll,
-                padding: const EdgeInsets.all(16),
-                children: [
-                  Text(
-                    l10n.radioConsole_intro,
-                    style: theme.textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 12),
-                  for (final line in _lines)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      // A command: long press to copy or resend. Replies
-                      // stay selectable.
-                      child: line.command
-                          ? GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onLongPressStart: (d) =>
-                                  _commandMenu(d.globalPosition, line.text),
-                              child: Text(
+                  controller: _scroll,
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    Text(
+                      l10n.radioConsole_intro,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 12),
+                    for (final line in _lines)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        // A command: long press to copy or resend. Replies
+                        // stay selectable.
+                        child: line.command
+                            ? GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onLongPressStart: (d) =>
+                                    _commandMenu(d.globalPosition, line.text),
+                                child: Text(
+                                  line.text,
+                                  style: mono?.copyWith(
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ),
+                              )
+                            : SelectableText(
                                 line.text,
                                 style: mono?.copyWith(
-                                  color: theme.colorScheme.primary,
+                                  color: line.error
+                                      ? theme.colorScheme.error
+                                      : null,
                                 ),
                               ),
-                            )
-                          : SelectableText(
-                              line.text,
-                              style: mono?.copyWith(
-                                color: line.error
-                                    ? theme.colorScheme.error
-                                    : null,
-                              ),
-                            ),
-                    ),
-                ],
-              ),
+                      ),
+                  ],
+                ),
               ),
             ),
             if (recent.isNotEmpty)

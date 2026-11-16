@@ -693,10 +693,8 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
                 child: isCommand
                     ? GestureDetector(
                         behavior: HitTestBehavior.opaque,
-                        onLongPressStart: (d) => _showCommandMenu(
-                          d.globalPosition,
-                          entry['text']!,
-                        ),
+                        onLongPressStart: (d) =>
+                            _showCommandMenu(d.globalPosition, entry['text']!),
                         child: Text(
                           entry['text']!,
                           style: MeshTheme.mono(fontSize: 14, color: accent),
