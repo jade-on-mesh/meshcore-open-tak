@@ -1771,16 +1771,29 @@ class _CompanionUpdateTileState extends State<_CompanionUpdateTile> {
     return FutureBuilder<String?>(
       future: _board,
       builder: (context, snapshot) {
+        final board = snapshot.data ?? connector.manufacturerName;
         final format = CompanionFirmwareInspector.updateExtensionForBoard(
-          snapshot.data ?? connector.manufacturerName,
+          board,
         );
+        // The board's name, when there is one: the update screen shows it, so
+        // this never claims a board it names there wasn't identified.
+        final named =
+            board != null &&
+                board.trim().isNotEmpty &&
+                !board.trim().toLowerCase().startsWith('unknown')
+            ? board.trim()
+            : null;
         final method = switch (format) {
-          'zip' => 'Bluetooth DFU (.zip)',
-          'bin' => 'Wi-Fi OTA (.bin)',
+          'zip' => '${named != null ? '$named · ' : ''}Bluetooth DFU (.zip)',
+          'bin' => '${named != null ? '$named · ' : ''}Wi-Fi OTA (.bin)',
           _ =>
             connected
                 ? snapshot.connectionState == ConnectionState.done
-                      ? 'Board not identified - check update screen'
+                      ? named == null
+                            ? 'Board not identified - check update screen'
+                            : CompanionFirmwareInspector.isWiredOnlyBoard(board)
+                            ? '$named · needs a wired installer'
+                            : '$named · choose the firmware file on the update screen'
                       : 'Detecting update method...'
                 : 'Connect to identify the update method',
         };

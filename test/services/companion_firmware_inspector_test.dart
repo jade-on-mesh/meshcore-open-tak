@@ -36,6 +36,43 @@ void main() {
     );
   });
 
+  test('boards whose names don\'t say their chip come from the firmware '
+      'list', () {
+    expect(
+      CompanionFirmwareInspector.updateExtensionForBoard('RAK WisMesh Tag'),
+      'zip',
+    );
+    // ThinkNodes come in both chips: the name alone used to say nRF52.
+    expect(
+      CompanionFirmwareInspector.updateExtensionForBoard(
+        'Elecrow ThinkNode M2',
+      ),
+      'bin',
+    );
+    expect(
+      CompanionFirmwareInspector.updateExtensionForBoard(
+        'Elecrow ThinkNode-M1',
+      ),
+      'zip',
+    );
+    expect(
+      CompanionFirmwareInspector.updateExtensionForBoard('Heltec MeshPocket'),
+      'zip',
+    );
+    expect(
+      CompanionFirmwareInspector.updateExtensionForBoard('Station G3 ESP32'),
+      'bin',
+    );
+    // RP2040 and STM32 have no phone update.
+    expect(
+      CompanionFirmwareInspector.updateExtensionForBoard('RAK 11310'),
+      isNull,
+    );
+    expect(CompanionFirmwareInspector.isWiredOnlyBoard('RAK 11310'), isTrue);
+    expect(CompanionFirmwareInspector.isWiredOnlyBoard('RAK 4631'), isFalse);
+    expect(CompanionFirmwareInspector.isWiredOnlyBoard(null), isFalse);
+  });
+
   test('app-only ESP32 bytes are a phone-update image', () {
     final image = _image();
 
