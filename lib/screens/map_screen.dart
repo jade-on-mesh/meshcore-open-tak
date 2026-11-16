@@ -134,6 +134,36 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   _Freshness _freshness = _Freshness.all;
   // Show only repeaters known to run MediaMesh (the MediaMesh chip).
   bool _onlyMediaMesh = false;
+  // Both are remembered, like the other map filters (which live in the app
+  // settings): they used to go back to All / off each time the map opened.
+  static const String _onlyMediaMeshKey = 'map_only_mediamesh_v1';
+  static const String _freshnessKey = 'map_freshness_v1';
+
+  void _loadMapFilters() {
+    try {
+      final prefs = PrefsManager.instance;
+      _onlyMediaMesh = prefs.getBool(_onlyMediaMeshKey) ?? false;
+      final f = prefs.getString(_freshnessKey);
+      _freshness = _Freshness.values.firstWhere(
+        (v) => v.name == f,
+        orElse: () => _Freshness.all,
+      );
+    } catch (_) {}
+  }
+
+  void _setOnlyMediaMesh(bool value) {
+    setState(() => _onlyMediaMesh = value);
+    try {
+      unawaited(PrefsManager.instance.setBool(_onlyMediaMeshKey, value));
+    } catch (_) {}
+  }
+
+  void _setFreshness(_Freshness value) {
+    setState(() => _freshness = value);
+    try {
+      unawaited(PrefsManager.instance.setString(_freshnessKey, value.name));
+    } catch (_) {}
+  }
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
   String _searchQuery = '';
@@ -161,6 +191,21 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const Duration _cameraSaveDelay = Duration(milliseconds: 500);
   Timer? _cameraSaveTimer;
   List<String>? _pendingCamera;
+
+  /// Where the map was last left (centre and zoom), if it was saved.
+  ({LatLng center, double zoom})? _savedCamera() {
+    try {
+      final saved = PrefsManager.instance.getStringList(_lastCameraKey);
+      if (saved == null || saved.length != 3) return null;
+      final values = saved.map(double.tryParse).toList();
+      if (values.contains(null)) return null;
+      final lat = values[0]!, lon = values[1]!, zoom = values[2]!;
+      if (!isPlausibleLocation(lat, lon) || zoom.isNaN) return null;
+      return (center: LatLng(lat, lon), zoom: zoom);
+    } catch (_) {
+      return null;
+    }
+  }
 
   ({LatLng center, double zoom}) _fallbackCamera(MeshCoreConnector connector) {
     final lat = connector.selfLatitude;
@@ -350,6 +395,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _loadMapFilters();
     _loadRemovedMarkers();
     _online.addListener(_onOnlineChanged);
     MediaMeshRepeaters.instance.addListener(_onMediaMeshChanged);
@@ -782,6 +828,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           if (widget.focusPosition != null) {
             return (center: widget.focusPosition!, zoom: widget.focusZoom);
           }
+          // Opened on its own: back where it was left, at the same zoom. It
+          // used to fit every node again each time. The "center map" control
+          // still fits them on demand.
+          final saved = _savedCamera();
+          if (saved != null) return saved;
           return _cameraForPoints([
                 ...contactsWithLocation.map(
                   (c) => LatLng(c.latitude!, c.longitude!),
@@ -3833,7 +3884,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                   ),
                   onSelected: (_) {
                     setSheetState(() {});
-                    setState(() => _freshness = value);
+                    _setFreshness(value);
                   },
                 );
               }
@@ -3923,7 +3974,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           dense: true,
                           onChanged: (value) {
                             setSheetState(() {});
-                            setState(() => _onlyMediaMesh = value);
+                            _setOnlyMediaMesh(value);
                             if (value &&
                                 MediaMeshRepeaters.instance.count == 0) {
                               showDismissibleSnackBar(
