@@ -98,7 +98,10 @@ void main() {
         h = (h * 31 + c) & 0x7fffffff;
       }
       expect(openClassicColor(n), openClassicHues[h % 6], reason: n);
-      expect(senderNameColor(n, style: ChatStyle.openClassic), openClassicColor(n));
+      expect(
+        senderNameColor(n, style: ChatStyle.openClassic),
+        openClassicColor(n),
+      );
     }
   });
 

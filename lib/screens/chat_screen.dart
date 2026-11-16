@@ -2333,9 +2333,7 @@ class _MessageBubble extends StatelessWidget {
                                       readableAccent(
                                         senderNameColor(
                                           senderName,
-                                          style: MeshChatLook.of(
-                                            context,
-                                          ).style,
+                                          style: MeshChatLook.of(context).style,
                                         ),
                                         colors.background,
                                       ),
