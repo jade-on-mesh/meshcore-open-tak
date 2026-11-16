@@ -141,7 +141,10 @@ void main() {
     // One more chunk arrived meanwhile: the count starts over.
     final set = hdImage(11);
     reassembler.expectResend(e.key);
-    await store.handleOutcome(reassembler.addChunk(set.blobs[1]), channelIndex: 0);
+    await store.handleOutcome(
+      reassembler.addChunk(set.blobs[1]),
+      channelIndex: 0,
+    );
     for (var i = 0; i < cap; i++) {
       await after(AeicHdRepairService.autoBackoff.last);
     }
@@ -150,7 +153,11 @@ void main() {
 
   test('an answer only fills an image this phone is missing pieces of', () {
     final set = hdImage(21);
-    const key = ImageStreamKey(senderPrefix: 0x8c41, imgId: 21, channelIndex: 0);
+    const key = ImageStreamKey(
+      senderPrefix: 0x8c41,
+      imgId: 21,
+      channelIndex: 0,
+    );
     // Never heard: an answer to someone else's request isn't a new image.
     expect(reassembler.wantsResend(key), isFalse);
     // Under way here: wanted.
