@@ -100,6 +100,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
         ? ContactTypeFilter.favorites
         : ContactTypeFilter.all;
   }
+
   final TextEditingController _searchController = TextEditingController();
   final ContactGroupStore _groupStore = ContactGroupStore();
   MeshCoreConnector? _scopeSyncConnector;
