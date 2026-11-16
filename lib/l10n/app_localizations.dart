@@ -2887,6 +2887,18 @@ abstract class AppLocalizations {
   /// **'Yes, heading down now'**
   String get appSettings_chatStylePreviewSent;
 
+  /// No description provided for @appSettings_chatStyleSignal.
+  ///
+  /// In en, this message translates to:
+  /// **'Signal'**
+  String get appSettings_chatStyleSignal;
+
+  /// No description provided for @appSettings_chatStyleSignalHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Like the Signal app: blue bubbles for yours, plain grey for others, round corners, names in colour'**
+  String get appSettings_chatStyleSignalHelp;
+
   /// No description provided for @appSettings_brightChatIcons.
   ///
   /// In en, this message translates to:

@@ -25,7 +25,11 @@ enum ChatStyle {
 
   /// MeshCore Open as it was: the app's own bubbles, and people's colours
   /// from its six-colour palette rather than the official app's.
-  openClassic('open_classic');
+  openClassic('open_classic'),
+
+  /// Like the Signal app: Signal-blue bubbles of mine, plain grey for others,
+  /// round corners and no borders, names in colour, pastel avatars.
+  signal('signal');
 
   const ChatStyle(this.id);
 
@@ -205,3 +209,35 @@ Color openClassicColor(String name) {
   }
   return openClassicHues[h % openClassicHues.length];
 }
+
+// ---- Signal ---------------------------------------------------------------------
+// After the Signal app's chat: my bubbles its Ultramarine blue with white text,
+// others' plain grey (light grey by day, dark grey at night) with no border,
+// every corner rounded the same, a sender's name in their colour, and avatars a
+// pastel circle with the initials in a deeper shade of the same colour. The
+// hue is the official MeshCore app's ([classicNameHue]), so a person keeps
+// their colour across styles.
+
+const Color signalSent = Color(0xFF2C6BED);
+const Color signalSentInk = Color(0xFFFFFFFF);
+const Color signalRecvDay = Color(0xFFE9E9E9);
+const Color signalRecvNight = Color(0xFF3B3B3B);
+const Color signalInkDay = Color(0xFF1B1B1D);
+const Color signalInkNight = Color(0xFFE9E9E9);
+const double signalRadius = 18;
+
+/// A sender's name above their message: deep by day, light at night.
+Color signalNameColor(String name, {required bool dark}) {
+  final h = classicNameHue(name).toDouble();
+  return dark
+      ? HSVColor.fromAHSV(1, h, 0.45, 0.95).toColor()
+      : HSVColor.fromAHSV(1, h, 0.80, 0.55).toColor();
+}
+
+/// A person's avatar: a pastel circle ...
+Color signalAvatarColor(String name) =>
+    HSVColor.fromAHSV(1, classicNameHue(name).toDouble(), 0.22, 0.96).toColor();
+
+/// ... with the initials in a deeper shade of the same colour.
+Color signalAvatarInk(String name) =>
+    HSVColor.fromAHSV(1, classicNameHue(name).toDouble(), 0.85, 0.55).toColor();
