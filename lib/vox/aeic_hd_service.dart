@@ -69,6 +69,10 @@ class AeicHdService extends ChangeNotifier {
 
   bool get isReady => _state == AeicHdState.ready;
 
+  /// This platform has the codec at all (Android, iPhone, computers; not the
+  /// web). Known without [init].
+  bool get supported => _runner.supported;
+
   double _progress = 0;
 
   /// Download progress, 0..1, while [state] is downloading.

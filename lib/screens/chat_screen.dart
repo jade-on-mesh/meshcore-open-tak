@@ -50,7 +50,6 @@ import '../widgets/chat_zoom_wrapper.dart';
 import '../widgets/message_bubble_frame.dart';
 import '../widgets/reaction_chips.dart';
 import '../widgets/chat_day_separator.dart';
-import 'app_settings_screen.dart';
 import 'channel_message_path_screen.dart';
 import 'contacts_screen.dart' show confirmRemoveContact;
 import 'map_screen.dart';
@@ -80,6 +79,7 @@ import '../widgets/share_contact_sheet.dart';
 import '../widgets/shared_contact_card.dart';
 import 'telemetry_screen.dart';
 import '../vox/aeic_hd_screens.dart';
+import '../vox/aeic_hd_service.dart';
 import '../vox/caption_field.dart';
 import '../vox/image_send_sheet.dart';
 import '../vox/video_send_sheet.dart';
@@ -1105,22 +1105,8 @@ class _ChatScreenState extends State<ChatScreen> {
               // offered only once this contact has a pad.
               aiSketch:
                   connector.canSendOtpImageToContact(contactKeyHex) &&
-                      _imageCodec != null
+                      AeicHdService.instance.supported
                   ? VoxAiSketchOption(
-                      ready: () =>
-                          _imageCodec?.availability ==
-                          ImageCodecAvailability.ready,
-                      explainNotReady: () =>
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'AI sketches need the image model: turn on '
-                                'Image messages in App settings.',
-                              ),
-                            ),
-                          ),
-                      send: (bytes, fileBytes) =>
-                          _sendOtpAiSketch(connector, bytes, fileBytes),
                       sendHd: (bytes, _) =>
                           _sendOtpAiSketchHd(connector, bytes),
                     )
@@ -2392,14 +2378,11 @@ class _MessageBubble extends StatelessWidget {
                               isOutgoing: isOutgoing,
                               fallbackTextColor: textColor,
                               strings: _receivedImageStrings(context),
+                              // AI sketch HD's model, the only kind this
+                              // app draws.
                               onOpenCodecSettings: () =>
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute<void>(
-                                      builder: (_) => const AppSettingsScreen(
-                                        focusImageMessages: true,
-                                      ),
-                                    ),
-                                  ),
+                                  AeicHdScreen.open(context),
+                              codecSupported: AeicHdService.instance.supported,
                             )
                           else if (urlImagesEnabled)
                             MessageUrlImageFutureBuilder(
@@ -2734,7 +2717,7 @@ ReceivedImageStrings _receivedImageStrings(BuildContext context) {
     decoding: l10n.receivedImage_decoding,
     incomplete: l10n.receivedImage_incomplete,
     corrupt: l10n.receivedImage_corrupt,
-    decoderMissing: l10n.receivedImage_decoderMissing,
+    decoderMissing: l10n.receivedImage_hdNeedsModel,
     evicted: l10n.receivedImage_evicted,
     retry: l10n.receivedImage_retry,
     decodeAgain: l10n.receivedImage_decodeAgain,

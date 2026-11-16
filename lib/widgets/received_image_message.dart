@@ -34,6 +34,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../l10n/app_localizations.dart';
+import '../models/image_codec_support.dart' show AeicRatePoint;
 import '../l10n/l10n.dart';
 import '../services/received_image_store.dart';
 import '../vox/voice_message_bubble.dart' show VoxReceivedViaLabel;
@@ -94,7 +95,7 @@ class ReceivedImageStrings {
         decoding: l10n.receivedImage_decoding,
         incomplete: l10n.receivedImage_incomplete,
         corrupt: l10n.receivedImage_corrupt,
-        decoderMissing: l10n.receivedImage_decoderMissing,
+        decoderMissing: l10n.receivedImage_hdNeedsModel,
         evicted: l10n.receivedImage_evicted,
         retry: l10n.receivedImage_retry,
         decodeAgain: l10n.receivedImage_decodeAgain,
@@ -150,8 +151,13 @@ class ReceivedImageMessage extends StatefulWidget {
   final ReceivedImageStrings? strings;
 
   /// Route to the image-messages settings page (offered only when the decoder
-  /// is missing because no weights are downloaded).
+  /// is missing because no weights are downloaded). In MeshCore Open TAK, the
+  /// AI sketch HD setup screen.
   final VoidCallback? onOpenCodecSettings;
+
+  /// False where this device has no decoder for AI sketch HD at all (the web):
+  /// the card says so instead of offering a setup that can't help.
+  final bool codecSupported;
 
   const ReceivedImageMessage({
     super.key,
@@ -162,6 +168,7 @@ class ReceivedImageMessage extends StatefulWidget {
     this.store,
     this.strings,
     this.onOpenCodecSettings,
+    this.codecSupported = true,
   });
 
   @override
@@ -245,6 +252,33 @@ class _ReceivedImageMessageState extends State<ReceivedImageMessage> {
     ReceivedImageStore store,
     ReceivedImageEntry entry,
   ) {
+    // MeshCore Open TAK draws only AI sketch HD (ft2): the ~150-byte AI
+    // sketch was dropped, so one received from another app says so rather
+    // than waiting for a tap or a setup that won't draw it.
+    if (_isOldSketch(entry) &&
+        (entry.state == ReceivedImageState.reassembled ||
+            entry.state == ReceivedImageState.decoderUnavailable)) {
+      return _box(
+        context,
+        _iconBody(
+          context,
+          icon: Icons.hide_image_outlined,
+          label: context.l10n.receivedImage_oldSketch,
+        ),
+      );
+    }
+    if (!widget.codecSupported &&
+        (entry.state == ReceivedImageState.reassembled ||
+            entry.state == ReceivedImageState.decoderUnavailable)) {
+      return _box(
+        context,
+        _iconBody(
+          context,
+          icon: Icons.visibility_off_outlined,
+          label: context.l10n.receivedImage_hdNotOnThisDevice,
+        ),
+      );
+    }
     switch (entry.state) {
       case ReceivedImageState.decoded:
         final png = entry.pngBytes;
@@ -350,6 +384,11 @@ class _ReceivedImageMessageState extends State<ReceivedImageMessage> {
         );
     }
   }
+
+  /// A received AI sketch at any rate but HD's. Outgoing ones are the
+  /// sender's own pixels and never need drawing.
+  bool _isOldSketch(ReceivedImageEntry entry) =>
+      !entry.isOutgoing && entry.rate != AeicRatePoint.ft2;
 
   /// Availability of the store's decoder seam.
   ///

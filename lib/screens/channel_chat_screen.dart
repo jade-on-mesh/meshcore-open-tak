@@ -93,6 +93,7 @@ import 'region_management_screen.dart';
 import '../storage/region_store.dart';
 import '../vox/aeic_hd_repair.dart';
 import '../vox/aeic_hd_screens.dart';
+import '../vox/aeic_hd_service.dart';
 import '../vox/caption_field.dart';
 import '../vox/image_send_sheet.dart';
 import '../vox/video_send_sheet.dart';
@@ -2493,8 +2494,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     await _sendAiSketch(sourceBytes, originalFileBytes);
   }
 
-  /// AEIC preview, then send: the photo button's "AI sketch" choice and the
-  /// + menu both end here.
+  /// AEIC preview, then send. MeshCore Open's own AI sketch (ft32): Open TAK
+  /// no longer offers it (only AI sketch HD), kept for clean syncs.
+  // ignore: unused_element
   Future<void> _sendAiSketch(
     Uint8List sourceBytes,
     int originalFileBytes,
@@ -2515,14 +2517,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
 
   /// The photo button's AI sketch option for this channel.
   VoxAiSketchOption? get _aiSketchOption {
-    final codec = _imageCodec;
-    if (codec == null) return null;
-    return VoxAiSketchOption(
-      ready: () => codec.availability == ImageCodecAvailability.ready,
-      explainNotReady: () => _explainImageCodecNotReady(codec),
-      send: _sendAiSketch,
-      sendHd: (bytes, _) => _sendAiSketchHd(bytes),
-    );
+    if (!AeicHdService.instance.supported) return null;
+    return VoxAiSketchOption(sendHd: (bytes, _) => _sendAiSketchHd(bytes));
   }
 
   /// AI sketch HD (lib/vox/aeic_hd_service.dart): encoded by the ncnn codec,
@@ -3093,16 +3089,10 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                     streamId: entry.streamId,
                     isOutgoing: isOutgoing,
                     fallbackTextColor: textColor,
-                    // The placeholder's "no model installed" tap lands here.
-                    // `focusImageMessages` scrolls straight to the image block
-                    // — it sits below six other sections, so the plain screen
-                    // would open at the top with no sign of what was tapped for.
-                    onOpenCodecSettings: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) =>
-                            const AppSettingsScreen(focusImageMessages: true),
-                      ),
-                    ),
+                    // The placeholder's "no model installed" tap: AI sketch
+                    // HD's setup, the only kind of AI sketch this app draws.
+                    onOpenCodecSettings: () => AeicHdScreen.open(context),
+                    codecSupported: AeicHdService.instance.supported,
                   ),
                   AeicHdResumeControls(
                     entry: entry,

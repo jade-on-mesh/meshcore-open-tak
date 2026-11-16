@@ -39,11 +39,10 @@ class AeicHdScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             children: [
               Text(
-                'A third way to send a photo, next to Mesh photos and AI '
-                'sketch. The picture is squeezed to about 1-2 KB (roughly '
-                '8-15 packets) and redrawn by an image model on the '
-                'receiving device: far closer to the real photo than an AI '
-                'sketch, still about half the airtime of a Mesh photo. In '
+                'The other way to send a photo, next to Mesh photos. The '
+                'picture is squeezed to about 1-2 KB (roughly 8-15 packets) '
+                'and redrawn by an image model on the receiving device, in '
+                'about half the airtime of a Mesh photo. In '
                 'channels it goes out on MediaMesh (radio2), like Mesh '
                 'photos.',
                 style: theme.textTheme.bodyMedium,
@@ -87,7 +86,7 @@ class AeicHdScreen extends StatelessWidget {
   List<Widget> _status(BuildContext context, AeicHdService hd) {
     switch (hd.state) {
       case AeicHdState.unsupported:
-        return [const Text('AI sketch HD needs the Android app.')];
+        return [const Text('AI sketch HD can\'t run on this device.')];
       case AeicHdState.notInstalled:
         return [
           if (hd.error != null) ...[
@@ -287,7 +286,7 @@ class _AeicHdSendSheetState extends State<_AeicHdSendSheet> {
           () => _error =
               'This photo came out at ${payload.length} bytes, more than an '
               'image message can carry ($kImageMaxPayloadBytes). Try a '
-              'simpler photo, or send it as a Mesh photo or AI sketch.',
+              'simpler photo, or send it as a Mesh photo.',
         );
         return;
       }

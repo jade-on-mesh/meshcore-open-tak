@@ -11465,6 +11465,24 @@ abstract class AppLocalizations {
   /// **'Image no longer stored'**
   String get receivedImage_evicted;
 
+  /// No description provided for @receivedImage_oldSketch.
+  ///
+  /// In en, this message translates to:
+  /// **'Old-style AI sketch: this app only draws AI sketch HD'**
+  String get receivedImage_oldSketch;
+
+  /// No description provided for @receivedImage_hdNotOnThisDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'AI sketch HD can\'t be drawn on this device'**
+  String get receivedImage_hdNotOnThisDevice;
+
+  /// No description provided for @receivedImage_hdNeedsModel.
+  ///
+  /// In en, this message translates to:
+  /// **'AI sketch HD received: download the model to see it'**
+  String get receivedImage_hdNeedsModel;
+
   /// No description provided for @receivedImage_retry.
   ///
   /// In en, this message translates to:
