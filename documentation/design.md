@@ -39,6 +39,8 @@ Rules:
 - Status colours (`error`, `tertiary`, `secondary`) are copied from the stock scheme of the same brightness in `fromCustom`, so they keep their meaning in custom themes.
 - `StatusChip` shows how to colour a status: the label keeps `onSurface`, and only the dot or icon carries the colour.
 
+**A person's colour.** Every style takes a person's colour from their name the way the official MeshCore app does: FNV-1a over the name's UTF-16 code units, mod 360, as a hue (`classicNameHue`, `lib/theme/chat_look.dart`). Wadamesh TAK uses the same hue (its `NameHue.h`), so a person has one colour everywhere. `AvatarCircle` and `senderNameColor` use the official app's colour, HSV (hue, 75%, 80%). Pass `senderNameColor` through `readableAccent` on a light surface.
+
 **Chat style.** Settings > Appearance > **Chat style** picks how bubbles look, independently of the colour theme. The look travels as the `MeshChatLook` theme extension, which `main.dart` adds to both themes. Draw bubbles only through `MessageBubbleColors.of` and `MessageBubbleFrame`, so every style reaches them.
 
 - **MeshCore Open TAK** (the default): the theme's bubbles.

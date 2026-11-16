@@ -2329,7 +2329,10 @@ class _MessageBubble extends StatelessWidget {
                                   fontWeight: FontWeight.w700,
                                   color:
                                       colors.name ??
-                                      senderNameColor(senderName),
+                                      readableAccent(
+                                        senderNameColor(senderName),
+                                        colors.background,
+                                      ),
                                 ),
                               ),
                             ),

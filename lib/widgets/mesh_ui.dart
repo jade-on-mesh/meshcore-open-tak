@@ -305,22 +305,8 @@ class AvatarCircle extends StatelessWidget {
     this.photoKey,
   });
 
-  static const _hues = [
-    MeshPalette.blue,
-    MeshPalette.magenta,
-    MeshPalette.signal,
-    MeshPalette.warn,
-    Color(0xFF8FA8F0),
-    Color(0xFF6FD9CE),
-  ];
-
-  Color _colorFor(String s) {
-    var h = 0;
-    for (final c in s.codeUnits) {
-      h = (h * 31 + c) & 0x7fffffff;
-    }
-    return _hues[h % _hues.length];
-  }
+  /// A person's colour: the one the official MeshCore app gives their name.
+  Color _colorFor(String s) => classicAvatarColor(s);
 
   @override
   Widget build(BuildContext context) {

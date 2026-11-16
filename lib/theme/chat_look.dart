@@ -76,19 +76,12 @@ class MeshChatLook extends ThemeExtension<MeshChatLook> {
 // ---- Wadamesh TAK's colours -------------------------------------------------
 // The same arithmetic as Wadamesh TAK's UITask.cpp (nameHue, hsvRgb,
 // lookBubbleTintFor, lookNameColorFor), so a teammate's bubbles and name have
-// the same colour on a standalone and in the app.
+// the same colour on a standalone and in the app. The hue is the official
+// MeshCore app's, everywhere.
 
-/// FNV-1a of the name's UTF-8 bytes, as a hue 0-359 (Wadamesh's nameHue).
-int wadameshNameHue(String name) {
-  var h = 2166136261;
-  for (final b in utf8.encode(name)) {
-    h ^= b;
-    // h * 16777619 (2^24 + 403) mod 2^32, without a product past 2^53, which
-    // the web build can't hold exactly.
-    h = ((((h & 0xFF) << 24) & 0xFFFFFFFF) + h * 403) & 0xFFFFFFFF;
-  }
-  return h % 360;
-}
+/// A person's hue, 0-359: the official MeshCore app's ([classicNameHue]),
+/// which Wadamesh TAK's nameHue (NameHue.h) uses too.
+int wadameshNameHue(String name) => classicNameHue(name);
 
 /// Wadamesh's integer HSV to RGB (hue 0-359, saturation and value 0-100).
 Color wadameshHsv(int h, int s, int v) {

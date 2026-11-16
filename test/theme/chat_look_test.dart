@@ -3,12 +3,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meshcore_open/theme/chat_look.dart';
 import 'package:meshcore_open/widgets/message_bubble_frame.dart';
 
-// Reference values from Wadamesh TAK's own nameHue / hsvRgb /
-// lookBubbleTintFor / lookNameColorFor (UITask.cpp), so a sender has the same
-// colour on a standalone and in the app.
+// Reference values from Wadamesh TAK's own nameHue (NameHue.h, the official
+// app's hue) / hsvRgb / lookBubbleTintFor / lookNameColorFor (UITask.cpp), so
+// a sender has the same colour on a standalone and in the app.
 const _cases = [
   ('Alpha-1', 1, 0x421F1F, 0xF22926, 0xFF6966),
-  ('Jade ✨', 265, 0x2B1F42, 0x7A26F2, 0xA666FF),
+  ('Jade ✨', 247, 0x211F42, 0x3D26F2, 0x7866FF),
   ('JDNA', 114, 0x21421F, 0x3BF226, 0x75FF66),
 ];
 
@@ -84,6 +84,13 @@ void main() {
 
   // Hues measured from the official MeshCore app's avatars (a public channel,
   // dark mode): the avatar is HSV(hue, 75%, 80%), the name HSV(hue, 75%, 56%).
+  test('every style takes its hue from the official app', () {
+    for (final n in ['Dupont C2b', 'Thalestr 🐠', 'Jade ✨']) {
+      expect(wadameshNameHue(n), classicNameHue(n), reason: n);
+    }
+    expect(senderNameColor('Chuck@🏠'), classicAvatarColor('Chuck@🏠'));
+  });
+
   test('classic colours match the official app', () {
     const hues = {
       'Dupont C2b': 4,

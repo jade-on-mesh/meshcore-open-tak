@@ -123,28 +123,10 @@ BorderRadius messageBubbleRadius({
         );
 }
 
-/// Extra sender-name hues beyond the [MeshPalette] accents. They match the
-/// two extra hues [AvatarCircle] uses, so a name and its avatar agree.
-const Color kSenderHuePeriwinkle = Color(0xFF8FA8F0);
-const Color kSenderHueAqua = Color(0xFF6FD9CE);
-
-const List<Color> _senderHues = [
-  MeshPalette.blue,
-  MeshPalette.magenta,
-  MeshPalette.signal,
-  MeshPalette.warn,
-  kSenderHuePeriwinkle,
-  kSenderHueAqua,
-];
-
-/// Deterministic name-to-hue mapping consistent with [AvatarCircle].
-Color senderNameColor(String name) {
-  var h = 0;
-  for (final c in name.codeUnits) {
-    h = (h * 31 + c) & 0x7fffffff;
-  }
-  return _senderHues[h % _senderHues.length];
-}
+/// A person's colour from their name: the one the official MeshCore app (and
+/// Wadamesh TAK) gives them, the same as their [AvatarCircle]. On a light
+/// surface pass it through `readableAccent`.
+Color senderNameColor(String name) => classicAvatarColor(name);
 
 /// The bubble container shared by both chat screens: colour, border,
 /// asymmetric radius, padding and the 72% max width.
