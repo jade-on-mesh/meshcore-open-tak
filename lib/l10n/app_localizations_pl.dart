@@ -2044,6 +2044,17 @@ class AppLocalizationsPl extends AppLocalizations {
   String get contacts_noMembers => 'Brak członków';
 
   @override
+  String get nav_nodes => 'Nodes';
+
+  @override
+  String contacts_searchNodes(int number, String str) {
+    return 'Search $number$str Nodes...';
+  }
+
+  @override
+  String get contacts_noNodesFound => 'No nodes found';
+
+  @override
   String get contacts_lastSeenNow => 'niedawno';
 
   @override
@@ -6833,13 +6844,16 @@ class AppLocalizationsPl extends AppLocalizations {
   String get receivedImage_evicted => 'Obraz nie jest już przechowywany';
 
   @override
-  String get receivedImage_oldSketch => 'Old-style AI sketch: this app only draws AI sketch HD';
+  String get receivedImage_oldSketch =>
+      'Old-style AI sketch: this app only draws AI sketch HD';
 
   @override
-  String get receivedImage_hdNotOnThisDevice => 'AI sketch HD can\'t be drawn on this device';
+  String get receivedImage_hdNotOnThisDevice =>
+      'AI sketch HD can\'t be drawn on this device';
 
   @override
-  String get receivedImage_hdNeedsModel => 'AI sketch HD received: download the model to see it';
+  String get receivedImage_hdNeedsModel =>
+      'AI sketch HD received: download the model to see it';
 
   @override
   String get receivedImage_retry => 'Spróbuj ponownie';

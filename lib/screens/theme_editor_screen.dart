@@ -644,6 +644,8 @@ String themeIconSlotLabel(BuildContext context, ThemeIconSlot slot) {
   switch (slot) {
     case ThemeIconSlot.contacts:
       return l10n.nav_contacts;
+    case ThemeIconSlot.nodes:
+      return l10n.nav_nodes;
     case ThemeIconSlot.channels:
       return l10n.nav_channels;
     case ThemeIconSlot.map:

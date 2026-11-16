@@ -9,11 +9,19 @@ import '../team/team_service.dart';
 import '../team/watch_feed.dart';
 import '../theme/mesh_theme.dart';
 import '../theme/theme_icons.dart';
+import '../utils/main_navigation.dart' show MainTab;
 
+/// The main tabs: Contacts (people), Nodes (repeaters, rooms, sensors),
+/// Channels, Map, and Tactical (its own screen). Indexes are [MainTab]'s.
 class QuickSwitchBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
+
+  /// Unread direct messages from people.
   final int contactsUnreadCount;
+
+  /// Unread messages from nodes (room servers).
+  final int nodesUnreadCount;
   final int channelsUnreadCount;
   final bool highContrast;
 
@@ -22,6 +30,7 @@ class QuickSwitchBar extends StatelessWidget {
     required this.selectedIndex,
     required this.onDestinationSelected,
     this.contactsUnreadCount = 0,
+    this.nodesUnreadCount = 0,
     this.channelsUnreadCount = 0,
     this.highContrast = false,
   });
@@ -92,6 +101,7 @@ class QuickSwitchBar extends StatelessWidget {
                 height:
                     MeshIconTheme.of(context).hasPictureFor(const [
                       ThemeIconSlot.contacts,
+                      ThemeIconSlot.nodes,
                       ThemeIconSlot.channels,
                       ThemeIconSlot.map,
                     ])
@@ -100,11 +110,12 @@ class QuickSwitchBar extends StatelessWidget {
                 selectedIndex: selectedIndex,
                 onDestinationSelected: (i) {
                   // Tactical opens as its own screen rather than a tab.
-                  if (i == 3) {
+                  if (i == MainTab.tactical) {
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
                         // From the map, Tactical's Map tab goes back to it.
-                        builder: (_) => TeamScreen(fromMap: selectedIndex == 2),
+                        builder: (_) =>
+                            TeamScreen(fromMap: selectedIndex == MainTab.map),
                       ),
                     );
                     return;
@@ -124,6 +135,19 @@ class QuickSwitchBar extends StatelessWidget {
                       contactsUnreadCount,
                     ),
                     label: context.l10n.nav_contacts,
+                  ),
+                  NavigationDestination(
+                    icon: _buildIconWithBadge(
+                      context,
+                      const ThemedIcon(ThemeIconSlot.nodes),
+                      nodesUnreadCount,
+                    ),
+                    selectedIcon: _buildIconWithBadge(
+                      context,
+                      const ThemedIcon(ThemeIconSlot.nodes, selected: true),
+                      nodesUnreadCount,
+                    ),
+                    label: context.l10n.nav_nodes,
                   ),
                   NavigationDestination(
                     icon: _buildIconWithBadge(

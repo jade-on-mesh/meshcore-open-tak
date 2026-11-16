@@ -77,7 +77,7 @@ Tap **Create theme** (or **Edit** / **Customize a copy**) to open the editor. A 
 - **Accent**: buttons, highlights, and your own chat bubbles. A warning appears when the accent is hard to see on the background.
 - Colors can be chosen from swatches or entered as a hex color.
 - **Chat background**: none, a color, or a picture, with a fade slider. It is shown in chats that have no background of their own. Turn on **Use in every chat** to also replace backgrounds set on individual chats.
-- **Icons**: swap the Contacts, Channels, and Map tab icons, the send button, the Settings icon, and the Repeater, Room, and Sensor avatars. Tap an icon to choose another named icon or **Use a picture** from your gallery; **Use the default icon** resets it. Pictures are stored as lossless JPEG XL.
+- **Icons**: swap the Contacts, Nodes, Channels, and Map tab icons, the send button, the Settings icon, and the Repeater, Room, and Sensor avatars. Tap an icon to choose another named icon or **Use a picture** from your gallery; **Use the default icon** resets it. Pictures are stored as lossless JPEG XL.
 - **Map markers**: swap the map markers for chat nodes, repeaters, rooms, sensors, and your own position the same way.
 
 **Save and use** saves the theme and makes it active.

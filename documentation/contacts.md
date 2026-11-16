@@ -6,7 +6,9 @@ The Contacts screen is the primary hub for managing mesh nodes your radio has a 
 
 ## How to Access
 
-- QuickSwitchBar tab 0 (leftmost) from Channels or Map screens (Channels is shown first after connecting)
+- QuickSwitchBar tab 0 (leftmost), **Contacts**: people (chat users) only
+- QuickSwitchBar tab 1, **Nodes**: repeaters, room servers and sensors, on the same screen
+- Channels is shown first after connecting
 - Back navigation from Chat or Settings screens
 
 ## Contact Types
@@ -48,7 +50,8 @@ A toolbar at the top provides:
 - A–Z (alphabetical)
 
 **Filter options**:
-- All, Favorites, Users, Repeaters, Room Servers, Unread Only
+- Contacts tab: All, Favorites, Unread Only
+- Nodes tab: All, Favorites, Repeaters, Room Servers, Unread Only
 
 ## Contact Groups
 

@@ -2001,6 +2001,25 @@ class MeshCoreConnector extends ChangeNotifier {
     return _cachedContactsUnreadTotal;
   }
 
+  /// Unread direct messages from people (the Contacts tab's badge).
+  int getTotalPeopleUnreadCount() =>
+      _unreadTotalWhere((type) => !isNodeContactType(type));
+
+  /// Unread messages from nodes: room servers (the Nodes tab's badge).
+  int getTotalNodesUnreadCount() => _unreadTotalWhere(isNodeContactType);
+
+  int _unreadTotalWhere(bool Function(int type) keep) {
+    if (!_unreadStateLoaded || _contactUnreadCount.isEmpty) return 0;
+    final types = {for (final c in _contacts) c.publicKeyHex: c.type};
+    var total = 0;
+    _contactUnreadCount.forEach((key, count) {
+      final type = types[key] ?? advTypeChat;
+      if (type == advTypeRepeater) return; // as the overall total
+      if (keep(type)) total += count;
+    });
+    return total;
+  }
+
   int getTotalChannelsUnreadCount() {
     if (!_unreadStateLoaded) return 0;
     return _cachedChannelsUnreadTotal;

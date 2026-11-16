@@ -142,6 +142,7 @@ Icon sizes in use: 24 for tile and banner icons, 20 for menu icons and small act
 | Signal | `SignalBars`, `MeshTheme.snrColor` | |
 | Route kind | `RouteChip` | Direct / hop count / Flood |
 | Count badge | `Badge` on nav icons (`QuickSwitchBar`, caps at 99+), `UnreadBadge` in lists (alert red, mono 12) | |
+| Main tabs | `QuickSwitchBar`: Contacts (people), Nodes (repeaters, rooms, sensors), Channels, Map, Tactical. Use `MainTab` indices and `switchMainTab`; give a new tab its own `ThemeIconSlot` | [navigation.md](navigation.md) |
 | Empty list | `EmptyState(icon:, title:, subtitle:, action:)` | Scrolls rather than overflowing at large text |
 | Inline error with retry | `ErrorRetryCard(message:, onRetry:, retryLabel:)` | Pass `retryLabel: context.l10n.common_retry` |
 | Radio offline on a remote-node screen | `RadioDisconnectedBanner` | Renders nothing while connected |

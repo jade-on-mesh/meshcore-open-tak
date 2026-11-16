@@ -18,8 +18,8 @@ import '../models/channel.dart';
 import '../models/community.dart';
 import '../storage/community_store.dart';
 import '../theme/mesh_theme.dart';
+import '../utils/main_navigation.dart';
 import '../utils/radio_guard.dart';
-import '../utils/route_transitions.dart';
 import '../widgets/app_update_ui.dart';
 import '../widgets/channel_notification_mode_sheet.dart';
 import '../widgets/connect_sheet.dart';
@@ -41,8 +41,6 @@ import 'channel_chat_screen.dart';
 import '../utils/channel_qr.dart';
 import 'channel_qr_scanner_screen.dart';
 import 'community_qr_scanner_screen.dart';
-import 'contacts_screen.dart';
-import 'map_screen.dart';
 import 'settings_screen.dart';
 import '../review_mode/review_mode_banner.dart';
 import '../theme/theme_icons.dart';
@@ -353,10 +351,11 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
         bottomNavigationBar: SafeArea(
           top: false,
           child: QuickSwitchBar(
-            selectedIndex: 1,
+            selectedIndex: MainTab.channels,
             onDestinationSelected: (index) =>
-                _handleQuickSwitch(index, context),
-            contactsUnreadCount: connector.getTotalContactsUnreadCount(),
+                switchMainTab(context, index, current: MainTab.channels),
+            contactsUnreadCount: connector.getTotalPeopleUnreadCount(),
+            nodesUnreadCount: connector.getTotalNodesUnreadCount(),
             channelsUnreadCount: connector.getTotalChannelsUnreadCount(),
           ),
         ),
@@ -728,25 +727,6 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
         ),
       ),
     );
-  }
-
-  void _handleQuickSwitch(int index, BuildContext context) {
-    FocusManager.instance.primaryFocus?.unfocus();
-    if (index == 1) return;
-    switch (index) {
-      case 0:
-        Navigator.pushReplacement(
-          context,
-          buildQuickSwitchRoute(const ContactsScreen(hideBackButton: true)),
-        );
-        break;
-      case 2:
-        Navigator.pushReplacement(
-          context,
-          buildQuickSwitchRoute(const MapScreen(hideBackButton: true)),
-        );
-        break;
-    }
   }
 
   Widget _buildFilterButton(UiViewStateService viewState) {

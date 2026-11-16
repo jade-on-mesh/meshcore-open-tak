@@ -11,6 +11,7 @@ import '../connector/meshcore_protocol.dart';
 /// never change once released.
 enum ThemeIconSlot {
   contacts('contacts', Icons.people_outline, Icons.people),
+  nodes('nodes', Icons.settings_input_antenna, Icons.settings_input_antenna),
   channels('channels', Icons.tag, Icons.tag),
   map('map', Icons.map_outlined, Icons.map),
   send('send', Icons.send, Icons.send),
