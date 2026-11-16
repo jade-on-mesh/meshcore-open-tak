@@ -1,5 +1,13 @@
 {
   "bg": [
+    "aeicHd_askForRest",
+    "aeicHd_askForRestHint",
+    "aeicHd_askedForRest",
+    "aeicHd_autoResuming",
+    "aeicHd_autoResumingTry",
+    "aeicHd_autoStop",
+    "aeicHd_autoStopTitle",
+    "aeicHd_autoStopHint",
     "appSettings_advertAlerts",
     "appSettings_advertAlertsSubtitle",
     "mmRepeater_chip",
@@ -627,6 +635,14 @@
   ],
 
   "cs": [
+    "aeicHd_askForRest",
+    "aeicHd_askForRestHint",
+    "aeicHd_askedForRest",
+    "aeicHd_autoResuming",
+    "aeicHd_autoResumingTry",
+    "aeicHd_autoStop",
+    "aeicHd_autoStopTitle",
+    "aeicHd_autoStopHint",
     "appSettings_advertAlerts",
     "appSettings_advertAlertsSubtitle",
     "mmRepeater_chip",
@@ -1254,6 +1270,14 @@
   ],
 
   "de": [
+    "aeicHd_askForRest",
+    "aeicHd_askForRestHint",
+    "aeicHd_askedForRest",
+    "aeicHd_autoResuming",
+    "aeicHd_autoResumingTry",
+    "aeicHd_autoStop",
+    "aeicHd_autoStopTitle",
+    "aeicHd_autoStopHint",
     "appSettings_advertAlerts",
     "appSettings_advertAlertsSubtitle",
     "mmRepeater_chip",
@@ -1881,6 +1905,14 @@
   ],
 
   "es": [
+    "aeicHd_askForRest",
+    "aeicHd_askForRestHint",
+    "aeicHd_askedForRest",
+    "aeicHd_autoResuming",
+    "aeicHd_autoResumingTry",
+    "aeicHd_autoStop",
+    "aeicHd_autoStopTitle",
+    "aeicHd_autoStopHint",
     "appSettings_advertAlerts",
     "appSettings_advertAlertsSubtitle",
     "mmRepeater_chip",
@@ -2508,6 +2540,14 @@
   ],
 
   "fr": [
+    "aeicHd_askForRest",
+    "aeicHd_askForRestHint",
+    "aeicHd_askedForRest",
+    "aeicHd_autoResuming",
+    "aeicHd_autoResumingTry",
+    "aeicHd_autoStop",
+    "aeicHd_autoStopTitle",
+    "aeicHd_autoStopHint",
     "appSettings_advertAlerts",
     "appSettings_advertAlertsSubtitle",
     "mmRepeater_chip",
@@ -3135,6 +3175,14 @@
   ],
 
   "hu": [
+    "aeicHd_askForRest",
+    "aeicHd_askForRestHint",
+    "aeicHd_askedForRest",
+    "aeicHd_autoResuming",
+    "aeicHd_autoResumingTry",
+    "aeicHd_autoStop",
+    "aeicHd_autoStopTitle",
+    "aeicHd_autoStopHint",
     "appSettings_advertAlerts",
     "appSettings_advertAlertsSubtitle",
     "mmRepeater_chip",
@@ -3762,6 +3810,14 @@
   ],
 
   "it": [
+    "aeicHd_askForRest",
+    "aeicHd_askForRestHint",
+    "aeicHd_askedForRest",
+    "aeicHd_autoResuming",
+    "aeicHd_autoResumingTry",
+    "aeicHd_autoStop",
+    "aeicHd_autoStopTitle",
+    "aeicHd_autoStopHint",
     "appSettings_advertAlerts",
     "appSettings_advertAlertsSubtitle",
     "mmRepeater_chip",
@@ -4389,6 +4445,14 @@
   ],
 
   "ja": [
+    "aeicHd_askForRest",
+    "aeicHd_askForRestHint",
+    "aeicHd_askedForRest",
+    "aeicHd_autoResuming",
+    "aeicHd_autoResumingTry",
+    "aeicHd_autoStop",
+    "aeicHd_autoStopTitle",
+    "aeicHd_autoStopHint",
     "appSettings_advertAlerts",
     "appSettings_advertAlertsSubtitle",
     "mmRepeater_chip",
@@ -5016,6 +5080,14 @@
   ],
 
   "ko": [
+    "aeicHd_askForRest",
+    "aeicHd_askForRestHint",
+    "aeicHd_askedForRest",
+    "aeicHd_autoResuming",
+    "aeicHd_autoResumingTry",
+    "aeicHd_autoStop",
+    "aeicHd_autoStopTitle",
+    "aeicHd_autoStopHint",
     "appSettings_advertAlerts",
     "appSettings_advertAlertsSubtitle",
     "mmRepeater_chip",
@@ -5643,6 +5715,14 @@
   ],
 
   "nl": [
+    "aeicHd_askForRest",
+    "aeicHd_askForRestHint",
+    "aeicHd_askedForRest",
+    "aeicHd_autoResuming",
+    "aeicHd_autoResumingTry",
+    "aeicHd_autoStop",
+    "aeicHd_autoStopTitle",
+    "aeicHd_autoStopHint",
     "appSettings_advertAlerts",
     "appSettings_advertAlertsSubtitle",
     "mmRepeater_chip",
@@ -6270,6 +6350,14 @@
   ],
 
   "pl": [
+    "aeicHd_askForRest",
+    "aeicHd_askForRestHint",
+    "aeicHd_askedForRest",
+    "aeicHd_autoResuming",
+    "aeicHd_autoResumingTry",
+    "aeicHd_autoStop",
+    "aeicHd_autoStopTitle",
+    "aeicHd_autoStopHint",
     "appSettings_advertAlerts",
     "appSettings_advertAlertsSubtitle",
     "mmRepeater_chip",
@@ -6897,6 +6985,14 @@
   ],
 
   "pt": [
+    "aeicHd_askForRest",
+    "aeicHd_askForRestHint",
+    "aeicHd_askedForRest",
+    "aeicHd_autoResuming",
+    "aeicHd_autoResumingTry",
+    "aeicHd_autoStop",
+    "aeicHd_autoStopTitle",
+    "aeicHd_autoStopHint",
     "appSettings_advertAlerts",
     "appSettings_advertAlertsSubtitle",
     "mmRepeater_chip",
@@ -7524,6 +7620,14 @@
   ],
 
   "pt_PT": [
+    "aeicHd_askForRest",
+    "aeicHd_askForRestHint",
+    "aeicHd_askedForRest",
+    "aeicHd_autoResuming",
+    "aeicHd_autoResumingTry",
+    "aeicHd_autoStop",
+    "aeicHd_autoStopTitle",
+    "aeicHd_autoStopHint",
     "appSettings_advertAlerts",
     "appSettings_advertAlertsSubtitle",
     "mmRepeater_chip",
@@ -8151,6 +8255,14 @@
   ],
 
   "ru": [
+    "aeicHd_askForRest",
+    "aeicHd_askForRestHint",
+    "aeicHd_askedForRest",
+    "aeicHd_autoResuming",
+    "aeicHd_autoResumingTry",
+    "aeicHd_autoStop",
+    "aeicHd_autoStopTitle",
+    "aeicHd_autoStopHint",
     "appSettings_advertAlerts",
     "appSettings_advertAlertsSubtitle",
     "mmRepeater_chip",
@@ -8778,6 +8890,14 @@
   ],
 
   "sk": [
+    "aeicHd_askForRest",
+    "aeicHd_askForRestHint",
+    "aeicHd_askedForRest",
+    "aeicHd_autoResuming",
+    "aeicHd_autoResumingTry",
+    "aeicHd_autoStop",
+    "aeicHd_autoStopTitle",
+    "aeicHd_autoStopHint",
     "appSettings_advertAlerts",
     "appSettings_advertAlertsSubtitle",
     "mmRepeater_chip",
@@ -9405,6 +9525,14 @@
   ],
 
   "sl": [
+    "aeicHd_askForRest",
+    "aeicHd_askForRestHint",
+    "aeicHd_askedForRest",
+    "aeicHd_autoResuming",
+    "aeicHd_autoResumingTry",
+    "aeicHd_autoStop",
+    "aeicHd_autoStopTitle",
+    "aeicHd_autoStopHint",
     "appSettings_advertAlerts",
     "appSettings_advertAlertsSubtitle",
     "mmRepeater_chip",
@@ -10032,6 +10160,14 @@
   ],
 
   "sv": [
+    "aeicHd_askForRest",
+    "aeicHd_askForRestHint",
+    "aeicHd_askedForRest",
+    "aeicHd_autoResuming",
+    "aeicHd_autoResumingTry",
+    "aeicHd_autoStop",
+    "aeicHd_autoStopTitle",
+    "aeicHd_autoStopHint",
     "appSettings_advertAlerts",
     "appSettings_advertAlertsSubtitle",
     "mmRepeater_chip",
@@ -10659,6 +10795,14 @@
   ],
 
   "uk": [
+    "aeicHd_askForRest",
+    "aeicHd_askForRestHint",
+    "aeicHd_askedForRest",
+    "aeicHd_autoResuming",
+    "aeicHd_autoResumingTry",
+    "aeicHd_autoStop",
+    "aeicHd_autoStopTitle",
+    "aeicHd_autoStopHint",
     "appSettings_advertAlerts",
     "appSettings_advertAlertsSubtitle",
     "mmRepeater_chip",
@@ -11286,6 +11430,14 @@
   ],
 
   "zh": [
+    "aeicHd_askForRest",
+    "aeicHd_askForRestHint",
+    "aeicHd_askedForRest",
+    "aeicHd_autoResuming",
+    "aeicHd_autoResumingTry",
+    "aeicHd_autoStop",
+    "aeicHd_autoStopTitle",
+    "aeicHd_autoStopHint",
     "appSettings_advertAlerts",
     "appSettings_advertAlertsSubtitle",
     "mmRepeater_chip",

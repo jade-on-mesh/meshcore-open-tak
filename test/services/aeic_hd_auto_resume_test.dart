@@ -93,28 +93,33 @@ void main() {
     await repair.autoResumeTick();
   }
 
-  test('an incomplete image is asked for again, further apart each time', () async {
-    final e = await partial(9);
-    await repair.autoResumeTick();
-    expect(repair.asked, isEmpty);
-    expect(repair.autoResumeFor(e.streamId), isNotNull);
+  test(
+    'an incomplete image is asked for again, further apart each time',
+    () async {
+      final e = await partial(9);
+      await repair.autoResumeTick();
+      expect(repair.asked, isEmpty);
+      expect(repair.autoResumeFor(e.streamId), isNotNull);
 
-    await after(AeicHdRepairService.autoBackoff[0]);
-    expect(repair.asked, [e.streamId]);
-    expect(repair.autoResumeFor(e.streamId)!.attempts, 1);
+      await after(AeicHdRepairService.autoBackoff[0]);
+      expect(repair.asked, [e.streamId]);
+      expect(repair.autoResumeFor(e.streamId)!.attempts, 1);
 
-    await after(AeicHdRepairService.autoBackoff[1] - const Duration(seconds: 1));
-    expect(repair.asked, hasLength(1));
-    await after(const Duration(seconds: 1));
-    expect(repair.asked, hasLength(2));
+      await after(
+        AeicHdRepairService.autoBackoff[1] - const Duration(seconds: 1),
+      );
+      expect(repair.asked, hasLength(1));
+      await after(const Duration(seconds: 1));
+      expect(repair.asked, hasLength(2));
 
-    // The longest pause repeats.
-    for (var i = 2; i < 8; i++) {
-      final k = min(i, AeicHdRepairService.autoBackoff.length - 1);
-      await after(AeicHdRepairService.autoBackoff[k]);
-    }
-    expect(repair.asked, hasLength(8));
-  });
+      // The longest pause repeats.
+      for (var i = 2; i < 8; i++) {
+        final k = min(i, AeicHdRepairService.autoBackoff.length - 1);
+        await after(AeicHdRepairService.autoBackoff[k]);
+      }
+      expect(repair.asked, hasLength(8));
+    },
+  );
 
   test('waits while the radio is disconnected', () async {
     await partial(9);
