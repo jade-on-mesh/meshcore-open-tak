@@ -1,8 +1,8 @@
 # AI sketch HD's codec for iPhone (lib/vox/aeic_hd_runner_io.dart finds
 # aeic_hd_run in the process). CI builds it with tool/build_aeic_hd_ios.sh into
-# ios/lib/libaeic_hd.a here; without it only stub/aeic_hd_pod.m builds and the
+# ios/lib/libaeic_hd_codec.a here; without it only stub/aeic_hd_pod.m builds and the
 # app reports that AI sketch HD can't run on this device.
-has_lib = File.exist?(File.join(__dir__, 'ios', 'lib', 'libaeic_hd.a'))
+has_lib = File.exist?(File.join(__dir__, 'ios', 'lib', 'libaeic_hd_codec.a'))
 
 Pod::Spec.new do |s|
   s.name             = 'aeic_hd'
@@ -17,7 +17,7 @@ Pod::Spec.new do |s|
   s.source_files     = 'stub/aeic_hd_pod.m'
   s.frameworks       = 'Foundation'
   if has_lib
-    s.ios.vendored_libraries = 'ios/lib/libaeic_hd.a'
+    s.ios.vendored_libraries = 'ios/lib/libaeic_hd_codec.a'
     s.libraries = 'c++', 'z'
   end
 end

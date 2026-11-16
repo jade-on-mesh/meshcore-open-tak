@@ -70,7 +70,7 @@ post_install do |installer|
   # AI sketch HD: the backup exclusion is always in the pod; the codec only
   # when CI built it.
   ffi_symbols << 'aeic_hd_exclude_from_backup'
-  if File.exist?(File.join(__dir__, '..', 'third_party', 'aeic_hd', 'ios', 'lib', 'libaeic_hd.a'))
+  if File.exist?(File.join(__dir__, '..', 'third_party', 'aeic_hd', 'ios', 'lib', 'libaeic_hd_codec.a'))
     ffi_symbols += %w[aeic_hd_available aeic_hd_run aeic_hd_cancel aeic_hd_total_memory]
   end
   # -u pulls each one out of its static library; -exported_symbol makes it a

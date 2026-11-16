@@ -6,7 +6,7 @@
 #
 #   tool/build_aeic_hd_ios.sh OUT_DIR      # on a Mac with Xcode
 #
-# Writes OUT_DIR/lib/libaeic_hd.a (arm64, iOS 16.4). iOS can't start
+# Writes OUT_DIR/lib/libaeic_hd_codec.a (arm64, iOS 16.4). iOS can't start
 # programs, so the program runs inside the app: third_party/aeic_hd/
 # aeic_hd_ios.cpp includes its main.cpp with `main` renamed and adds
 # aeic_hd_run, which lib/vox/aeic_hd_runner_io.dart calls over FFI.
@@ -112,12 +112,12 @@ build_one() {
 build_one ios -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 \
   -DCMAKE_OSX_DEPLOYMENT_TARGET=16.4
 # One archive with ncnn inside, so the pod vendors a single library.
-libtool -static -o "$out/lib/libaeic_hd.a" "$work/codec-ios/libaeic_hd.a" \
+libtool -static -o "$out/lib/libaeic_hd_codec.a" "$work/codec-ios/libaeic_hd.a" \
   "$work/ncnn-install-ios/lib/libncnn.a"
-lipo -info "$out/lib/libaeic_hd.a"
-syms=$(nm -gU "$out/lib/libaeic_hd.a" 2>/dev/null || true)
+lipo -info "$out/lib/libaeic_hd_codec.a"
+syms=$(nm -gU "$out/lib/libaeic_hd_codec.a" 2>/dev/null || true)
 for s in aeic_hd_run aeic_hd_available aeic_hd_cancel aeic_hd_total_memory; do
-  grep -q " _$s\$" <<<"$syms" || { echo "::error::$s is not in libaeic_hd.a" >&2; exit 1; }
+  grep -q " _$s\$" <<<"$syms" || { echo "::error::$s is not in libaeic_hd_codec.a" >&2; exit 1; }
 done
 
 if [ "${AEIC_HD_HOST_DRIVER:-}" = 1 ]; then

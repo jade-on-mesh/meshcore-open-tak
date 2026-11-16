@@ -60,4 +60,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: aeic-hd-ios
-          path: third_party/aeic_hd/ios/lib/libaeic_hd.a
+          path: third_party/aeic_hd/ios/lib/libaeic_hd_codec.a

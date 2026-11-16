@@ -1,5 +1,5 @@
 // AI sketch HD on iPhone: always built with the pod. The codec itself is
-// ios/lib/libaeic_hd.a, built by CI (tool/build_aeic_hd_ios.sh); without it,
+// ios/lib/libaeic_hd_codec.a, built by CI (tool/build_aeic_hd_ios.sh); without it,
 // the app finds no aeic_hd_run and says AI sketch HD can't run here.
 //
 // The ~2 GB model pack can be downloaded again, so it is kept out of iCloud
