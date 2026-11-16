@@ -113,6 +113,10 @@ class ContactsFilterMenu extends StatelessWidget {
   final ValueChanged<ContactTypeFilter> onTypeFilterChanged;
   final ValueChanged<bool> onUnreadOnlyChanged;
 
+  /// The type filters offered, in order (the Contacts tab has only people,
+  /// so it offers fewer than the Nodes tab).
+  final List<ContactTypeFilter> typeOptions;
+
   const ContactsFilterMenu({
     super.key,
     required this.sortOption,
@@ -121,6 +125,7 @@ class ContactsFilterMenu extends StatelessWidget {
     required this.onSortChanged,
     required this.onTypeFilterChanged,
     required this.onUnreadOnlyChanged,
+    this.typeOptions = ContactTypeFilter.values,
   });
 
   @override
@@ -152,31 +157,18 @@ class ContactsFilterMenu extends StatelessWidget {
         SortFilterMenuSection(
           title: l10n.listFilter_filters,
           options: [
-            SortFilterMenuOption(
-              value: _TypeFilterAction(ContactTypeFilter.all),
-              label: l10n.listFilter_all,
-              checked: typeFilter == ContactTypeFilter.all,
-            ),
-            SortFilterMenuOption(
-              value: _TypeFilterAction(ContactTypeFilter.favorites),
-              label: l10n.listFilter_favorites,
-              checked: typeFilter == ContactTypeFilter.favorites,
-            ),
-            SortFilterMenuOption(
-              value: _TypeFilterAction(ContactTypeFilter.users),
-              label: l10n.listFilter_users,
-              checked: typeFilter == ContactTypeFilter.users,
-            ),
-            SortFilterMenuOption(
-              value: _TypeFilterAction(ContactTypeFilter.repeaters),
-              label: l10n.listFilter_repeaters,
-              checked: typeFilter == ContactTypeFilter.repeaters,
-            ),
-            SortFilterMenuOption(
-              value: _TypeFilterAction(ContactTypeFilter.rooms),
-              label: l10n.listFilter_roomServers,
-              checked: typeFilter == ContactTypeFilter.rooms,
-            ),
+            for (final f in typeOptions)
+              SortFilterMenuOption(
+                value: _TypeFilterAction(f),
+                label: switch (f) {
+                  ContactTypeFilter.all => l10n.listFilter_all,
+                  ContactTypeFilter.favorites => l10n.listFilter_favorites,
+                  ContactTypeFilter.users => l10n.listFilter_users,
+                  ContactTypeFilter.repeaters => l10n.listFilter_repeaters,
+                  ContactTypeFilter.rooms => l10n.listFilter_roomServers,
+                },
+                checked: typeFilter == f,
+              ),
             SortFilterMenuOption(
               value: const _ToggleUnreadAction(),
               label: l10n.listFilter_unreadOnly,

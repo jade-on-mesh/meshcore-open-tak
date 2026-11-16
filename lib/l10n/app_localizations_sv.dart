@@ -2010,6 +2010,17 @@ class AppLocalizationsSv extends AppLocalizations {
   String get contacts_noMembers => 'Inga medlemmar';
 
   @override
+  String get nav_nodes => 'Nodes';
+
+  @override
+  String contacts_searchNodes(int number, String str) {
+    return 'Search $number$str Nodes...';
+  }
+
+  @override
+  String get contacts_noNodesFound => 'No nodes found';
+
+  @override
   String get contacts_lastSeenNow => 'nyss';
 
   @override

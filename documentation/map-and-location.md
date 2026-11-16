@@ -2,13 +2,13 @@
 
 ## Overview
 
-The Map feature is a full-featured node-location visualization and radio-planning tool built on OpenStreetMap tiles. It is one of the three primary views accessible from the QuickSwitchBar.
+The Map feature is a full-featured node-location visualization and radio-planning tool built on OpenStreetMap tiles. It is one of the main views on the QuickSwitchBar.
 
 The colors and markers below describe the standard theme. A custom, preset, or holiday theme recolors the map panels and accent, tints the tiles, and can replace the node and self-location markers; see [Themes](themes.md#map).
 
 ## How to Access
 
-- **QuickSwitchBar tab 2** (rightmost) from Contacts or Channels
+- **QuickSwitchBar tab 3** (after Channels) from Contacts, Nodes or Channels
 - **Deep-link from a chat message**: Tapping a shared location pin in a chat opens the map centered on that pin
 - **Settings → Offline Map Cache**: Opens the tile cache management screen
 

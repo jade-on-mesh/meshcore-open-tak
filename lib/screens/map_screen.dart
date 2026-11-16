@@ -31,10 +31,10 @@ import '../services/telemetry_location_request.dart';
 import '../services/network_map/network_map_api_client.dart';
 import '../services/ui_view_state_service.dart';
 import '../storage/prefs_manager.dart';
+import '../utils/main_navigation.dart';
 import '../utils/contact_search.dart';
 import '../utils/radio_guard.dart';
 import '../utils/battery_utils.dart';
-import '../utils/route_transitions.dart';
 import '../widgets/connect_sheet.dart';
 import '../widgets/app_update_ui.dart';
 import '../widgets/map_poi_cluster.dart';
@@ -43,10 +43,8 @@ import '../widgets/network_map_online_layer.dart';
 import '../widgets/quick_switch_bar.dart';
 import '../widgets/sync_progress_overlay.dart';
 import '../icons/los_icon.dart';
-import 'channels_screen.dart';
 import 'manual_path_trace_screen.dart';
 import 'chat_screen.dart';
-import 'contacts_screen.dart';
 import '../theme/mesh_theme.dart';
 import '../widgets/mesh_ui.dart';
 import '../widgets/node_info_sheet.dart';
@@ -1260,17 +1258,19 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             ),
             bottomNavigationBar: SafeArea(
               top: false,
-              child: Selector<MeshCoreConnector, (int, int)>(
+              child: Selector<MeshCoreConnector, (int, int, int)>(
                 selector: (_, connector) => (
-                  connector.getTotalContactsUnreadCount(),
+                  connector.getTotalPeopleUnreadCount(),
+                  connector.getTotalNodesUnreadCount(),
                   connector.getTotalChannelsUnreadCount(),
                 ),
                 builder: (context, unread, child) => QuickSwitchBar(
-                  selectedIndex: 2,
+                  selectedIndex: MainTab.map,
                   onDestinationSelected: (index) =>
-                      _handleQuickSwitch(index, context),
+                      switchMainTab(context, index, current: MainTab.map),
                   contactsUnreadCount: unread.$1,
-                  channelsUnreadCount: unread.$2,
+                  nodesUnreadCount: unread.$2,
+                  channelsUnreadCount: unread.$3,
                   highContrast: _usePaletteOverlay,
                 ),
               ),
@@ -3417,25 +3417,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         );
       },
     );
-  }
-
-  void _handleQuickSwitch(int index, BuildContext context) {
-    FocusManager.instance.primaryFocus?.unfocus();
-    if (index == 2) return;
-    switch (index) {
-      case 0:
-        Navigator.pushReplacement(
-          context,
-          buildQuickSwitchRoute(const ContactsScreen(hideBackButton: true)),
-        );
-        break;
-      case 1:
-        Navigator.pushReplacement(
-          context,
-          buildQuickSwitchRoute(const ChannelsScreen(hideBackButton: true)),
-        );
-        break;
-    }
   }
 
   void _showMarkerInfo(_SharedMarker marker) {
