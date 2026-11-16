@@ -33,6 +33,9 @@ const kP3 = '5001020304201b224618b6e10d380000000000fff300064b392d52657814';
 // bytes for each send, which the mesh would otherwise drop as already seen.
 const kP4 = '500102030498ebd0073b5a20b51b0000000000ff8b0507416c7068612d311234';
 const kA3 = '53aabbccdd000104000000000000000000000007';
+// A teammate with no GPS fix or location set ("here, no position"): lat and
+// lon both 0x7FFFFFFF. Also in Wadamesh TAK's test/test_team_wire.cpp.
+const kP5 = '5001020304847fffffff7fffffff00000000002a000005544465636b0001';
 
 // Routes (team_shape_wire.dart): Wadamesh TAK's test/test_team_wire.cpp
 // parses and re-encodes these same bytes.
@@ -221,6 +224,33 @@ void main() {
     expect(bytes.length, 24);
     expect(TeamPosition.tryParse(bytes)!.callsign, 'J');
   });
+
+  test(
+    'a teammate with no position still beacons, and old readers drop it',
+    () {
+      const p = TeamPosition(
+        senderKey4: '01020304',
+        lat: 0,
+        lon: 0,
+        hasPosition: false,
+        batteryPct: 42,
+        callsign: 'TDeck',
+        fromRadio: true,
+        seq: 1,
+      );
+      expect(_hex(p.encode()), kP5);
+      final back = TeamPosition.tryParse(_unhex(kP5))!;
+      expect(back.hasPosition, isFalse);
+      expect(back.callsign, 'TDeck');
+      expect(back.batteryPct, 42);
+      expect(back.seq, 1);
+      // A real position is still one.
+      expect(TeamPosition.tryParse(_unhex(kP1))!.hasPosition, isTrue);
+      // Anything else out of range is still rejected, as before.
+      final bad = _unhex(kP5)..[6] = 0x7E;
+      expect(TeamPosition.tryParse(bad), isNull);
+    },
+  );
 
   test('a repeat number goes after a CASEVAC when there is room', () {
     final b = Uint8List.fromList([1, 2, 3]);

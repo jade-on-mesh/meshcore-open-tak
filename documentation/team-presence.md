@@ -12,6 +12,16 @@ Each member sends a position beacon on the team channel:
 
 A phone uses its own GPS. A phone that isn't moving gets no new GPS fixes, so its last fix keeps standing for its position for up to 30 minutes, and the app asks for a fresh fix every 5 minutes. Before, a still phone counted as having no position after 2 minutes. If its radio had no position either, the phone stopped beaconing, and teammates saw it go stale and then disappear.
 
+## No position
+
+A member with no GPS fix and no location set still beacons, so they're on the Team list. A standalone without GPS or a set location used to send nothing, so it didn't show at all, though its SOS still came through. That beacon is the same message with latitude and longitude both `0x7FFFFFFF`, which is out of range on purpose: app versions and standalones from before this reject it, as they always did.
+
+- It's sent when joining or changing callsign, role, colour or status, then every 10 minutes, or every minute while an alert is up.
+- In the list the member shows **no position** instead of a range. Their sheet has no coordinates, Bloodhound or Map.
+- They aren't drawn on the map, and don't count for the nearest teammate or a message's reach map.
+- If they had a position before, it stays (their last known), and everything else (battery, status, SOS) updates.
+- TEAM (MeshCore-TEAM) and the ATAK plugin get nothing new: both need a position.
+
 ## Each beacon is new
 
 Team traffic is channel data, which carries no timestamp, and channel encryption gives the same bytes for the same message. Every MeshCore radio drops a packet it has seen recently, and it remembers its last 160. So a member who wasn't moving sent the same beacon each time, and repeaters and teammates dropped every one after the first.

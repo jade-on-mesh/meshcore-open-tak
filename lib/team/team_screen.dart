@@ -77,7 +77,7 @@ class TeamScreen extends StatelessWidget {
     final watch = context.watch<WatchFeedService>();
     final tak = context.watch<TakService>();
     final ch = team.teamChannel;
-    final live = team.members
+    final live = team.allMembers
         .where((m) => m.freshness == TeamFreshness.live)
         .length;
     return DefaultTabController(
@@ -1086,7 +1086,7 @@ class _RosterTab extends StatelessWidget {
                     },
             ),
           ),
-        if (team.members.isEmpty)
+        if (team.allMembers.isEmpty)
           Padding(
             padding: const EdgeInsets.all(24),
             child: Text(
@@ -1096,7 +1096,7 @@ class _RosterTab extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
           ),
-        for (final m in team.members)
+        for (final m in team.allMembers)
           ListTile(
             leading: CircleAvatar(
               backgroundColor: Color(
@@ -1117,7 +1117,9 @@ class _RosterTab extends StatelessWidget {
                 if (m.position.status != TeamStatus.none)
                   m.position.status.label,
                 teamAgo(m.heard),
-                if (fix != null)
+                if (!m.position.hasPosition)
+                  'no position'
+                else if (fix != null)
                   teamRangeBearing(
                     teamDistanceMeters(
                       fix.lat,
