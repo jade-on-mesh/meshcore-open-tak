@@ -8,7 +8,7 @@ The number of active channels is determined by the firmware (default 40); the de
 
 ## How to Access
 
-QuickSwitchBar tab 1 (middle) from any main screen.
+QuickSwitchBar tab 2 (Contacts, Nodes, **Channels**, Map, Tactical) from any main screen.
 
 ## Channel Types
 

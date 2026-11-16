@@ -19,12 +19,12 @@ import '../l10n/contact_localization.dart';
 import '../models/contact_group.dart';
 import '../services/ui_view_state_service.dart';
 import '../theme/mesh_theme.dart';
+import '../utils/main_navigation.dart';
 import '../utils/contact_search.dart';
 import '../storage/contact_group_store.dart';
 import '../widgets/connect_sheet.dart';
 import '../utils/radio_guard.dart';
 import '../utils/emoji_utils.dart';
-import '../utils/route_transitions.dart';
 import '../widgets/app_update_ui.dart';
 import '../widgets/tx_route_dialog.dart';
 import '../widgets/contact_visuals.dart';
@@ -38,11 +38,9 @@ import '../widgets/sync_progress_overlay.dart';
 import '../widgets/unread_badge.dart';
 import '../helpers/contact_share_message.dart';
 import '../helpers/snack_bar_builder.dart';
-import 'channels_screen.dart';
 import 'chat_screen.dart';
 import 'contact_qr_scanner_screen.dart';
 import 'discovery_screen.dart';
-import 'map_screen.dart';
 import '../review_mode/review_mode_banner.dart';
 import 'contact_photo_screen.dart';
 import 'repeater_hub_screen.dart';
@@ -65,16 +63,43 @@ class _PendingContactOperation {
 
 const Duration _contactOperationTimeout = Duration(seconds: 5);
 
+/// Which contacts a [ContactsScreen] lists: people (the Contacts tab) or
+/// nodes, the repeaters, room servers and sensors (the Nodes tab).
+enum ContactsScope { people, nodes }
+
 class ContactsScreen extends StatefulWidget {
   final bool hideBackButton;
+  final ContactsScope scope;
 
-  const ContactsScreen({super.key, this.hideBackButton = false});
+  const ContactsScreen({
+    super.key,
+    this.hideBackButton = false,
+    this.scope = ContactsScope.people,
+  });
 
   @override
   State<ContactsScreen> createState() => _ContactsScreenState();
 }
 
 class _ContactsScreenState extends State<ContactsScreen> {
+  bool get _nodes => widget.scope == ContactsScope.nodes;
+
+  /// This tab in the bottom bar.
+  int get _tab => _nodes ? MainTab.nodes : MainTab.contacts;
+
+  /// Whether [contact] belongs on this tab.
+  bool _inScope(Contact contact) => isNodeContactType(contact.type) == _nodes;
+
+  /// The type filter as it applies here: the people tab has only people, so
+  /// a repeater or room filter (set on Nodes) shows them all; the Nodes tab
+  /// has no people, so a users filter shows every node.
+  ContactTypeFilter _typeFilter(UiViewStateService viewState) {
+    final f = viewState.contactsTypeFilter;
+    if (_nodes) return f == ContactTypeFilter.users ? ContactTypeFilter.all : f;
+    return f == ContactTypeFilter.favorites
+        ? ContactTypeFilter.favorites
+        : ContactTypeFilter.all;
+  }
   final TextEditingController _searchController = TextEditingController();
   final ContactGroupStore _groupStore = ContactGroupStore();
   MeshCoreConnector? _scopeSyncConnector;
@@ -439,7 +464,9 @@ class _ContactsScreenState extends State<ContactsScreen> {
       canPop: allowBack,
       child: Scaffold(
         appBar: AppBar(
-          title: AppBarTitle(context.l10n.contacts_title),
+          title: AppBarTitle(
+            _nodes ? context.l10n.nav_nodes : context.l10n.contacts_title,
+          ),
           automaticallyImplyLeading: !widget.hideBackButton,
           bottom: const SyncProgressAppBarBottom(),
           actions: [
@@ -548,10 +575,11 @@ class _ContactsScreenState extends State<ContactsScreen> {
         bottomNavigationBar: SafeArea(
           top: false,
           child: QuickSwitchBar(
-            selectedIndex: 0,
+            selectedIndex: _tab,
             onDestinationSelected: (index) =>
-                _handleQuickSwitch(index, context),
-            contactsUnreadCount: connector.getTotalContactsUnreadCount(),
+                switchMainTab(context, index, current: _tab),
+            contactsUnreadCount: connector.getTotalPeopleUnreadCount(),
+            nodesUnreadCount: connector.getTotalNodesUnreadCount(),
             channelsUnreadCount: connector.getTotalChannelsUnreadCount(),
           ),
         ),
@@ -737,7 +765,16 @@ class _ContactsScreenState extends State<ContactsScreen> {
   ) {
     return ContactsFilterMenu(
       sortOption: viewState.contactsSortOption,
-      typeFilter: viewState.contactsTypeFilter,
+      typeFilter: _typeFilter(viewState),
+      // People: everyone or favourites. Nodes: also by kind.
+      typeOptions: _nodes
+          ? const [
+              ContactTypeFilter.all,
+              ContactTypeFilter.favorites,
+              ContactTypeFilter.repeaters,
+              ContactTypeFilter.rooms,
+            ]
+          : const [ContactTypeFilter.all, ContactTypeFilter.favorites],
       showUnreadOnly: viewState.contactsShowUnreadOnly,
       onSortChanged: (value) {
         viewState.setContactsSortOption(value);
@@ -868,9 +905,17 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
     String hintText = "";
 
-    switch (viewState.contactsTypeFilter) {
+    switch (_typeFilter(viewState)) {
+      case ContactTypeFilter.all when _nodes:
+        hintText = context.l10n.contacts_searchNodes(
+          filteredAndSorted.length,
+          viewState.contactsShowUnreadOnly
+              ? " ${context.l10n.contacts_unread}"
+              : "",
+        );
+        break;
       case ContactTypeFilter.all:
-        hintText = context.l10n.contacts_searchContacts(
+        hintText = context.l10n.contacts_searchUsers(
           filteredAndSorted.length,
           viewState.contactsShowUnreadOnly
               ? " ${context.l10n.contacts_unread}"
@@ -1092,6 +1137,8 @@ class _ContactsScreenState extends State<ContactsScreen> {
                             icon: Icons.search_off,
                             title: viewState.contactsShowUnreadOnly
                                 ? context.l10n.contacts_noUnreadContacts
+                                : _nodes
+                                ? context.l10n.contacts_noNodesFound
                                 : context.l10n.contacts_noContactsFound,
                           ),
                         ),
@@ -1151,7 +1198,8 @@ class _ContactsScreenState extends State<ContactsScreen> {
       viewState.contactsSelectedGroupName,
       selectedGroup?.memberKeys ?? const <String>[],
       selfKey == null ? null : pubKeyToHex(selfKey),
-      viewState.contactsTypeFilter,
+      _typeFilter(viewState),
+      widget.scope,
       viewState.contactsShowUnreadOnly,
       viewState.contactsSortOption,
       unreadSignature,
@@ -1170,6 +1218,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
     UiViewStateService viewState,
   ) {
     var filtered = contacts.where((contact) {
+      if (!_inScope(contact)) return false;
       if (viewState.contactsSearchText.isEmpty) return true;
       return matchesContactQuery(contact, viewState.contactsSearchText);
     }).toList();
@@ -1192,12 +1241,10 @@ class _ContactsScreenState extends State<ContactsScreen> {
       }).toList();
     }
 
-    if (viewState.contactsTypeFilter != ContactTypeFilter.all) {
+    final typeFilter = _typeFilter(viewState);
+    if (typeFilter != ContactTypeFilter.all) {
       filtered = filtered
-          .where(
-            (contact) =>
-                _matchesTypeFilter(contact, viewState.contactsTypeFilter),
-          )
+          .where((contact) => _matchesTypeFilter(contact, typeFilter))
           .toList();
     }
 
@@ -1279,25 +1326,6 @@ class _ContactsScreenState extends State<ContactsScreen> {
           _showRoomLogin(context, contact, RoomLoginDestination.management);
     }
     return null;
-  }
-
-  void _handleQuickSwitch(int index, BuildContext context) {
-    FocusManager.instance.primaryFocus?.unfocus();
-    if (index == 0) return;
-    switch (index) {
-      case 1:
-        Navigator.pushReplacement(
-          context,
-          buildQuickSwitchRoute(const ChannelsScreen(hideBackButton: true)),
-        );
-        break;
-      case 2:
-        Navigator.pushReplacement(
-          context,
-          buildQuickSwitchRoute(const MapScreen(hideBackButton: true)),
-        );
-        break;
-    }
   }
 
   void _showRepeaterLogin(BuildContext context, Contact repeater) {

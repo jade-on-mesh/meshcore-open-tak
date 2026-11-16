@@ -3631,6 +3631,24 @@ abstract class AppLocalizations {
   /// **'No members'**
   String get contacts_noMembers;
 
+  /// No description provided for @nav_nodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Nodes'**
+  String get nav_nodes;
+
+  /// No description provided for @contacts_searchNodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Search {number}{str} Nodes...'**
+  String contacts_searchNodes(int number, String str);
+
+  /// No description provided for @contacts_noNodesFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No nodes found'**
+  String get contacts_noNodesFound;
+
   /// No description provided for @contacts_lastSeenNow.
   ///
   /// In en, this message translates to:

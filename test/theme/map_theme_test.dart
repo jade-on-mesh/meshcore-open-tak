@@ -93,7 +93,7 @@ void main() {
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: QuickSwitchBar(
-              selectedIndex: 2,
+              selectedIndex: 3, // MainTab.map
               onDestinationSelected: (_) {},
               highContrast: true,
             ),

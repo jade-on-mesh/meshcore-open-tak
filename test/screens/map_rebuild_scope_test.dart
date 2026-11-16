@@ -40,6 +40,12 @@ class _Connector extends MeshCoreConnector {
   int getTotalContactsUnreadCount() => contactUnread;
 
   @override
+  int getTotalPeopleUnreadCount() => contactUnread;
+
+  @override
+  int getTotalNodesUnreadCount() => 0;
+
+  @override
   int getTotalChannelsUnreadCount() => channelUnread;
 }
 

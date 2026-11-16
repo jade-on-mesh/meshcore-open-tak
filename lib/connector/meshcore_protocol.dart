@@ -319,6 +319,11 @@ const int advTypeRepeater = 2;
 const int advTypeRoom = 3;
 const int advTypeSensor = 4;
 
+/// A node (repeater, room server or sensor): infrastructure, listed under the
+/// Nodes tab. Everything else is a person, under Contacts.
+bool isNodeContactType(int type) =>
+    type == advTypeRepeater || type == advTypeRoom || type == advTypeSensor;
+
 const int teleModeDeny = 0;
 const int teleModeAllowFlags = 1; // use contact.flags
 const int teleModeAllowAll = 2;

@@ -906,6 +906,10 @@
   "contacts_filterContacts": "Filter contacts...",
   "contacts_noContactsMatchFilter": "No contacts match your filter",
   "contacts_noMembers": "No members",
+  "nav_nodes": "Nodes",
+  "contacts_searchNodes": "Search {number}{str} Nodes...",
+  "@contacts_searchNodes": {"placeholders": {"number": {"type": "int"}, "str": {"type": "String"}}},
+  "contacts_noNodesFound": "No nodes found",
   "contacts_lastSeenNow": "recently",
   "contacts_lastSeenMinsAgo": "~ {minutes} min.",
   "@contacts_lastSeenMinsAgo": {
