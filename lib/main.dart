@@ -433,10 +433,7 @@ class ImageStreamReassembler extends ImageReassembler {
         (outcome.status == ImageChunkStatus.accepted ||
             outcome.status == ImageChunkStatus.conflicting ||
             outcome.status == ImageChunkStatus.completed)) {
-      onPacket?.call(
-        'aeic:${h.senderPrefix}/${h.imgId}@$channelIndex',
-        blob,
-      );
+      onPacket?.call('aeic:${h.senderPrefix}/${h.imgId}@$channelIndex', blob);
     }
     unawaited(
       store.handleOutcome(
