@@ -9793,6 +9793,24 @@ abstract class AppLocalizations {
   /// **'Ping'**
   String get contacts_ping;
 
+  /// No description provided for @contacts_showQrCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Show QR code'**
+  String get contacts_showQrCode;
+
+  /// No description provided for @contacts_playBySound.
+  ///
+  /// In en, this message translates to:
+  /// **'Share by Sound Link'**
+  String get contacts_playBySound;
+
+  /// No description provided for @contacts_shareQrInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan with MeshCore Open TAK or the MeshCore app to add this contact.'**
+  String get contacts_shareQrInstructions;
+
   /// No description provided for @contacts_repeaterPathTrace.
   ///
   /// In en, this message translates to:

@@ -5727,6 +5727,16 @@ class AppLocalizationsBg extends AppLocalizations {
   String get contacts_ping => 'Пинг';
 
   @override
+  String get contacts_showQrCode => 'Show QR code';
+
+  @override
+  String get contacts_playBySound => 'Share by Sound Link';
+
+  @override
+  String get contacts_shareQrInstructions =>
+      'Scan with MeshCore Open TAK or the MeshCore app to add this contact.';
+
+  @override
   String get contacts_repeaterPathTrace => 'Трасировка до повторител';
 
   @override

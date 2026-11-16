@@ -22,6 +22,7 @@ import '../theme/mesh_theme.dart';
 import '../utils/main_navigation.dart';
 import '../utils/contact_search.dart';
 import '../storage/contact_group_store.dart';
+import '../widgets/contact_share_qr.dart';
 import '../widgets/connect_sheet.dart';
 import '../utils/radio_guard.dart';
 import '../utils/emoji_utils.dart';
@@ -1811,6 +1812,28 @@ class _ContactsScreenState extends State<ContactsScreen> {
                   _contactZeroHop(contact.publicKey);
                 },
               ),
+              // MeshCore Open TAK: the contact card as a QR code (with Play
+              // by sound beneath it) or straight to sound, for a phone or a
+              // standalone nearby.
+              if (contactShareLink(contact) != null) ...[
+                ListTile(
+                  leading: const Icon(Icons.qr_code_2),
+                  title: Text(context.l10n.contacts_showQrCode),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    showContactShareQr(context, contact);
+                  },
+                ),
+                if (soundShareAvailable)
+                  ListTile(
+                    leading: const Icon(Icons.graphic_eq),
+                    title: Text(context.l10n.contacts_playBySound),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      unawaited(playContactBySound(context, contact));
+                    },
+                  ),
+              ],
               ListTile(
                 enabled: !readOnly,
                 leading: Icon(
