@@ -2806,7 +2806,7 @@ abstract class AppLocalizations {
   /// No description provided for @appSettings_chatStyleClassic.
   ///
   /// In en, this message translates to:
-  /// **'MeshCore classic'**
+  /// **'MeshCore Classic'**
   String get appSettings_chatStyleClassic;
 
   /// No description provided for @appSettings_chatStyleClassicHelp.

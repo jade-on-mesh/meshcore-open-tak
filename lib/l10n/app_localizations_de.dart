@@ -1544,7 +1544,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Frosted glass bubbles, each sender\'s in their own colour, the same as on a standalone';
 
   @override
-  String get appSettings_chatStyleClassic => 'MeshCore classic';
+  String get appSettings_chatStyleClassic => 'MeshCore Classic';
 
   @override
   String get appSettings_chatStyleClassicHelp =>

@@ -651,7 +651,7 @@
   "appSettings_chatStyleStandardHelp": "The app's own bubbles, each person in the colour the official MeshCore app gives them",
   "appSettings_chatStyleWadamesh": "Wadamesh TAK",
   "appSettings_chatStyleWadameshHelp": "Frosted glass bubbles, each sender's in their own colour, the same as on a standalone",
-  "appSettings_chatStyleClassic": "MeshCore classic",
+  "appSettings_chatStyleClassic": "MeshCore Classic",
   "appSettings_chatStyleClassicHelp": "Blue bubbles for yours and grey for others, like the official MeshCore app",
   "appSettings_chatStyleOpenClassic": "MeshCore Open Classic",
   "appSettings_chatStyleOpenClassicHelp": "MeshCore Open as it was: the app's own bubbles and its own colours for people",

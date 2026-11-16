@@ -48,7 +48,7 @@ Rules:
   - Mine are dark teal (slate by day).
   - Each sender's bubble, name and avatar take their own colour, computed exactly as Wadamesh TAK computes it, so a teammate is the same colour on a standalone and in the app.
 - **MeshCore Open Classic:** the default's bubbles with the six-colour palette people had before (`openClassicColor`, the name's 31-hash). `senderNameColor(name, style:)` and `AvatarCircle` follow it.
-- **MeshCore classic:** the official MeshCore app's look, measured from it.
+- **MeshCore Classic:** the official MeshCore app's look, measured from it.
   - Bubbles: others' are light grey `#E0E0E0` with black text in both modes, and every corner has a 20 radius. Mine are blue.
   - Person colours: the name's hue is FNV-1a over its UTF-16 code units, mod 360. `AvatarCircle` fills a person's avatar at HSV (hue, 75%, 80%) and shows the name's first emoji, or its initials in white. The sender name is HSV (hue, 75%, 56%).
   - Node-type avatars (a fixed colour or an icon) are unchanged.
