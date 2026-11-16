@@ -40,12 +40,14 @@ void main() {
     Brightness brightness = Brightness.dark,
   }) async {
     late MessageBubbleColors out;
+    // A Theme of its own, not MaterialApp's (which animates between themes,
+    // so a second pump would still read the last one).
     await tester.pumpWidget(
-      MaterialApp(
-        theme: MeshChatLook(
+      Theme(
+        data: MeshChatLook(
           style: style,
         ).applyTo(ThemeData(brightness: brightness)),
-        home: Builder(
+        child: Builder(
           builder: (context) {
             out = MessageBubbleColors.of(
               context,
@@ -80,18 +82,48 @@ void main() {
     expect(day.background, wadameshSentDay);
   });
 
-  testWidgets('classic style: blue mine, grey theirs', (tester) async {
+  // Hues measured from the official MeshCore app's avatars (a public channel,
+  // dark mode): the avatar is HSV(hue, 75%, 80%), the name HSV(hue, 75%, 56%).
+  test('classic colours match the official app', () {
+    const hues = {
+      'Dupont C2b': 4,
+      'BGMatt': 120,
+      'Thalestr 🐠': 227,
+      'Chuck@🏠': 249,
+      'Mark MC 2b ☕': 199,
+      'Csmc Mffn 🔑🧠 ACOS T096': 75,
+      '🦀': 347,
+    };
+    for (final e in hues.entries) {
+      expect(classicNameHue(e.key), e.value, reason: e.key);
+    }
+    expect(_rgb(classicAvatarColor('Dupont C2b')), 0xCC3D33);
+    expect(_rgb(classicAvatarColor('Chuck@🏠')), 0x4A33CC);
+    expect(_rgb(classicNameColor('Thalestr 🐠')), 0x243B8F);
+    expect(classicAvatarText('Dupont C2b'), 'DC');
+    expect(classicAvatarText('BGMatt'), 'B');
+    expect(classicAvatarText('Chuck@🏠'), '🏠');
+    expect(classicAvatarText('Mark MC 2b ☕'), '☕');
+  });
+
+  testWidgets('classic style: grey theirs in both modes, coloured names', (
+    tester,
+  ) async {
     final sent = await colorsIn(tester, ChatStyle.classic, outgoing: true);
     expect(sent.background, classicSent);
     expect(sent.text, Colors.white);
-    final recv = await colorsIn(
-      tester,
-      ChatStyle.classic,
-      outgoing: false,
-      brightness: Brightness.light,
-    );
-    expect(recv.background, classicRecvLight);
-    expect(recv.glass, isFalse);
+    for (final b in Brightness.values) {
+      final recv = await colorsIn(
+        tester,
+        ChatStyle.classic,
+        outgoing: false,
+        brightness: b,
+      );
+      expect(recv.background, classicRecv);
+      expect(recv.text, classicRecvInk);
+      expect(recv.name, classicNameColor('Alpha-1'));
+      expect(recv.glass, isFalse);
+    }
     expect(
       messageBubbleRadius(isOutgoing: true, style: ChatStyle.classic),
       messageBubbleRadius(isOutgoing: false, style: ChatStyle.classic),

@@ -13,7 +13,7 @@ Two more Appearance controls change only the chats, and work with any theme:
 - **Chat style:** the tile opens a picker with a preview of each style, in light or dark as the app is now.
   - **MeshCore Open TAK** is the theme's own bubbles.
   - **Wadamesh TAK** gives frosted-glass bubbles: the chat background shows blurred through them. Yours are dark teal, and each sender's bubbles, name and avatar are in their own colour, the same colour a Wadamesh TAK standalone gives them.
-  - **MeshCore classic** gives blue bubbles for yours and grey for everyone else's, like the official MeshCore app.
+  - **MeshCore classic** looks like the official MeshCore app. Everyone else's bubbles are light grey with black text, in dark mode too, with every corner rounded the same. Each person's avatar and name take the colour the official app gives them: it's worked out from the name, so a person has the same colour in both apps. The avatar shows the name's first emoji, or its initials in white. Your own bubbles are blue.
 - **Brighter chat icons:** fills each avatar circle with its colour, with the initials or icon in black or white, in place of the faint tint.
 
 ## Light / Dark and Color Theme

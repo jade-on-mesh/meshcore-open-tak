@@ -64,15 +64,15 @@ class MessageBubbleColors {
             glass: true,
           );
         case ChatStyle.classic:
-          final bg = isOutgoing
-              ? classicSent
-              : (dark ? classicRecvDark : classicRecvLight);
-          final ink = isOutgoing || dark ? Colors.white : Colors.black87;
+          final name = senderName?.trim() ?? '';
+          final bg = isOutgoing ? classicSent : classicRecv;
+          final ink = isOutgoing ? Colors.white : classicRecvInk;
           return MessageBubbleColors(
             background: bg,
             border: bg,
             text: ink,
-            meta: ink.withValues(alpha: 0.7),
+            meta: ink.withValues(alpha: 0.6),
+            name: isOutgoing || name.isEmpty ? null : classicNameColor(name),
           );
       }
     }
@@ -106,7 +106,7 @@ BorderRadius messageBubbleRadius({
   ChatStyle style = ChatStyle.standard,
 }) {
   if (style == ChatStyle.classic) {
-    return BorderRadius.circular(MeshRadii.lg);
+    return BorderRadius.circular(classicRadius);
   }
   return isOutgoing
       ? const BorderRadius.only(

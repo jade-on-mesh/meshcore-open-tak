@@ -45,7 +45,10 @@ Rules:
 - **Wadamesh TAK:** frosted glass. A `BackdropFilter` blur shows through the bubble colour, with a light sheen at the top, a thin white edge and a soft shadow.
   - Mine are dark teal (slate by day).
   - Each sender's bubble, name and avatar take their own colour, computed exactly as Wadamesh TAK computes it, so a teammate is the same colour on a standalone and in the app.
-- **MeshCore classic:** blue bubbles for mine and grey for others, with every corner rounded the same.
+- **MeshCore classic:** the official MeshCore app's look, measured from it.
+  - Bubbles: others' are light grey `#E0E0E0` with black text in both modes, and every corner has a 20 radius. Mine are blue.
+  - Person colours: the name's hue is FNV-1a over its UTF-16 code units, mod 360. `AvatarCircle` fills a person's avatar at HSV (hue, 75%, 80%) and shows the name's first emoji, or its initials in white. The sender name is HSV (hue, 75%, 56%).
+  - Node-type avatars (a fixed colour or an icon) are unchanged.
 
 A failed send stays an error bubble in every style, and an OTP theme's bubbles override the style.
 

@@ -140,7 +140,47 @@ const Color wadameshBubbleInk = Color(0xFFE6EBED);
 const Color wadameshBubbleMeta = Color(0xFF9AA6AC);
 
 // ---- the classic MeshCore look ----------------------------------------------
+// Measured from the official MeshCore app: each person's colour comes from
+// their name (FNV-1a over its UTF-16 code units, mod 360, as a hue); their
+// avatar is that hue filled (75% saturation, 80% brightness) with white
+// initials or the name's first emoji on it, and their name is the same hue
+// darker (56%). Received bubbles are light grey with black text, in dark mode
+// too, and every corner is rounded the same.
+
+/// The official app's hue for [name], 0-359.
+int classicNameHue(String name) {
+  var h = 2166136261;
+  for (final c in name.codeUnits) {
+    h ^= c;
+    // h * 16777619 mod 2^32 without a product past 2^53 (the web build).
+    h = ((((h & 0xFF) << 24) & 0xFFFFFFFF) + h * 403) & 0xFFFFFFFF;
+  }
+  return h % 360;
+}
+
+/// A person's avatar colour in the official app.
+Color classicAvatarColor(String name) =>
+    HSVColor.fromAHSV(1, classicNameHue(name).toDouble(), 0.75, 0.80).toColor();
+
+/// A person's name colour above their message in the official app.
+Color classicNameColor(String name) =>
+    HSVColor.fromAHSV(1, classicNameHue(name).toDouble(), 0.75, 0.56).toColor();
+
+/// What the official app puts on an avatar: the name's first emoji, else the
+/// first letters of its first two words (one letter for a one-word name).
+String classicAvatarText(String name) {
+  final trimmed = name.trim();
+  if (trimmed.isEmpty) return '?';
+  for (final ch in trimmed.characters) {
+    final r = ch.runes.first;
+    if (r >= 0x2190 && !(r >= 0x3000 && r <= 0x9FFF)) return ch;
+  }
+  final words = trimmed.split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
+  final out = words.take(2).map((w) => w.characters.first).join();
+  return out.toUpperCase();
+}
 
 const Color classicSent = Color(0xFF2196F3);
-const Color classicRecvLight = Color(0xFFE9E9EB);
-const Color classicRecvDark = Color(0xFF3A3A3C);
+const Color classicRecv = Color(0xFFE0E0E0);
+const Color classicRecvInk = Color(0xFF000000);
+const double classicRadius = 20;

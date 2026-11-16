@@ -338,6 +338,35 @@ class AvatarCircle extends StatelessWidget {
 
   Widget _plain(BuildContext context) {
     final look = MeshChatLook.of(context);
+    // The classic MeshCore look: a person's avatar filled with the colour the
+    // official app gives their name, the name's first emoji or initials in
+    // white on it. Node-type avatars (a fixed colour or an icon) stay as they
+    // are.
+    if (look.style == ChatStyle.classic &&
+        color == null &&
+        icon == null &&
+        iconSlot == null) {
+      final text = classicAvatarText(name);
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: classicAvatarColor(name),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          text,
+          maxLines: 1,
+          style: TextStyle(
+            fontSize: size * (text.runes.first >= 0x2190 ? 0.5 : 0.4),
+            fontWeight: FontWeight.w500,
+            color: Colors.white,
+            height: 1,
+          ),
+        ),
+      );
+    }
     // In Wadamesh TAK's chat style a person's circle takes the colour their
     // name and bubbles have (as on the standalone's initials balls).
     final accent =
