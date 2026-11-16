@@ -79,8 +79,10 @@ target_link_libraries(aeic_hd PUBLIC ncnn)
 # ncnn exports -fno-exceptions; the program validates files with exceptions.
 # A per-source flag comes after the imported target's (as in AEIC's own
 # CMakeLists); a target option would come before it and lose.
+# Every source: AEIC builds entropy/rANS without ncnn, here they share its flags.
 set_source_files_properties(aeic_hd_ios.cpp host_driver.cpp png_writer.cpp
-  mat_diagnostics.cpp tiled_attention.cpp recovery.cpp PROPERTIES COMPILE_FLAGS "-fexceptions")
+  mat_diagnostics.cpp tiled_attention.cpp entropy.cpp rans/rans.cpp recovery.cpp
+  PROPERTIES COMPILE_FLAGS "-fexceptions")
 if(AEIC_HD_HOST_DRIVER)
   find_package(ZLIB REQUIRED)
   add_executable(aeic_hd_host host_driver.cpp)
