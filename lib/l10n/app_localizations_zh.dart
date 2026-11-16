@@ -9,6 +9,32 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get aeicHd_askForRest => 'Ask for the rest';
+
+  @override
+  String get aeicHd_askForRestHint => 'Ask whoever has this picture for the packets that didn\'t arrive.';
+
+  @override
+  String get aeicHd_askedForRest => 'Asked for the missing packets. Whoever has the picture sends them on MediaMesh.';
+
+  @override
+  String get aeicHd_autoResuming => 'Getting the rest automatically';
+
+  @override
+  String aeicHd_autoResumingTry(int count) {
+    return 'Getting the rest automatically · try $count';
+  }
+
+  @override
+  String get aeicHd_autoStop => 'Stop';
+
+  @override
+  String get aeicHd_autoStopTitle => 'Stop getting the rest';
+
+  @override
+  String get aeicHd_autoStopHint => 'The app keeps asking for the missing packets until the picture is whole. Ask for the rest starts it again.';
+
+  @override
   String get appSettings_advertAlerts => 'Sound and vibration for new nodes';
 
   @override

@@ -927,6 +927,10 @@ class ImageReassembler {
     _park(e);
   }
 
+  /// When the last chunk of [key] came, while it is still being reassembled;
+  /// null when it isn't (finished, timed out or never seen).
+  DateTime? lastChunkAt(ImageStreamKey key) => _pending[key]?.lastSeen;
+
   /// Whether the parity chunk of [key] is held (in progress or parked).
   bool holdsParity(ImageStreamKey key) =>
       (_pending[key] ?? _parked[key])?.hasParity ?? false;

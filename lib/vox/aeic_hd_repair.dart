@@ -30,6 +30,11 @@
 // is answered: the regular AI sketch is MeshCore Open's own and is left as it
 // is. The receiver keeps the chunks it had (ImageReassembler parks them), so
 // the answer completes the image rather than starting it over.
+//
+// Auto-resume: an incomplete HD image, or one whose chunks stopped coming,
+// is asked for again by itself, one image at a time, with a growing pause
+// between tries (see [AeicHdRepairService.autoBackoff]), until it is whole,
+// the user stops it, or it is a day old.
 
 import 'dart:async';
 import 'dart:convert';
@@ -222,9 +227,31 @@ decodeAeicHdPartial(Uint8List p) {
 bool aeicHdResumable(ReceivedImageEntry entry) =>
     !entry.isOutgoing &&
     entry.state == ReceivedImageState.failedIncomplete &&
-    (entry.metadataAssumed || entry.rate == AeicRatePoint.ft2);
+    _isHd(entry);
 
-class AeicHdRepairService {
+bool _isHd(ReceivedImageEntry entry) =>
+    entry.metadataAssumed || entry.rate == AeicRatePoint.ft2;
+
+/// Where auto-resume stands for one image.
+class AeicHdAutoResume {
+  /// Tries started so far.
+  final int attempts;
+
+  /// A try is under way (its requests sent, answers awaited).
+  final bool active;
+
+  /// When the next try starts; null while one is under way, or before the
+  /// first is scheduled.
+  final DateTime? nextAt;
+
+  const AeicHdAutoResume({
+    required this.attempts,
+    required this.active,
+    this.nextAt,
+  });
+}
+
+class AeicHdRepairService extends ChangeNotifier {
   final MeshCoreConnector connector;
   final ReceivedImageStore store;
   final ImageReassembler reassembler;
@@ -254,18 +281,175 @@ class AeicHdRepairService {
   /// Taps per image, so a newer tap's rounds replace an older one's.
   final Map<String, int> _rounds = <String, int>{};
 
+  /// Pause before each automatic try, by how many came before it; the last
+  /// one repeats.
+  static const List<Duration> autoBackoff = <Duration>[
+    Duration(seconds: 10),
+    Duration(seconds: 30),
+    Duration(minutes: 1),
+    Duration(minutes: 2),
+    Duration(minutes: 5),
+  ];
+
+  /// An image still receiving that heard no chunk for this long is asked for
+  /// at once, rather than after the reassembler's timeout.
+  static const Duration stallAfter = Duration(seconds: 45);
+
+  /// Images older than this aren't asked for automatically any more.
+  static const Duration autoMaxAge = Duration(hours: 24);
+
+  /// How often auto-resume looks for work.
+  static const Duration autoTick = Duration(seconds: 5);
+
+  final DateTime Function() _clock;
+
+  /// Auto-resume state by stream.
+  final Map<String, _AutoState> _auto = <String, _AutoState>{};
+
+  /// Streams the user stopped auto-resume for.
+  final Set<String> _autoStopped = <String>{};
+
+  /// Request runs under way (first round to last), by stream: the tap
+  /// generation that owns each.
+  final Map<String, int> _running = <String, int>{};
+
+  Timer? _ticker;
+
   AeicHdRepairService({
     required this.connector,
     required this.store,
     required this.reassembler,
-  }) {
+    DateTime Function()? clock,
+    bool autoResume = true,
+  }) : _clock = clock ?? DateTime.now {
     _sub = connector.receivedFrames.listen(_onFrame);
     store.addListener(_keepPartials);
+    if (autoResume) {
+      _ticker = Timer.periodic(autoTick, (_) => unawaited(autoResumeTick()));
+    }
   }
 
+  @override
   void dispose() {
+    _ticker?.cancel();
     _sub?.cancel();
     store.removeListener(_keepPartials);
+    super.dispose();
+  }
+
+  /// Auto-resume state of [streamId], or null when it isn't being resumed
+  /// automatically.
+  AeicHdAutoResume? autoResumeFor(String streamId) {
+    final a = _auto[streamId];
+    if (a == null) return null;
+    return AeicHdAutoResume(
+      attempts: a.attempts,
+      active: _running.containsKey(streamId),
+      nextAt: a.nextAt,
+    );
+  }
+
+  /// Whether the user stopped auto-resume for [streamId].
+  bool autoResumeStopped(String streamId) => _autoStopped.contains(streamId);
+
+  /// Stops asking for the rest of [streamId] by itself (a try under way
+  /// still finishes). "Ask for the rest" starts it again.
+  void stopAutoResume(String streamId) {
+    _autoStopped.add(streamId);
+    _auto.remove(streamId);
+    _log('auto-resume stopped for $streamId');
+    notifyListeners();
+  }
+
+  /// Whether [e] is one auto-resume should be getting the rest of.
+  bool _wantsAuto(ReceivedImageEntry e, DateTime now) {
+    if (e.isOutgoing || !_isHd(e)) return false;
+    if (_autoStopped.contains(e.streamId)) return false;
+    if (now.difference(e.firstSeen) > autoMaxAge) return false;
+    if (e.state == ReceivedImageState.failedIncomplete) return true;
+    if (e.state != ReceivedImageState.receiving) return false;
+    // Still receiving: wanted once it stalls, or while a try is running.
+    if (_running.containsKey(e.streamId) || _auto.containsKey(e.streamId)) {
+      return true;
+    }
+    final last = reassembler.lastChunkAt(e.key);
+    return last != null && now.difference(last) >= stallAfter;
+  }
+
+  /// One pass of auto-resume: forgets finished images, schedules new ones,
+  /// and starts the next try that is due (one at a time, so the requests
+  /// and answers of several images don't crowd MediaMesh at once).
+  @visibleForTesting
+  Future<void> autoResumeTick() async {
+    final now = _clock();
+    var changed = false;
+    final wanted = <String, ReceivedImageEntry>{};
+    for (final e in store.entries) {
+      if (_wantsAuto(e, now)) wanted[e.streamId] = e;
+    }
+    for (final id in _auto.keys.toList()) {
+      if (!wanted.containsKey(id)) {
+        _auto.remove(id);
+        changed = true;
+      }
+    }
+    for (final e in wanted.values) {
+      if (_auto.containsKey(e.streamId)) continue;
+      // A stalled image is asked for at once: it already waited.
+      final stalled = e.state == ReceivedImageState.receiving;
+      _auto[e.streamId] = _AutoState(
+        nextAt: stalled ? now : now.add(autoBackoff.first),
+      );
+      changed = true;
+    }
+    if (connector.isConnected &&
+        !_auto.keys.any((id) => _running.containsKey(id))) {
+      String? due;
+      DateTime? dueAt;
+      for (final entry in _auto.entries) {
+        final at = entry.value.nextAt;
+        if (at == null || at.isAfter(now)) continue;
+        if (_running.containsKey(entry.key)) continue;
+        if (dueAt == null || at.isBefore(dueAt)) {
+          due = entry.key;
+          dueAt = at;
+        }
+      }
+      if (due != null) {
+        final a = _auto[due]!;
+        a.attempts++;
+        a.nextAt = null;
+        changed = false;
+        notifyListeners();
+        _log('auto-resume try ${a.attempts} for $due');
+        var ok = false;
+        try {
+          ok = await requestRest(wanted[due]!, auto: true);
+        } catch (e) {
+          _log('auto-resume try for $due failed: $e');
+        }
+        // Couldn't send (radio2 busy or off): wait as if it had been tried.
+        if (!ok && _auto[due] == a) _scheduleNext(due);
+      }
+    }
+    if (changed) notifyListeners();
+  }
+
+  void _scheduleNext(String streamId) {
+    final a = _auto[streamId];
+    if (a == null) return;
+    final i = min(a.attempts, autoBackoff.length - 1);
+    a.nextAt = _clock().add(autoBackoff[i]);
+    notifyListeners();
+  }
+
+  /// The run owned by [generation] is over: the next automatic try (if the
+  /// image still needs one) waits its turn.
+  void _endRun(String streamId, int? generation) {
+    if (_running[streamId] != generation) return;
+    _running.remove(streamId);
+    _scheduleNext(streamId);
+    notifyListeners();
   }
 
   /// Chunk counts of the partial images saved to disk, by stream.
@@ -413,14 +597,26 @@ class AeicHdRepairService {
   /// Answers get lost too, so when some chunks are still missing once the
   /// answers have had time to arrive, it asks again for just those, up to
   /// [maxRounds] times in all ([round] counts them).
-  Future<bool> requestRest(ReceivedImageEntry entry, {int round = 1}) async {
+  ///
+  /// A tap ([auto] false) also starts auto-resume again if it was stopped.
+  Future<bool> requestRest(
+    ReceivedImageEntry entry, {
+    int round = 1,
+    bool auto = false,
+  }) async {
     final key = entry.key;
     final total = entry.totalChunks.clamp(1, 15).toInt();
+    if (round == 1 && !auto && _autoStopped.remove(entry.streamId)) {
+      notifyListeners();
+    }
     await _restorePartial(entry);
     final missing = reassembler.missingDataChunks(key);
     if (missing != null && missing.isEmpty) return true;
-    if (round == 1)
+    if (round == 1) {
       _rounds[entry.streamId] = (_rounds[entry.streamId] ?? 0) + 1;
+      _running[entry.streamId] = _rounds[entry.streamId]!;
+      notifyListeners();
+    }
     final generation = _rounds[entry.streamId];
     final held = missing == null ? 0 : total - missing.length;
     var mask = 0;
@@ -439,6 +635,7 @@ class AeicHdRepairService {
     );
     if (release == null) {
       _log('ask for the rest: radio2 can\'t send');
+      _endRun(entry.streamId, generation);
       return false;
     }
     _log(
@@ -476,6 +673,9 @@ class AeicHdRepairService {
         () => unawaited(_afterAnswers(entry.streamId, at, round, generation)),
       );
       return true;
+    } catch (_) {
+      _endRun(entry.streamId, generation);
+      rethrow;
     } finally {
       await release();
     }
@@ -492,22 +692,31 @@ class AeicHdRepairService {
     // A newer tap took over.
     if (_rounds[streamId] != generation) return;
     final e = store.entryFor(streamId);
-    if (e == null) return;
-    if (e.state != ReceivedImageState.receiving &&
-        e.state != ReceivedImageState.failedIncomplete) {
+    if (e == null ||
+        (e.state != ReceivedImageState.receiving &&
+            e.state != ReceivedImageState.failedIncomplete)) {
+      _endRun(streamId, generation);
       return;
     }
     final missing = reassembler.missingDataChunks(e.key);
-    if (missing != null && missing.isEmpty) return;
+    if (missing != null && missing.isEmpty) {
+      _endRun(streamId, generation);
+      return;
+    }
     if (round < maxRounds) {
       _log(
         'still missing ${missing ?? 'all'} after round $round: asking again',
       );
-      await requestRest(e, round: round + 1);
+      try {
+        await requestRest(e, round: round + 1);
+      } catch (err) {
+        _log('asking again failed: $err');
+      }
       return;
     }
     _log('still missing ${missing ?? 'all'} after $maxRounds rounds');
     await store.resumeGaveUp(streamId, receivedAtRequest, force: true);
+    _endRun(streamId, generation);
   }
 
   /// The whole HD image a request on [slot] names, if this phone holds it.
@@ -616,4 +825,10 @@ class AeicHdRepairService {
       await release();
     }
   }
+}
+
+class _AutoState {
+  int attempts = 0;
+  DateTime? nextAt;
+  _AutoState({this.nextAt});
 }

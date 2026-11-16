@@ -714,7 +714,7 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
         ChangeNotifierProvider.value(value: widget.timeoutPredictionService),
         ChangeNotifierProvider.value(value: widget.imageCodecService),
         ChangeNotifierProvider.value(value: widget.receivedImageStore),
-        Provider.value(value: widget.aeicHdRepair),
+        ChangeNotifierProvider.value(value: widget.aeicHdRepair),
         ChangeNotifierProvider<VoxVoiceService>.value(value: _voxVoiceService),
         ChangeNotifierProvider<WalkieService>.value(value: _walkie),
         ChangeNotifierProvider<TeamService>.value(value: _teamService),

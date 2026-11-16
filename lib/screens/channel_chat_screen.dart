@@ -53,6 +53,7 @@ import '../utils/lora_airtime.dart';
 import '../utils/radio_guard.dart';
 import '../widgets/public_media_switch.dart';
 import '../widgets/marker_label_dialog.dart';
+import '../widgets/aeic_hd_resume_controls.dart';
 import '../widgets/received_image_message.dart';
 import '../widgets/channel_notification_mode_sheet.dart';
 import '../widgets/chat_day_separator.dart';
@@ -2607,10 +2608,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     showDismissibleSnackBar(
       context,
       content: Text(
-        ok
-            ? 'Asked for the missing packets. Whoever has the picture sends '
-                  'them on MediaMesh.'
-            : MediaLockdown.blockedMessage,
+        ok ? context.l10n.aeicHd_askedForRest : MediaLockdown.blockedMessage,
       ),
     );
   }
@@ -3106,15 +3104,11 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                       ),
                     ),
                   ),
-                  if (aeicHdResumable(entry))
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4, top: 2),
-                      child: TextButton.icon(
-                        onPressed: () => _askForRest(entry),
-                        icon: const Icon(Icons.download_outlined, size: 18),
-                        label: const Text('Ask for the rest'),
-                      ),
-                    ),
+                  AeicHdResumeControls(
+                    entry: entry,
+                    onAskForRest: () => _askForRest(entry),
+                    color: metaColor,
+                  ),
                   Padding(
                     padding: const EdgeInsets.only(
                       left: 8,
@@ -3160,6 +3154,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     final l10n = context.l10n;
     final readOnly = isRadioReadOnly(context.read<MeshCoreConnector>());
     final canSave = entry.state == ReceivedImageState.decoded;
+    final autoRepair = context.read<AeicHdRepairService?>();
     showMeshSheet(
       context,
       builder: (sheetContext) => SafeArea(
@@ -3177,14 +3172,21 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
               if (aeicHdResumable(entry))
                 ListTile(
                   leading: const Icon(Icons.download_outlined),
-                  title: const Text('Ask for the rest'),
-                  subtitle: const Text(
-                    'Ask whoever has this picture for the packets that '
-                    'didn\'t arrive.',
-                  ),
+                  title: Text(l10n.aeicHd_askForRest),
+                  subtitle: Text(l10n.aeicHd_askForRestHint),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     _askForRest(entry);
+                  },
+                ),
+              if (autoRepair?.autoResumeFor(entry.streamId) != null)
+                ListTile(
+                  leading: const Icon(Icons.stop_circle_outlined),
+                  title: Text(l10n.aeicHd_autoStopTitle),
+                  subtitle: Text(l10n.aeicHd_autoStopHint),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    autoRepair!.stopAutoResume(entry.streamId);
                   },
                 ),
               // Can't react to your own photo

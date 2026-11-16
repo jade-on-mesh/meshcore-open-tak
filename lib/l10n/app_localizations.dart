@@ -133,6 +133,54 @@ abstract class AppLocalizations {
     Locale('zh'),
   ];
 
+  /// No description provided for @aeicHd_askForRest.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask for the rest'**
+  String get aeicHd_askForRest;
+
+  /// No description provided for @aeicHd_askForRestHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask whoever has this picture for the packets that didn\'t arrive.'**
+  String get aeicHd_askForRestHint;
+
+  /// No description provided for @aeicHd_askedForRest.
+  ///
+  /// In en, this message translates to:
+  /// **'Asked for the missing packets. Whoever has the picture sends them on MediaMesh.'**
+  String get aeicHd_askedForRest;
+
+  /// No description provided for @aeicHd_autoResuming.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting the rest automatically'**
+  String get aeicHd_autoResuming;
+
+  /// No description provided for @aeicHd_autoResumingTry.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting the rest automatically · try {count}'**
+  String aeicHd_autoResumingTry(int count);
+
+  /// No description provided for @aeicHd_autoStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get aeicHd_autoStop;
+
+  /// No description provided for @aeicHd_autoStopTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop getting the rest'**
+  String get aeicHd_autoStopTitle;
+
+  /// No description provided for @aeicHd_autoStopHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The app keeps asking for the missing packets until the picture is whole. Ask for the rest starts it again.'**
+  String get aeicHd_autoStopHint;
+
   /// No description provided for @appSettings_advertAlerts.
   ///
   /// In en, this message translates to:
