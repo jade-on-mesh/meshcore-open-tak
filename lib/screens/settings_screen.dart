@@ -661,7 +661,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       children: [
         MeshNavTile(
           icon: Icons.person_outline,
-          title: l10n.settings_nodeName,
+          title: l10n.settings_infoName,
           subtitle: connected
               ? connector.selfName ?? l10n.settings_nodeNameNotSet
               : offline,
@@ -1454,7 +1454,7 @@ class _NodeNameDialogState extends State<_NodeNameDialog> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return AlertDialog(
-      title: Text(l10n.settings_nodeName),
+      title: Text(l10n.settings_infoName),
       content: TextField(
         controller: _controller,
         decoration: InputDecoration(
