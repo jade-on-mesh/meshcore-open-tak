@@ -113,14 +113,55 @@ void main() {
       await after(const Duration(seconds: 1));
       expect(repair.asked, hasLength(2));
 
-      // The longest pause repeats.
-      for (var i = 2; i < 8; i++) {
+      // The longest pause repeats, up to the tries that bring nothing.
+      final cap = AeicHdRepairService.autoMaxIdleTries;
+      for (var i = 2; i < cap; i++) {
         final k = min(i, AeicHdRepairService.autoBackoff.length - 1);
         await after(AeicHdRepairService.autoBackoff[k]);
       }
-      expect(repair.asked, hasLength(8));
+      expect(repair.asked, hasLength(cap));
+      // Then it stops by itself rather than asking every 5 minutes all day.
+      for (var i = 0; i < 4; i++) {
+        await after(AeicHdRepairService.autoBackoff.last);
+      }
+      expect(repair.asked, hasLength(cap));
+      expect(repair.autoResumeStopped(e.streamId), isTrue);
     },
   );
+
+  test('a try that brings chunks counts again from there', () async {
+    final e = await partial(11);
+    await repair.autoResumeTick();
+    final cap = AeicHdRepairService.autoMaxIdleTries;
+    for (var i = 0; i < cap - 1; i++) {
+      final k = min(i, AeicHdRepairService.autoBackoff.length - 1);
+      await after(AeicHdRepairService.autoBackoff[k]);
+    }
+    expect(repair.asked, hasLength(cap - 1));
+    // One more chunk arrived meanwhile: the count starts over.
+    final set = hdImage(11);
+    reassembler.expectResend(e.key);
+    await store.handleOutcome(reassembler.addChunk(set.blobs[1]), channelIndex: 0);
+    for (var i = 0; i < cap; i++) {
+      await after(AeicHdRepairService.autoBackoff.last);
+    }
+    expect(repair.asked.length, greaterThan(cap));
+  });
+
+  test('an answer only fills an image this phone is missing pieces of', () {
+    final set = hdImage(21);
+    const key = ImageStreamKey(senderPrefix: 0x8c41, imgId: 21, channelIndex: 0);
+    // Never heard: an answer to someone else's request isn't a new image.
+    expect(reassembler.wantsResend(key), isFalse);
+    // Under way here: wanted.
+    reassembler.addChunk(set.blobs[0]);
+    expect(reassembler.wantsResend(key), isTrue);
+    // Completed: wanted no more (it was a fresh copy every retry).
+    for (final b in set.blobs.skip(1)) {
+      reassembler.addChunk(b);
+    }
+    expect(reassembler.wantsResend(key), isFalse);
+  });
 
   test('waits while the radio is disconnected', () async {
     await partial(9);

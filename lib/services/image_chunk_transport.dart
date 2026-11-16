@@ -865,12 +865,24 @@ class ImageReassembler {
 
   /// A resend of [key]'s missing chunks was asked for: when they come, the
   /// parked chunks are used again.
+  ///
+  /// See also [wantsResend].
   void expectResend(ImageStreamKey key) {
     _resuming.add(key);
     while (_resuming.length > maxParkedStreams) {
       _resuming.remove(_resuming.first);
     }
   }
+
+  /// Whether a resent chunk of [key] (an answer to someone's "ask for the
+  /// rest") is any use here: this phone has that image under way, or parked
+  /// incomplete. Answers to others' requests for an image this phone already
+  /// has, or never had, are not a new image: fed in after the completed one
+  /// was forgotten (3 minutes), every retry made a fresh copy of it in the chat.
+  bool wantsResend(ImageStreamKey key) =>
+      _pending.containsKey(key) ||
+      _parked.containsKey(key) ||
+      _resuming.contains(key);
 
   ImageReassembler({
     this.selfPrefix,
