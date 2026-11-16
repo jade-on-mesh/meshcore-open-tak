@@ -298,6 +298,13 @@ class AeicHdRepairService extends ChangeNotifier {
   /// Images older than this aren't asked for automatically any more.
   static const Duration autoMaxAge = Duration(hours: 24);
 
+  /// Automatic tries in a row that brought no new chunk before it stops by
+  /// itself (10 s, 30 s, 1, 2, 5 and 5 minutes: about a quarter of an hour).
+  /// Every try puts a request, and every holder's answer, on the air; one
+  /// image nobody could send kept that going every 5 minutes for a day.
+  /// "Ask for the rest" starts it again.
+  static const int autoMaxIdleTries = 6;
+
   /// How often auto-resume looks for work.
   static const Duration autoTick = Duration(seconds: 5);
 
@@ -417,6 +424,17 @@ class AeicHdRepairService extends ChangeNotifier {
       }
       if (due != null) {
         final a = _auto[due]!;
+        final got = wanted[due]!.receivedChunks;
+        if (got > a.best) {
+          a.best = got;
+          a.idle = 0;
+        }
+        if (a.idle >= autoMaxIdleTries) {
+          _log('auto-resume: $autoMaxIdleTries tries brought nothing for $due');
+          stopAutoResume(due);
+          return;
+        }
+        a.idle++;
         a.attempts++;
         a.nextAt = null;
         changed = false;
@@ -546,9 +564,23 @@ class AeicHdRepairService extends ChangeNotifier {
             )] =
             DateTime.now();
       }
+      // Only for an image this phone is missing pieces of. Others' answers, for
+      // an image already here or never here, made a new copy of it in the
+      // chat once the completed one was forgotten: with someone's auto-resume
+      // retrying every 5 minutes, the same photo came round and round.
+      if (h == null ||
+          !reassembler.wantsResend(
+            ImageStreamKey(
+              senderPrefix: h.senderPrefix,
+              imgId: h.imgId,
+              channelIndex: parsed.channelIndex,
+            ),
+          )) {
+        return;
+      }
       _log(
-        'got chunk ${h?.index ?? '?'} of '
-        '${h == null ? '?' : '${h.senderPrefix.toRadixString(16).padLeft(4, '0')}/${h.imgId}'} '
+        'got chunk ${h.index} of '
+        '${h.senderPrefix.toRadixString(16).padLeft(4, '0')}/${h.imgId} '
         'on slot ${parsed.channelIndex}',
       );
       reassembler.addChunk(
@@ -830,5 +862,9 @@ class AeicHdRepairService extends ChangeNotifier {
 class _AutoState {
   int attempts = 0;
   DateTime? nextAt;
+
+  /// The most chunks the image had at a try, and tries since that went up.
+  int best = -1;
+  int idle = 0;
   _AutoState({this.nextAt});
 }
