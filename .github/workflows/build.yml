@@ -447,6 +447,18 @@ jobs:
           cp /tmp/aom-ios/libaom.a $out/lib/
           lipo -info $out/lib/libaom.a
           cp /tmp/aom/aom/*.h $out/include/aom/
+      # AI sketch HD: the codec, run inside the app (tool/build_aeic_hd_ios.sh;
+      # self-tested in aeic-hd-ios.yml).
+      - name: Cache AI sketch HD codec (iOS)
+        id: aeicios
+        uses: actions/cache@v4
+        with:
+          path: third_party/aeic_hd/ios
+          key: aeic-hd-ios-arm64-${{ hashFiles('tool/build_aeic_hd_ios.sh', 'tool/aeic_desktop/recovery_inprocess.cpp', 'third_party/aeic_hd/aeic_hd_ios.cpp') }}
+      - name: Build AI sketch HD codec (iOS)
+        if: steps.aeicios.outputs.cache-hit != 'true'
+        timeout-minutes: 40
+        run: bash tool/build_aeic_hd_ios.sh third_party/aeic_hd/ios
       - id: fv
         shell: bash
         run: echo "v=$(tr -d '[:space:]' < .flutter-version)" >> "$GITHUB_OUTPUT"
@@ -476,7 +488,7 @@ jobs:
           nm -gU "$bin" > /tmp/runner-syms.txt || true
           wc -l /tmp/runner-syms.txt
           missing=0
-          for sym in codec2_create ggwave_init vox_av1_encode vox_av1_decode; do
+          for sym in codec2_create ggwave_init vox_av1_encode vox_av1_decode aeic_hd_run; do
             grep -q " _$sym\$" /tmp/runner-syms.txt || { echo "::error::$sym is not in Runner"; missing=1; }
           done
           exit $missing

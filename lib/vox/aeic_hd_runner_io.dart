@@ -7,7 +7,8 @@
 // Contents/MacOS. Each job runs it once: it loads, runs and frees one model
 // stage at a time, each stage in a child process of its own (in-process on
 // Windows), and prints a line per stage, which is where the progress figure
-// comes from.
+// comes from. iOS can't start programs, so on iPhone the same program is
+// linked into the app and run in-process (aeic_hd_ios_ffi.dart).
 
 import 'dart:async';
 import 'dart:convert';
@@ -21,6 +22,8 @@ import 'package:ffi/ffi.dart' as pffi;
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+
+import 'aeic_hd_ios_ffi.dart';
 
 class AeicHdDownloadCancelled implements Exception {
   const AeicHdDownloadCancelled();
@@ -49,7 +52,8 @@ class AeicHdRunner {
   final String baseUrl;
   AeicHdRunner(this.baseUrl);
 
-  bool get supported => Platform.isAndroid || _desktopProgram() != null;
+  bool get supported =>
+      Platform.isAndroid || AeicHdIos.available || _desktopProgram() != null;
 
   /// The desktop app's bundled codec program, or null when this build (or
   /// platform) has none.
@@ -82,6 +86,7 @@ class AeicHdRunner {
       File('${(await _packDir()).path}/.complete');
 
   Future<int?> totalMemory() async {
+    if (Platform.isIOS) return AeicHdIos.totalMemory();
     if (!Platform.isAndroid) return _desktopMemory();
     try {
       final m = await _channel.invokeMapMethod<String, Object?>('memory');
@@ -166,6 +171,8 @@ class AeicHdRunner {
     _cancelDownload = false;
     final dir = await _packDir();
     await dir.create(recursive: true);
+    // iPhone: ~2 GB that can be downloaded again stays out of backups.
+    AeicHdIos.excludeFromBackup(dir.parent.path);
     final client = http.Client();
     try {
       final manifestResponse = await client.get(
@@ -547,13 +554,17 @@ class AeicHdRunner {
   void cancelJob() {
     _cancelJob = true;
     _process?.kill(ProcessSignal.sigkill);
+    AeicHdIos.cancel();
   }
 
   // Four on a phone (its big cores); up to eight on a computer. ncnn gives
   // the same numbers whatever the thread count.
   static int get _threads => math.max(
     1,
-    math.min(Platform.isAndroid ? 4 : 8, Platform.numberOfProcessors),
+    math.min(
+      Platform.isAndroid || Platform.isIOS ? 4 : 8,
+      Platform.numberOfProcessors,
+    ),
   );
 
   static bool _contextStage(String name) =>
@@ -611,6 +622,9 @@ class AeicHdRunner {
     void Function(double) onProgress,
   ) async {
     _cancelJob = false;
+    if (AeicHdIos.available) {
+      return _runInApp(args, success, stages, onProgress);
+    }
     final program = await _program();
     final process = await Process.start(program, args);
     _process = process;
@@ -650,5 +664,76 @@ class AeicHdRunner {
       );
     }
     onProgress(1);
+  }
+
+  /// iPhone: the same program, linked into the app (aeic_hd_ios_ffi.dart),
+  /// run on a background isolate with its output in a log file, which is
+  /// read as it grows for the per-stage progress lines.
+  Future<void> _runInApp(
+    List<String> args,
+    String success,
+    int stages,
+    void Function(double) onProgress,
+  ) async {
+    final work = await _workDir();
+    final log = File('${work.path}/codec.log');
+    var read = 0;
+    var ended = 0;
+    var ok = false;
+    var partial = '';
+    final tail = <String>[];
+    Future<void> poll() async {
+      if (!await log.exists()) return;
+      final length = await log.length();
+      if (length <= read) return;
+      final raf = await log.open();
+      try {
+        await raf.setPosition(read);
+        final bytes = await raf.read(length - read);
+        read += bytes.length;
+        final lines = (partial + utf8.decode(bytes, allowMalformed: true))
+            .split('\n');
+        partial = lines.removeLast();
+        for (final line in lines) {
+          if (line.startsWith('STAGE_END')) {
+            ended++;
+            if (stages > 0) onProgress(math.min(0.97, ended / stages));
+          } else if (line.startsWith(success)) {
+            ok = true;
+          }
+          tail.add(line);
+          if (tail.length > 12) tail.removeAt(0);
+        }
+      } finally {
+        await raf.close();
+      }
+    }
+
+    try {
+      final job = AeicHdIos.run(args, log.path);
+      var done = false;
+      unawaited(job.whenComplete(() => done = true));
+      while (!done) {
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        await poll();
+      }
+      final code = await job;
+      await poll();
+      if (partial.isNotEmpty) {
+        if (partial.startsWith(success)) ok = true;
+        tail.add(partial);
+      }
+      if (_cancelJob || code == 130) throw const AeicHdJobCancelled();
+      if (code != 0 || !ok) {
+        throw StateError(
+          'AI sketch HD codec failed (exit $code): ${tail.join(' | ')}',
+        );
+      }
+      onProgress(1);
+    } finally {
+      try {
+        await work.delete(recursive: true);
+      } catch (_) {}
+    }
   }
 }

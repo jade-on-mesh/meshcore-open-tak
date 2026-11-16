@@ -33,6 +33,10 @@ target 'Runner' do
   # AV1 still images (libaom, BSD-2) for photo messages; CI builds libaom
   # into third_party/vox_av1/aom-ios/, otherwise a stub builds.
   pod 'vox_av1', :path => '../third_party/vox_av1'
+  # AI sketch HD's codec (mikecarper/AEIC on ncnn), run inside the app
+  # (lib/vox/aeic_hd_ios_ffi.dart); CI builds it into
+  # third_party/aeic_hd/ios/lib/ with tool/build_aeic_hd_ios.sh.
+  pod 'aeic_hd', :path => '../third_party/aeic_hd'
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 end
@@ -62,6 +66,12 @@ post_install do |installer|
   # linker drops them, and iPhones had no video.
   if File.exist?(File.join(__dir__, '..', 'third_party', 'vox_av1', 'aom-ios', 'lib', 'libaom.a'))
     ffi_symbols += %w[vox_av1_encode vox_av1_decode vox_av1_clip_encode vox_av1_clip_decode]
+  end
+  # AI sketch HD: the backup exclusion is always in the pod; the codec only
+  # when CI built it.
+  ffi_symbols << 'aeic_hd_exclude_from_backup'
+  if File.exist?(File.join(__dir__, '..', 'third_party', 'aeic_hd', 'ios', 'lib', 'libaeic_hd_codec.a'))
+    ffi_symbols += %w[aeic_hd_available aeic_hd_run aeic_hd_cancel aeic_hd_total_memory]
   end
   # -u pulls each one out of its static library; -exported_symbol makes it a
   # dead-strip root and keeps it in Runner's export table for dlsym.

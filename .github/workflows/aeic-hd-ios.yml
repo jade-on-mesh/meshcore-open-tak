@@ -1,0 +1,63 @@
+name: AEIC HD iPhone codec
+
+# Builds AI sketch HD's codec for iPhone (tool/build_aeic_hd_ios.sh) and
+# checks it two ways: the same in-app code built for this Mac runs the app's
+# self-test with the real model pack (tool/aeic_desktop/self_test.py: encoding
+# the sample must match the reference byte for byte, decoding must come within
+# 35 dB), and an unsigned iPhone build must carry the codec in the Runner
+# binary for lib/vox/aeic_hd_ios_ffi.dart to find. build.yml and
+# testflight.yml build the library again for the app.
+
+on:
+  push:
+    branches-ignore:
+      - main
+    paths:
+      - tool/build_aeic_hd_ios.sh
+      - tool/aeic_desktop/**
+      - third_party/aeic_hd/**
+      - lib/vox/aeic_hd_ios_ffi.dart
+      - lib/vox/aeic_hd_runner_io.dart
+      - ios/Podfile
+      - .github/workflows/aeic-hd-ios.yml
+  workflow_dispatch:
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build (iPhone library and the Mac self-test program)
+        env:
+          AEIC_HD_HOST_DRIVER: "1"
+        run: bash tool/build_aeic_hd_ios.sh third_party/aeic_hd/ios
+      - name: Self-test the in-app code path (Mac, arm64)
+        run: python3 tool/aeic_desktop/self_test.py third_party/aeic_hd/ios/aeic_hd_host "$RUNNER_TEMP/aeic-pack"
+      - name: Drop the Mac program before the app build
+        run: rm -f third_party/aeic_hd/ios/aeic_hd_host
+      - id: fv
+        shell: bash
+        run: echo "v=$(tr -d '[:space:]' < .flutter-version)" >> "$GITHUB_OUTPUT"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.fv.outputs.v }}
+          channel: "stable"
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - name: Build the app (unsigned)
+        run: flutter build ios --release --no-pub --no-codesign
+      - name: Check the codec is in Runner
+        run: |
+          set -euo pipefail
+          nm -gU build/ios/iphoneos/Runner.app/Runner > /tmp/runner-syms.txt || true
+          missing=0
+          for sym in aeic_hd_run aeic_hd_available aeic_hd_cancel aeic_hd_total_memory aeic_hd_exclude_from_backup; do
+            grep -q " _$sym\$" /tmp/runner-syms.txt || { echo "::error::$sym is not in Runner"; missing=1; }
+          done
+          ls -la build/ios/iphoneos/Runner.app/Runner
+          exit $missing
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aeic-hd-ios
+          path: third_party/aeic_hd/ios/lib/libaeic_hd_codec.a
