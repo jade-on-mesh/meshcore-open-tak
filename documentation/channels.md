@@ -131,9 +131,7 @@ The app bar overflow menu (⋮) has **Filter messages in this channel** (shown w
 
 ### Channel Auto-Resend
 
-With **Resend channel messages until they travel far enough** on (App Settings → Messaging), the app waits after each channel send and checks how far the message was heard repeated. If no repeat reached the required hop count, it sends the message again, up to the configured number of times.
-
-Where your radio only hears nearby repeaters, turn on **Also count different nearby repeaters**: the message then also counts as sent once the required number of *different* first-hop repeaters have repeated it, across all attempts. Your own radio's echo and zero-hop echoes don't count.
+MeshCore Open TAK leaves out upstream's **Resend channel messages until they travel far enough**: Keymind Cascade repeaters make it unneeded, and its extra copies cost airtime. A channel message is sent once.
 
 ### Context Actions (Long-Press / Right-Click)
 
