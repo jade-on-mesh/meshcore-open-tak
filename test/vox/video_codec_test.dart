@@ -118,6 +118,34 @@ void main() {
       expect(big, (160, 12));
     });
 
+    test('SuperMax: four times Max\'s pixels, in Max\'s airtime', () {
+      expect(VoxVideoDetail.superMax.budget, VoxVideoDetail.maximum.budget);
+      expect(voxVideoSuperMaxSide, voxVideoSourceSide * 2);
+      expect(VoxVideoDetail.superMax.sourceSide, voxVideoSuperMaxSide);
+      expect(VoxVideoDetail.maximum.sourceSide, voxVideoSourceSide);
+      for (final s in VoxVideoDetail.superMax.shapes) {
+        expect(s.$1, voxVideoSuperMaxSide);
+      }
+      // A short clip gets more frames a second than a long one.
+      final short = voxPickVideoShape(
+        36000,
+        1,
+        aspect: 16 / 9,
+        maxSide: voxVideoSuperMaxSide,
+        shapes: voxVideoSuperMaxShapes,
+      );
+      final long = voxPickVideoShape(
+        36000,
+        4,
+        aspect: 16 / 9,
+        maxSide: voxVideoSuperMaxSide,
+        shapes: voxVideoSuperMaxShapes,
+      );
+      expect(short.$1, voxVideoSuperMaxSide);
+      expect(long.$1, voxVideoSuperMaxSide);
+      expect(short.$2, greaterThan(long.$2));
+    });
+
     test('never above the source', () {
       final s = voxPickVideoShape(200000, 2, aspect: 1, maxSide: 128);
       expect(s.$1, lessThanOrEqualTo(128));
@@ -166,6 +194,24 @@ void main() {
 
       final frames = voxDecodeVideoPayload(enc.payload, av1.decodeClip)!;
       expect(frames.count, enc.preview.count);
+    });
+
+    test('SuperMax sends 512 px frames, cut to its length', () {
+      final av1 = _FakeAv1();
+      final enc = voxEncodeVideo(
+        source: _clip(512, 288, 12, 6),
+        detail: VoxVideoDetail.superMax,
+        encode: av1.encodeClip,
+        decode: av1.decodeClip,
+        encodeStill: av1.encodeStill,
+      );
+      expect(enc.preview.width, voxVideoSuperMaxSide);
+      expect(
+        enc.payload.length,
+        lessThanOrEqualTo(VoxVideoDetail.superMax.budget),
+      );
+      expect(enc.durationMs, voxVideoSuperMaxSeconds * 1000);
+      expect(voxVideoInfo(enc.payload)!.width, voxVideoSuperMaxSide);
     });
 
     test('the thumbnail is where a photo has it', () {

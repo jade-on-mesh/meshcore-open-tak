@@ -46,6 +46,14 @@ const int voxVideoSourceFps = 12;
 /// Longest clip, whatever the budget.
 const int voxVideoMaxSeconds = 15;
 
+/// SuperMax's frame size (long side): twice Max's 256 each way, so four
+/// times its pixels. The clip is read at this size for it.
+const int voxVideoSuperMaxSide = 512;
+
+/// SuperMax's longest clip: four times the pixels in Max's one transfer
+/// leaves room for a few seconds at a few frames a second.
+const int voxVideoSuperMaxSeconds = 4;
+
 /// Sound mode byte for "no sound".
 const int voxVideoNoSound = 255;
 
@@ -62,11 +70,14 @@ const int voxVideoFinalSpeed = 4;
 const double voxVideoMinBitsPerPixel = 0.12;
 
 /// How much airtime to spend, in voice messages, as photos do. Max is
-/// exactly Super Sharp: the most one transfer carries.
+/// exactly Super Sharp: the most one transfer carries. SuperMax spends the
+/// same, on four times Max's resolution ([voxVideoSuperMaxSide]) for a
+/// shorter clip.
 enum VoxVideoDetail {
   quick(4, 'Quick', 6),
   clear(8, 'Clear', 10),
-  maximum(14, 'Max', voxVideoMaxSeconds);
+  maximum(14, 'Max', voxVideoMaxSeconds),
+  superMax(14, 'SuperMax', voxVideoSuperMaxSeconds);
 
   const VoxVideoDetail(this.multiple, this.label, this.maxSeconds);
   final int multiple;
@@ -76,12 +87,20 @@ enum VoxVideoDetail {
   final int maxSeconds;
   int get budget => voxImageBaseBudget * multiple;
 
+  /// The long side the clip is read at for this level.
+  int get sourceSide =>
+      this == superMax ? voxVideoSuperMaxSide : voxVideoSourceSide;
+
+  /// The frame sizes and rates this level picks from.
+  List<(int side, int fps)> get shapes =>
+      this == superMax ? voxVideoSuperMaxShapes : voxVideoShapes;
+
   /// Box-blur radius and passes for what lies outside faces and text, when
   /// there are some: as for photos, gentler as the budget grows.
   (int radius, int passes) get backgroundSoften => switch (this) {
     quick => (2, 2),
     clear => (1, 2),
-    maximum => (1, 1),
+    maximum || superMax => (1, 1),
   };
 }
 
@@ -98,6 +117,16 @@ const List<(int side, int fps)> voxVideoShapes = [
   (192, 12),
   (224, 12),
   (256, 12),
+];
+
+/// SuperMax's shapes: always [voxVideoSuperMaxSide], the frame rate what the
+/// clip's length leaves room for.
+const List<(int side, int fps)> voxVideoSuperMaxShapes = [
+  (voxVideoSuperMaxSide, 4),
+  (voxVideoSuperMaxSide, 6),
+  (voxVideoSuperMaxSide, 8),
+  (voxVideoSuperMaxSide, 10),
+  (voxVideoSuperMaxSide, 12),
 ];
 
 /// Frames of [width] x [height] at [fps], back to back in [rgb].
@@ -211,9 +240,10 @@ typedef VoxAv1ClipDecode =
   required double aspect,
   int maxSide = voxVideoSourceSide,
   int maxFps = voxVideoSourceFps,
+  List<(int side, int fps)> shapes = voxVideoShapes,
 }) {
-  var pick = voxVideoShapes.first;
-  for (final s in voxVideoShapes) {
+  var pick = shapes.first;
+  for (final s in shapes) {
     if (s.$1 > maxSide || s.$2 > maxFps) continue;
     final (w, h) = voxVideoSize(aspect, s.$1);
     final pixels = w * h * s.$2 * max(seconds, 0.5);
@@ -289,8 +319,10 @@ VoxEncodedVideo voxEncodeVideo({
     budget,
     seconds,
     aspect: aspect,
-    maxSide: maxSide,
+    // SuperMax keeps its size even from a smaller clip.
+    maxSide: max(maxSide, detail.shapes.first.$1),
     maxFps: clip.fps,
+    shapes: detail.shapes,
   );
 
   // Smallest quantizer (best quality) that fits, by bisection.
@@ -321,11 +353,11 @@ VoxEncodedVideo voxEncodeVideo({
       fit = found;
       break;
     }
-    final i = voxVideoShapes.indexOf(shape);
+    final i = detail.shapes.indexOf(shape);
     if (i <= 0) {
       throw StateError('The clip does not fit in ${detail.budget} bytes');
     }
-    shape = voxVideoShapes[i - 1];
+    shape = detail.shapes[i - 1];
   }
   // A slower final pass at the quantizer found (or the next ones up, if it
   // came out bigger); the trial encode if none fits.

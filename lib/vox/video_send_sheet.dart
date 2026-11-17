@@ -139,6 +139,12 @@ class _VoxVideoSendSheetState extends State<VoxVideoSendSheet> {
   bool _sending = false;
   String? _error;
   VoxPickedVideo? _picked;
+
+  /// SuperMax's copy of the clip, read at [voxVideoSuperMaxSide] the first
+  /// time it's chosen, cleaned up and searched for faces and text on its own.
+  VoxPickedVideo? _pickedHi;
+  VoxVideoFrames? _cleanHi;
+  VoxFocusRegions? _focusHi;
   VoxEncodedVideo? _encoded;
   Uint8List? _previewWav;
   int _job = 0;
@@ -189,7 +195,7 @@ class _VoxVideoSendSheetState extends State<VoxVideoSendSheet> {
         _clean = clean;
         _prep = report;
       }
-      if (_focus.isEmpty) _focus = await _findFocus(_frames!);
+      if (_focus.isEmpty) _focus = await _findFocus(_clean ?? picked.frames);
     } catch (e) {
       _cleanUp = false;
       _error = 'Couldn\'t clean up this video: $e';
@@ -197,9 +203,49 @@ class _VoxVideoSendSheetState extends State<VoxVideoSendSheet> {
     if (mounted) setState(() => _preparing = false);
   }
 
-  /// The frames to encode: cleaned up, or as picked.
-  VoxVideoFrames? get _frames =>
-      _cleanUp && _clean != null ? _clean : _picked?.frames;
+  bool get _superMax => _detail == VoxVideoDetail.superMax;
+
+  /// The frames to encode: cleaned up, or as picked (SuperMax: its own,
+  /// larger copy).
+  VoxVideoFrames? get _frames => _superMax
+      ? (_cleanUp && _cleanHi != null ? _cleanHi : _pickedHi?.frames)
+      : (_cleanUp && _clean != null ? _clean : _picked?.frames);
+
+  /// Faces and text in [_frames]' pixels.
+  VoxFocusRegions get _focusNow =>
+      _superMax ? (_focusHi ?? VoxFocusRegions.none) : _focus;
+
+  /// SuperMax: reads the clip again at [voxVideoSuperMaxSide] (its first
+  /// [voxVideoSuperMaxSeconds]), cleans it up when that's on and finds faces
+  /// and text on it, each once.
+  Future<void> _ensureHi() async {
+    if (_pickedHi != null &&
+        (!_cleanUp || _cleanHi != null) &&
+        _focusHi != null) {
+      return;
+    }
+    final voice = context.read<VoxVoiceService>();
+    setState(() => _preparing = true);
+    try {
+      final hi = _pickedHi ??= await VoxVideoSource.read(
+        widget.path,
+        maxSide: voxVideoSuperMaxSide,
+        maxSeconds: VoxVideoDetail.superMax.maxSeconds,
+      );
+      if (_cleanUp && _cleanHi == null) {
+        try {
+          final (clean, _) = await voice.prepareVideo(hi.frames);
+          _cleanHi = clean;
+        } catch (_) {
+          // Encode it as picked.
+        }
+      }
+      _focusHi ??= await _findFocus(_cleanHi ?? hi.frames);
+    } catch (e) {
+      _error = 'Couldn\'t read this video for SuperMax: $e';
+    }
+    if (mounted) setState(() => _preparing = false);
+  }
 
   Future<VoxFocusRegions> _findFocus(VoxVideoFrames f) async {
     final text = <VoxRect>[], faces = <VoxRect>[];
@@ -226,11 +272,15 @@ class _VoxVideoSendSheetState extends State<VoxVideoSendSheet> {
   }
 
   Future<void> _encode() async {
+    if (_superMax) await _ensureHi();
+    if (!mounted) return;
     final picked = _picked;
     final frames = _frames;
     if (picked == null || frames == null) return;
-    final useFocus = _useFocus && !_focus.isEmpty;
-    final key = (_detail, _withSound, _cleanUp && _clean != null, useFocus);
+    final focus = _focusNow;
+    final useFocus = _useFocus && !focus.isEmpty;
+    final cleaned = _cleanUp && (_superMax ? _cleanHi : _clean) != null;
+    final key = (_detail, _withSound, cleaned, useFocus);
     final job = ++_job;
     setState(() {
       _encoding = true;
@@ -247,7 +297,7 @@ class _VoxVideoSendSheetState extends State<VoxVideoSendSheet> {
           frames,
           _detail,
           sound: sound,
-          focus: useFocus ? _focus : VoxFocusRegions.none,
+          focus: useFocus ? focus : VoxFocusRegions.none,
         );
       }
       _cache[key] = enc;
@@ -408,6 +458,7 @@ class _VoxVideoSendSheetState extends State<VoxVideoSendSheet> {
                   VoxVideoDetail.quick => 'Up to ${_detail.maxSeconds}s, a Sharp photo\'s airtime',
                   VoxVideoDetail.clear => 'Up to ${_detail.maxSeconds}s, 8× a voice message',
                   VoxVideoDetail.maximum => 'Up to ${_detail.maxSeconds}s, a Super Sharp photo\'s airtime',
+                  VoxVideoDetail.superMax => 'Up to ${_detail.maxSeconds}s at $voxVideoSuperMaxSide px, 4× Max\'s resolution in Max\'s airtime',
                 }}'
                 ' · ${_airFor(_detail)}',
                 style: theme.textTheme.bodySmall,
@@ -448,7 +499,7 @@ class _VoxVideoSendSheetState extends State<VoxVideoSendSheet> {
                           await _encode();
                         },
                 ),
-              if (!_focus.isEmpty)
+              if (!_focusNow.isEmpty)
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Sharpen faces and text'),

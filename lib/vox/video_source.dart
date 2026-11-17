@@ -83,15 +83,20 @@ class VoxVideoSource {
     return null;
   }();
 
-  /// Reads the first [voxVideoMaxSeconds] of the video at [path].
-  static Future<VoxPickedVideo> read(String path) async {
+  /// Reads the first [maxSeconds] of the video at [path], at most [maxSide]
+  /// px (SuperMax reads it again at [voxVideoSuperMaxSide]).
+  static Future<VoxPickedVideo> read(
+    String path, {
+    int maxSide = voxVideoSourceSide,
+    int maxSeconds = voxVideoMaxSeconds,
+  }) async {
     final r = !kIsWeb && Platform.isLinux
-        ? await _extractWithFfmpeg(path)
+        ? await _extractWithFfmpeg(path, maxSide, maxSeconds)
         : await _channel.invokeMapMethod<String, Object?>('extract', {
             'path': path,
-            'maxSide': voxVideoSourceSide,
+            'maxSide': maxSide,
             'fps': voxVideoSourceFps,
-            'maxSeconds': voxVideoMaxSeconds,
+            'maxSeconds': maxSeconds,
           });
     if (r == null) throw StateError('Couldn\'t read the video');
     final framesFile = File(r['frames']! as String);
@@ -125,18 +130,22 @@ class VoxVideoSource {
 
   /// Linux: the same answer as the platform readers, from two ffmpeg runs
   /// (frames, then sound). ffmpeg turns phone videos upright itself.
-  static Future<Map<String, Object?>> _extractWithFfmpeg(String path) async {
+  static Future<Map<String, Object?>> _extractWithFfmpeg(
+    String path,
+    int side,
+    int maxSeconds,
+  ) async {
     final ffmpeg = _ffmpeg;
     if (ffmpeg == null) throw StateError(unsupportedReason);
     final tmp = await Directory.systemTemp.createTemp('vox_video');
     final frames = File('${tmp.path}/frames.rgb');
-    const side = voxVideoSourceSide, fps = voxVideoSourceFps;
+    const fps = voxVideoSourceFps;
     final picture = await Process.run(ffmpeg, [
       '-nostdin',
       '-hide_banner',
       '-y',
       '-t',
-      '$voxVideoMaxSeconds',
+      '$maxSeconds',
       '-i',
       path,
       '-an',
@@ -172,7 +181,7 @@ class VoxVideoSource {
       '-hide_banner',
       '-y',
       '-t',
-      '$voxVideoMaxSeconds',
+      '$maxSeconds',
       '-i',
       path,
       '-vn',
