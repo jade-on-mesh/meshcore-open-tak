@@ -103,12 +103,7 @@ void main() {
       const Duration(milliseconds: 4000),
     );
     expect(
-      voxBurstGap(
-        model: model,
-        seen: model * 5,
-        samples: 5,
-        floor: floor,
-      ),
+      voxBurstGap(model: model, seen: model * 5, samples: 5, floor: floor),
       model * 3,
     );
     expect(
