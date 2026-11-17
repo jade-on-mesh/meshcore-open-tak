@@ -37,13 +37,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aeicHd_packetLog => 'Packet log';
 
   @override
-  String get aeicHd_packetLogHint => 'Every AI sketch HD chunk sent and heard, with times and signal, to copy or share';
+  String get aeicHd_packetLogHint =>
+      'Every AI sketch HD chunk sent and heard, with times and signal, to copy or share';
 
   @override
   String get aeicHd_packetLogCopied => 'Packet log copied';
 
   @override
-  String get aeicHd_packetLogEmpty => 'Nothing logged yet. Send or receive an AI sketch HD, then look again.';
+  String get aeicHd_packetLogEmpty =>
+      'Nothing logged yet. Send or receive an AI sketch HD, then look again.';
 
   @override
   String get aeicHd_autoStopHint =>
