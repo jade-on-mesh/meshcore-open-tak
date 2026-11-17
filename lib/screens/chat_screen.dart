@@ -449,6 +449,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildScaffold(BuildContext context) {
     return Scaffold(
+      // The chat style's own app background, when that's switched on
+      // (Settings > Appearance > Chat style); else the theme's.
+      backgroundColor: MeshChatLook.of(
+        context,
+      ).background(dark: Theme.of(context).brightness == Brightness.dark),
       appBar: AppBar(
         leading: _searching
             ? IconButton(
@@ -982,11 +987,19 @@ class _ChatScreenState extends State<ChatScreen> {
                       child: bubble,
                     )
                   : bubble;
-              final child = isUnreadAnchor || startsDay
+              // iMessage and Google Messages: a time header after an hour's
+              // pause too.
+              final pause =
+                  !startsDay &&
+                  look.pauseBetween(
+                    reversedMessages[messageIndex + 1].receivedAt,
+                    message.receivedAt,
+                  );
+              final child = isUnreadAnchor || startsDay || pause
                   ? Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (startsDay)
+                        if (startsDay || pause)
                           ChatDaySeparator(day: message.receivedAt),
                         if (isUnreadAnchor) const UnreadDivider(),
                         shown,
@@ -2267,21 +2280,33 @@ class _MessageBubble extends StatelessWidget {
     final textColor = colors.text;
     final metaColor = colors.meta;
     final discord = look.style == ChatStyle.discord;
-    final signal = look.style == ChatStyle.signal;
-    // Signal names no one in a one-to-one chat, and shows no avatar there;
-    // in a room, the name on a run's first message and the avatar by its
-    // last. Discord: the name and avatar on a run's first message.
-    final signalSolo = signal && !isRoom;
+    final mirc = look.style == ChatStyle.mirc;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    // Signal, iMessage and Google Messages name no one in a one-to-one chat
+    // (Signal and iMessage show no avatar there either); in a room, the name
+    // on a run's first message and the avatar by its last. Discord: the name
+    // and avatar on a run's first message. mIRC names the sender at the start
+    // of the line.
+    final noNameOneToOne = look.bubbleRuns && !isRoom;
+    final noAvatarOneToOne = look.noOneToOneAvatar && !isRoom;
     final showName =
         (!isOutgoing || log) &&
-        !signalSolo &&
+        !mirc &&
+        !noNameOneToOne &&
         !(look.groupsRuns && run.joinsAbove);
     final showAvatar = discord
         ? !run.joinsAbove
-        : signal
+        : look.bubbleRuns
         ? !run.joinsBelow
         : true;
-    final showTime = discord ? false : !(signal && run.joinsBelow);
+    // The time under the text: Discord has it in the header and mIRC at the
+    // start of the line; the bubble styles under a run's last message
+    // (iMessage: never, its time headers say when).
+    final showTime = discord || mirc
+        ? false
+        : look.bubbleRuns
+        ? look.bubbleTimes && !run.joinsBelow
+        : true;
     final avatarSize = discord
         ? discordAvatarSize * textScale.clamp(0.85, 1.4)
         : 32.0;
@@ -2304,6 +2329,37 @@ class _MessageBubble extends StatelessWidget {
     final originalDisplayText = isOutgoing
         ? message.originalText
         : (translatedDisplayText != messageText ? messageText : null);
+    // mIRC: `/me waves` is an action line, `* nick waves`, and every line
+    // starts `[HH:MM] <nick>`.
+    final actionText = mirc ? mircAction(translatedDisplayText) : null;
+    final mircPrefix = mirc
+        ? Text.rich(
+            TextSpan(
+              children: [
+                if (look.logTimestamps)
+                  TextSpan(
+                    text: '${mircTime(message.timestamp)} ',
+                    style: MeshTheme.mono(
+                      fontSize: 14 * textScale,
+                      color: metaColor,
+                    ),
+                  ),
+                TextSpan(
+                  text: actionText != null
+                      ? '* $lineName '
+                      : '${look.logNick(lineName)} ',
+                  style: MeshTheme.mono(
+                    fontSize: 14 * textScale,
+                    fontWeight: actionText != null ? null : FontWeight.w700,
+                    color: actionText != null
+                        ? mircActionColor(dark: dark)
+                        : colors.name ?? textColor,
+                  ),
+                ),
+              ],
+            ),
+          )
+        : null;
 
     Widget buildTextContent() {
       return Row(
@@ -2312,11 +2368,13 @@ class _MessageBubble extends StatelessWidget {
         children: [
           Flexible(
             child: TranslatedMessageContent(
-              displayText: translatedDisplayText,
+              displayText: actionText ?? translatedDisplayText,
               originalText: originalDisplayText,
               style: look.logMono
                   ? MeshTheme.mono(
-                      color: textColor,
+                      color: actionText != null
+                          ? mircActionColor(dark: dark)
+                          : textColor,
                       fontSize: bodyFontSize * textScale,
                     )
                   : TextStyle(
@@ -2363,7 +2421,7 @@ class _MessageBubble extends StatelessWidget {
                 children: [
                   if (!layoutOutgoing &&
                       (!log || look.logAvatars) &&
-                      !signalSolo) ...[
+                      !noAvatarOneToOne) ...[
                     if (!showAvatar)
                       SizedBox(width: avatarSize)
                     // Mine in a log (Discord): my own avatar, not the
@@ -2382,6 +2440,7 @@ class _MessageBubble extends StatelessWidget {
                       compact: compactChrome,
                       maxWidth: constraints.maxWidth,
                       run: run,
+                      leading: mircPrefix,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -2720,7 +2779,7 @@ class _MessageBubble extends StatelessWidget {
             const SizedBox(height: 4),
             Padding(
               padding: EdgeInsets.only(
-                left: layoutOutgoing || signalSolo
+                left: layoutOutgoing || noAvatarOneToOne
                     ? 0
                     : avatarSize + avatarGap + 4,
               ),

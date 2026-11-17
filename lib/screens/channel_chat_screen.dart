@@ -935,6 +935,11 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
 
   Widget _buildScaffold(BuildContext context) {
     return Scaffold(
+      // The chat style's own app background, when that's switched on
+      // (Settings > Appearance > Chat style); else the theme's.
+      backgroundColor: MeshChatLook.of(
+        context,
+      ).background(dark: Theme.of(context).brightness == Brightness.dark),
       appBar: _selecting
           ? _buildSelectionAppBar(context)
           : AppBar(
@@ -1255,11 +1260,25 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                                               child: bubble,
                                             );
                                           }
-                                          if (isUnreadAnchor || startsDay) {
+                                          // iMessage and Google Messages: a time
+                                          // header after an hour's pause too.
+                                          final pause =
+                                              !startsDay &&
+                                              MeshChatLook.of(
+                                                context,
+                                              ).pauseBetween(
+                                                layout
+                                                    .rowAt(index + 1, messages)
+                                                    .receivedAt,
+                                                row.receivedAt,
+                                              );
+                                          if (isUnreadAnchor ||
+                                              startsDay ||
+                                              pause) {
                                             return Column(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                if (startsDay)
+                                                if (startsDay || pause)
                                                   ChatDaySeparator(
                                                     day: row.receivedAt,
                                                   ),
@@ -1646,23 +1665,60 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           );
     final textColor = colors.text;
     final metaColor = colors.meta;
-    // Signal and Discord: a run from one sender drawn as one block.
+    // Signal, iPhone, Android and Discord: a run from one sender drawn as one
+    // block.
     final discord = look.style == ChatStyle.discord;
-    final signal = look.style == ChatStyle.signal;
-    // The name: Discord's on a run's first message, with the time beside it;
-    // Signal's on its first too.
+    final mirc = look.style == ChatStyle.mirc;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    // The name: on a run's first message (Discord's with the time beside
+    // it). mIRC names the sender at the start of the line instead.
     final showName =
-        (!isOutgoing || log) && !(look.groupsRuns && run.joinsAbove);
-    // The avatar: Discord's on a run's first message, Signal's on its last;
-    // the others keep its room.
+        (!isOutgoing || log) && !mirc && !(look.groupsRuns && run.joinsAbove);
+    // The avatar: Discord's on a run's first message, the bubble styles' by
+    // its last; the others keep its room.
     final showAvatar = discord
         ? !run.joinsAbove
-        : signal
+        : look.bubbleRuns
         ? !run.joinsBelow
         : true;
-    // The time under the text: Discord has it in the header; Signal on a
-    // run's last message only.
-    final showTime = discord ? false : !(signal && run.joinsBelow);
+    // The time under the text: Discord has it in the header and mIRC at the
+    // start of the line; the bubble styles under a run's last message
+    // (iMessage: never, its time headers say when).
+    final showTime = discord || mirc
+        ? false
+        : look.bubbleRuns
+        ? look.bubbleTimes && !run.joinsBelow
+        : true;
+    // mIRC: `/me waves` is an action line, `* nick waves`.
+    final actionText = mirc ? mircAction(translatedDisplayText) : null;
+    final mircPrefix = mirc
+        ? Text.rich(
+            TextSpan(
+              children: [
+                if (look.logTimestamps)
+                  TextSpan(
+                    text: '${mircTime(message.timestamp)} ',
+                    style: MeshTheme.mono(
+                      fontSize: 14 * textScale,
+                      color: metaColor,
+                    ),
+                  ),
+                TextSpan(
+                  text: actionText != null
+                      ? '* ${message.senderName} '
+                      : '${look.logNick(message.senderName)} ',
+                  style: MeshTheme.mono(
+                    fontSize: 14 * textScale,
+                    fontWeight: actionText != null ? null : FontWeight.w700,
+                    color: actionText != null
+                        ? mircActionColor(dark: dark)
+                        : colors.name ?? textColor,
+                  ),
+                ),
+              ],
+            ),
+          )
+        : null;
     final avatarSize = discord
         ? discordAvatarSize * textScale.clamp(0.85, 1.4)
         : (32 * textScale).clamp(28.0, 56.0);
@@ -1679,11 +1735,13 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         children: [
           Flexible(
             child: TranslatedMessageContent(
-              displayText: translatedDisplayText,
+              displayText: actionText ?? translatedDisplayText,
               originalText: originalDisplayText,
               style: look.logMono
                   ? MeshTheme.mono(
-                      color: textColor,
+                      color: actionText != null
+                          ? mircActionColor(dark: dark)
+                          : textColor,
                       fontSize: bodyFontSize * textScale,
                     )
                   : TextStyle(
@@ -1716,8 +1774,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             mainAxisAlignment: layoutOutgoing
                 ? MainAxisAlignment.end
                 : MainAxisAlignment.start,
-            // Signal's avatar sits by a run's last bubble.
-            crossAxisAlignment: signal
+            // The bubble styles' avatar sits by a run's last bubble.
+            crossAxisAlignment: look.bubbleRuns
                 ? CrossAxisAlignment.end
                 : CrossAxisAlignment.start,
             children: [
@@ -1747,6 +1805,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                     compact: gifId != null,
                     maxWidth: constraints.maxWidth,
                     run: run,
+                    leading: mircPrefix,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

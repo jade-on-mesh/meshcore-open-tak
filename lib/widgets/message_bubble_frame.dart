@@ -195,11 +195,16 @@ BorderRadius messageBubbleRadius({
   if (style == ChatStyle.classic) {
     return BorderRadius.circular(classicRadius);
   }
-  if (style == ChatStyle.signal) {
-    // Signal: round all over, but tighter on the sender's side where a bubble
-    // joins the one above or below it in a run.
-    const round = Radius.circular(signalRadius);
-    const join = Radius.circular(signalJoinRadius);
+  final look = MeshChatLook(style: style);
+  if (look.bubbleRuns) {
+    // Signal, iMessage, Google Messages: round all over, but tighter on the
+    // sender's side where a bubble joins the one above or below it in a run.
+    final round = Radius.circular(switch (style) {
+      ChatStyle.iphone => iphoneRadius,
+      ChatStyle.android => androidRadius,
+      _ => signalRadius,
+    });
+    final join = Radius.circular(look.runJoinRadius);
     final top = run.joinsAbove ? join : round;
     final bottom = run.joinsBelow ? join : round;
     return isOutgoing
@@ -216,8 +221,6 @@ BorderRadius messageBubbleRadius({
             bottomLeft: bottom,
           );
   }
-  if (style == ChatStyle.iphone) return BorderRadius.circular(iphoneRadius);
-  if (style == ChatStyle.android) return BorderRadius.circular(androidRadius);
   if (style == ChatStyle.mirc ||
       style == ChatStyle.icq ||
       style == ChatStyle.discord) {
@@ -269,7 +272,12 @@ class MessageBubbleFrame extends StatelessWidget {
     this.compact = false,
     this.colors,
     this.run = ChatRun.solo,
+    this.leading,
   });
+
+  /// On a chat log line (mIRC): what starts the line, `[time] <nick>`, with
+  /// the message beside it so a long one wraps under its own start.
+  final Widget? leading;
 
   /// Its place in a run from one sender (Signal's joined corners).
   final ChatRun run;
@@ -297,12 +305,25 @@ class MessageBubbleFrame extends StatelessWidget {
         : const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
     if (colors.flat) {
       // a chat log line: no bubble, the full width
+      final lead = leading;
       return Container(
         padding: compact
             ? EdgeInsets.zero
             : const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
         constraints: BoxConstraints(maxWidth: maxWidth),
-        child: child,
+        child: lead == null
+            ? child
+            : Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // a long nick wraps rather than pushing the text off
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: maxWidth * 0.5),
+                    child: lead,
+                  ),
+                  Flexible(child: child),
+                ],
+              ),
       );
     }
     final constraints = BoxConstraints(maxWidth: maxWidth * 0.72);

@@ -173,6 +173,14 @@ class AppSettings {
   /// Avatars filled with their colour (Settings > Appearance).
   final bool brightChatIcons;
 
+  /// Chats on the chat style's own app background (Discord's grey, Signal's
+  /// black, ...) instead of the colour theme's (Settings > Appearance >
+  /// Chat style).
+  final bool chatStyleBackground;
+
+  /// mIRC chat style: a `[HH:MM]` time at the start of each line.
+  final bool mircTimestamps;
+
   /// Keep the screen from sleeping or locking while the app is open
   /// (Android and iOS). Off by default.
   final bool keepScreenOn;
@@ -351,6 +359,8 @@ class AppSettings {
     this.redLight = false,
     this.chatStyle = 'standard',
     this.brightChatIcons = false,
+    this.chatStyleBackground = false,
+    this.mircTimestamps = true,
     this.keepScreenOn = false,
     this.customThemes = const [],
     this.activeThemeId,
@@ -462,6 +472,8 @@ class AppSettings {
       'red_light': redLight,
       'chat_style': chatStyle,
       'bright_chat_icons': brightChatIcons,
+      'chat_style_background': chatStyleBackground,
+      'mirc_timestamps': mircTimestamps,
       'keep_screen_on': keepScreenOn,
       'custom_themes': customThemes.map((t) => t.toJson()).toList(),
       'active_theme_id': activeThemeId,
@@ -645,6 +657,8 @@ class AppSettings {
       redLight: json['red_light'] as bool? ?? false,
       chatStyle: json['chat_style'] as String? ?? 'standard',
       brightChatIcons: json['bright_chat_icons'] as bool? ?? false,
+      chatStyleBackground: json['chat_style_background'] as bool? ?? false,
+      mircTimestamps: json['mirc_timestamps'] as bool? ?? true,
       keepScreenOn: json['keep_screen_on'] as bool? ?? false,
       customThemes:
           (json['custom_themes'] as List<dynamic>?)
@@ -815,6 +829,8 @@ class AppSettings {
     bool? redLight,
     String? chatStyle,
     bool? brightChatIcons,
+    bool? chatStyleBackground,
+    bool? mircTimestamps,
     bool? keepScreenOn,
     List<CustomTheme>? customThemes,
     Object? activeThemeId = _unset,
@@ -923,6 +939,8 @@ class AppSettings {
       redLight: redLight ?? this.redLight,
       chatStyle: chatStyle ?? this.chatStyle,
       brightChatIcons: brightChatIcons ?? this.brightChatIcons,
+      chatStyleBackground: chatStyleBackground ?? this.chatStyleBackground,
+      mircTimestamps: mircTimestamps ?? this.mircTimestamps,
       keepScreenOn: keepScreenOn ?? this.keepScreenOn,
       customThemes: customThemes ?? this.customThemes,
       activeThemeId: activeThemeId == _unset

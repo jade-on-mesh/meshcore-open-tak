@@ -1558,21 +1558,35 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get appSettings_chatStyleIphoneHelp =>
-      'Like Messages on an iPhone: blue bubbles for yours, grey for others, grey names and avatars';
+      'Like Messages on an iPhone: blue bubbles for yours, grey for others, runs of messages joined, the time in headers';
 
   @override
   String get appSettings_chatStyleAndroid => 'Android';
 
   @override
   String get appSettings_chatStyleAndroidHelp =>
-      'Like Google Messages: soft blue bubbles for yours, grey for others, names and avatars in colour';
+      'Like Google Messages: soft blue bubbles for yours, grey for others, runs of messages joined, names and avatars in colour';
+
+  @override
+  String get appSettings_chatStyleBackground => 'App background';
+
+  @override
+  String get appSettings_chatStyleBackgroundSubtitle =>
+      'Chats on the style\'s own app background, like Discord\'s grey or iMessage\'s black';
+
+  @override
+  String get appSettings_mircTimestamps => 'mIRC timestamps';
+
+  @override
+  String get appSettings_mircTimestampsSubtitle =>
+      'Start each mIRC line with its time, [23:45]';
 
   @override
   String get appSettings_chatStyleMirc => 'mIRC';
 
   @override
   String get appSettings_chatStyleMircHelp =>
-      'Like mIRC: no bubbles, every line on the left as <nick> message in a monospace font, nicks in colour';
+      'Like mIRC: no bubbles, every line as [time] <nick> message in a monospace font, nicks in colour, /me actions';
 
   @override
   String get appSettings_chatStyleStandard => 'MeshCore Open TAK';
@@ -3184,6 +3198,11 @@ class AppLocalizationsCs extends AppLocalizations {
   @override
   String chat_couldNotOpenLink(String url) {
     return 'Odkaz se nepodařilo otevřít: $url';
+  }
+
+  @override
+  String chat_dayChanged(String date) {
+    return 'Day changed to $date';
   }
 
   @override
