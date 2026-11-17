@@ -174,6 +174,44 @@ void main() {
     }
   });
 
+  testWidgets('ICQ style: a log, mine red and theirs blue', (tester) async {
+    final mine = await colorsIn(
+      tester,
+      ChatStyle.icq,
+      outgoing: true,
+      brightness: Brightness.light,
+    );
+    expect(mine.flat, isTrue);
+    expect(mine.name, icqMineDay);
+    final theirs = await colorsIn(
+      tester,
+      ChatStyle.icq,
+      outgoing: false,
+      brightness: Brightness.light,
+    );
+    expect(theirs.name, icqTheirsDay);
+    expect(theirs.text, icqInkDay);
+    const look = MeshChatLook(style: ChatStyle.icq);
+    expect(look.isLog, isTrue);
+    expect(look.logAvatars, isFalse);
+    expect(look.logMono, isFalse);
+    expect(look.logNick('Jade', time: '2:03 PM'), 'Jade (2:03 PM):');
+  });
+
+  testWidgets('Discord style: a log with avatars, names in colour', (
+    tester,
+  ) async {
+    final recv = await colorsIn(tester, ChatStyle.discord, outgoing: false);
+    expect(recv.flat, isTrue);
+    expect(recv.text, discordInkNight);
+    expect(recv.name, discordNameColor('Alpha-1', dark: true));
+    const look = MeshChatLook(style: ChatStyle.discord);
+    expect(look.logAvatars, isTrue);
+    expect(look.logNick('Jade'), 'Jade');
+    expect(const MeshChatLook(style: ChatStyle.mirc).logNick('Jade'), '<Jade>');
+    expect(discordAvatarColors, contains(discordAvatarColor('Jade ✨')));
+  });
+
   // Hues measured from the official MeshCore app's avatars (a public channel,
   // dark mode): the avatar is HSV(hue, 75%, 80%), the name HSV(hue, 75%, 56%).
   test('every style takes its hue from the official app', () {

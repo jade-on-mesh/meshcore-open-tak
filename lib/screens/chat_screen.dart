@@ -2164,8 +2164,10 @@ class _MessageBubble extends StatelessWidget {
     final otpActive = context.select<MeshCoreConnector, bool>(
       (connector) => connector.isContactOtpEnabled(sourceId),
     );
-    // mIRC chat style: a log, every line on the left as <nick>, mine too.
-    final log = MeshChatLook.of(context).isLog;
+    // Log chat styles (mIRC, ICQ, Discord): every line on the left, each
+    // message's sender named, mine too.
+    final look = MeshChatLook.of(context);
+    final log = look.isLog;
     final layoutOutgoing = log ? false : (otpActive ? !isOutgoing : isOutgoing);
     final lineName = log && isOutgoing
         ? (context.read<MeshCoreConnector>().selfName ?? 'me')
@@ -2257,7 +2259,7 @@ class _MessageBubble extends StatelessWidget {
             child: TranslatedMessageContent(
               displayText: translatedDisplayText,
               originalText: originalDisplayText,
-              style: log
+              style: look.logMono
                   ? MeshTheme.mono(
                       color: textColor,
                       fontSize: bodyFontSize * textScale,
@@ -2296,8 +2298,13 @@ class _MessageBubble extends StatelessWidget {
                     : MainAxisAlignment.start,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  if (!layoutOutgoing && !log) ...[
-                    _buildAvatar(context, senderName),
+                  if (!layoutOutgoing && (!log || look.logAvatars)) ...[
+                    // Mine in a log (Discord): my own avatar, not the
+                    // contact's photo.
+                    if (log && isOutgoing)
+                      AvatarCircle(name: lineName, size: 32)
+                    else
+                      _buildAvatar(context, senderName),
                     const SizedBox(width: 6),
                   ],
                   Flexible(
@@ -2320,7 +2327,17 @@ class _MessageBubble extends StatelessWidget {
                                     )
                                   : EdgeInsets.zero,
                               child: Text(
-                                log ? '<$lineName>' : senderName,
+                                log
+                                    ? look.logNick(
+                                        lineName,
+                                        time: MaterialLocalizations.of(context)
+                                            .formatTimeOfDay(
+                                              TimeOfDay.fromDateTime(
+                                                message.timestamp,
+                                              ),
+                                            ),
+                                      )
+                                    : senderName,
                                 style: MeshTheme.mono(
                                   fontSize: 13 * textScale,
                                   fontWeight: FontWeight.w700,

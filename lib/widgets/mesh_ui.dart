@@ -360,7 +360,9 @@ class AvatarCircle extends StatelessWidget {
     // iPhone: a grey circle with white initials (Contacts); Android: the
     // person's colour with a white initial (Google Messages). Node-type
     // avatars stay as they are.
-    if ((look.style == ChatStyle.iphone || look.style == ChatStyle.android) &&
+    if ((look.style == ChatStyle.iphone ||
+            look.style == ChatStyle.android ||
+            look.style == ChatStyle.discord) &&
         color == null &&
         icon == null &&
         iconSlot == null) {
@@ -377,6 +379,8 @@ class AvatarCircle extends StatelessWidget {
           shape: BoxShape.circle,
           color: ios
               ? (dark ? iphoneAvatarNight : iphoneAvatarDay)
+              : look.style == ChatStyle.discord
+              ? discordAvatarColor(name)
               : androidAvatarColor(name),
         ),
         alignment: Alignment.center,

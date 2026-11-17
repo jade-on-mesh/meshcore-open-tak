@@ -2899,6 +2899,30 @@ abstract class AppLocalizations {
   /// **'Blue bubbles for yours and grey for others, like the official MeshCore app'**
   String get appSettings_chatStyleClassicHelp;
 
+  /// No description provided for @appSettings_chatStyleIcq.
+  ///
+  /// In en, this message translates to:
+  /// **'ICQ'**
+  String get appSettings_chatStyleIcq;
+
+  /// No description provided for @appSettings_chatStyleIcqHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Like ICQ\'s message window: no bubbles, each message under its sender\'s name and time, yours in red and theirs in blue'**
+  String get appSettings_chatStyleIcqHelp;
+
+  /// No description provided for @appSettings_chatStyleDiscord.
+  ///
+  /// In en, this message translates to:
+  /// **'Discord'**
+  String get appSettings_chatStyleDiscord;
+
+  /// No description provided for @appSettings_chatStyleDiscordHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Like Discord: no bubbles, an avatar beside each message with the name in colour above the text'**
+  String get appSettings_chatStyleDiscordHelp;
+
   /// No description provided for @appSettings_chatStyleOpenClassic.
   ///
   /// In en, this message translates to:
@@ -4572,6 +4596,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 message deleted} other{{count} messages deleted}}'**
   String chat_messagesDeleted(int count);
+
+  /// No description provided for @chat_newBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'NEW'**
+  String get chat_newBadge;
 
   /// No description provided for @messageFilter_markedSpamCount.
   ///

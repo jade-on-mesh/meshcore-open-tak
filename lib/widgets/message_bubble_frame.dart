@@ -127,6 +127,28 @@ class MessageBubbleColors {
             name: name.isEmpty ? null : mircNickColor(name, dark: dark),
             flat: true,
           );
+        case ChatStyle.icq:
+          final ink = dark ? icqInkNight : icqInkDay;
+          return MessageBubbleColors(
+            background: Colors.transparent,
+            border: Colors.transparent,
+            text: ink,
+            meta: ink.withValues(alpha: 0.5),
+            name: isOutgoing
+                ? (dark ? icqMineNight : icqMineDay)
+                : (dark ? icqTheirsNight : icqTheirsDay),
+            flat: true,
+          );
+        case ChatStyle.discord:
+          final name = senderName?.trim() ?? '';
+          return MessageBubbleColors(
+            background: Colors.transparent,
+            border: Colors.transparent,
+            text: dark ? discordInkNight : discordInkDay,
+            meta: dark ? discordMetaNight : discordMetaDay,
+            name: name.isEmpty ? null : discordNameColor(name, dark: dark),
+            flat: true,
+          );
         case ChatStyle.classic:
           final name = senderName?.trim() ?? '';
           final bg = isOutgoing ? classicSent : classicRecv;
@@ -177,7 +199,11 @@ BorderRadius messageBubbleRadius({
   }
   if (style == ChatStyle.iphone) return BorderRadius.circular(iphoneRadius);
   if (style == ChatStyle.android) return BorderRadius.circular(androidRadius);
-  if (style == ChatStyle.mirc) return BorderRadius.zero;
+  if (style == ChatStyle.mirc ||
+      style == ChatStyle.icq ||
+      style == ChatStyle.discord) {
+    return BorderRadius.zero;
+  }
   return isOutgoing
       ? const BorderRadius.only(
           topLeft: Radius.circular(MeshRadii.lg),

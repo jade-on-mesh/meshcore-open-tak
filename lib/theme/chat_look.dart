@@ -41,7 +41,15 @@ enum ChatStyle {
 
   /// Like mIRC: no bubbles, every line on the left as `<nick> message`,
   /// mine too, in a monospace font, nicks in mIRC's colours.
-  mirc('mirc');
+  mirc('mirc'),
+
+  /// Like ICQ's classic message window: no bubbles, each message under a
+  /// `Name (time):` line, mine in red and theirs in blue.
+  icq('icq'),
+
+  /// Like Discord: no bubbles, an avatar on the left of each message with
+  /// the name in colour above the text.
+  discord('discord');
 
   const ChatStyle(this.id);
 
@@ -72,9 +80,26 @@ class MeshChatLook extends ThemeExtension<MeshChatLook> {
 
   static const standard = MeshChatLook();
 
-  /// A flat chat log (mIRC): every line on the left, no bubbles or avatars,
-  /// each line's sender named, mine too.
-  bool get isLog => style == ChatStyle.mirc;
+  /// A flat chat log (mIRC, ICQ, Discord): every line on the left, no
+  /// bubbles, each message's sender named, mine too.
+  bool get isLog =>
+      style == ChatStyle.mirc ||
+      style == ChatStyle.icq ||
+      style == ChatStyle.discord;
+
+  /// A log with avatars beside each message (Discord).
+  bool get logAvatars => style == ChatStyle.discord;
+
+  /// A log in a monospace font (mIRC).
+  bool get logMono => style == ChatStyle.mirc;
+
+  /// How a log names a message's sender: `<nick>` (mIRC), `Name (time):`
+  /// (ICQ), or just the name (Discord). [time] is the message's, formatted.
+  String logNick(String name, {String? time}) => switch (style) {
+    ChatStyle.mirc => '<$name>',
+    ChatStyle.icq => time == null ? '$name:' : '$name ($time):',
+    _ => name,
+  };
 
   static MeshChatLook of(BuildContext context) =>
       Theme.of(context).extension<MeshChatLook>() ?? standard;
@@ -337,3 +362,46 @@ Color mircNickColor(String name, {required bool dark}) {
 
 const Color mircInkDay = Color(0xFF000000);
 const Color mircInkNight = Color(0xFFE0E0E0);
+
+// ---- ICQ -----------------------------------------------------------------------
+// The classic ICQ message window: no bubbles, each message under its sender's
+// `Name (time):` line, mine in red and the other person's in blue, plain text.
+
+const Color icqMineDay = Color(0xFFCC0000);
+const Color icqMineNight = Color(0xFFFF6B6B);
+const Color icqTheirsDay = Color(0xFF0000CC);
+const Color icqTheirsNight = Color(0xFF7FA8FF);
+const Color icqInkDay = Color(0xFF000000);
+const Color icqInkNight = Color(0xFFE0E0E0);
+
+// ---- Discord -------------------------------------------------------------------
+// No bubbles: each message with an avatar on the left, the name above the text.
+// Names take the person's colour as a role would; default avatars are one of
+// Discord's own colours with a white initial.
+
+const Color discordInkDay = Color(0xFF313338);
+const Color discordInkNight = Color(0xFFDBDEE1);
+const Color discordMetaDay = Color(0xFF5C5E66);
+const Color discordMetaNight = Color(0xFF949BA4);
+
+/// Discord's default avatar colours: blurple, grey, green, yellow, red, pink.
+const List<Color> discordAvatarColors = [
+  Color(0xFF5865F2),
+  Color(0xFF757E8A),
+  Color(0xFF3BA55C),
+  Color(0xFFFAA61A),
+  Color(0xFFED4245),
+  Color(0xFFEB459F),
+];
+
+/// A person's default avatar colour, picked by their hue so it stays theirs.
+Color discordAvatarColor(String name) =>
+    discordAvatarColors[classicNameHue(name) % discordAvatarColors.length];
+
+/// A name above a message, in the person's colour as a role would give it.
+Color discordNameColor(String name, {required bool dark}) {
+  final h = classicNameHue(name).toDouble();
+  return dark
+      ? HSVColor.fromAHSV(1, h, 0.50, 0.95).toColor()
+      : HSVColor.fromAHSV(1, h, 0.75, 0.55).toColor();
+}

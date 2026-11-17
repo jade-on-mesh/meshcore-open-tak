@@ -19,6 +19,10 @@ Two more Appearance controls change only the chats, and work with any theme:
   - **iPhone** looks like Messages on an iPhone: your bubbles iOS blue, everyone else's light grey by day and dark grey at night, every corner rounded the same, a sender's name small and grey, and avatars grey circles with white initials.
   - **Android** looks like Google Messages (Material You): your bubbles soft blue with dark blue text by day, deep blue with light text at night; others' grey; names and avatars (a white initial) in each person's colour.
   - **mIRC** is a chat log rather than bubbles: every line on the left as `<nick> message` in a monospace font, yours named too, no avatars, and each nick in one of mIRC's colours (the dark ones lifted at night, the bright ones deepened by day so they read).
+  - **ICQ** is the classic ICQ message window: no bubbles, each message under its sender's `Name (time):` line, yours in red and theirs in blue, plain text beneath.
+  - **Discord** has no bubbles either: each message has an avatar on the left (one of Discord's default avatar colours, with a white initial), the name in the person's colour, and the text below.
+
+  The **New messages** line follows the style: Discord's red line with a red **NEW** tag at its end; mIRC's plain red marker line; Signal's grey chip; a small grey caption for iPhone; a grey rule for ICQ; and the app's pill (in the style's accent) for the rest.
 A person's colour, on their avatar and name, comes from their name, the same way the official MeshCore app and Wadamesh TAK work it out. So a person has the same colour in this app, in the official app and on a standalone, in every chat style but MeshCore Open Classic.
 - **Brighter chat icons:** fills each avatar circle with its colour, with the initials or icon in black or white, in place of the faint tint.
 

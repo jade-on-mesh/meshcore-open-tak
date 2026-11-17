@@ -1575,6 +1575,20 @@ class AppLocalizationsEn extends AppLocalizations {
       'Blue bubbles for yours and grey for others, like the official MeshCore app';
 
   @override
+  String get appSettings_chatStyleIcq => 'ICQ';
+
+  @override
+  String get appSettings_chatStyleIcqHelp =>
+      'Like ICQ\'s message window: no bubbles, each message under its sender\'s name and time, yours in red and theirs in blue';
+
+  @override
+  String get appSettings_chatStyleDiscord => 'Discord';
+
+  @override
+  String get appSettings_chatStyleDiscordHelp =>
+      'Like Discord: no bubbles, an avatar beside each message with the name in colour above the text';
+
+  @override
   String get appSettings_chatStyleOpenClassic => 'MeshCore Open Classic';
 
   @override
@@ -2563,6 +2577,9 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get chat_newBadge => 'NEW';
 
   @override
   String messageFilter_markedSpamCount(int count) {

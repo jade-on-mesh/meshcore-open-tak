@@ -668,6 +668,10 @@
   "appSettings_chatStyleWadameshHelp": "Frosted glass bubbles, each sender's in their own colour, the same as on a standalone",
   "appSettings_chatStyleClassic": "MeshCore Classic",
   "appSettings_chatStyleClassicHelp": "Blue bubbles for yours and grey for others, like the official MeshCore app",
+  "appSettings_chatStyleIcq": "ICQ",
+  "appSettings_chatStyleIcqHelp": "Like ICQ's message window: no bubbles, each message under its sender's name and time, yours in red and theirs in blue",
+  "appSettings_chatStyleDiscord": "Discord",
+  "appSettings_chatStyleDiscordHelp": "Like Discord: no bubbles, an avatar beside each message with the name in colour above the text",
   "appSettings_chatStyleOpenClassic": "MeshCore Open Classic",
   "appSettings_chatStyleOpenClassicHelp": "MeshCore Open as it was: the app's own bubbles and its own colours for people",
   "appSettings_chatStylePreviewReceived": "Are you on the ridge?",
@@ -1252,6 +1256,7 @@
       }
     }
   },
+  "chat_newBadge": "NEW",
   "messageFilter_markedSpamCount": "{count, plural, =1{1 message marked as spam} other{{count} messages marked as spam}}",
   "@messageFilter_markedSpamCount": {
     "placeholders": {
