@@ -2709,18 +2709,15 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     await _sendImage(connector, result, sourceBytes: sourceBytes);
   }
 
-  /// The photo button's AI sketch option for this channel.
-  VoxAiSketchOption? get _aiSketchOption {
-    if (!AeicHdService.instance.supported) return null;
-    return VoxAiSketchOption(sendHd: (bytes, _) => _sendAiSketchHd(bytes));
-  }
-
   /// AI sketch HD (lib/vox/aeic_hd_service.dart): encoded by the ncnn codec,
   /// then chunked onto the channel like any image message, on MediaMesh
   /// (radio2) like the app's own photos: the channel's traffic is put on
   /// radio2 for the burst and back after. Where radio2 can't take it, it isn't
   /// sent (the main-mesh developer switch aside). The regular AI sketch is
   /// MeshCore Open's own and stays as it is.
+  // MeshCore Open TAK no longer offers AI sketch HD in the photo picker;
+  // receiving, drawing and "ask for the rest" stay.
+  // ignore: unused_element
   Future<void> _sendAiSketchHd(Uint8List sourceBytes) async {
     final result = await showAeicHdSendSheet(context, imageBytes: sourceBytes);
     if (result == null || !mounted) return;
@@ -3857,7 +3854,6 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           case 'photo':
             showVoxImagePicker(
               context,
-              aiSketch: _aiSketchOption,
               recipientLabel: widget.channel.name,
               caption: caption,
               onSend: (image, text) => context
