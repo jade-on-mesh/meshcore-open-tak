@@ -127,9 +127,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
                   'USB selected, opening UsbScreen',
                   tag: 'ScannerScreen',
                 );
-                Navigator.of(
-                  context,
-                ).push(MaterialPageRoute(builder: (_) => const UsbScreen()));
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const UsbScreen(overScanner: true),
+                  ),
+                );
               },
             ),
           if (!PlatformInfo.isWeb)
@@ -137,9 +139,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
               icon: const Icon(Icons.lan),
               tooltip: context.l10n.connectionChoiceTcpLabel,
               onPressed: () {
-                Navigator.of(
-                  context,
-                ).push(MaterialPageRoute(builder: (_) => const TcpScreen()));
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const TcpScreen(overScanner: true),
+                  ),
+                );
               },
             ),
         ],
@@ -516,6 +520,19 @@ class _ConnectionStatusHeader extends StatelessWidget {
           child: StatusChip(label: label, color: color, pulse: pulse),
         ),
       ),
+    );
+  }
+}
+
+/// The USB and TCP screens' Bluetooth button: back to the scanner when it is
+/// underneath ([overScanner]), otherwise the scanner in this screen's place.
+void openBluetoothScanner(BuildContext context, bool overScanner) {
+  final navigator = Navigator.of(context);
+  if (overScanner) {
+    navigator.maybePop();
+  } else {
+    navigator.pushReplacement(
+      MaterialPageRoute(builder: (_) => const ScannerScreen()),
     );
   }
 }

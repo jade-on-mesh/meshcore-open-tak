@@ -15,10 +15,17 @@ import '../widgets/empty_state.dart';
 import '../widgets/mesh_ui.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../utils/main_navigation.dart';
+import 'scanner_screen.dart';
 import 'tcp_screen.dart';
 
 class UsbScreen extends StatefulWidget {
-  const UsbScreen({super.key});
+  const UsbScreen({super.key, this.overScanner = false});
+
+  /// Whether the Bluetooth scanner is the screen underneath. It is when the
+  /// scanner opened this screen, but not when the connect sheet did (the last
+  /// radio was on this transport): then Bluetooth replaces this screen with the
+  /// scanner instead of going back, which would land on Channels.
+  final bool overScanner;
 
   @override
   State<UsbScreen> createState() => _UsbScreenState();
@@ -231,14 +238,16 @@ class _UsbScreenState extends State<UsbScreen> with WidgetsBindingObserver {
             OutlinedButton.icon(
               onPressed: () {
                 Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const TcpScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => TcpScreen(overScanner: widget.overScanner),
+                  ),
                 );
               },
               icon: const Icon(Icons.lan),
               label: Text(context.l10n.connectionChoiceTcpLabel),
             ),
           OutlinedButton.icon(
-            onPressed: () => Navigator.of(context).maybePop(),
+            onPressed: () => openBluetoothScanner(context, widget.overScanner),
             icon: const Icon(Icons.bluetooth),
             label: Text(context.l10n.connectionChoiceBluetoothLabel),
           ),
