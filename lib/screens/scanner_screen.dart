@@ -127,9 +127,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
                   'USB selected, opening UsbScreen',
                   tag: 'ScannerScreen',
                 );
-                Navigator.of(
-                  context,
-                ).push(MaterialPageRoute(builder: (_) => const UsbScreen(overScanner: true)));
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const UsbScreen(overScanner: true),
+                  ),
+                );
               },
             ),
           if (!PlatformInfo.isWeb)
@@ -137,9 +139,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
               icon: const Icon(Icons.lan),
               tooltip: context.l10n.connectionChoiceTcpLabel,
               onPressed: () {
-                Navigator.of(
-                  context,
-                ).push(MaterialPageRoute(builder: (_) => const TcpScreen(overScanner: true)));
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const TcpScreen(overScanner: true),
+                  ),
+                );
               },
             ),
         ],
