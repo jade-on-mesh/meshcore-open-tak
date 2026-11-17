@@ -223,12 +223,11 @@ void main() {
     expect(signal.continuesRun(t, t.add(const Duration(minutes: 2))), isTrue);
     expect(signal.continuesRun(t, t.add(const Duration(minutes: 4))), isFalse);
     // Not across midnight, nor backwards.
+    expect(discord.continuesRun(t, DateTime(2026, 11, 17, 0, 1)), isFalse);
     expect(
-      discord.continuesRun(t, DateTime(2026, 11, 17, 0, 1)),
+      discord.continuesRun(t, t.subtract(const Duration(minutes: 1))),
       isFalse,
     );
-    expect(discord.continuesRun(t, t.subtract(const Duration(minutes: 1))),
-        isFalse);
     const standard = MeshChatLook();
     expect(standard.groupsRuns, isFalse);
     expect(standard.continuesRun(t, t), isFalse);
