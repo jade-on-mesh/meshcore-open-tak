@@ -51,6 +51,28 @@ Duration voxStallWait(Duration packetGap) =>
 int voxMarkedWaitMs(int left, int gapMs) =>
     left <= 0 ? 300 : (left + 1) * gapMs + max(400, gapMs ~/ 2);
 
+/// How long to wait after a marked packet before asking again: as
+/// [voxMarkedWaitMs], but never longer than a stall ([voxStallWait]). The
+/// next packet re-arms it, so a running answer is never cut short; one the
+/// sender stopped part-way is asked for again in seconds rather than after
+/// every gap it said was still to come (a Max clip whose burst stopped with
+/// ~100 marked as left waited 3 min 36 s).
+int voxMarkedStallWaitMs(int left, int gapMs) => min(
+  voxMarkedWaitMs(left, gapMs),
+  voxStallWait(Duration(milliseconds: gapMs)).inMilliseconds,
+);
+
+/// Packets in a row a burst or serve carries on through when the radio is
+/// slow to confirm them. A busy MediaMesh holds a packet until the channel
+/// is quiet, and the confirmation can come well after the app's 5 s; the
+/// packet usually still goes out (a request "timed out" three times and all
+/// three reached the sender 20 s later). Every burst of one Max clip was
+/// abandoned this way. Only this many in a row stops it.
+const int voxSlowConfirmsMax = 4;
+
+/// The pause after a slow confirmation, for the radio's queue to drain.
+const Duration voxSlowConfirmPause = Duration(seconds: 1);
+
 /// How long a request waits for its first packet before asking again.
 ///
 /// [trips]: the radio trips before the first packet lands (2 for a raw

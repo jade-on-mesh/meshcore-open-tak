@@ -175,6 +175,11 @@ class _IncomingClip {
 
   /// The zero-hop raw request has been tried since the last reset.
   bool triedZeroHop = false;
+
+  /// Some packet came by raw data (the radio doesn't say how far): a push
+  /// zero-hop to the channel, or a direct answer. The sender or another
+  /// holder is likely in range, so a zero-hop request is worth trying first.
+  bool rawSeen = false;
   VoxClipStatus status = VoxClipStatus.remote;
   String? message;
   Contact? sender;
@@ -1372,7 +1377,11 @@ class VoxVoiceService extends ChangeNotifier {
     // Its packets came 0 hops: whoever sent them is in range, and so may be
     // others holding it. One zero-hop request reaches them all, with no
     // route needed (there often is none: "route to X: none (flood)").
-    if (clip.minHops == 0 && !clip.triedZeroHop && clip.packets.isNotEmpty) {
+    // Packets that came by raw data (a zero-hop push, a direct answer) say
+    // the same: ask in range first, the channel's flood only if that fails.
+    if ((clip.minHops == 0 || clip.rawSeen) &&
+        !clip.triedZeroHop &&
+        clip.packets.isNotEmpty) {
       return _Method.zeroHop;
     }
     final canChannel =
@@ -1560,6 +1569,18 @@ class VoxVoiceService extends ChangeNotifier {
           );
           if (!ok) throw StateError('channel send failed');
       }
+    } on TimeoutException {
+      // The radio didn't confirm in time, but a busy MediaMesh holds a
+      // packet until the channel is quiet: it usually still goes out (three
+      // "failed" requests all reached the sender 20 s later). Wait for the
+      // answer as if it went, rather than queue the same request again.
+      _logEvent(
+        'attempt ${clip.attempts}: the radio was slow to confirm the request; '
+        'waiting for an answer as if it went out',
+        clip.envelope.sessionId,
+      );
+      _armWatchdog(clip);
+      return;
     } catch (e) {
       _logEvent(
         'attempt ${clip.attempts} send failed: $e',
@@ -1665,6 +1686,8 @@ class VoxVoiceService extends ChangeNotifier {
     }
     if (progressed) {
       clip.stalls = 0;
+      // A zero-hop request that brought packets: keep asking that way.
+      if (clip.lastMethod == _Method.zeroHop) clip.triedZeroHop = false;
     } else {
       clip.stalls++;
       if (clip.lastMethod != _Method.channel &&
@@ -2689,6 +2712,7 @@ class VoxVoiceService extends ChangeNotifier {
     if (clip != null && hops != null && hops < clip.minHops) {
       clip.minHops = hops;
     }
+    if (clip != null && hops == null) clip.rawSeen = true;
     if (clip == null) {
       final o = _orphans.putIfAbsent(sid, () => {});
       o[pkt.index] = pkt.codecData;
@@ -2773,7 +2797,7 @@ class VoxVoiceService extends ChangeNotifier {
         final gap = clip.rxGaps > 0
             ? clip.rxGapMs
             : _burstGap(clip).inMilliseconds;
-        final wait = Duration(milliseconds: voxMarkedWaitMs(left, gap));
+        final wait = Duration(milliseconds: voxMarkedStallWaitMs(left, gap));
         if (left == 0) {
           _logEvent(
             'answer over (marked), ${clip.missing.length} missing; '
@@ -3218,6 +3242,8 @@ class VoxVoiceService extends ChangeNotifier {
       var sent = 0;
       var markedSent = 0;
       var busyMs = 0;
+      // Sends in a row the radio was slow to confirm (voxSlowConfirmsMax).
+      var slowConfirms = 0;
       DateTime? firstAt;
       final startedAt = DateTime.now();
       final sentData = <int>[];
@@ -3285,6 +3311,23 @@ class VoxVoiceService extends ChangeNotifier {
             payload: payload,
             zeroHop: zeroHop,
           );
+          slowConfirms = 0;
+        } on TimeoutException catch (e) {
+          // The radio is holding it for a quiet channel: it usually still
+          // goes out. Carry on unless it keeps happening.
+          slowConfirms++;
+          if (slowConfirms >= voxSlowConfirmsMax || !_connector.isConnected) {
+            _logEvent(
+              'burst stopped at packet $index: $e ($slowConfirms in a row)',
+              burst.sid,
+            );
+            return;
+          }
+          _logEvent(
+            'packet $index slow to confirm (radio busy); carrying on',
+            burst.sid,
+          );
+          await Future<void>.delayed(voxSlowConfirmPause);
         } catch (e) {
           _logEvent('burst stopped at packet $index: $e', burst.sid);
           return;
@@ -3720,6 +3763,7 @@ class VoxVoiceService extends ChangeNotifier {
       req.sessionId,
     );
     var busyMs = 0;
+    var slowConfirms = 0;
     DateTime? firstAt;
     for (var i = 0; i < packets.length; i++) {
       if (!_connector.isConnected) return;
@@ -3749,6 +3793,23 @@ class VoxVoiceService extends ChangeNotifier {
           waitForGenericAck: true,
         );
         _lastServed[req.sessionId] = DateTime.now();
+        slowConfirms = 0;
+      } on TimeoutException catch (e) {
+        // As in a channel burst: the radio is most likely holding it for a
+        // quiet channel, so carry on unless it keeps happening.
+        slowConfirms++;
+        if (slowConfirms >= voxSlowConfirmsMax || !_connector.isConnected) {
+          _logEvent(
+            'serve stopped at packet $i: $e ($slowConfirms in a row)',
+            req.sessionId,
+          );
+          return;
+        }
+        _logEvent(
+          'packet $i slow to confirm (radio busy); carrying on',
+          req.sessionId,
+        );
+        await Future<void>.delayed(voxSlowConfirmPause);
       } catch (e) {
         _logEvent('serve stopped at packet $i: $e', req.sessionId);
         return;
