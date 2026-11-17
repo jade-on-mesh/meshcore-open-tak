@@ -103,10 +103,15 @@ int voxAnswerWaitMs({
 
 /// The gap to expect between a transfer's packets: the timing model's
 /// [model] until a few have come in ([samples] gaps measured), then twice the
-/// gap they actually came at ([seen], smoothed) when that's sooner, but never
-/// under [floor] (one zero-hop gap). A transfer sent faster than the model
-/// assumes (over radio2, or from a sender with a faster radio) has its lost
-/// tail asked for again in seconds rather than tens of seconds.
+/// gap they actually came at ([seen], smoothed), never under [floor] (one
+/// zero-hop gap) and at most three times the model. A transfer sent faster
+/// than the model assumes has its lost tail asked for again in seconds rather
+/// than tens of seconds; one sent slower is waited for. The model is this
+/// radio's own airtime, and a sender's can be over twice as long: a Keymind
+/// Cascade radio sharing one LoRa chip between the main mesh and radio2 sends
+/// radio2 packets with a preamble long enough for a radio listening part of
+/// the time (338-391 ms a packet where another radio sends 157 ms), and
+/// paces its answers for that.
 Duration voxBurstGap({
   required Duration model,
   required Duration seen,
@@ -116,7 +121,39 @@ Duration voxBurstGap({
   if (samples < 3) return model;
   var g = seen * 2;
   if (g < floor) g = floor;
-  return g < model ? g : model;
+  final cap = model * 3;
+  return g < cap ? g : cap;
+}
+
+/// A holder that isn't the sender answers only once the clip's packets have
+/// been off the air a while (voice_service.dart _waitForAirQuiet: four
+/// zero-hop gaps, at least 2 s) and waits at most this long for that.
+const int voxHolderAirWaitMaxMs = 20000;
+
+/// From the air going quiet to a holder's first packet.
+const int voxHolderAnswerLeadMs = 3000;
+
+/// How long without a packet of a clip counts as its air being quiet.
+int voxAirQuietMs(int zeroHopGapMs) => max(2000, zeroHopGapMs * 4);
+
+/// A request that has had no answer yet, timing out while the clip's packets
+/// are still on the air ([sinceHeardMs] ago, from anyone): holders are still
+/// waiting for quiet, so asking again now only adds another answer to the
+/// same air. How long to hold before asking, or null to ask now: once the air
+/// has been quiet for [quietMs] and a holder's lead, or the request is
+/// [sinceAskedMs] old past what a holder ever waits. A Max clip's receiver
+/// asked four more times while a holder sat out the air this way, and the
+/// answers it drew collided with that holder's.
+int? voxAirHoldMs({
+  required int sinceHeardMs,
+  required int sinceAskedMs,
+  required int quietMs,
+}) {
+  if (sinceAskedMs > voxHolderAirWaitMaxMs + quietMs + voxHolderAnswerLeadMs) {
+    return null;
+  }
+  final wait = quietMs + voxHolderAnswerLeadMs - sinceHeardMs;
+  return wait > 0 ? wait : null;
 }
 
 /// Packets of a photo or clip nobody here asked for (pushed by the sender, or

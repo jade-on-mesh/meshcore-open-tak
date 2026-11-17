@@ -68,7 +68,7 @@ void main() {
     expect(voxShouldFinishPassive(received: 0, total: 0), isFalse);
   });
 
-  test('burst gap follows the gaps packets came at, within the model', () {
+  test('burst gap follows the gaps packets came at, up to 3x the model', () {
     const model = Duration(milliseconds: 2725);
     const floor = Duration(milliseconds: 160);
     // Too few gaps measured: the model.
@@ -91,7 +91,8 @@ void main() {
       ),
       const Duration(milliseconds: 700),
     );
-    // Never above the model, never under the floor.
+    // Coming slower (a sender with a longer preamble): waited for, up to
+    // three times the model; never under the floor.
     expect(
       voxBurstGap(
         model: model,
@@ -99,7 +100,16 @@ void main() {
         samples: 5,
         floor: floor,
       ),
-      model,
+      const Duration(milliseconds: 4000),
+    );
+    expect(
+      voxBurstGap(
+        model: model,
+        seen: model * 5,
+        samples: 5,
+        floor: floor,
+      ),
+      model * 3,
     );
     expect(
       voxBurstGap(
@@ -225,6 +235,27 @@ void main() {
     expect(
       voxSlowConfirmsMax * (5000 + voxSlowConfirmPause.inMilliseconds),
       lessThanOrEqualTo(voxLbtMaxWaitMs + 5000),
+    );
+  });
+
+  test('a request with no answer yet holds while the clip is on the air', () {
+    final quiet = voxAirQuietMs(220);
+    expect(quiet, 2000);
+    expect(voxAirQuietMs(700), 2800);
+    // Heard 1 s ago, asked 8 s ago: wait for quiet and a holder's lead.
+    expect(
+      voxAirHoldMs(sinceHeardMs: 1000, sinceAskedMs: 8000, quietMs: quiet),
+      quiet + voxHolderAnswerLeadMs - 1000,
+    );
+    // Quiet long enough: ask now.
+    expect(
+      voxAirHoldMs(sinceHeardMs: 6000, sinceAskedMs: 8000, quietMs: quiet),
+      isNull,
+    );
+    // Past anything a holder waits: ask now, busy or not.
+    expect(
+      voxAirHoldMs(sinceHeardMs: 500, sinceAskedMs: 26000, quietMs: quiet),
+      isNull,
     );
   });
 }
