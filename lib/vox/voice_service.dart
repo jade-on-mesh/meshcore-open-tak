@@ -2060,9 +2060,9 @@ class VoxVoiceService extends ChangeNotifier {
   static const _kDataAudio = 'vox_data_audio';
   bool _dataAudio = false;
 
-  /// Data Audio: play a 2400 bps modem's sounds as video comes in (modem_sound.dart): its
-  /// connect handshake on a video's first packet, then a burst of the
-  /// packets' own data as each one arrives. Off by default.
+  /// Data Audio: play a 2400 bps modem's sounds as a video or photo comes in
+  /// (modem_sound.dart): its connect handshake on the first packet, then a
+  /// burst of the packets' own data as each one arrives. Off by default.
   bool get dataAudio => _dataAudio;
 
   Future<void> setDataAudio(bool v) async {
@@ -2078,8 +2078,13 @@ class VoxVoiceService extends ChangeNotifier {
   AudioPlayer? _modemPlayer;
   VoxModemPlayer? _modem;
 
-  /// A new packet of an incoming video: its modem sound, when chosen, and not
-  /// over a recording or a voice clip playing.
+  /// A new packet of an incoming AI sketch HD photo (main.dart's
+  /// ImageStreamReassembler.onPacket): its modem sound, as for Mesh photos.
+  void dataAudioPacket(String stream, Uint8List packet) =>
+      _dataAudioFor(stream, packet);
+
+  /// A new packet of an incoming video or photo: its modem sound, when
+  /// chosen, and not over a recording or a voice clip playing.
   void _dataAudioFor(String sid, Uint8List data) {
     if (!_dataAudio || _micBusy || _phase != VoxPlayback.idle) return;
     final m = _modem ??= VoxModemPlayer(
@@ -2748,7 +2753,7 @@ class VoxVoiceService extends ChangeNotifier {
     // the wait: a trickle of them held off asking again for over 2 minutes.
     if (!fresh) return;
     final sid = clip.envelope.sessionId;
-    if (clip.envelope.isVideo) _dataAudioFor(sid, data);
+    if (clip.envelope.isMedia) _dataAudioFor(sid, data);
     if (clip.isComplete) {
       clip.watchdog?.cancel();
       clip.status = VoxClipStatus.complete;

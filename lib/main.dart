@@ -290,6 +290,9 @@ void main() async {
 
   // MeshCore Open TAK: on-demand Codec2 voice messages (VE3).
   final voxVoiceService = VoxVoiceService(connector);
+  // Data Audio: AI sketch HD photos make the modem sound too, as Mesh photos
+  // and videos do.
+  imageReassembler.onPacket = voxVoiceService.dataAudioPacket;
 
   final networkMapUploadService = NetworkMapUploadService(
     connector: connector,
@@ -405,6 +408,10 @@ class ImageStreamReassembler extends ImageReassembler {
 
   int? _selfPrefix;
 
+  /// Each new packet of an incoming image, as it arrives: Data Audio plays it
+  /// (VoxVoiceService.dataAudioPacket). [stream] names the image.
+  void Function(String stream, Uint8List packet)? onPacket;
+
   ImageStreamReassembler({required this.store, this.channelIdForSlot})
     : super(onFailed: ((failure) => unawaited(store.handleFailure(failure))));
 
@@ -421,6 +428,13 @@ class ImageStreamReassembler extends ImageReassembler {
     int? via,
   }) {
     final outcome = super.addChunk(blob, channelIndex: channelIndex, now: now);
+    final h = outcome.header;
+    if (h != null &&
+        (outcome.status == ImageChunkStatus.accepted ||
+            outcome.status == ImageChunkStatus.conflicting ||
+            outcome.status == ImageChunkStatus.completed)) {
+      onPacket?.call('aeic:${h.senderPrefix}/${h.imgId}@$channelIndex', blob);
+    }
     unawaited(
       store.handleOutcome(
         outcome,

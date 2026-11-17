@@ -889,6 +889,12 @@ abstract class AppLocalizations {
   /// **'Voice unmuted in this channel'**
   String get voiceMute_unmutedNote;
 
+  /// No description provided for @vox_dataAudioMediaSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hear incoming photos and videos as a 2400 bps modem: it connects when one starts coming in, then you hear each packet\'s data as it arrives.'**
+  String get vox_dataAudioMediaSubtitle;
+
   /// No description provided for @vox_dataAudioTitle.
   ///
   /// In en, this message translates to:

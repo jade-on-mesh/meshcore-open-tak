@@ -442,6 +442,10 @@ class AppLocalizationsSv extends AppLocalizations {
   String get voiceMute_unmutedNote => 'Voice unmuted in this channel';
 
   @override
+  String get vox_dataAudioMediaSubtitle =>
+      'Hear incoming photos and videos as a 2400 bps modem: it connects when one starts coming in, then you hear each packet\'s data as it arrives.';
+
+  @override
   String get vox_dataAudioTitle => 'Data Audio';
 
   @override
