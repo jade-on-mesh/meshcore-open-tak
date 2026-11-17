@@ -1605,7 +1605,7 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String get appSettings_chatStyleDiscordHelp =>
-      'Like Discord: no bubbles, an avatar beside each message with the name in colour above the text';
+      'Like Discord: no bubbles, each run of messages under one avatar, with the name in bold and the time beside it';
 
   @override
   String get appSettings_chatStyleOpenClassic => 'MeshCore Open Classic';
@@ -1625,7 +1625,7 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String get appSettings_chatStyleSignalHelp =>
-      'Like the Signal app: blue bubbles for yours, plain grey for others, round corners, names in colour';
+      'Like the Signal app: blue bubbles for yours, plain grey for others, a run of messages joined into one block';
 
   @override
   String get appSettings_brightChatIcons => 'Brighter chat icons';

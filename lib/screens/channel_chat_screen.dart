@@ -1651,7 +1651,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     final signal = look.style == ChatStyle.signal;
     // The name: Discord's on a run's first message, with the time beside it;
     // Signal's on its first too.
-    final showName = (!isOutgoing || log) && !(look.groupsRuns && run.joinsAbove);
+    final showName =
+        (!isOutgoing || log) && !(look.groupsRuns && run.joinsAbove);
     // The avatar: Discord's on a run's first message, Signal's on its last;
     // the others keep its room.
     final showAvatar = discord

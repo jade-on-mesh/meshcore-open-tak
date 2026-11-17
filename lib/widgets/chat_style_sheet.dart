@@ -221,10 +221,7 @@ class _ChatStylePreview extends StatelessWidget {
                             text: '$label  ',
                             style: font(12, nickColor ?? ink, bold: true),
                           ),
-                          TextSpan(
-                            text: time,
-                            style: font(10, mine.meta),
-                          ),
+                          TextSpan(text: time, style: font(10, mine.meta)),
                         ],
                       ),
                     )

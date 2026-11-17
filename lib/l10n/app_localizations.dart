@@ -2926,7 +2926,7 @@ abstract class AppLocalizations {
   /// No description provided for @appSettings_chatStyleDiscordHelp.
   ///
   /// In en, this message translates to:
-  /// **'Like Discord: no bubbles, an avatar beside each message with the name in colour above the text'**
+  /// **'Like Discord: no bubbles, each run of messages under one avatar, with the name in bold and the time beside it'**
   String get appSettings_chatStyleDiscordHelp;
 
   /// No description provided for @appSettings_chatStyleOpenClassic.
@@ -2962,7 +2962,7 @@ abstract class AppLocalizations {
   /// No description provided for @appSettings_chatStyleSignalHelp.
   ///
   /// In en, this message translates to:
-  /// **'Like the Signal app: blue bubbles for yours, plain grey for others, round corners, names in colour'**
+  /// **'Like the Signal app: blue bubbles for yours, plain grey for others, a run of messages joined into one block'**
   String get appSettings_chatStyleSignalHelp;
 
   /// No description provided for @appSettings_brightChatIcons.

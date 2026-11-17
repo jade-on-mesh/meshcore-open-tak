@@ -2720,7 +2720,9 @@ class _MessageBubble extends StatelessWidget {
             const SizedBox(height: 4),
             Padding(
               padding: EdgeInsets.only(
-                left: layoutOutgoing || signalSolo ? 0 : avatarSize + avatarGap + 4,
+                left: layoutOutgoing || signalSolo
+                    ? 0
+                    : avatarSize + avatarGap + 4,
               ),
               child: ReactionChips(
                 reactions: message.reactions,
