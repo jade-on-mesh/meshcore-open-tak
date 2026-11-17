@@ -9014,18 +9014,17 @@ class MeshCoreConnector extends ChangeNotifier {
     // MeshCore Open TAK: no "resend until heard" (upstream's channel min-hops
     // resend): Keymind Cascade repeaters make it unneeded, and its extra
     // copies cost airtime. Its settings are kept but no longer shown or read.
-    Future<void> transmit() =>
-        _runScopedChannelSend(() async {
-          await _waitForRadioQuiet(lastInboundRxTime: _lastChannelMsgRxTime);
-          await _sendFrameAndWaitForCommandAck(
-            buildSendChannelTextMsgFrame(
-              channel.index,
-              outboundText,
-              timestamp: message.timestamp.millisecondsSinceEpoch ~/ 1000,
-            ),
-            channelSendQueueId: message.messageId,
-          );
-        }, region: sendScope);
+    Future<void> transmit() => _runScopedChannelSend(() async {
+      await _waitForRadioQuiet(lastInboundRxTime: _lastChannelMsgRxTime);
+      await _sendFrameAndWaitForCommandAck(
+        buildSendChannelTextMsgFrame(
+          channel.index,
+          outboundText,
+          timestamp: message.timestamp.millisecondsSinceEpoch ~/ 1000,
+        ),
+        channelSendQueueId: message.messageId,
+      );
+    }, region: sendScope);
     try {
       await transmit();
     } catch (_) {
