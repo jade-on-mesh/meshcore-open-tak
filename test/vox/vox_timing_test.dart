@@ -207,4 +207,24 @@ void main() {
       lessThan(voxStallWait(const Duration(milliseconds: 900)).inMilliseconds),
     );
   });
+
+  test('a marked answer that stops part-way is asked again within a stall', () {
+    // The sender said ~100 more were coming, then its burst stopped: wait a
+    // stall (three gaps and a second), not 101 gaps.
+    final stall = voxStallWait(const Duration(milliseconds: 2100));
+    expect(voxMarkedStallWaitMs(100, 2100), stall.inMilliseconds);
+    expect(voxMarkedWaitMs(100, 2100), greaterThan(200000));
+    // A short tail keeps its own, shorter wait; the end of an answer is 300.
+    expect(voxMarkedStallWaitMs(1, 900), voxMarkedWaitMs(1, 900));
+    expect(voxMarkedStallWaitMs(0, 900), 300);
+  });
+
+  test('a burst carries on through a few slow confirmations', () {
+    expect(voxSlowConfirmsMax, greaterThanOrEqualTo(3));
+    // In all, at most about the listen-before-talk limit.
+    expect(
+      voxSlowConfirmsMax * (5000 + voxSlowConfirmPause.inMilliseconds),
+      lessThanOrEqualTo(voxLbtMaxWaitMs + 5000),
+    );
+  });
 }
