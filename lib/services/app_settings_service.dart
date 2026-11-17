@@ -68,6 +68,18 @@ class AppSettingsService extends ChangeNotifier {
     }
     _syncDateTimer();
     unawaited(ScreenAwakeService.instance.apply(_settings.keepScreenOn));
+    // MeshCore Open TAK: "Resend channel messages until they travel far
+    // enough" is gone (Keymind Cascade makes it unneeded); a phone that had
+    // it on is switched off on its first start after updating.
+    if (_settings.channelMinHopsEnabled ||
+        _settings.channelMinHopsCountRepeaters) {
+      await updateSettings(
+        _settings.copyWith(
+          channelMinHopsEnabled: false,
+          channelMinHopsCountRepeaters: false,
+        ),
+      );
+    }
   }
 
   Future<void> updateSettings(AppSettings newSettings) async {
