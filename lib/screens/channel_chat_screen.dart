@@ -1216,6 +1216,12 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                                               showFilterBanner:
                                                   layout.filterActive &&
                                                   message.isFiltered,
+                                              run: _runAt(
+                                                layout,
+                                                messages,
+                                                index,
+                                                rowCount,
+                                              ),
                                             );
                                           } else {
                                             bubble = _buildImageBubble(
@@ -1500,11 +1506,46 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     );
   }
 
+  /// The message row at [index]'s place in a run of one sender's messages
+  /// (Signal and Discord draw a run as one block). A run stops at another
+  /// sender, a gap in time, a new day or the unread line.
+  ChatRun _runAt(
+    _TranscriptLayout layout,
+    List<ChannelMessage> messages,
+    int index,
+    int rowCount,
+  ) {
+    final look = MeshChatLook.of(context);
+    if (!look.groupsRuns) return ChatRun.solo;
+    final row = layout.rowAt(index, messages);
+    final message = row.message;
+    if (message == null) return ChatRun.solo;
+    final dividerId = _unreadDividerMessageId;
+    final divider = dividerId == null ? null : layout.entryIdFor(dividerId);
+    bool joins(_ChannelChatRow olderRow, _ChannelChatRow newerRow) {
+      final older = olderRow.message;
+      final newer = newerRow.message;
+      if (older == null || newer == null) return false;
+      if (newerRow.id == divider) return false;
+      return older.isOutgoing == newer.isOutgoing &&
+          older.senderName == newer.senderName &&
+          look.continuesRun(olderRow.receivedAt, newerRow.receivedAt);
+    }
+
+    // The list is reversed: index + 1 is the older row, index - 1 the newer.
+    return ChatRun(
+      joinsAbove:
+          index + 1 < rowCount && joins(layout.rowAt(index + 1, messages), row),
+      joinsBelow: index > 0 && joins(row, layout.rowAt(index - 1, messages)),
+    );
+  }
+
   Widget _buildMessageBubble(
     ChannelMessage message,
     double textScale,
     bool urlImagesEnabled, {
     bool showFilterBanner = false,
+    ChatRun run = ChatRun.solo,
   }) {
     final settingsService = context.watch<AppSettingsService>();
     final publicIpfsGateway = settingsService.settings.publicIpfsGateway;
@@ -1605,7 +1646,30 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           );
     final textColor = colors.text;
     final metaColor = colors.meta;
-    const bodyFontSize = 14.0;
+    // Signal and Discord: a run from one sender drawn as one block.
+    final discord = look.style == ChatStyle.discord;
+    final signal = look.style == ChatStyle.signal;
+    // The name: Discord's on a run's first message, with the time beside it;
+    // Signal's on its first too.
+    final showName = (!isOutgoing || log) && !(look.groupsRuns && run.joinsAbove);
+    // The avatar: Discord's on a run's first message, Signal's on its last;
+    // the others keep its room.
+    final showAvatar = discord
+        ? !run.joinsAbove
+        : signal
+        ? !run.joinsBelow
+        : true;
+    // The time under the text: Discord has it in the header; Signal on a
+    // run's last message only.
+    final showTime = discord ? false : !(signal && run.joinsBelow);
+    final avatarSize = discord
+        ? discordAvatarSize * textScale.clamp(0.85, 1.4)
+        : (32 * textScale).clamp(28.0, 56.0);
+    final avatarGap = discord ? discordAvatarGap : 6.0;
+    final timeStyle = look.groupsRuns
+        ? TextStyle(fontSize: 11 * textScale, color: metaColor)
+        : MeshTheme.mono(fontSize: 12 * textScale, color: metaColor);
+    final bodyFontSize = discord ? discordBodySize : 14.0;
 
     Widget buildTextContent() {
       return Row(
@@ -1651,11 +1715,17 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
             mainAxisAlignment: layoutOutgoing
                 ? MainAxisAlignment.end
                 : MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            // Signal's avatar sits by a run's last bubble.
+            crossAxisAlignment: signal
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
             children: [
               if (!layoutOutgoing && (!log || look.logAvatars)) ...[
-                _buildAvatar(message.senderName, textScale),
-                const SizedBox(width: 6),
+                if (showAvatar)
+                  _buildAvatar(message.senderName, textScale, size: avatarSize)
+                else
+                  SizedBox(width: avatarSize),
+                SizedBox(width: avatarGap),
               ],
               Flexible(
                 child: GestureDetector(
@@ -1675,10 +1745,44 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                     colors: colors,
                     compact: gifId != null,
                     maxWidth: constraints.maxWidth,
+                    run: run,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (!isOutgoing || log) ...[
+                        if (showName && discord) ...[
+                          // Discord's header: the name, the time beside it.
+                          Padding(
+                            padding: gifId != null
+                                ? const EdgeInsets.only(
+                                    left: 8,
+                                    top: 4,
+                                    bottom: 4,
+                                  )
+                                : EdgeInsets.zero,
+                            child: Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: '${message.senderName}  ',
+                                    style: TextStyle(
+                                      fontSize: 15 * textScale,
+                                      fontWeight: FontWeight.w600,
+                                      color: colors.name ?? textColor,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: formatChatTime(
+                                      context,
+                                      message.timestamp,
+                                    ),
+                                    style: timeStyle,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          if (gifId == null) const SizedBox(height: 2),
+                        ] else if (showName) ...[
                           Padding(
                             padding: gifId != null
                                 ? const EdgeInsets.only(
@@ -1948,13 +2052,11 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                formatChatTime(context, message.timestamp),
-                                style: MeshTheme.mono(
-                                  fontSize: 12 * textScale,
-                                  color: metaColor,
+                              if (showTime)
+                                Text(
+                                  formatChatTime(context, message.timestamp),
+                                  style: timeStyle,
                                 ),
-                              ),
                               if (message.hasFutureTimestamp) ...[
                                 const SizedBox(width: 4),
                                 FutureTimestampIndicator(size: 16 * textScale),
@@ -2028,7 +2130,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           if (message.reactions.isNotEmpty) ...[
             const SizedBox(height: 4),
             Padding(
-              padding: EdgeInsets.only(left: layoutOutgoing ? 0 : 42),
+              padding: EdgeInsets.only(
+                left: layoutOutgoing ? 0 : avatarSize + avatarGap + 4,
+              ),
               child: ReactionChips(
                 reactions: message.reactions,
                 onTap: (_) => _showReactionsReport(message.reactionList()),
@@ -2039,8 +2143,13 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       ),
     );
 
+    // Signal and Discord: a little more room above a run than between its
+    // messages.
+    final Widget body = look.groupsRuns && !run.joinsAbove
+        ? Padding(padding: const EdgeInsets.only(top: 6), child: messageBody)
+        : messageBody;
     if (_selecting) {
-      return _buildSelectableRow(message, messageBody);
+      return _buildSelectableRow(message, body);
     }
     if (!isOutgoing &&
         !PlatformInfo.isDesktop &&
@@ -2051,12 +2160,12 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         onReplyTriggered: () => _setReplyingTo(message),
         hintBuilder: ({required isStart}) =>
             _buildReplySwipeHint(isStart: isStart),
-        child: messageBody,
+        child: body,
       );
     } else {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
-        child: messageBody,
+        child: body,
       );
     }
   }
@@ -3390,10 +3499,10 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     return context.l10n.receivedImage_senderPrefix(hex);
   }
 
-  Widget _buildAvatar(String senderName, double textScale) {
+  Widget _buildAvatar(String senderName, double textScale, {double? size}) {
     return AvatarCircle(
       name: senderName,
-      size: (32 * textScale).clamp(28.0, 56.0),
+      size: size ?? (32 * textScale).clamp(28.0, 56.0),
       photoKey: _photoKeyForSender(senderName),
     );
   }
