@@ -65,6 +65,38 @@ void showChatStyleSheet(
           child: ListView(
             shrinkWrap: true,
             children: [
+              // The two switches act at once, so they rebuild with the
+              // setting; picking a style closes the sheet.
+              ListenableBuilder(
+                listenable: settingsService,
+                builder: (context, _) {
+                  final settings = settingsService.settings;
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SwitchListTile(
+                        secondary: const Icon(Icons.format_color_fill),
+                        title: Text(ctx.l10n.appSettings_chatStyleBackground),
+                        subtitle: Text(
+                          ctx.l10n.appSettings_chatStyleBackgroundSubtitle,
+                        ),
+                        value: settings.chatStyleBackground,
+                        onChanged: settingsService.setChatStyleBackground,
+                      ),
+                      SwitchListTile(
+                        secondary: const Icon(Icons.schedule),
+                        title: Text(ctx.l10n.appSettings_mircTimestamps),
+                        subtitle: Text(
+                          ctx.l10n.appSettings_mircTimestampsSubtitle,
+                        ),
+                        value: settings.mircTimestamps,
+                        onChanged: settingsService.setMircTimestamps,
+                      ),
+                      const Divider(height: 1),
+                    ],
+                  );
+                },
+              ),
               for (final style in ChatStyle.values)
                 _ChatStyleOption(
                   style: style,
@@ -155,7 +187,11 @@ class _ChatStylePreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final look = MeshChatLook.of(context).copyWith(style: style);
-    return Theme(
+    // With the style's own app background on, the preview sits on it.
+    final bg = look.background(dark: theme.brightness == Brightness.dark);
+    return _PreviewBackdrop(
+      color: bg,
+      child: Theme(
       data: look.applyTo(theme),
       child: Builder(
         builder: (context) {
@@ -320,6 +356,28 @@ class _ChatStylePreview extends StatelessWidget {
           );
         },
       ),
+    ),
+    );
+  }
+}
+
+/// The style preview on the style's app background, when there is one.
+class _PreviewBackdrop extends StatelessWidget {
+  final Color? color;
+  final Widget child;
+
+  const _PreviewBackdrop({required this.color, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = color;
+    if (c == null) return child;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: c,
+        borderRadius: BorderRadius.circular(MeshRadii.sm),
+      ),
+      child: Padding(padding: const EdgeInsets.all(8), child: child),
     );
   }
 }

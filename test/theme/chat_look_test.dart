@@ -233,6 +233,81 @@ void main() {
     expect(standard.continuesRun(t, t), isFalse);
   });
 
+  test('iPhone and Android: bubble runs, joined corners, time headers', () {
+    final t = DateTime(2026, 11, 17, 9, 0);
+    for (final style in [ChatStyle.iphone, ChatStyle.android]) {
+      final look = MeshChatLook(style: style);
+      expect(look.groupsRuns, isTrue, reason: '$style');
+      expect(look.bubbleRuns, isTrue, reason: '$style');
+      expect(look.timeHeaders, isTrue, reason: '$style');
+      expect(look.continuesRun(t, t.add(const Duration(minutes: 2))), isTrue);
+      expect(look.pauseBetween(t, t.add(const Duration(minutes: 59))), isFalse);
+      expect(look.pauseBetween(t, t.add(const Duration(hours: 1))), isTrue);
+    }
+    // iMessage: no avatar in a one-to-one chat and no times under bubbles.
+    const ios = MeshChatLook(style: ChatStyle.iphone);
+    expect(ios.noOneToOneAvatar, isTrue);
+    expect(ios.bubbleTimes, isFalse);
+    const android = MeshChatLook(style: ChatStyle.android);
+    expect(android.noOneToOneAvatar, isFalse);
+    expect(android.bubbleTimes, isTrue);
+    // Signal and Discord have no pause headers.
+    expect(
+      const MeshChatLook(
+        style: ChatStyle.signal,
+      ).pauseBetween(t, t.add(const Duration(hours: 3))),
+      isFalse,
+    );
+    // A received bubble in the middle of a run: tight on the left only.
+    final mid = messageBubbleRadius(
+      isOutgoing: false,
+      style: ChatStyle.android,
+      run: const ChatRun(joinsAbove: true, joinsBelow: true),
+    );
+    expect(mid.topLeft, const Radius.circular(4));
+    expect(mid.bottomLeft, const Radius.circular(4));
+    expect(mid.topRight, const Radius.circular(androidRadius));
+    // My last bubble of a run: tight at the top right only.
+    final last = messageBubbleRadius(
+      isOutgoing: true,
+      style: ChatStyle.iphone,
+      run: const ChatRun(joinsAbove: true),
+    );
+    expect(last.topRight, const Radius.circular(6));
+    expect(last.bottomRight, const Radius.circular(iphoneRadius));
+  });
+
+  test('mIRC: 24-hour line times and /me actions', () {
+    expect(mircTime(DateTime(2026, 11, 17, 9, 5)), '[09:05]');
+    expect(mircTime(DateTime(2026, 11, 17, 23, 45)), '[23:45]');
+    expect(mircAction('/me waves'), 'waves');
+    expect(mircAction('/me  waves'), 'waves');
+    expect(mircAction('hello /me'), isNull);
+    expect(mircAction('/meow'), isNull);
+  });
+
+  test('App background: only when switched on, only for other apps', () {
+    expect(
+      const MeshChatLook(style: ChatStyle.discord).background(dark: true),
+      isNull,
+    );
+    const on = MeshChatLook(style: ChatStyle.discord, appBackground: true);
+    expect(on.background(dark: true), discordBgNight);
+    expect(on.background(dark: false), Colors.white);
+    expect(
+      on.copyWith(style: ChatStyle.iphone).background(dark: true),
+      Colors.black,
+    );
+    for (final own in [
+      ChatStyle.standard,
+      ChatStyle.openClassic,
+      ChatStyle.wadamesh,
+    ]) {
+      expect(on.copyWith(style: own).background(dark: true), isNull);
+      expect(on.copyWith(style: own).hasAppBackground, isFalse);
+    }
+  });
+
   // Hues measured from the official MeshCore app's avatars (a public channel,
   // dark mode): the avatar is HSV(hue, 75%, 80%), the name HSV(hue, 75%, 56%).
   test('every style takes its hue from the official app', () {

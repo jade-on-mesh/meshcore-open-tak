@@ -496,6 +496,14 @@ class AppSettingsService extends ChangeNotifier {
     await updateSettings(_settings.copyWith(brightChatIcons: value));
   }
 
+  Future<void> setChatStyleBackground(bool value) async {
+    await updateSettings(_settings.copyWith(chatStyleBackground: value));
+  }
+
+  Future<void> setMircTimestamps(bool value) async {
+    await updateSettings(_settings.copyWith(mircTimestamps: value));
+  }
+
   Future<void> setKeepScreenOn(bool value) async {
     await updateSettings(_settings.copyWith(keepScreenOn: value));
   }

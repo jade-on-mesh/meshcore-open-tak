@@ -2857,6 +2857,30 @@ abstract class AppLocalizations {
   /// **'Like Google Messages: soft blue bubbles for yours, grey for others, names and avatars in colour'**
   String get appSettings_chatStyleAndroidHelp;
 
+  /// No description provided for @appSettings_chatStyleBackground.
+  ///
+  /// In en, this message translates to:
+  /// **'App background'**
+  String get appSettings_chatStyleBackground;
+
+  /// No description provided for @appSettings_chatStyleBackgroundSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Chats on the style\'s own app background, like Discord\'s grey or iMessage\'s black'**
+  String get appSettings_chatStyleBackgroundSubtitle;
+
+  /// No description provided for @appSettings_mircTimestamps.
+  ///
+  /// In en, this message translates to:
+  /// **'mIRC timestamps'**
+  String get appSettings_mircTimestamps;
+
+  /// No description provided for @appSettings_mircTimestampsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Start each mIRC line with its time, [23:45]'**
+  String get appSettings_mircTimestampsSubtitle;
+
   /// No description provided for @appSettings_chatStyleMirc.
   ///
   /// In en, this message translates to:
@@ -5574,6 +5598,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not open link: {url}'**
   String chat_couldNotOpenLink(String url);
+
+  /// No description provided for @chat_dayChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Day changed to {date}'**
+  String chat_dayChanged(String date);
 
   /// No description provided for @chat_invalidLink.
   ///

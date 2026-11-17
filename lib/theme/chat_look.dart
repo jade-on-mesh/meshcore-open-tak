@@ -73,9 +73,18 @@ class MeshChatLook extends ThemeExtension<MeshChatLook> {
   /// white on it, in place of a faint tint.
   final bool brightIcons;
 
+  /// Chats on the style's own app background ([background]) instead of the
+  /// colour theme's.
+  final bool appBackground;
+
+  /// mIRC: a `[HH:MM]` time at the start of each line.
+  final bool logTimestamps;
+
   const MeshChatLook({
     this.style = ChatStyle.standard,
     this.brightIcons = false,
+    this.appBackground = false,
+    this.logTimestamps = true,
   });
 
   static const standard = MeshChatLook();
@@ -93,15 +102,48 @@ class MeshChatLook extends ThemeExtension<MeshChatLook> {
   /// A log in a monospace font (mIRC).
   bool get logMono => style == ChatStyle.mirc;
 
-  /// Messages from one sender in a row drawn as one run (Signal, Discord):
-  /// the name (and Discord's avatar) on the first, Signal's avatar and time
-  /// on the last, and the bubbles close together.
-  bool get groupsRuns =>
-      style == ChatStyle.signal || style == ChatStyle.discord;
+  /// Messages from one sender in a row drawn as one run (Signal, iPhone,
+  /// Android, Discord), the messages close together.
+  bool get groupsRuns => bubbleRuns || style == ChatStyle.discord;
+
+  /// Runs of bubbles (Signal, iPhone, Android): the name on a run's first
+  /// bubble, the avatar and time by its last, tighter corners where bubbles
+  /// join, and no sender name in a one-to-one chat.
+  bool get bubbleRuns =>
+      style == ChatStyle.signal ||
+      style == ChatStyle.iphone ||
+      style == ChatStyle.android;
+
+  /// No avatar beside the other person's bubbles in a one-to-one chat (Signal,
+  /// iMessage). Google Messages keeps it.
+  bool get noOneToOneAvatar =>
+      style == ChatStyle.signal || style == ChatStyle.iphone;
+
+  /// A time under each run's last bubble. iMessage has none: its time headers
+  /// ([timeHeaders]) say when.
+  bool get bubbleTimes => style != ChatStyle.iphone;
+
+  /// Date lines that carry the time too, and a new one after an hour's pause
+  /// (iMessage, Google Messages).
+  bool get timeHeaders =>
+      style == ChatStyle.iphone || style == ChatStyle.android;
+
+  /// Whether a time header goes above a message received at [newer] after one
+  /// received at [older] the same day ([timeHeaders]: an hour or more apart).
+  bool pauseBetween(DateTime older, DateTime newer) =>
+      timeHeaders && newer.difference(older) >= const Duration(hours: 1);
+
+  /// How round a bubble's corner is where it joins the next one in a run, on
+  /// the sender's side.
+  double get runJoinRadius => switch (style) {
+    ChatStyle.iphone => 6,
+    ChatStyle.android => 4,
+    _ => signalJoinRadius,
+  };
 
   /// Whether a message received at [newer] continues the run of one from the
   /// same sender received at [older]: the same day and within Discord's 7
-  /// minutes (Signal's 3).
+  /// minutes (the others' 3).
   bool continuesRun(DateTime older, DateTime newer) {
     if (!groupsRuns) return false;
     final a = older.toLocal();
@@ -113,6 +155,30 @@ class MeshChatLook extends ThemeExtension<MeshChatLook> {
         : const Duration(minutes: 3);
     return !gap.isNegative && gap <= limit;
   }
+
+  /// The chat background of the style's app, when [appBackground] is on and
+  /// the style has one (not the app's own styles, which follow the theme).
+  Color? background({required bool dark}) {
+    if (!appBackground) return null;
+    return switch (style) {
+      ChatStyle.discord => dark ? discordBgNight : Colors.white,
+      ChatStyle.signal => dark ? signalBgNight : Colors.white,
+      ChatStyle.iphone => dark ? Colors.black : Colors.white,
+      ChatStyle.android => dark ? androidBgNight : Colors.white,
+      ChatStyle.mirc => dark ? mircBgNight : Colors.white,
+      ChatStyle.icq => dark ? icqBgNight : Colors.white,
+      ChatStyle.classic => dark ? classicBgNight : classicBgDay,
+      ChatStyle.standard ||
+      ChatStyle.openClassic ||
+      ChatStyle.wadamesh => null,
+    };
+  }
+
+  /// Whether this style has a background of its own ([background]).
+  bool get hasAppBackground =>
+      style != ChatStyle.standard &&
+      style != ChatStyle.openClassic &&
+      style != ChatStyle.wadamesh;
 
   /// How a log names a message's sender: `<nick>` (mIRC), `Name (time):`
   /// (ICQ), or just the name (Discord). [time] is the message's, formatted.
@@ -135,9 +201,16 @@ class MeshChatLook extends ThemeExtension<MeshChatLook> {
   );
 
   @override
-  MeshChatLook copyWith({ChatStyle? style, bool? brightIcons}) => MeshChatLook(
+  MeshChatLook copyWith({
+    ChatStyle? style,
+    bool? brightIcons,
+    bool? appBackground,
+    bool? logTimestamps,
+  }) => MeshChatLook(
     style: style ?? this.style,
     brightIcons: brightIcons ?? this.brightIcons,
+    appBackground: appBackground ?? this.appBackground,
+    logTimestamps: logTimestamps ?? this.logTimestamps,
   );
 
   @override
@@ -260,6 +333,8 @@ String classicAvatarText(String name) {
 }
 
 const Color classicSent = Color(0xFF2196F3);
+const Color classicBgDay = Color(0xFFFAFAFA);
+const Color classicBgNight = Color(0xFF121212);
 const Color classicRecv = Color(0xFFE0E0E0);
 const Color classicRecvInk = Color(0xFF000000);
 const double classicRadius = 20;
@@ -295,6 +370,7 @@ Color openClassicColor(String name) {
 // their colour across styles.
 
 const Color signalSent = Color(0xFF2C6BED);
+const Color signalBgNight = Color(0xFF121212);
 const Color signalSentInk = Color(0xFFFFFFFF);
 const Color signalRecvDay = Color(0xFFE9E9E9);
 const Color signalRecvNight = Color(0xFF3B3B3B);
@@ -350,6 +426,7 @@ const Color androidRecvInkDay = Color(0xFF1F1F1F);
 const Color androidRecvNight = Color(0xFF2A2A2D);
 const Color androidRecvInkNight = Color(0xFFE3E3E3);
 const double androidRadius = 20;
+const Color androidBgNight = Color(0xFF131314);
 
 /// A sender's name in the Android style.
 Color androidNameColor(String name, {required bool dark}) {
@@ -399,6 +476,22 @@ Color mircNickColor(String name, {required bool dark}) {
 }
 
 const Color mircInkDay = Color(0xFF000000);
+const Color mircBgNight = Color(0xFF0C0C0C);
+
+/// A `/me` action line's colour (mIRC's purple, lifted at night).
+Color mircActionColor({required bool dark}) =>
+    dark ? const Color(0xFFD27FD2) : const Color(0xFF9C009C);
+
+/// mIRC's line timestamp, `[HH:MM]` on the 24-hour clock, local time.
+String mircTime(DateTime time) {
+  final t = time.toLocal();
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '[${two(t.hour)}:${two(t.minute)}]';
+}
+
+/// The text of a `/me` action, or null when [text] isn't one.
+String? mircAction(String text) =>
+    text.startsWith('/me ') ? text.substring(4).trimLeft() : null;
 const Color mircInkNight = Color(0xFFE0E0E0);
 
 // ---- ICQ -----------------------------------------------------------------------
@@ -410,6 +503,7 @@ const Color icqMineNight = Color(0xFFFF6B6B);
 const Color icqTheirsDay = Color(0xFF0000CC);
 const Color icqTheirsNight = Color(0xFF7FA8FF);
 const Color icqInkDay = Color(0xFF000000);
+const Color icqBgNight = Color(0xFF1E1E1E);
 const Color icqInkNight = Color(0xFFE0E0E0);
 
 // ---- Discord -------------------------------------------------------------------
@@ -419,6 +513,7 @@ const Color icqInkNight = Color(0xFFE0E0E0);
 // of Discord's own colours with a white initial.
 
 const Color discordInkDay = Color(0xFF313338);
+const Color discordBgNight = Color(0xFF1A1A1E);
 const Color discordInkNight = Color(0xFFDBDEE1);
 const Color discordMetaDay = Color(0xFF5C5E66);
 const Color discordMetaNight = Color(0xFF949BA4);

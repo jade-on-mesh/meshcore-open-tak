@@ -753,6 +753,8 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
           final chatLook = MeshChatLook(
             style: ChatStyle.fromId(settingsService.settings.chatStyle),
             brightIcons: settingsService.settings.brightChatIcons,
+            appBackground: settingsService.settings.chatStyleBackground,
+            logTimestamps: settingsService.settings.mircTimestamps,
           );
           return MaterialApp(
             title: 'MeshCore Open TAK',
