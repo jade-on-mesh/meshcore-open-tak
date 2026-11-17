@@ -3242,8 +3242,8 @@ class VoxVoiceService extends ChangeNotifier {
       var sent = 0;
       var markedSent = 0;
       var busyMs = 0;
-    // Sends in a row the radio was slow to confirm (voxSlowConfirmsMax).
-    var slowConfirms = 0;
+      // Sends in a row the radio was slow to confirm (voxSlowConfirmsMax).
+      var slowConfirms = 0;
       DateTime? firstAt;
       final startedAt = DateTime.now();
       final sentData = <int>[];
