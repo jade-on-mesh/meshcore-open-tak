@@ -1138,16 +1138,7 @@ class _ChatScreenState extends State<ChatScreen> {
           case 'photo':
             showVoxImagePicker(
               context,
-              // AI sketches to a person ride the OTP pipeline, so they are
-              // offered only once this contact has a pad.
-              aiSketch:
-                  connector.canSendOtpImageToContact(contactKeyHex) &&
-                      AeicHdService.instance.supported
-                  ? VoxAiSketchOption(
-                      sendHd: (bytes, _) =>
-                          _sendOtpAiSketchHd(connector, bytes),
-                    )
-                  : null,
+              // AI sketch HD is no longer offered: Mesh photos only.
               recipientLabel: _resolveContact(connector).name,
               caption: caption,
               onSend: (image, text) =>
@@ -1307,6 +1298,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   /// AI sketch HD to this contact (lib/vox/aeic_hd_service.dart): encoded by
   /// the ncnn codec, then sent like any other OTP image.
+  // Not offered in the photo picker any more (see 'photo' above).
+  // ignore: unused_element
   Future<void> _sendOtpAiSketchHd(
     MeshCoreConnector connector,
     Uint8List sourceBytes,

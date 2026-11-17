@@ -2,7 +2,7 @@
 
 MeshCore Open can send a highly compressed image as channel GRP_DATA packets. Unlike a GIF reference or URL preview, the compressed image bytes travel over the mesh. A compatible recipient reconstructs them locally using the image model.
 
-> **MeshCore Open TAK** sends and draws only [AI sketch HD](#ai-sketch-hd-meshcore-open-tak). MeshCore Open's ~150-byte AI sketch (ft32, described in the sections below) is no longer offered: the photo sheet has Mesh photo and AI sketch HD, App Settings no longer has its switch or model downloads, and one received from another app reads "Old-style AI sketch: this app only draws AI sketch HD". Its code stays in place, unused, so upstream syncs stay clean.
+> **MeshCore Open TAK** sends and draws only [AI sketch HD](#ai-sketch-hd-meshcore-open-tak). MeshCore Open's ~150-byte AI sketch (ft32, described in the sections below) is no longer offered: the photo sheet now offers Mesh photos only, App Settings no longer has its switch or model downloads, and one received from another app reads "Old-style AI sketch: this app only draws AI sketch HD". Its code stays in place, unused, so upstream syncs stay clean.
 
 ## Requirements and setup
 
@@ -165,7 +165,9 @@ open as sent; nothing is downloaded without asking.
 
 ## AI sketch HD (MeshCore Open TAK)
 
-MeshCore Open TAK's other photo option beside Mesh photos is **AI sketch HD**, AEIC-SE at the `ft2` rate point (it replaced the ~150-byte AI sketch). A 512×512 photo becomes about 1–2 KB (8–15 packets with parity), far closer to the original than the old AI sketch, at roughly half a Mesh photo's airtime. A received one whose model isn't downloaded reads "AI sketch HD received: download the model to see it", and **Set up** opens the AI sketch HD screen; where the app has no codec (the web), it reads "AI sketch HD can't be drawn on this device".
+> The photo picker no longer offers AI sketch HD: photos go out as Mesh photos. Received AI sketch HD photos are still drawn, and "ask for the rest" still works; the sending code stays in place, unused.
+
+AI sketch HD was MeshCore Open TAK's other photo option beside Mesh photos, AEIC-SE at the `ft2` rate point (it replaced the ~150-byte AI sketch). A 512×512 photo becomes about 1–2 KB (8–15 packets with parity), far closer to the original than the old AI sketch, at roughly half a Mesh photo's airtime. A received one whose model isn't downloaded reads "AI sketch HD received: download the model to see it", and **Set up** opens the AI sketch HD screen; where the app has no codec (the web), it reads "AI sketch HD can't be drawn on this device".
 
 - **Codec.** [mikecarper/AEIC](https://github.com/mikecarper/AEIC/tree/main/mobile)'s ncnn program, built for arm64 by `tool/build_aeic_hd_android.sh` and shipped in the APK. It loads one model stage at a time, so decoding peaks around 550 MB rather than the ONNX decoder's ~2.2 GB, but takes minutes rather than a second. ncnn is built with CPU-specific fast paths off so every phone computes the entropy model identically.
 - **Model.** About 1.9 GB (1,052 files), downloaded from App Settings → Image messages → AI sketch HD (or the received photo's **Set up**). It is a GitHub release (`aeic-ncnn-ft2-512-v1`) built by `.github/workflows/aeic-ncnn-models.yml` from the authors' `AEIC_SE_ft2.pkl`, SD-Turbo's UNet and AdcSR's half decoder. **Check this device** encodes the export's sample photo and requires byte-identical output to the reference codec, then decodes it and compares against the reference picture.
