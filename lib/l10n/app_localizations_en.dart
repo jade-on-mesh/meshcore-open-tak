@@ -1554,13 +1554,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appSettings_chatStyleBackground => 'App background';
 
   @override
-  String get appSettings_chatStyleBackgroundSubtitle => 'Chats on the style\'s own app background, like Discord\'s grey or iMessage\'s black';
+  String get appSettings_chatStyleBackgroundSubtitle =>
+      'Chats on the style\'s own app background, like Discord\'s grey or iMessage\'s black';
 
   @override
   String get appSettings_mircTimestamps => 'mIRC timestamps';
 
   @override
-  String get appSettings_mircTimestampsSubtitle => 'Start each mIRC line with its time, [23:45]';
+  String get appSettings_mircTimestampsSubtitle =>
+      'Start each mIRC line with its time, [23:45]';
 
   @override
   String get appSettings_chatStyleMirc => 'mIRC';

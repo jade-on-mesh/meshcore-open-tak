@@ -95,10 +95,7 @@ class ChatDaySeparator extends StatelessWidget {
         // iMessage: "Today 9:41 AM", the day in bold; Google Messages:
         // "Today · 9:41 AM".
         final ios = look.style == ChatStyle.iphone;
-        final style = TextStyle(
-          fontSize: 11.5,
-          color: ios ? iphoneName : grey,
-        );
+        final style = TextStyle(fontSize: 11.5, color: ios ? iphoneName : grey);
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Center(
@@ -112,8 +109,7 @@ class ChatDaySeparator extends StatelessWidget {
                     ),
                   ),
                   TextSpan(
-                    text:
-                        '${ios ? ' ' : ' · '}${formatChatTime(context, day)}',
+                    text: '${ios ? ' ' : ' · '}${formatChatTime(context, day)}',
                     style: style,
                   ),
                 ],

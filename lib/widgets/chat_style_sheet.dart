@@ -192,171 +192,174 @@ class _ChatStylePreview extends StatelessWidget {
     return _PreviewBackdrop(
       color: bg,
       child: Theme(
-      data: look.applyTo(theme),
-      child: Builder(
-        builder: (context) {
-          const sender = 'Alpha-1';
-          final recv = MessageBubbleColors.of(
-            context,
-            isOutgoing: false,
-            senderName: sender,
-          );
-          final sent = MessageBubbleColors.of(context, isOutgoing: true);
-          final l10n = context.l10n;
-          if (look.isLog) {
-            // A log: mIRC `<nick> text` lines; ICQ `Name (time):` over the
-            // text; Discord an avatar, the name, the text.
-            const me = 'Me';
-            final mine = MessageBubbleColors.of(
+        data: look.applyTo(theme),
+        child: Builder(
+          builder: (context) {
+            const sender = 'Alpha-1';
+            final recv = MessageBubbleColors.of(
               context,
-              isOutgoing: true,
-              senderName: me,
+              isOutgoing: false,
+              senderName: sender,
             );
-            const time = '2:03 PM';
-            TextStyle font(double size, Color color, {bool bold = false}) =>
-                look.logMono
-                ? MeshTheme.mono(
-                    fontSize: size,
-                    fontWeight: bold ? FontWeight.w700 : null,
-                    color: color,
-                  )
-                : TextStyle(
-                    fontSize: size,
-                    fontWeight: bold ? FontWeight.w700 : null,
-                    color: color,
+            final sent = MessageBubbleColors.of(context, isOutgoing: true);
+            final l10n = context.l10n;
+            if (look.isLog) {
+              // A log: mIRC `<nick> text` lines; ICQ `Name (time):` over the
+              // text; Discord an avatar, the name, the text.
+              const me = 'Me';
+              final mine = MessageBubbleColors.of(
+                context,
+                isOutgoing: true,
+                senderName: me,
+              );
+              const time = '2:03 PM';
+              TextStyle font(double size, Color color, {bool bold = false}) =>
+                  look.logMono
+                  ? MeshTheme.mono(
+                      fontSize: size,
+                      fontWeight: bold ? FontWeight.w700 : null,
+                      color: color,
+                    )
+                  : TextStyle(
+                      fontSize: size,
+                      fontWeight: bold ? FontWeight.w700 : null,
+                      color: color,
+                    );
+              Widget entry(
+                String nick,
+                Color? nickColor,
+                String text,
+                Color ink,
+              ) {
+                final label = look.logNick(nick, time: time);
+                if (look.style == ChatStyle.mirc) {
+                  return Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '$label ',
+                          style: font(12, nickColor ?? ink, bold: true),
+                        ),
+                        TextSpan(text: text, style: font(12, ink)),
+                      ],
+                    ),
                   );
-            Widget entry(
-              String nick,
-              Color? nickColor,
-              String text,
-              Color ink,
-            ) {
-              final label = look.logNick(nick, time: time);
-              if (look.style == ChatStyle.mirc) {
-                return Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: '$label ',
+                }
+                final body = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (look.style == ChatStyle.discord)
+                      // Discord's header: the name, the time beside it in grey.
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: '$label  ',
+                              style: font(12, nickColor ?? ink, bold: true),
+                            ),
+                            TextSpan(text: time, style: font(10, mine.meta)),
+                          ],
+                        ),
+                      )
+                    else
+                      Text(
+                        label,
                         style: font(12, nickColor ?? ink, bold: true),
                       ),
-                      TextSpan(text: text, style: font(12, ink)),
-                    ],
-                  ),
+                    Text(text, style: font(13, ink)),
+                  ],
+                );
+                if (!look.logAvatars) return body;
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AvatarCircle(name: nick, size: 28),
+                    const SizedBox(width: 8),
+                    Flexible(child: body),
+                  ],
                 );
               }
-              final body = Column(
+
+              return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (look.style == ChatStyle.discord)
-                    // Discord's header: the name, the time beside it in grey.
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: '$label  ',
-                            style: font(12, nickColor ?? ink, bold: true),
-                          ),
-                          TextSpan(text: time, style: font(10, mine.meta)),
-                        ],
-                      ),
-                    )
-                  else
-                    Text(label, style: font(12, nickColor ?? ink, bold: true)),
-                  Text(text, style: font(13, ink)),
-                ],
-              );
-              if (!look.logAvatars) return body;
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AvatarCircle(name: nick, size: 28),
-                  const SizedBox(width: 8),
-                  Flexible(child: body),
+                  entry(
+                    sender,
+                    recv.name,
+                    l10n.appSettings_chatStylePreviewReceived,
+                    recv.text,
+                  ),
+                  const SizedBox(height: 6),
+                  entry(
+                    me,
+                    mine.name,
+                    l10n.appSettings_chatStylePreviewSent,
+                    mine.text,
+                  ),
                 ],
               );
             }
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                entry(
-                  sender,
-                  recv.name,
-                  l10n.appSettings_chatStylePreviewReceived,
-                  recv.text,
-                ),
-                const SizedBox(height: 6),
-                entry(
-                  me,
-                  mine.name,
-                  l10n.appSettings_chatStylePreviewSent,
-                  mine.text,
-                ),
-              ],
-            );
-          }
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              final w = constraints.maxWidth;
-              return Column(
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      const AvatarCircle(name: sender, size: 28),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: MessageBubbleFrame(
-                          isOutgoing: false,
-                          colors: recv,
-                          maxWidth: w,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                sender,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color:
-                                      recv.name ??
-                                      senderNameColor(sender, style: style),
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final w = constraints.maxWidth;
+                return Column(
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const AvatarCircle(name: sender, size: 28),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: MessageBubbleFrame(
+                            isOutgoing: false,
+                            colors: recv,
+                            maxWidth: w,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  sender,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color:
+                                        recv.name ??
+                                        senderNameColor(sender, style: style),
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                l10n.appSettings_chatStylePreviewReceived,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: recv.text,
+                                Text(
+                                  l10n.appSettings_chatStylePreviewReceived,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: recv.text,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: MessageBubbleFrame(
-                      isOutgoing: true,
-                      colors: sent,
-                      maxWidth: w,
-                      child: Text(
-                        l10n.appSettings_chatStylePreviewSent,
-                        style: TextStyle(fontSize: 13, color: sent.text),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: MessageBubbleFrame(
+                        isOutgoing: true,
+                        colors: sent,
+                        maxWidth: w,
+                        child: Text(
+                          l10n.appSettings_chatStylePreviewSent,
+                          style: TextStyle(fontSize: 13, color: sent.text),
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              );
-            },
-          );
-        },
+                  ],
+                );
+              },
+            );
+          },
+        ),
       ),
-    ),
     );
   }
 }

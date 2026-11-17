@@ -2842,7 +2842,7 @@ abstract class AppLocalizations {
   /// No description provided for @appSettings_chatStyleIphoneHelp.
   ///
   /// In en, this message translates to:
-  /// **'Like Messages on an iPhone: blue bubbles for yours, grey for others, grey names and avatars'**
+  /// **'Like Messages on an iPhone: blue bubbles for yours, grey for others, runs of messages joined, the time in headers'**
   String get appSettings_chatStyleIphoneHelp;
 
   /// No description provided for @appSettings_chatStyleAndroid.
@@ -2854,7 +2854,7 @@ abstract class AppLocalizations {
   /// No description provided for @appSettings_chatStyleAndroidHelp.
   ///
   /// In en, this message translates to:
-  /// **'Like Google Messages: soft blue bubbles for yours, grey for others, names and avatars in colour'**
+  /// **'Like Google Messages: soft blue bubbles for yours, grey for others, runs of messages joined, names and avatars in colour'**
   String get appSettings_chatStyleAndroidHelp;
 
   /// No description provided for @appSettings_chatStyleBackground.
@@ -2890,7 +2890,7 @@ abstract class AppLocalizations {
   /// No description provided for @appSettings_chatStyleMircHelp.
   ///
   /// In en, this message translates to:
-  /// **'Like mIRC: no bubbles, every line on the left as <nick> message in a monospace font, nicks in colour'**
+  /// **'Like mIRC: no bubbles, every line as [time] <nick> message in a monospace font, nicks in colour, /me actions'**
   String get appSettings_chatStyleMircHelp;
 
   /// No description provided for @appSettings_chatStyleStandard.

@@ -168,9 +168,7 @@ class MeshChatLook extends ThemeExtension<MeshChatLook> {
       ChatStyle.mirc => dark ? mircBgNight : Colors.white,
       ChatStyle.icq => dark ? icqBgNight : Colors.white,
       ChatStyle.classic => dark ? classicBgNight : classicBgDay,
-      ChatStyle.standard ||
-      ChatStyle.openClassic ||
-      ChatStyle.wadamesh => null,
+      ChatStyle.standard || ChatStyle.openClassic || ChatStyle.wadamesh => null,
     };
   }
 

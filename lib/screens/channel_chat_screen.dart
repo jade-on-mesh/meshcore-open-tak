@@ -1673,9 +1673,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     // The name: on a run's first message (Discord's with the time beside
     // it). mIRC names the sender at the start of the line instead.
     final showName =
-        (!isOutgoing || log) &&
-        !mirc &&
-        !(look.groupsRuns && run.joinsAbove);
+        (!isOutgoing || log) && !mirc && !(look.groupsRuns && run.joinsAbove);
     // The avatar: Discord's on a run's first message, the bubble styles' by
     // its last; the others keep its room.
     final showAvatar = discord
