@@ -198,18 +198,40 @@ void main() {
     expect(look.logNick('Jade', time: '2:03 PM'), 'Jade (2:03 PM):');
   });
 
-  testWidgets('Discord style: a log with avatars, names in colour', (
+  testWidgets('Discord style: a log with avatars, names in header white', (
     tester,
   ) async {
     final recv = await colorsIn(tester, ChatStyle.discord, outgoing: false);
     expect(recv.flat, isTrue);
     expect(recv.text, discordInkNight);
-    expect(recv.name, discordNameColor('Alpha-1', dark: true));
+    expect(recv.name, discordNameColor(dark: true));
     const look = MeshChatLook(style: ChatStyle.discord);
     expect(look.logAvatars, isTrue);
     expect(look.logNick('Jade'), 'Jade');
     expect(const MeshChatLook(style: ChatStyle.mirc).logNick('Jade'), '<Jade>');
     expect(discordAvatarColors, contains(discordAvatarColor('Jade ✨')));
+  });
+
+  test('Signal and Discord group runs; others never do', () {
+    final t = DateTime(2026, 11, 16, 23, 45);
+    const discord = MeshChatLook(style: ChatStyle.discord);
+    const signal = MeshChatLook(style: ChatStyle.signal);
+    expect(discord.groupsRuns, isTrue);
+    expect(signal.groupsRuns, isTrue);
+    expect(discord.continuesRun(t, t.add(const Duration(minutes: 6))), isTrue);
+    expect(discord.continuesRun(t, t.add(const Duration(minutes: 8))), isFalse);
+    expect(signal.continuesRun(t, t.add(const Duration(minutes: 2))), isTrue);
+    expect(signal.continuesRun(t, t.add(const Duration(minutes: 4))), isFalse);
+    // Not across midnight, nor backwards.
+    expect(
+      discord.continuesRun(t, DateTime(2026, 11, 17, 0, 1)),
+      isFalse,
+    );
+    expect(discord.continuesRun(t, t.subtract(const Duration(minutes: 1))),
+        isFalse);
+    const standard = MeshChatLook();
+    expect(standard.groupsRuns, isFalse);
+    expect(standard.continuesRun(t, t), isFalse);
   });
 
   // Hues measured from the official MeshCore app's avatars (a public channel,
