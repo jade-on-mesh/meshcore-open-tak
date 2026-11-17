@@ -18,38 +18,28 @@ class UnreadDivider extends StatelessWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
     switch (MeshChatLook.of(context).style) {
       case ChatStyle.discord:
-        // A thin red line across, a red "NEW" tag at its right end.
-        return Semantics(
-          label: label,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Row(
-              children: [
-                Expanded(child: Container(height: 1, color: red)),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 5,
-                    vertical: 1,
-                  ),
-                  decoration: const BoxDecoration(
-                    color: red,
-                    borderRadius: BorderRadius.horizontal(
-                      left: Radius.circular(3),
-                      right: Radius.circular(8),
-                    ),
-                  ),
-                  child: Text(
-                    context.l10n.chat_newBadge,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: 0.4,
-                    ),
+        // As in the Discord app: a thin red line either side of a red
+        // "NEW MESSAGES" in capitals.
+        final line = red.withValues(alpha: 0.6);
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            children: [
+              Expanded(child: Container(height: 1, color: line)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  label.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: dark ? const Color(0xFFF57F82) : red,
+                    letterSpacing: 0.3,
                   ),
                 ),
-              ],
-            ),
+              ),
+              Expanded(child: Container(height: 1, color: line)),
+            ],
           ),
         );
       case ChatStyle.mirc:

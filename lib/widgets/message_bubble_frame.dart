@@ -146,7 +146,7 @@ class MessageBubbleColors {
             border: Colors.transparent,
             text: dark ? discordInkNight : discordInkDay,
             meta: dark ? discordMetaNight : discordMetaDay,
-            name: name.isEmpty ? null : discordNameColor(name, dark: dark),
+            name: name.isEmpty ? null : discordNameColor(dark: dark),
             flat: true,
           );
         case ChatStyle.classic:
@@ -190,12 +190,31 @@ class MessageBubbleColors {
 BorderRadius messageBubbleRadius({
   required bool isOutgoing,
   ChatStyle style = ChatStyle.standard,
+  ChatRun run = ChatRun.solo,
 }) {
   if (style == ChatStyle.classic) {
     return BorderRadius.circular(classicRadius);
   }
   if (style == ChatStyle.signal) {
-    return BorderRadius.circular(signalRadius);
+    // Signal: round all over, but tighter on the sender's side where a bubble
+    // joins the one above or below it in a run.
+    const round = Radius.circular(signalRadius);
+    const join = Radius.circular(signalJoinRadius);
+    final top = run.joinsAbove ? join : round;
+    final bottom = run.joinsBelow ? join : round;
+    return isOutgoing
+        ? BorderRadius.only(
+            topLeft: round,
+            bottomLeft: round,
+            topRight: top,
+            bottomRight: bottom,
+          )
+        : BorderRadius.only(
+            topRight: round,
+            bottomRight: round,
+            topLeft: top,
+            bottomLeft: bottom,
+          );
   }
   if (style == ChatStyle.iphone) return BorderRadius.circular(iphoneRadius);
   if (style == ChatStyle.android) return BorderRadius.circular(androidRadius);
@@ -249,7 +268,11 @@ class MessageBubbleFrame extends StatelessWidget {
     this.isFailed = false,
     this.compact = false,
     this.colors,
+    this.run = ChatRun.solo,
   });
+
+  /// Its place in a run from one sender (Signal's joined corners).
+  final ChatRun run;
 
   /// Colours of their own (MeshCore Open TAK: an OTP theme's bubble colours),
   /// instead of the outgoing/received defaults.
@@ -267,6 +290,7 @@ class MessageBubbleFrame extends StatelessWidget {
     final radius = messageBubbleRadius(
       isOutgoing: isOutgoing,
       style: MeshChatLook.of(context).style,
+      run: run,
     );
     final padding = compact
         ? const EdgeInsets.all(4)

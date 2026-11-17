@@ -923,7 +923,31 @@ class _ChatScreenState extends State<ChatScreen> {
               final textScale = context.select<ChatTextScaleService, double>(
                 (service) => service.scale,
               );
+              // Signal and Discord: where it sits in a run of one sender's
+              // messages. The list is reversed: index + 1 is older.
+              final look = MeshChatLook.of(context);
+              bool joins(Message older, Message newer) =>
+                  newer.messageId != _unreadDividerMessageId &&
+                  older.isOutgoing == newer.isOutgoing &&
+                  (!isRoom ||
+                      listEquals(
+                        older.fourByteRoomContactKey,
+                        newer.fourByteRoomContactKey,
+                      )) &&
+                  look.continuesRun(older.receivedAt, newer.receivedAt);
+              final run = look.groupsRuns
+                  ? ChatRun(
+                      joinsAbove:
+                          messageIndex + 1 < reversedMessages.length &&
+                          joins(reversedMessages[messageIndex + 1], message),
+                      joinsBelow:
+                          messageIndex > 0 &&
+                          joins(message, reversedMessages[messageIndex - 1]),
+                    )
+                  : ChatRun.solo;
               final bubble = _MessageBubble(
+                run: run,
+                isRoom: isRoom,
                 message: message,
                 senderName: isRoom
                     ? (roomAuthor != null
@@ -2138,6 +2162,12 @@ class _MessageBubble extends StatelessWidget {
   final double textScale;
   final String sourceId;
 
+  /// Its place in a run of one sender's messages (Signal, Discord).
+  final ChatRun run;
+
+  /// A room server's chat, where messages come from several people.
+  final bool isRoom;
+
   const _MessageBubble({
     required this.message,
     required this.senderName,
@@ -2145,6 +2175,8 @@ class _MessageBubble extends StatelessWidget {
     required this.textScale,
     this.onLongPress,
     this.onRetryReaction,
+    this.run = ChatRun.solo,
+    this.isRoom = false,
   });
 
   @override
@@ -2234,7 +2266,30 @@ class _MessageBubble extends StatelessWidget {
           );
     final textColor = colors.text;
     final metaColor = colors.meta;
-    const bodyFontSize = 14.0;
+    final discord = look.style == ChatStyle.discord;
+    final signal = look.style == ChatStyle.signal;
+    // Signal names no one in a one-to-one chat, and shows no avatar there;
+    // in a room, the name on a run's first message and the avatar by its
+    // last. Discord: the name and avatar on a run's first message.
+    final signalSolo = signal && !isRoom;
+    final showName =
+        (!isOutgoing || log) &&
+        !signalSolo &&
+        !(look.groupsRuns && run.joinsAbove);
+    final showAvatar = discord
+        ? !run.joinsAbove
+        : signal
+        ? !run.joinsBelow
+        : true;
+    final showTime = discord ? false : !(signal && run.joinsBelow);
+    final avatarSize = discord
+        ? discordAvatarSize * textScale.clamp(0.85, 1.4)
+        : 32.0;
+    final avatarGap = discord ? discordAvatarGap : 6.0;
+    final timeStyle = look.groupsRuns
+        ? TextStyle(fontSize: 11 * textScale, color: metaColor)
+        : MeshTheme.mono(fontSize: 12 * textScale, color: metaColor);
+    final bodyFontSize = discord ? discordBodySize : 14.0;
     // Do not strip room-server author bytes here: the parser stores them in
     // fourByteRoomContactKey, so message.text is safe to render as-is.
     // displayText resolves to the sender's own typed plaintext for an
@@ -2280,7 +2335,12 @@ class _MessageBubble extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      // Signal and Discord: a little more room above a run than between its
+      // messages.
+      padding: EdgeInsets.only(
+        top: look.groupsRuns && !run.joinsAbove ? 9 : 3,
+        bottom: 3,
+      ),
       child: Column(
         crossAxisAlignment: layoutOutgoing
             ? CrossAxisAlignment.end
@@ -2296,16 +2356,23 @@ class _MessageBubble extends StatelessWidget {
                 mainAxisAlignment: layoutOutgoing
                     ? MainAxisAlignment.end
                     : MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.end,
+                // Discord's avatar by a run's first message (the top).
+                crossAxisAlignment: discord
+                    ? CrossAxisAlignment.start
+                    : CrossAxisAlignment.end,
                 children: [
-                  if (!layoutOutgoing && (!log || look.logAvatars)) ...[
+                  if (!layoutOutgoing &&
+                      (!log || look.logAvatars) &&
+                      !signalSolo) ...[
+                    if (!showAvatar)
+                      SizedBox(width: avatarSize)
                     // Mine in a log (Discord): my own avatar, not the
                     // contact's photo.
-                    if (log && isOutgoing)
-                      AvatarCircle(name: lineName, size: 32)
+                    else if (log && isOutgoing)
+                      AvatarCircle(name: lineName, size: avatarSize)
                     else
-                      _buildAvatar(context, senderName),
-                    const SizedBox(width: 6),
+                      _buildAvatar(context, senderName, size: avatarSize),
+                    SizedBox(width: avatarGap),
                   ],
                   Flexible(
                     child: MessageBubbleFrame(
@@ -2314,10 +2381,44 @@ class _MessageBubble extends StatelessWidget {
                       colors: colors,
                       compact: compactChrome,
                       maxWidth: constraints.maxWidth,
+                      run: run,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (!isOutgoing || log) ...[
+                          if (showName && discord) ...[
+                            // Discord's header: the name, the time beside it.
+                            Padding(
+                              padding: compactChrome
+                                  ? const EdgeInsets.only(
+                                      left: 8,
+                                      top: 4,
+                                      bottom: 4,
+                                    )
+                                  : EdgeInsets.zero,
+                              child: Text.rich(
+                                TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: '$lineName  ',
+                                      style: TextStyle(
+                                        fontSize: 15 * textScale,
+                                        fontWeight: FontWeight.w600,
+                                        color: colors.name ?? textColor,
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: formatChatTime(
+                                        context,
+                                        message.timestamp,
+                                      ),
+                                      style: timeStyle,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            if (!compactChrome) const SizedBox(height: 2),
+                          ] else if (showName) ...[
                             Padding(
                               padding: compactChrome
                                   ? const EdgeInsets.only(
@@ -2522,13 +2623,11 @@ class _MessageBubble extends StatelessWidget {
                               spacing: 4,
                               crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
-                                Text(
-                                  formatChatTime(context, message.timestamp),
-                                  style: MeshTheme.mono(
-                                    fontSize: 12 * textScale,
-                                    color: metaColor,
+                                if (showTime)
+                                  Text(
+                                    formatChatTime(context, message.timestamp),
+                                    style: timeStyle,
                                   ),
-                                ),
                                 if (message.hasFutureTimestamp)
                                   FutureTimestampIndicator(
                                     size: 16 * textScale,
@@ -2620,7 +2719,11 @@ class _MessageBubble extends StatelessWidget {
           if (message.reactions.isNotEmpty) ...[
             const SizedBox(height: 4),
             Padding(
-              padding: EdgeInsets.only(left: layoutOutgoing ? 0 : 42),
+              padding: EdgeInsets.only(
+                left: layoutOutgoing || signalSolo
+                    ? 0
+                    : avatarSize + avatarGap + 4,
+              ),
               child: ReactionChips(
                 reactions: message.reactions,
                 statuses: message.reactionStatuses,
@@ -2701,7 +2804,11 @@ class _MessageBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildAvatar(BuildContext context, String senderName) {
+  Widget _buildAvatar(
+    BuildContext context,
+    String senderName, {
+    double size = 32,
+  }) {
     // In a 1:1 chat the sender is the contact: its photo, if one is set.
     final room =
         context
@@ -2711,7 +2818,7 @@ class _MessageBubble extends StatelessWidget {
         advTypeRoom;
     return AvatarCircle(
       name: senderName,
-      size: 32,
+      size: size,
       photoKey: room ? null : sourceId,
     );
   }

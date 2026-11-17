@@ -212,7 +212,21 @@ class _ChatStylePreview extends StatelessWidget {
               final body = Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: font(12, nickColor ?? ink, bold: true)),
+                  if (look.style == ChatStyle.discord)
+                    // Discord's header: the name, the time beside it in grey.
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: '$label  ',
+                            style: font(12, nickColor ?? ink, bold: true),
+                          ),
+                          TextSpan(text: time, style: font(10, mine.meta)),
+                        ],
+                      ),
+                    )
+                  else
+                    Text(label, style: font(12, nickColor ?? ink, bold: true)),
                   Text(text, style: font(13, ink)),
                 ],
               );

@@ -93,6 +93,27 @@ class MeshChatLook extends ThemeExtension<MeshChatLook> {
   /// A log in a monospace font (mIRC).
   bool get logMono => style == ChatStyle.mirc;
 
+  /// Messages from one sender in a row drawn as one run (Signal, Discord):
+  /// the name (and Discord's avatar) on the first, Signal's avatar and time
+  /// on the last, and the bubbles close together.
+  bool get groupsRuns =>
+      style == ChatStyle.signal || style == ChatStyle.discord;
+
+  /// Whether a message received at [newer] continues the run of one from the
+  /// same sender received at [older]: the same day and within Discord's 7
+  /// minutes (Signal's 3).
+  bool continuesRun(DateTime older, DateTime newer) {
+    if (!groupsRuns) return false;
+    final a = older.toLocal();
+    final b = newer.toLocal();
+    if (a.year != b.year || a.month != b.month || a.day != b.day) return false;
+    final gap = b.difference(a);
+    final limit = style == ChatStyle.discord
+        ? const Duration(minutes: 7)
+        : const Duration(minutes: 3);
+    return !gap.isNegative && gap <= limit;
+  }
+
   /// How a log names a message's sender: `<nick>` (mIRC), `Name (time):`
   /// (ICQ), or just the name (Discord). [time] is the message's, formatted.
   String logNick(String name, {String? time}) => switch (style) {
@@ -122,6 +143,20 @@ class MeshChatLook extends ThemeExtension<MeshChatLook> {
   @override
   MeshChatLook lerp(MeshChatLook? other, double t) =>
       t < 0.5 ? this : (other ?? this);
+}
+
+/// Where a message sits in a run from one sender ([MeshChatLook.groupsRuns]).
+@immutable
+class ChatRun {
+  /// It continues the older message's run (nothing between them).
+  final bool joinsAbove;
+
+  /// The newer message continues this one's run.
+  final bool joinsBelow;
+
+  const ChatRun({this.joinsAbove = false, this.joinsBelow = false});
+
+  static const solo = ChatRun();
 }
 
 // ---- Wadamesh TAK's colours -------------------------------------------------
@@ -267,6 +302,9 @@ const Color signalInkDay = Color(0xFF1B1B1D);
 const Color signalInkNight = Color(0xFFE9E9E9);
 const double signalRadius = 18;
 
+/// A bubble corner where it joins the next one in a run, on the sender's side.
+const double signalJoinRadius = 5;
+
 /// A sender's name above their message: deep by day, light at night.
 Color signalNameColor(String name, {required bool dark}) {
   final h = classicNameHue(name).toDouble();
@@ -375,9 +413,10 @@ const Color icqInkDay = Color(0xFF000000);
 const Color icqInkNight = Color(0xFFE0E0E0);
 
 // ---- Discord -------------------------------------------------------------------
-// No bubbles: each message with an avatar on the left, the name above the text.
-// Names take the person's colour as a role would; default avatars are one of
-// Discord's own colours with a white initial.
+// As in the Discord app: no bubbles, a run of messages under one 40 px avatar
+// and one header line, the name in bold (white at night, near-black by day, as
+// with no role colour) and the time beside it in grey. Default avatars are one
+// of Discord's own colours with a white initial.
 
 const Color discordInkDay = Color(0xFF313338);
 const Color discordInkNight = Color(0xFFDBDEE1);
@@ -398,10 +437,11 @@ const List<Color> discordAvatarColors = [
 Color discordAvatarColor(String name) =>
     discordAvatarColors[classicNameHue(name) % discordAvatarColors.length];
 
-/// A name above a message, in the person's colour as a role would give it.
-Color discordNameColor(String name, {required bool dark}) {
-  final h = classicNameHue(name).toDouble();
-  return dark
-      ? HSVColor.fromAHSV(1, h, 0.50, 0.95).toColor()
-      : HSVColor.fromAHSV(1, h, 0.75, 0.55).toColor();
-}
+/// A name in a message's header: Discord's header text, as for someone with
+/// no role colour.
+Color discordNameColor({required bool dark}) =>
+    dark ? const Color(0xFFF2F3F5) : const Color(0xFF060607);
+
+const double discordAvatarSize = 40;
+const double discordAvatarGap = 12;
+const double discordBodySize = 15;
