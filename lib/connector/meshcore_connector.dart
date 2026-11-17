@@ -21,7 +21,6 @@ import '../models/otp_sync_status.dart';
 import '../models/path_selection.dart';
 import '../models/translation_support.dart';
 import '../helpers/reaction_helper.dart';
-import '../helpers/channel_resend_coverage.dart';
 import '../helpers/cyr2lat.dart';
 import '../helpers/smaz.dart';
 import '../storage/otp_pad_store.dart';
@@ -9012,20 +9011,20 @@ class MeshCoreConnector extends ChangeNotifier {
       channel.index,
       wireTextForRadio,
     );
-    // Resends reuse the timestamp, so they are the same packet: repeaters
-    // that already forwarded it drop the copy and recipients see it once.
-    Future<void> transmit({bool isResend = false}) =>
-        _runScopedChannelSend(() async {
-          await _waitForRadioQuiet(lastInboundRxTime: _lastChannelMsgRxTime);
-          await _sendFrameAndWaitForCommandAck(
-            buildSendChannelTextMsgFrame(
-              channel.index,
-              outboundText,
-              timestamp: message.timestamp.millisecondsSinceEpoch ~/ 1000,
-            ),
-            channelSendQueueId: isResend ? null : message.messageId,
-          );
-        }, region: sendScope);
+    // MeshCore Open TAK: no "resend until heard" (upstream's channel min-hops
+    // resend): Keymind Cascade repeaters make it unneeded, and its extra
+    // copies cost airtime. Its settings are kept but no longer shown or read.
+    Future<void> transmit() => _runScopedChannelSend(() async {
+      await _waitForRadioQuiet(lastInboundRxTime: _lastChannelMsgRxTime);
+      await _sendFrameAndWaitForCommandAck(
+        buildSendChannelTextMsgFrame(
+          channel.index,
+          outboundText,
+          timestamp: message.timestamp.millisecondsSinceEpoch ~/ 1000,
+        ),
+        channelSendQueueId: message.messageId,
+      );
+    }, region: sendScope);
     try {
       await transmit();
     } catch (_) {
@@ -9035,92 +9034,6 @@ class MeshCoreConnector extends ChangeNotifier {
       _pendingChannelSentQueue.remove(message.messageId);
       _markPendingChannelMessageFailedById(message.messageId);
       rethrow;
-    }
-
-    final settings = _appSettingsService?.settings;
-    if (settings != null && settings.channelMinHopsEnabled) {
-      unawaited(
-        _resendUntilMinHops(
-          message.messageId,
-          () => transmit(isResend: true),
-          minHops: settings.channelMinHops,
-          maxResends: settings.channelMinHopsRetries,
-        ),
-      );
-    }
-  }
-
-  /// How long to listen for a channel message to come back through the mesh
-  /// before resending it.
-  static const Duration _channelHopCheckDelay = Duration(seconds: 30);
-
-  /// Resends a channel message until one of its echoes has travelled through
-  /// at least [minHops] repeaters, then gives up and marks it failed.
-  Future<void> _resendUntilMinHops(
-    String messageId,
-    Future<void> Function() resend, {
-    required int minHops,
-    required int maxResends,
-  }) async {
-    _channelHopChecks[messageId] = (resends: 0, maxResends: maxResends);
-    notifyListeners();
-    var hops = 0;
-    try {
-      for (var attempt = 0; ; attempt++) {
-        await Future<void>.delayed(_channelHopCheckDelay);
-        final message = _findChannelMessageById(messageId);
-        if (message == null) return;
-        if (message.status == ChannelMessageStatus.failed) return;
-        hops = message.pathLength ?? 0;
-        // Read live so toggling the setting mid-resend takes effect.
-        final countRepeaters =
-            _appSettingsService?.settings.channelMinHopsCountRepeaters ?? false;
-        if (channelResendSatisfied(
-          message,
-          minHops: minHops,
-          countDistinctRepeaters: countRepeaters,
-          selfPublicKey: _selfPublicKey,
-        )) {
-          _appDebugLogService?.info(
-            hops >= minHops
-                ? 'Channel message reached $hops hops after $attempt resends'
-                : 'Channel message heard via ${distinctFirstHopRepeaters(message, selfPublicKey: _selfPublicKey).length} '
-                      'first-hop repeaters after $attempt resends',
-            tag: 'Channel resend',
-          );
-          return;
-        }
-        if (attempt >= maxResends || !isConnected) break;
-        _appDebugLogService?.info(
-          'Heard at $hops of $minHops hops; resending '
-          '(${attempt + 1} of $maxResends)',
-          tag: 'Channel resend',
-        );
-        _channelHopChecks[messageId] = (
-          resends: attempt + 1,
-          maxResends: maxResends,
-        );
-        notifyListeners();
-        try {
-          await resend();
-        } catch (e) {
-          _appDebugLogService?.warn(
-            'Channel resend failed: $e',
-            tag: 'Channel resend',
-          );
-          break;
-        }
-      }
-      _appDebugLogService?.warn(
-        'Channel message only heard at $hops of $minHops hops; giving up',
-        tag: 'Channel resend',
-      );
-      // It was sent and may well have travelled further than we can hear, so
-      // this is a warning, not a failure.
-      _channelHopShortfalls[messageId] = (hops: hops, required: minHops);
-    } finally {
-      _channelHopChecks.remove(messageId);
-      notifyListeners();
     }
   }
 
@@ -9136,15 +9049,6 @@ class MeshCoreConnector extends ChangeNotifier {
   /// enough, or null when it is not being watched.
   ({int resends, int maxResends})? channelResendProgress(String messageId) =>
       _channelHopChecks[messageId];
-
-  ChannelMessage? _findChannelMessageById(String messageId) {
-    for (final messages in _channelMessages.values) {
-      for (int i = messages.length - 1; i >= 0; i--) {
-        if (messages[i].messageId == messageId) return messages[i];
-      }
-    }
-    return null;
-  }
 
   /// Minimum companion firmware version code whose CMD_SEND_CHANNEL_DATA (62)
   /// / RESP_CODE_CHANNEL_DATA_RECV (27) layout matches ours (v1.15.0, ver 11).
