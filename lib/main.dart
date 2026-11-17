@@ -26,6 +26,7 @@ import 'connector/meshcore_connector.dart';
 import 'helpers/message_url_image_helper.dart';
 import 'models/image_codec_support.dart';
 import 'screens/scanner_screen.dart';
+import 'services/aeic_hd_log.dart';
 import 'services/image_chunk_transport.dart';
 import 'services/image_codec_service.dart';
 import 'services/image_codec_settings_store.dart';
@@ -293,6 +294,8 @@ void main() async {
   // Data Audio: AI sketch HD photos make the modem sound too, as Mesh photos
   // and videos do.
   imageReassembler.onPacket = voxVoiceService.dataAudioPacket;
+  // The AI sketch HD packet log opens with the radio's settings, radio2's too.
+  AeicHdLog.instance.radioSummary = voxVoiceService.radioSummary;
 
   final networkMapUploadService = NetworkMapUploadService(
     connector: connector,

@@ -50,6 +50,7 @@ import 'package:flutter/foundation.dart';
 import '../helpers/reaction_helper.dart';
 import '../models/image_codec_support.dart';
 import '../widgets/image_send_codec_binding.dart';
+import 'aeic_hd_log.dart';
 import 'image_chunk_transport.dart';
 
 // ---------------------------------------------------------------------------
@@ -1158,6 +1159,11 @@ class ReceivedImageStore extends ChangeNotifier {
   Future<ReceivedImageEntry?> handleFailure(
     ImageReassemblyFailure failure,
   ) async {
+    AeicHdLog.instance.add(
+      'given up: ${failure.receivedDataChunks}/${failure.total} chunks'
+      '${failure.hadParity ? ' and parity' : ''}, ${failure.reason.name}',
+      image: AeicHdLog.imageTag(failure.key.senderPrefix, failure.key.imgId),
+    );
     final entry = entryForKey(failure.key);
     if (entry == null) return null;
     if (entry.state != ReceivedImageState.receiving) {
@@ -1502,6 +1508,14 @@ class ReceivedImageStore extends ChangeNotifier {
         result != null &&
         result.status == ImageCodecStatus.completed &&
         png != null;
+    AeicHdLog.instance.add(
+      completed
+          ? 'drawn in ${_clock().difference(started).inMilliseconds} ms'
+          : _cancelRequested || _backgroundCancelled || !_foreground
+          ? 'drawing paused (memory or background)'
+          : 'drawing failed: ${failure ?? result?.status.name ?? 'no decoder'}',
+      image: AeicHdLog.imageTag(live.senderPrefix, live.imgId),
+    );
 
     if (!completed) {
       if (_cancelRequested) {

@@ -8,10 +8,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../connector/meshcore_connector.dart';
+import '../l10n/l10n.dart';
 import '../services/image_chunk_transport.dart';
 import '../utils/lora_airtime.dart';
 import '../widgets/image_send_codec_binding.dart';
 import '../widgets/image_send_preview_sheet.dart';
+import 'aeic_hd_log_sheet.dart';
 import 'aeic_hd_service.dart';
 
 String _mb(int bytes) => '${(bytes / (1024 * 1024)).round()} MB';
@@ -67,6 +69,14 @@ class AeicHdScreen extends StatelessWidget {
                   style: theme.textTheme.bodySmall,
                 ),
               ],
+              const SizedBox(height: 8),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.receipt_long_outlined),
+                title: Text(context.l10n.aeicHd_packetLog),
+                subtitle: Text(context.l10n.aeicHd_packetLogHint),
+                onTap: () => showAeicHdLog(context),
+              ),
               const SizedBox(height: 16),
               Text(
                 'AEIC (Shallow Encoder) by Z. Liu et al.; mobile codec by '

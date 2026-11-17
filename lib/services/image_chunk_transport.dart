@@ -73,6 +73,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import '../widgets/image_send_codec_binding.dart' show ImageCodecRatePoint;
+import 'aeic_hd_log.dart';
 
 // ---------------------------------------------------------------------------
 // Protocol constants (firmware-derived; see the transport investigation)
@@ -1525,10 +1526,40 @@ class ImageChunkTransport {
     final parsed = parseChannelDataFrame(frame);
     if (parsed == null) return null;
     if (parsed.dataType != dataTypeAeicImage) return null;
-    return reassembler.addChunk(
+    final outcome = reassembler.addChunk(
       parsed.payload,
       channelIndex: parsed.channelIndex,
       via: parsed.via,
     );
+    logAeicChunkHeard(parsed, outcome);
+    return outcome;
   }
+}
+
+/// One line in the AI sketch HD packet log for a chunk heard: which, how it
+/// went, and how it came (SNR, hops, radio, the repeater it came from last).
+/// [answer]: it came wrapped, in answer to a request (aeic_hd_repair.dart).
+void logAeicChunkHeard(
+  ParsedChannelData parsed,
+  ImageChunkOutcome outcome, {
+  bool answer = false,
+}) {
+  final h = outcome.header;
+  if (h == null || outcome.status == ImageChunkStatus.fromSelf) return;
+  final which = h.isParity ? 'parity' : '#${h.index}/${h.total}';
+  final hops = parsed.hopCount;
+  final hop = parsed.lastHop;
+  AeicHdLog.instance.add(
+    '${answer ? 'answer ' : ''}chunk $which ${outcome.status.name}, '
+    'SNR ${parsed.snrDb.toStringAsFixed(2)} dB, '
+    '${hops == null ? 'direct' : '$hops hops'}'
+    '${parsed.via == 1
+        ? ' on radio2'
+        : parsed.via == 0
+        ? ' on the main mesh'
+        : ''}'
+    '${hop == null || hop.isEmpty ? '' : ' via ${hop.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}'}'
+    ', slot ${parsed.channelIndex}',
+    image: AeicHdLog.imageTag(h.senderPrefix, h.imgId),
+  );
 }

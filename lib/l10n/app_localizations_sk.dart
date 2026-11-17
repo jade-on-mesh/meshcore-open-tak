@@ -34,6 +34,18 @@ class AppLocalizationsSk extends AppLocalizations {
   String get aeicHd_autoStopTitle => 'Stop getting the rest';
 
   @override
+  String get aeicHd_packetLog => 'Packet log';
+
+  @override
+  String get aeicHd_packetLogHint => 'Every AI sketch HD chunk sent and heard, with times and signal, to copy or share';
+
+  @override
+  String get aeicHd_packetLogCopied => 'Packet log copied';
+
+  @override
+  String get aeicHd_packetLogEmpty => 'Nothing logged yet. Send or receive an AI sketch HD, then look again.';
+
+  @override
   String get aeicHd_autoStopHint =>
       'The app keeps asking for the missing packets until the picture is whole. Ask for the rest starts it again.';
 

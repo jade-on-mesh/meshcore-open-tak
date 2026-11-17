@@ -9084,6 +9084,7 @@ class MeshCoreConnector extends ChangeNotifier {
     required int channelIndex,
     required Duration interChunkDelay,
     void Function(int sent, int total)? onProgress,
+    void Function(int index, Object error)? onSlowConfirm,
     bool mainMeshQuiet = true,
   }) => sendChannelDataBlobs(
     blobs,
@@ -9091,8 +9092,17 @@ class MeshCoreConnector extends ChangeNotifier {
     dataType: dataTypeAeicImage,
     interChunkDelay: interChunkDelay,
     onProgress: onProgress,
+    onSlowConfirm: onSlowConfirm,
     mainMeshQuiet: mainMeshQuiet,
   );
+
+  /// Packets in a row [sendChannelDataBlobs] carries on through when the
+  /// radio is slow to confirm them, and its pause after each. A busy channel
+  /// (radio2 above all) holds a packet until it's quiet, and the confirmation
+  /// can come well after [_commandAckTimeout]; the packet usually still goes
+  /// out. As voice_service.dart's voxSlowConfirmsMax for photos and video.
+  static const int _slowConfirmsMax = 4;
+  static const Duration _slowConfirmPause = Duration(seconds: 1);
 
   /// Sends [blobs] as GRP_DATA packets of [dataType] on [channelIndex], with
   /// the same pacing, collision avoidance and region scoping as images.
@@ -9108,9 +9118,11 @@ class MeshCoreConnector extends ChangeNotifier {
     required int dataType,
     required Duration interChunkDelay,
     void Function(int sent, int total)? onProgress,
+    void Function(int index, Object error)? onSlowConfirm,
     bool mainMeshQuiet = true,
   }) async {
     if (blobs.isEmpty) return false;
+    var slowConfirms = 0;
     if (!supportsChannelData) return false;
     // `return` inside the scoped callback only exits the callback, so a
     // disconnect mid-send used to fall through to `return true` below and the
@@ -9130,14 +9142,24 @@ class MeshCoreConnector extends ChangeNotifier {
         if (mainMeshQuiet) {
           await _waitForRadioQuiet(lastInboundRxTime: _lastChannelMsgRxTime);
         }
-        await _sendFrameAndWaitForCommandAck(
-          buildSendChannelDataFrame(
-            channelIndex: channelIndex,
-            dataType: dataType,
-            payload: blobs[i],
-            pathLen: outPathUnknown, // 0xFF => flood
-          ),
-        );
+        try {
+          await _sendFrameAndWaitForCommandAck(
+            buildSendChannelDataFrame(
+              channelIndex: channelIndex,
+              dataType: dataType,
+              payload: blobs[i],
+              pathLen: outPathUnknown, // 0xFF => flood
+            ),
+          );
+          slowConfirms = 0;
+        } on TimeoutException catch (e) {
+          // Most likely held for a quiet channel and sent late: carry on
+          // rather than drop the rest, unless it keeps happening.
+          slowConfirms++;
+          if (slowConfirms >= _slowConfirmsMax || !isConnected) rethrow;
+          onSlowConfirm?.call(i, e);
+          await Future<void>.delayed(_slowConfirmPause);
+        }
         onProgress?.call(i + 1, blobs.length);
       }
     }, region: _channelSendScope(channelIndex));

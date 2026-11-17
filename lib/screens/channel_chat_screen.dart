@@ -38,6 +38,7 @@ import '../models/otp_theme.dart';
 import '../services/app_settings_service.dart' show AppSettingsService;
 import '../services/chat_text_scale_service.dart';
 import '../services/contact_photos.dart';
+import '../services/aeic_hd_log.dart';
 import '../services/image_chunk_transport.dart';
 import '../services/image_codec_service.dart';
 import '../services/media_lockdown.dart';
@@ -92,6 +93,7 @@ import 'channel_message_path_screen.dart';
 import 'map_screen.dart';
 import 'region_management_screen.dart';
 import '../storage/region_store.dart';
+import '../vox/aeic_hd_log_sheet.dart';
 import '../vox/aeic_hd_repair.dart';
 import '../vox/aeic_hd_screens.dart';
 import '../vox/aeic_hd_service.dart';
@@ -2891,6 +2893,18 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       _imageSendTotal = chunkSet.blobs.length;
       _imageSendSent = 0;
     });
+    // The packet log (AI sketch HD diagnostics): each chunk as it goes out.
+    final logTag = AeicHdLog.imageTag(senderPrefix, chunkSet.imgId);
+    final gap = imageSendChunkGap(perPacket);
+    final clock = Stopwatch()..start();
+    var lastAt = 0;
+    AeicHdLog.instance.add(
+      'sending ${chunkSet.blobs.length} chunks'
+      '${chunkSet.hasParity ? ' (last is parity)' : ''} on slot '
+      '${widget.channel.index}${onRadio2 ? ' on radio2' : ''}, '
+      '${gap.inMilliseconds} ms apart, ${result.payload.length} B',
+      image: logTag,
+    );
     try {
       // Its sender's name first, so Open TAK receivers show it instead of
       // "Node 2108" when the sender isn't in their contacts. A few bytes on
@@ -2903,13 +2917,32 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       final sent = await connector.sendImageChunks(
         chunkSet.blobs,
         channelIndex: widget.channel.index,
-        interChunkDelay: imageSendChunkGap(perPacket),
+        interChunkDelay: gap,
         // Held on radio2: the main mesh's traffic doesn't hold it up.
         mainMeshQuiet: !onRadio2,
+        onSlowConfirm: (index, error) => AeicHdLog.instance.add(
+          'chunk ${index + 1} of ${chunkSet.blobs.length} slow to confirm '
+          '(radio busy); carrying on',
+          image: logTag,
+        ),
         onProgress: (sentChunks, totalChunks) {
+          final now = clock.elapsedMilliseconds;
+          AeicHdLog.instance.add(
+            'chunk $sentChunks of $totalChunks out, '
+            '${now - lastAt} ms after the last',
+            image: logTag,
+          );
+          lastAt = now;
           if (!mounted) return;
           setState(() => _imageSendSent = sentChunks);
         },
+      );
+      AeicHdLog.instance.add(
+        sent
+            ? 'sent all ${chunkSet.blobs.length} chunks in '
+                  '${(clock.elapsedMilliseconds / 1000).toStringAsFixed(1)} s'
+            : 'not sent: this radio can\'t send channel data',
+        image: logTag,
       );
       // Register before the snack bar, so the bubble is on screen by the time
       // the confirmation appears rather than a frame behind it.
@@ -2933,6 +2966,11 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         ),
       );
     } on Exception catch (error) {
+      AeicHdLog.instance.add(
+        'send stopped after $_imageSendSent of ${chunkSet.blobs.length}: '
+        '$error',
+        image: logTag,
+      );
       if (!mounted) return;
       showDismissibleSnackBar(
         context,
@@ -3365,6 +3403,15 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                     _askForRest(entry);
                   },
                 ),
+              ListTile(
+                leading: const Icon(Icons.receipt_long_outlined),
+                title: Text(l10n.aeicHd_packetLog),
+                subtitle: Text(l10n.aeicHd_packetLogHint),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  showAeicHdLog(context);
+                },
+              ),
               if (autoRepair?.autoResumeFor(entry.streamId) != null)
                 ListTile(
                   leading: const Icon(Icons.stop_circle_outlined),

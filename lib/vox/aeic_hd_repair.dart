@@ -45,12 +45,16 @@ import 'package:flutter/foundation.dart';
 
 import '../connector/meshcore_connector.dart';
 import '../models/image_codec_support.dart';
+import '../services/aeic_hd_log.dart';
 import '../services/image_chunk_transport.dart';
 import '../services/media_mesh.dart';
 import '../services/received_image_store.dart';
 import '../utils/app_logger.dart';
 
-void _log(String m) => appLogger.info(m, tag: 'AI sketch HD');
+void _log(String m) {
+  appLogger.info(m, tag: 'AI sketch HD');
+  AeicHdLog.instance.add(m);
+}
 
 /// GRP_DATA data type of the packets above ('AEIC', one past the images').
 const int dataTypeAeicHdRepair = 0xAE1D;
@@ -578,16 +582,12 @@ class AeicHdRepairService extends ChangeNotifier {
           )) {
         return;
       }
-      _log(
-        'got chunk ${h.index} of '
-        '${h.senderPrefix.toRadixString(16).padLeft(4, '0')}/${h.imgId} '
-        'on slot ${parsed.channelIndex}',
-      );
-      reassembler.addChunk(
+      final outcome = reassembler.addChunk(
         chunk,
         channelIndex: parsed.channelIndex,
         via: parsed.via,
       );
+      logAeicChunkHeard(parsed, outcome, answer: true);
       return;
     }
     final p = AeicHdRepairPacket.tryParse(parsed.payload);
@@ -600,6 +600,10 @@ class AeicHdRepairService extends ChangeNotifier {
       );
     }
     if (!p.isRequest) {
+      AeicHdLog.instance.add(
+        'sender name heard: ${p.name}',
+        image: AeicHdLog.imageTag(p.senderPrefix, p.imgId),
+      );
       store.noteSenderName(p.senderPrefix, p.imgId, p.name!);
       return;
     }
@@ -686,18 +690,28 @@ class AeicHdRepairService extends ChangeNotifier {
       // it hears and skips the rest (the 20 s guard in [_answer]).
       for (var copy = 0; copy < requestCopies; copy++) {
         if (copy > 0) await Future<void>.delayed(requestSpacing);
-        await connector.sendChannelDataPacket(
-          channelIndex: entry.channelIndex,
-          dataType: dataTypeAeicHdRepair,
-          payload: encodeAeicHdRequest(
-            senderPrefix: entry.senderPrefix,
-            imgId: entry.imgId,
-            total: total,
-            missingMask: mask,
-            copiesAfter: requestCopies - 1 - copy,
-          ),
-        );
-        _log('request ${copy + 1} of $requestCopies sent');
+        try {
+          await connector.sendChannelDataPacket(
+            channelIndex: entry.channelIndex,
+            dataType: dataTypeAeicHdRepair,
+            payload: encodeAeicHdRequest(
+              senderPrefix: entry.senderPrefix,
+              imgId: entry.imgId,
+              total: total,
+              missingMask: mask,
+              copiesAfter: requestCopies - 1 - copy,
+            ),
+          );
+          _log('request ${copy + 1} of $requestCopies sent');
+        } on TimeoutException {
+          // The radio holds a packet for a quiet radio2 and confirms late;
+          // it usually still goes out (as for photos, voice_service.dart).
+          // Carry on with the other copies and wait for the answer.
+          _log(
+            'request ${copy + 1} of $requestCopies: the radio was slow to '
+            'confirm; assuming it went out',
+          );
+        }
       }
       final at = resumed?.receivedChunks ?? held;
       Timer(

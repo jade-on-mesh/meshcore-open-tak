@@ -175,6 +175,30 @@ abstract class AppLocalizations {
   /// **'Stop getting the rest'**
   String get aeicHd_autoStopTitle;
 
+  /// No description provided for @aeicHd_packetLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Packet log'**
+  String get aeicHd_packetLog;
+
+  /// No description provided for @aeicHd_packetLogHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Every AI sketch HD chunk sent and heard, with times and signal, to copy or share'**
+  String get aeicHd_packetLogHint;
+
+  /// No description provided for @aeicHd_packetLogCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Packet log copied'**
+  String get aeicHd_packetLogCopied;
+
+  /// No description provided for @aeicHd_packetLogEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing logged yet. Send or receive an AI sketch HD, then look again.'**
+  String get aeicHd_packetLogEmpty;
+
   /// No description provided for @aeicHd_autoStopHint.
   ///
   /// In en, this message translates to:
