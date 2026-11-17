@@ -209,6 +209,11 @@ class _IncomingClip {
   /// (for the log's timing: how long the answer took to start).
   DateTime? askedAt;
   bool answeredSinceAsk = false;
+
+  /// The clip's packets were still on the air when the last request went out
+  /// (someone's push or answer): holders other than the sender then wait for
+  /// quiet before answering (voxHolderAirWaitMaxMs).
+  bool airBusyAtAsk = false;
   Timer? watchdog;
 
   /// Some packet came through a repeater (or by a way that doesn't say):
@@ -1434,6 +1439,11 @@ class VoxVoiceService extends ChangeNotifier {
     clip.rxLast = null; // the next packet starts a new burst
     clip.askedAt = DateTime.now();
     clip.answeredSinceAsk = false;
+    final heard = _lastHeard(clip.envelope.sessionId);
+    clip.airBusyAtAsk =
+        heard != null &&
+        DateTime.now().difference(heard).inMilliseconds <
+            voxAirQuietMs(_zeroHopGap().inMilliseconds);
     if (method == _Method.channel) clip.triedChannel = true;
     if (method == _Method.zeroHop) clip.triedZeroHop = true;
     final sc = clip.sender;
@@ -1623,8 +1633,11 @@ class VoxVoiceService extends ChangeNotifier {
     );
     // Once packets flow, the stream is live: silence for a few packet gaps
     // means its tail was lost, not that the request is still on its way.
-    return clip.status == VoxClipStatus.receiving
-        ? voxStallWait(perPacket)
+    if (clip.status == VoxClipStatus.receiving) return voxStallWait(perPacket);
+    // Asked while the clip was still on the air: a holder answers only once
+    // it has gone quiet, which can take up to voxHolderAirWaitMaxMs.
+    return clip.airBusyAtAsk
+        ? wait + const Duration(milliseconds: voxHolderAirWaitMaxMs)
         : wait;
   }
 
@@ -1662,6 +1675,32 @@ class VoxVoiceService extends ChangeNotifier {
 
   Future<void> _onWatchdog(_IncomingClip clip) async {
     if (clip.isComplete) return;
+    // No answer yet, and the clip's packets are still on the air: holders are
+    // still waiting for quiet. Hold the next request rather than add another
+    // answer to the same air.
+    final asked = clip.askedAt;
+    final heard = _lastHeard(clip.envelope.sessionId);
+    if (!clip.answeredSinceAsk && asked != null && heard != null) {
+      final now = DateTime.now();
+      final hold = voxAirHoldMs(
+        sinceHeardMs: now.difference(heard).inMilliseconds,
+        sinceAskedMs: now.difference(asked).inMilliseconds,
+        quietMs: voxAirQuietMs(_zeroHopGap().inMilliseconds),
+      );
+      if (hold != null) {
+        _logEvent(
+          'clip still on the air (heard ${_secs(now.difference(heard))} ago): '
+          'holding the next request ${_secs(Duration(milliseconds: hold))}',
+          clip.envelope.sessionId,
+        );
+        clip.watchdog?.cancel();
+        clip.watchdog = Timer(
+          Duration(milliseconds: hold),
+          () => _onWatchdog(clip),
+        );
+        return;
+      }
+    }
     final progressed = clip.packets.length > clip.packetsAtLastAttempt;
     final total = clip.envelope.totalPackets;
     final stallBudget = voxStallBudget(clip.packets.length, total);
