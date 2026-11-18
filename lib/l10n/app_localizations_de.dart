@@ -1570,8 +1570,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get appSettings_chatStyleIphoneHelp =>
       'Like Messages on an iPhone: blue bubbles for yours, grey for others, runs of messages joined, the time in headers';
 
-
-
   @override
   String chat_metaHops(int count) {
     String _temp0 = intl.Intl.pluralLogic(

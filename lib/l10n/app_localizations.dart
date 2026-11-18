@@ -2845,8 +2845,6 @@ abstract class AppLocalizations {
   /// **'Like Messages on an iPhone: blue bubbles for yours, grey for others, runs of messages joined, the time in headers'**
   String get appSettings_chatStyleIphoneHelp;
 
-
-
   /// No description provided for @chat_metaHops.
   ///
   /// In en, this message translates to:
