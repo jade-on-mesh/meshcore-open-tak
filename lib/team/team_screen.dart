@@ -998,47 +998,40 @@ class _RosterTab extends StatelessWidget {
         if (m.freshness == TeamFreshness.lost) m,
     ];
     Widget memberTile(TeamMember m) => ListTile(
-            leading: CircleAvatar(
-              // The whole row is greyed when not live (_fresh).
-              backgroundColor: Color(m.position.color.argb),
-              child: Icon(
-                teamRoleIconFor(team, m.position.roleId),
-                color: Colors.black,
+      leading: CircleAvatar(
+        // The whole row is greyed when not live (_fresh).
+        backgroundColor: Color(m.position.color.argb),
+        child: Icon(
+          teamRoleIconFor(team, m.position.roleId),
+          color: Colors.black,
+        ),
+      ),
+      title: Text(
+        '${m.callsign}${m.position.relayed ? ' (TAK)' : ''}'
+        '${m.position.sosActive ? '  · SOS' : ''}',
+      ),
+      subtitle: Text(
+        [
+          team.roleName(m.position.roleId),
+          if (m.position.status != TeamStatus.none) m.position.status.label,
+          teamAgo(m.heard),
+          if (!m.position.hasPosition)
+            'no position'
+          else if (fix != null)
+            teamRangeBearing(
+              teamDistanceMeters(
+                fix.lat,
+                fix.lon,
+                m.position.lat,
+                m.position.lon,
               ),
+              teamBearingDeg(fix.lat, fix.lon, m.position.lat, m.position.lon),
             ),
-            title: Text(
-              '${m.callsign}${m.position.relayed ? ' (TAK)' : ''}'
-              '${m.position.sosActive ? '  · SOS' : ''}',
-            ),
-            subtitle: Text(
-              [
-                team.roleName(m.position.roleId),
-                if (m.position.status != TeamStatus.none)
-                  m.position.status.label,
-                teamAgo(m.heard),
-                if (!m.position.hasPosition)
-                  'no position'
-                else if (fix != null)
-                  teamRangeBearing(
-                    teamDistanceMeters(
-                      fix.lat,
-                      fix.lon,
-                      m.position.lat,
-                      m.position.lon,
-                    ),
-                    teamBearingDeg(
-                      fix.lat,
-                      fix.lon,
-                      m.position.lat,
-                      m.position.lon,
-                    ),
-                  ),
-                if (m.position.batteryPct != null)
-                  '🔋${m.position.batteryPct}%',
-              ].join(' · '),
-            ),
-            onTap: () => showTeamMemberSheet(context, m.key4),
-          );
+          if (m.position.batteryPct != null) '🔋${m.position.batteryPct}%',
+        ].join(' · '),
+      ),
+      onTap: () => showTeamMemberSheet(context, m.key4),
+    );
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
@@ -1146,8 +1139,7 @@ class _RosterTab extends StatelessWidget {
         // (over an hour) under "Not heard lately", collapsed, and off the map
         // until they're heard again.
         for (final m in team.allMembers)
-          if (m.freshness != TeamFreshness.lost)
-            _fresh(m, memberTile(m)),
+          if (m.freshness != TeamFreshness.lost) _fresh(m, memberTile(m)),
         if (lost.isNotEmpty)
           ExpansionTile(
             leading: const Icon(Icons.history_toggle_off),
@@ -2204,5 +2196,6 @@ class _AtakPluginTileState extends State<_AtakPluginTile> {
 
 /// A teammate's row, greyed out once they're no longer live: stale (25-60
 /// min) or lost (over an hour), text and icon alike.
-Widget _fresh(TeamMember m, Widget tile) =>
-    m.freshness == TeamFreshness.live ? tile : Opacity(opacity: 0.5, child: tile);
+Widget _fresh(TeamMember m, Widget tile) => m.freshness == TeamFreshness.live
+    ? tile
+    : Opacity(opacity: 0.5, child: tile);
