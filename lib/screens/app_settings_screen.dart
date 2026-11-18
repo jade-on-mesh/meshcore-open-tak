@@ -804,6 +804,21 @@ class AppSettingsScreen extends StatelessWidget {
               onChanged: voice.setDataAudio,
             ),
           ),
+          const Divider(height: 1, indent: 16),
+          ListenableBuilder(
+            listenable: voice,
+            builder: (context, _) => SwitchListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 4,
+              ),
+              secondary: const Icon(Icons.speed, size: 24),
+              title: Text(context.l10n.vox_fastMediaMeshTitle),
+              subtitle: Text(context.l10n.vox_fastMediaMeshSubtitle),
+              value: voice.fastMediaMesh,
+              onChanged: voice.setFastMediaMesh,
+            ),
+          ),
         ],
       ],
     );

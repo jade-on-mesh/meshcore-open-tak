@@ -247,6 +247,12 @@ int voxRelayMs(int airMs) => (airMs + 2.5 * airMs * 1.15).round();
 /// MediaMesh that wasted a fifth of a direct transfer).
 int voxFloodBaseGapMs(int airMs) => max(400, airMs * 4 + 150);
 
+/// Fast MediaMesh (prototype): our airtime, one repeater's average relay
+/// wait and its relay (about 2.4 airtimes) and a little. A repeater's copy
+/// can still meet our next packet at a listener hearing both; the pace slows
+/// when answers lose a third, and repair packets mend the rest.
+int voxFloodFastBaseGapMs(int airMs) => max(400, (airMs * 2.4).round() + 150);
+
 /// The slowest an answer's flooded packets go (twice the base gap), and what
 /// a listener expects at first: it never calls a transfer stalled that is
 /// only being sent slowly. Packets that come faster shorten its wait.
@@ -275,17 +281,27 @@ int voxFloodSlowGapMs(int airMs) => 2 * voxFloodBaseGapMs(airMs);
 /// that answer caused), and after it no report slows it. Each answer moves
 /// the pace at most once each way.
 class VoxFloodPace {
-  VoxFloodPace(this.airMs) : _gapMs = voxFloodBaseGapMs(airMs);
+  VoxFloodPace(this.airMs, {this.fast = false})
+    : _gapMs = fast ? voxFloodFastBaseGapMs(airMs) : voxFloodBaseGapMs(airMs);
 
   int airMs;
   int _gapMs;
   int _extraRelays = 0;
 
+  /// Fast MediaMesh (prototype): start at [voxFloodFastBaseGapMs] and learn
+  /// down to it, not the base gap. The losses that follow an answer still
+  /// slow it (by half, up to the slow gap), and repair packets mend what a
+  /// tighter pace loses.
+  bool fast;
+
+  int get _base => fast ? voxFloodFastBaseGapMs(airMs) : voxFloodBaseGapMs(airMs);
+
   /// The base gap, or for a listener 2+ hops away the average time for our
   /// packet to clear the next two repeaters (three airtimes and two relay
-  /// waits of 1.25 airtimes at 1.15), whichever is longer.
-  int fastGapMs(int hops) => hops < 2
-      ? voxFloodBaseGapMs(airMs)
+  /// waits of 1.25 airtimes at 1.15), whichever is longer. Fast: the fast
+  /// base gap for any hop count.
+  int fastGapMs(int hops) => hops < 2 || fast
+      ? _base
       : max(voxFloodBaseGapMs(airMs), (airMs * (3 + 2 * 1.25 * 1.15)).round());
 
   /// The gap now, for a listener [hops] away.
@@ -308,7 +324,7 @@ class VoxFloodPace {
       if (!answer._clean) {
         answer._clean = true;
         if (answer._slowed) _gapMs = _gapMs * 2 ~/ 3;
-        _gapMs = max(_gapMs * 4 ~/ 5, voxFloodBaseGapMs(airMs));
+        _gapMs = max(_gapMs * 4 ~/ 5, _base);
       }
     } else if (lost * 3 >= sent.length && !answer._clean && !answer._slowed) {
       answer._slowed = true;

@@ -44,6 +44,7 @@ import 'resample.dart';
 import 'voice_codec.dart';
 import 'voice_dsp.dart';
 import 'vox_fec.dart';
+import 'vox_fountain.dart';
 import 'vox_gaps.dart';
 import 'vox_rx_path.dart';
 import 'vox_voice_enhance.dart';
@@ -166,6 +167,10 @@ class _IncomingClip {
 
   /// Parity packets heard (vox_fec.dart): info byte -> `[lastLen][parity]`.
   final Map<int, Uint8List> parity = {};
+
+  /// Repair packets heard (vox_fountain.dart, prototype): seed ->
+  /// `[lastLen][repair]`.
+  final Map<int, Uint8List> fountain = {};
 
   /// Packets rebuilt from parity rather than received.
   int rebuilt = 0;
@@ -576,6 +581,7 @@ class VoxVoiceService extends ChangeNotifier {
         ..addAll(prefs.getStringList(_kOwnMimi) ?? const []);
       _pushChannelClips = prefs.getBool(_kPushChannel) ?? true;
       _dataAudio = prefs.getBool(_kDataAudio) ?? false;
+      _fastMediaMesh = prefs.getBool(_kFastMediaMesh) ?? true;
       notifyListeners();
     } catch (_) {}
   }
@@ -1640,7 +1646,7 @@ class VoxVoiceService extends ChangeNotifier {
             clip.envelope.sessionId,
           );
           final ok = await _connector.sendChannelDataBlobs(
-            [req.forChannel().encode(salt: clip.salts.next())],
+            [req.forChannel(fountain: _fastMediaMesh).encode(salt: clip.salts.next())],
             channelIndex: clip.channelIndex!,
             dataType: voxChannelDataType,
             interChunkDelay: Duration.zero,
@@ -2332,6 +2338,24 @@ class VoxVoiceService extends ChangeNotifier {
   /// burst of the packets' own data as each one arrives. Off by default.
   bool get dataAudio => _dataAudio;
 
+  static const _kFastMediaMesh = 'vox_fast_mediamesh';
+  bool _fastMediaMesh = true;
+
+  /// Fast MediaMesh (prototype): answers ask for and send rateless repair
+  /// packets (vox_fountain.dart) instead of each missing packet, and
+  /// flooded answers start at, and may learn down to, a tighter spacing
+  /// (VoxFloodPace.fast). Off: as before, for comparing.
+  bool get fastMediaMesh => _fastMediaMesh;
+
+  Future<void> setFastMediaMesh(bool v) async {
+    _fastMediaMesh = v;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kFastMediaMesh, v);
+    } catch (_) {}
+  }
+
   Future<void> setDataAudio(bool v) async {
     _dataAudio = v;
     if (!v) _modem?.clear();
@@ -2709,7 +2733,7 @@ class VoxVoiceService extends ChangeNotifier {
           sid,
         );
         await _connector.sendChannelDataBlobs(
-          [req.forChannel().encode(salt: clip.salts.next())],
+          [req.forChannel(fountain: _fastMediaMesh).encode(salt: clip.salts.next())],
           channelIndex: ch,
           dataType: voxChannelDataType,
           interChunkDelay: Duration.zero,
@@ -2958,6 +2982,15 @@ class VoxVoiceService extends ChangeNotifier {
       _acceptParity(forClip, pkt.index, pkt.codecData);
       return;
     }
+    // A repair packet (vox_fountain.dart): its session id is its clip's,
+    // XORed another way.
+    final repairOf = voxFountainDataSid(sid);
+    if (_bits.containsKey(repairOf)) return;
+    final forRepair = _incoming[repairOf];
+    if (forRepair != null) {
+      _acceptFountain(forRepair, pkt.index, pkt.codecData);
+      return;
+    }
     _noteVia(sid, via, lastHop);
     _notePath(sid, via, path);
     // Raw data doesn't say how far it came: treat it as relayed.
@@ -3012,7 +3045,11 @@ class VoxVoiceService extends ChangeNotifier {
     if (clip.isComplete || index >= clip.envelope.totalPackets) return;
     final fresh = !clip.packets.containsKey(index);
     clip.packets[index] = data;
-    if (fresh && clip.parity.isNotEmpty && !clip.isComplete) _rebuild(clip);
+    if (fresh &&
+        (clip.parity.isNotEmpty || clip.fountain.isNotEmpty) &&
+        !clip.isComplete) {
+      _rebuild(clip);
+    }
     if (fresh &&
         (clip.status == VoxClipStatus.requesting ||
             clip.status == VoxClipStatus.receiving)) {
@@ -3196,18 +3233,70 @@ class VoxVoiceService extends ChangeNotifier {
 
   /// Packets of [clip] that its parity can bring back, put in place.
   void _rebuild(_IncomingClip clip) {
-    final got = voxFecRebuild(
-      total: clip.envelope.totalPackets,
-      present: clip.packets,
-      parity: clip.parity,
-    );
-    if (got.isEmpty) return;
-    clip.packets.addAll(got);
-    clip.rebuilt += got.length;
-    _logEvent(
-      'rebuilt ${_indexList(got.keys)} from parity (no request needed)',
-      clip.envelope.sessionId,
-    );
+    if (clip.parity.isNotEmpty) {
+      final got = voxFecRebuild(
+        total: clip.envelope.totalPackets,
+        present: clip.packets,
+        parity: clip.parity,
+      );
+      if (got.isNotEmpty) {
+        clip.packets.addAll(got);
+        clip.rebuilt += got.length;
+        _logEvent(
+          'rebuilt ${_indexList(got.keys)} from parity (no request needed)',
+          clip.envelope.sessionId,
+        );
+      }
+    }
+    final total = clip.envelope.totalPackets;
+    final missing = total - clip.packets.length;
+    if (clip.fountain.length >= missing && missing > 0) {
+      final got = voxFountainRebuild(
+        total: total,
+        present: clip.packets,
+        repairs: clip.fountain,
+      );
+      if (got.isNotEmpty) {
+        clip.packets.addAll(got);
+        clip.rebuilt += got.length;
+        _logEvent(
+          'rebuilt ${got.length} packets from ${clip.fountain.length} repair '
+          'packets (fast repair)',
+          clip.envelope.sessionId,
+        );
+      }
+    }
+  }
+
+  /// A repair packet for [clip] (vox_fountain.dart): kept, and the clip
+  /// rebuilt once there are as many as packets missing. Counts as the
+  /// answer arriving, like a data packet.
+  void _acceptFountain(_IncomingClip clip, int seed, Uint8List data) {
+    if (clip.isComplete || clip.fountain.containsKey(seed)) return;
+    clip.fountain[seed] = data;
+    if (clip.status == VoxClipStatus.requesting ||
+        clip.status == VoxClipStatus.receiving) {
+      clip.noteArrival(DateTime.now());
+      if (!clip.answeredSinceAsk && clip.askedAt != null) {
+        clip.answeredSinceAsk = true;
+        _logEvent(
+          'first repair packet ${_secs(DateTime.now().difference(clip.askedAt!))} after asking',
+          clip.envelope.sessionId,
+        );
+      }
+      clip.status = VoxClipStatus.receiving;
+      _armWatchdog(clip);
+    }
+    if (clip.packets.isEmpty) return;
+    final before = clip.packets.length;
+    _rebuild(clip);
+    if (clip.packets.length == before) {
+      notifyListeners();
+      return;
+    }
+    final i = clip.packets.keys.last;
+    final d = clip.packets.remove(i)!;
+    _acceptPacket(clip, i, d);
   }
 
   /// " (asked 12.3 s ago; packets ~900 ms apart)" for the log.
@@ -3392,13 +3481,28 @@ class VoxVoiceService extends ChangeNotifier {
     burst.askedAt ??= DateTime.now();
     final wanted = req.missingIndices ?? List<int>.generate(total, (i) => i);
     final before = burst.pending.length;
-    burst.pending.addAll(
-      wanted.where((i) => i >= 0 && i < total && held.packets.containsKey(i)),
-    );
+    // Fast repair (prototype): a listener that rebuilds from repair packets
+    // and lacks some gets that many fresh ones (and a margin), which mend
+    // whatever it lacks, and any other listener's gaps too. Only from the
+    // whole clip, and only with this phone's fast repair on.
+    final fountain = _fastMediaMesh && req.fountainOk && held.whole;
+    if (fountain && req.missingIndices != null) {
+      final need = voxFountainNeeded(wanted.length);
+      if (need > burst.repairs) burst.repairs = need;
+    } else {
+      burst.pending.addAll(
+        wanted.where((i) => i >= 0 && i < total && held.packets.containsKey(i)),
+      );
+    }
     // Everything asked for: the parity goes too, so whatever it misses of
-    // this pass mends itself.
+    // this pass mends itself (fast repair: repair packets instead).
     if (req.missingIndices == null && held.whole) {
-      burst.addParity(total, image: held.image);
+      if (fountain) {
+        final first = voxFountainFirstPass(total);
+        if (first > burst.repairs) burst.repairs = first;
+      } else {
+        burst.addParity(total, image: held.image);
+      }
     }
     burst.sendTwice.addAll(twice);
     burst.saltOk = burst.saltOk && req.saltOk;
@@ -3407,7 +3511,8 @@ class VoxVoiceService extends ChangeNotifier {
     _logEvent(
       '${req.requesterKey6} asks for ${req.missingIndices == null ? 'all' : _indexList(wanted)} '
       '(${hops ?? '?'} hops)${held.whole ? '' : ', we hold ${held.packets.length}/$total'}: '
-      '${burst.pending.length - before} added, ${burst.pending.length} pending',
+      '${burst.pending.length - before} added, ${burst.pending.length} pending'
+      '${burst.repairs > 0 ? ', ${burst.repairs} repair packets' : ''}',
       req.sessionId,
     );
     if (burst.running) return;
@@ -3416,6 +3521,10 @@ class VoxVoiceService extends ChangeNotifier {
         .then((_) => _runChannelBurst(key, burst))
         .catchError((_) {});
   }
+
+  /// The next repair packet seed for each clip this phone answers for, so
+  /// no two of its repair packets are the same (vox_fountain.dart).
+  final Map<String, int> _fountainSeeds = {};
 
   /// When a photo or voice packet from someone else was last heard on radio2
   /// (MediaMesh), for listening before talking there.
@@ -3503,15 +3612,25 @@ class VoxVoiceService extends ChangeNotifier {
       final sentData = <int>[];
       var zeroHopSent = 0;
       var paritySent = 0;
+      var repairsSent = 0;
+      // How long the radio took to take each packet (the confirmation over
+      // Bluetooth): with the gap and the airtime, where the time goes.
+      var confirmMs = 0;
       // Second sends (see "lost answers"), after everything else. Only with
       // salt: an unsalted copy is the same packet, which repeaters drop.
       final again = <int>[];
       var repeatFirst = burst.saltOk && !burst.pushing && burst.maxHops > 0;
       var repeats = 0;
-      while ((burst.pending.isNotEmpty || again.isNotEmpty) &&
+      while ((burst.pending.isNotEmpty ||
+              again.isNotEmpty ||
+              burst.repairs > 0) &&
           _connector.isConnected) {
         final int index;
-        if (burst.pending.isNotEmpty) {
+        if (burst.pending.isEmpty && burst.repairs > 0) {
+          // Fast repair (prototype): a fresh repair packet.
+          index = -1;
+          burst.repairs--;
+        } else if (burst.pending.isNotEmpty) {
           index = burst.pending.first;
           burst.pending.remove(index);
           if (index < _ChannelBurst.parityBase &&
@@ -3525,7 +3644,15 @@ class VoxVoiceService extends ChangeNotifier {
           repeats++;
         }
         Uint8List payload;
-        if (index >= _ChannelBurst.parityBase) {
+        if (index < 0) {
+          if (!held.whole) continue;
+          final seed = _fountainSeeds[burst.sid] ?? _rng.nextInt(voxFountainSeeds);
+          _fountainSeeds[burst.sid] = (seed + 1) % voxFountainSeeds;
+          payload = voxFountainEncode(burst.sid, [
+            for (var i = 0; i < held.total; i++) held.packets[i]!,
+          ], seed);
+          repairsSent++;
+        } else if (index >= _ChannelBurst.parityBase) {
           if (!held.whole) continue;
           parity ??= voxFecEncode(burst.sid, [
             for (var i = 0; i < held.total; i++) held.packets[i]!,
@@ -3551,13 +3678,16 @@ class VoxVoiceService extends ChangeNotifier {
                     : mark
                     ? _nextMarkSend(burst.sid, index)
                     : _rng.nextInt(256),
-                left: mark ? burst.pending.length + again.length : null,
+                left: mark
+                    ? burst.pending.length + again.length + burst.repairs
+                    : null,
               );
           if (mark) markedSent++;
         }
         final zeroHop = burst.maxHops == 0;
         busyMs += await _radio2Quiet(burst.sid);
         firstAt ??= DateTime.now();
+        final confirmFrom = DateTime.now();
         try {
           await _connector.sendChannelDataPacket(
             channelIndex: burst.channel,
@@ -3566,6 +3696,7 @@ class VoxVoiceService extends ChangeNotifier {
             zeroHop: zeroHop,
           );
           slowConfirms = 0;
+          confirmMs += DateTime.now().difference(confirmFrom).inMilliseconds;
         } on TimeoutException catch (e) {
           // The radio is holding it for a quiet channel: it usually still
           // goes out. Carry on unless it keeps happening.
@@ -3593,7 +3724,9 @@ class VoxVoiceService extends ChangeNotifier {
         }
         if (zeroHop) zeroHopSent++;
         _lastChannelPacket[burst.sid] = DateTime.now();
-        if (burst.pending.isNotEmpty || again.isNotEmpty) {
+        if (burst.pending.isNotEmpty ||
+            again.isNotEmpty ||
+            burst.repairs > 0) {
           await Future<void>.delayed(
             zeroHop
                 ? _zeroHopGap()
@@ -3605,11 +3738,13 @@ class VoxVoiceService extends ChangeNotifier {
       _logEvent(
         'sent $sent packets on channel ${burst.channel}'
         '${paritySent > 0 ? ', $paritySent of them parity' : ''}'
+        '${repairsSent > 0 ? ', $repairsSent of them repair packets' : ''}'
         '${repeats > 0 ? ', $repeats sent twice' : ''}'
         '${zeroHopSent > 0 ? ' ($zeroHopSent zero-hop)' : ''}'
         '${burst.suppressed > 0 ? '; ${burst.suppressed} left out, heard from another node' : ''}'
         '${zeroHopSent < sent ? ', ${pace.gapMs(burst.maxHops)} ms apart after ${burst.pushing ? 0 : pace.settleMs(burst.maxHops)} ms' : ''}'
         '${markedSent > 0 ? ', marked' : ''}'
+        '${sent > 0 ? '; radio took ~${confirmMs ~/ sent} ms a packet to accept, ${_packetAir().inMilliseconds} ms on air' : ''}'
         '${_burstTiming(burst, firstAt, startedAt, busyMs)}',
         burst.sid,
       );
@@ -3685,8 +3820,12 @@ class VoxVoiceService extends ChangeNotifier {
 
   VoxFloodPace _paceFor(int channel) {
     final air = _packetAir().inMilliseconds;
-    final p = _floodPace.putIfAbsent(channel, () => VoxFloodPace(air));
+    final p = _floodPace.putIfAbsent(
+      channel,
+      () => VoxFloodPace(air, fast: _fastMediaMesh),
+    );
     p.airMs = air;
+    p.fast = _fastMediaMesh;
     return p;
   }
 
@@ -4819,6 +4958,10 @@ class _ChannelBurst {
   /// [pending] holds data packet indices, and parity packet k as
   /// parityBase + k (vox_fec.dart), sent after all the data.
   static const int parityBase = 1000;
+
+  /// Fresh repair packets to send after the data (vox_fountain.dart,
+  /// prototype): enough for the listener missing the most.
+  int repairs = 0;
 
   void addParity(int total, {required bool image}) {
     final n = voxFecTotalParity(total, image: image);

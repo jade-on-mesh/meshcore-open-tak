@@ -449,6 +449,12 @@ class AppLocalizationsSv extends AppLocalizations {
   String get vox_dataAudioTitle => 'Data Audio';
 
   @override
+  String get vox_fastMediaMeshTitle => 'Fast MediaMesh (prototype)';
+
+  @override
+  String get vox_fastMediaMeshSubtitle => 'Repair packets that mend any listener\'s gaps at once, and closer packet spacing through repeaters. Every phone in a test needs this build; switch off to compare.';
+
+  @override
   String get vox_dataAudioSubtitle =>
       'Hear incoming video as a 2400 bps modem: it connects when a video starts coming in, then you hear each packet\'s data as it arrives.';
 
