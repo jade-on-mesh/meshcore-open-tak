@@ -50,9 +50,14 @@ const int voxVideoMaxSeconds = 15;
 /// times its pixels. The clip is read at this size for it.
 const int voxVideoSuperMaxSide = 512;
 
-/// SuperMax's longest clip: four times the pixels in Max's one transfer
-/// leaves room for a few seconds at a few frames a second.
-const int voxVideoSuperMaxSeconds = 4;
+/// SuperMax's longest clip. It runs at Max's frame rate
+/// ([voxVideoSuperMaxFps]), so four times Max's pixels in Max's one transfer
+/// leaves room for only a second or two: the clip is cut to what fits
+/// ([voxSuperMaxFrames]).
+const int voxVideoSuperMaxSeconds = 2;
+
+/// SuperMax's frame rate: Max's fastest, [voxVideoSourceFps].
+const int voxVideoSuperMaxFps = voxVideoSourceFps;
 
 /// Sound mode byte for "no sound".
 const int voxVideoNoSound = 255;
@@ -119,15 +124,28 @@ const List<(int side, int fps)> voxVideoShapes = [
   (256, 12),
 ];
 
-/// SuperMax's shapes: always [voxVideoSuperMaxSide], the frame rate what the
-/// clip's length leaves room for.
+/// SuperMax's shape: [voxVideoSuperMaxSide] at [voxVideoSuperMaxFps]. The
+/// length gives way, not the frame rate.
 const List<(int side, int fps)> voxVideoSuperMaxShapes = [
-  (voxVideoSuperMaxSide, 4),
-  (voxVideoSuperMaxSide, 6),
-  (voxVideoSuperMaxSide, 8),
-  (voxVideoSuperMaxSide, 10),
-  (voxVideoSuperMaxSide, 12),
+  (voxVideoSuperMaxSide, voxVideoSuperMaxFps),
 ];
+
+/// SuperMax frames (at [voxVideoSuperMaxFps]) of [w] x [h] that [bytes] code
+/// at [voxVideoMinBitsPerPixel] or better; at least one.
+int voxSuperMaxFrames(int bytes, int w, int h) =>
+    max(1, (bytes * 8 / (voxVideoMinBitsPerPixel * w * h)).floor());
+
+/// [src] cut to its first [frames] frames.
+VoxVideoFrames voxTrimFrameCount(VoxVideoFrames src, int frames) {
+  final n = min(src.count, max(1, frames));
+  if (n == src.count) return src;
+  return VoxVideoFrames(
+    src.width,
+    src.height,
+    src.fps,
+    Uint8List.sublistView(src.rgb, 0, n * src.frameBytes),
+  );
+}
 
 /// Frames of [width] x [height] at [fps], back to back in [rgb].
 class VoxVideoFrames {
@@ -298,8 +316,7 @@ VoxEncodedVideo voxEncodeVideo({
   VoxFocusRegions focus = VoxFocusRegions.none,
 }) {
   if (source.count == 0) throw StateError('The clip has no frames');
-  final clip = voxTrimFrames(source, detail.maxSeconds);
-  final durationMs = clip.duration.inMilliseconds;
+  var clip = voxTrimFrames(source, detail.maxSeconds);
   final soundBytes = soundMode == null ? Uint8List(0) : (sound ?? Uint8List(0));
   final thumb = voxEncodeThumb(clip.frame(0), encodeStill) ?? Uint8List(0);
   final budget =
@@ -313,7 +330,17 @@ VoxEncodedVideo voxEncodeVideo({
   }
 
   final aspect = clip.width / clip.height;
-  final seconds = durationMs / 1000;
+  final superMax = detail == VoxVideoDetail.superMax;
+  // The source frames per SuperMax frame (the source may be slower).
+  final perFrame = clip.fps / min(clip.fps, voxVideoSuperMaxFps);
+  if (superMax) {
+    // Max's frame rate at four times its pixels: as long as the bytes code
+    // well, the rest cut.
+    final (w, h) = voxVideoSize(aspect, voxVideoSuperMaxSide);
+    final fits = voxSuperMaxFrames(budget, w, h);
+    clip = voxTrimFrameCount(clip, (fits * perFrame).floor());
+  }
+  final seconds = clip.duration.inMilliseconds / 1000;
   final maxSide = max(clip.width, clip.height);
   var shape = voxPickVideoShape(
     budget,
@@ -354,11 +381,17 @@ VoxEncodedVideo voxEncodeVideo({
       break;
     }
     final i = detail.shapes.indexOf(shape);
+    if (superMax && f.count > 1) {
+      // SuperMax keeps its size and frame rate: a shorter clip instead.
+      clip = voxTrimFrameCount(clip, (clip.count * 0.8).floor());
+      continue;
+    }
     if (i <= 0) {
       throw StateError('The clip does not fit in ${detail.budget} bytes');
     }
     shape = detail.shapes[i - 1];
   }
+  final durationMs = clip.duration.inMilliseconds;
   // A slower final pass at the quantizer found (or the next ones up, if it
   // came out bigger); the trial encode if none fits.
   var q = fit.$1;

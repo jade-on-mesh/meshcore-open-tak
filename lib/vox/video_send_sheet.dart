@@ -458,7 +458,7 @@ class _VoxVideoSendSheetState extends State<VoxVideoSendSheet> {
                   VoxVideoDetail.quick => 'Up to ${_detail.maxSeconds}s, a Sharp photo\'s airtime',
                   VoxVideoDetail.clear => 'Up to ${_detail.maxSeconds}s, 8× a voice message',
                   VoxVideoDetail.maximum => 'Up to ${_detail.maxSeconds}s, a Super Sharp photo\'s airtime',
-                  VoxVideoDetail.superMax => 'Up to ${_detail.maxSeconds}s at $voxVideoSuperMaxSide px, 4× Max\'s resolution in Max\'s airtime',
+                  VoxVideoDetail.superMax => 'About 1½ s at $voxVideoSuperMaxSide px and $voxVideoSuperMaxFps fps: 4× Max\'s resolution, Max\'s frame rate, in Max\'s airtime',
                 }}'
                 ' · ${_airFor(_detail)}',
                 style: theme.textTheme.bodySmall,

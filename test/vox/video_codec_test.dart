@@ -123,27 +123,14 @@ void main() {
       expect(voxVideoSuperMaxSide, voxVideoSourceSide * 2);
       expect(VoxVideoDetail.superMax.sourceSide, voxVideoSuperMaxSide);
       expect(VoxVideoDetail.maximum.sourceSide, voxVideoSourceSide);
-      for (final s in VoxVideoDetail.superMax.shapes) {
-        expect(s.$1, voxVideoSuperMaxSide);
-      }
-      // A short clip gets more frames a second than a long one.
-      final short = voxPickVideoShape(
-        36000,
-        1,
-        aspect: 16 / 9,
-        maxSide: voxVideoSuperMaxSide,
-        shapes: voxVideoSuperMaxShapes,
-      );
-      final long = voxPickVideoShape(
-        36000,
-        4,
-        aspect: 16 / 9,
-        maxSide: voxVideoSuperMaxSide,
-        shapes: voxVideoSuperMaxShapes,
-      );
-      expect(short.$1, voxVideoSuperMaxSide);
-      expect(long.$1, voxVideoSuperMaxSide);
-      expect(short.$2, greaterThan(long.$2));
+      // Max's frame rate; the length gives way.
+      expect(VoxVideoDetail.superMax.shapes, [
+        (voxVideoSuperMaxSide, voxVideoSourceFps),
+      ]);
+      // About a second and a half of 512x288 at 12 fps in Max's bytes.
+      final frames = voxSuperMaxFrames(36000, 512, 288);
+      expect(frames, inInclusiveRange(12, 24));
+      expect(voxSuperMaxFrames(10, 512, 288), 1);
     });
 
     test('never above the source', () {
@@ -196,7 +183,7 @@ void main() {
       expect(frames.count, enc.preview.count);
     });
 
-    test('SuperMax sends 512 px frames, cut to its length', () {
+    test('SuperMax sends 512 px frames at Max\'s frame rate, cut to fit', () {
       final av1 = _FakeAv1();
       final enc = voxEncodeVideo(
         source: _clip(512, 288, 12, 6),
@@ -210,8 +197,13 @@ void main() {
         enc.payload.length,
         lessThanOrEqualTo(VoxVideoDetail.superMax.budget),
       );
-      expect(enc.durationMs, voxVideoSuperMaxSeconds * 1000);
-      expect(voxVideoInfo(enc.payload)!.width, voxVideoSuperMaxSide);
+      expect(enc.preview.fps, voxVideoSourceFps);
+      expect(enc.durationMs, greaterThan(0));
+      expect(enc.durationMs, lessThanOrEqualTo(voxVideoSuperMaxSeconds * 1000));
+      final info = voxVideoInfo(enc.payload)!;
+      expect(info.width, voxVideoSuperMaxSide);
+      expect(info.fps, voxVideoSourceFps);
+      expect(info.frames * 1000 ~/ info.fps, enc.durationMs);
     });
 
     test('the thumbnail is where a photo has it', () {

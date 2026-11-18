@@ -84,9 +84,9 @@ Send a short clip from the chat's **+** menu: **Send a video**, then record one 
 | Quick | 11 KB | 71 | 6 s | ~11 s |
 | Clear | 22 KB | 141 | 10 s | ~23 s |
 | Max | 38.5 KB | 247 | 15 s | ~40 s |
-| SuperMax | 38.5 KB | 247 | 4 s | ~40 s |
+| SuperMax | 38.5 KB | 247 | ~1.5 s | ~40 s |
 
-Max is the same size as a Super Sharp photo: the most one transfer can carry. Clips are small (a 10 s clip at Max is about 160×120 at 12 frames a second) and the app picks the size and frame rate for the length and choice. The sound is coded like a voice message (Mimi, or Codec2 without the Mimi model); turn **Sound** off to give the picture all the bytes. A longer clip sends its first part. **SuperMax** spends the same as Max on four times its resolution: frames 512 px on the long side (Max's largest is 256), for clips of up to 4 s. The clip is read again at that size the first time SuperMax is chosen, and the frame rate is what the length leaves room for (about 4 fps for 4 s, faster for shorter clips). Receivers need nothing new; frames up to 1024 px already play.
+Max is the same size as a Super Sharp photo: the most one transfer can carry. Clips are small (a 10 s clip at Max is about 160×120 at 12 frames a second) and the app picks the size and frame rate for the length and choice. The sound is coded like a voice message (Mimi, or Codec2 without the Mimi model); turn **Sound** off to give the picture all the bytes. A longer clip sends its first part. **SuperMax** spends the same as Max on four times its resolution: frames 512 px on the long side (Max's largest is 256), at Max's 12 frames a second. That leaves room for about 1.5 s (17 or so frames at 512×288), so the start of the clip is sent, as long as fits. The clip is read again at that size the first time SuperMax is chosen. Receivers need nothing new; frames up to 1024 px already play.
 
 Before encoding, **Steady and clean up** (on by default) takes out hand shake and camera grain, so the bytes go to the scene; on a shaky test clip it halved the size at the same quality. It trims up to 6% from each edge to steady a shaky clip and adds nothing. When the clip has faces or text, **Sharpen faces and text** spends more of the bytes on them and softens the background slightly, as for photos.
 
