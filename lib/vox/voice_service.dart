@@ -3948,33 +3948,47 @@ class VoxVoiceService extends ChangeNotifier {
     if (radio != _mediaAirRadio) VoxReceivedVia.connectedRadioHasRadio2 = null;
     return _mediaAirLoading ??= () async {
       MediaAirProfile? air;
+      // Whether a command went unanswered: a timeout (often just queued
+      // behind other CLI commands right after connecting, or the radio busy
+      // on air) or an empty reply (the reply missed the ack). That says
+      // nothing about radio2, so it isn't taken as "photos and voice can't
+      // go out": the first send after connecting used to fail this way and
+      // the next try went through.
+      var unanswered = false;
       try {
         air = await loadMediaAirProfile((c) async {
-          try {
-            final reply = await _connector
-                .runLocalCliCommand(c)
-                .timeout(const Duration(seconds: 4));
-            if (c == 'get radio2') {
-              // Any answer counts: a profile, "off", or "Unknown command"
-              // (no radio2). No answer leaves it unknown.
-              final r2 = Radio2Reply.tryParse(reply);
-              final had = VoxReceivedVia.connectedRadioHasRadio2;
-              VoxReceivedVia.connectedRadioHasRadio2 = r2 != null && !r2.off;
-              if (had != VoxReceivedVia.connectedRadioHasRadio2) {
-                notifyListeners();
-              }
-            }
-            return reply;
-          } catch (_) {
+          final reply = await _askCli(c);
+          if (reply == null) {
+            unanswered = true;
             return null;
           }
+          if (c == 'get radio2') {
+            // Any answer counts: a profile, "off", or "Unknown command"
+            // (no radio2). No answer leaves it unknown.
+            final r2 = Radio2Reply.tryParse(reply);
+            final had = VoxReceivedVia.connectedRadioHasRadio2;
+            VoxReceivedVia.connectedRadioHasRadio2 = r2 != null && !r2.off;
+            if (had != VoxReceivedVia.connectedRadioHasRadio2) {
+              notifyListeners();
+            }
+          }
+          return reply;
         });
       } catch (_) {
         air = null;
+        unanswered = true;
       }
+      if (air == null && unanswered) {
+        // Keep what this radio said before, if anything, and ask again next
+        // time rather than in ten minutes.
+        if (radio == _mediaAirRadio) air = _mediaAir;
+        _mediaAirAt = null;
+      } else {
+        _mediaAirAt = DateTime.now();
+      }
+      _mediaAirUnanswered = air == null && unanswered;
       _mediaAir = air;
       _mediaAirRadio = radio;
-      _mediaAirAt = DateTime.now();
       _mediaAirLoading = null;
       if (air != null) {
         _logEvent(
@@ -3983,6 +3997,30 @@ class VoxVoiceService extends ChangeNotifier {
         );
       }
     }();
+  }
+
+  /// Whether the last ask for the MediaMesh profile went unanswered (rather
+  /// than the radio saying radio2 is off or not set up for photos and voice).
+  bool _mediaAirUnanswered = false;
+
+  /// One CLI command, asked up to three times while it goes unanswered (no
+  /// reply in time, or an empty one). Null when it never was.
+  Future<String?> _askCli(String command) async {
+    const waits = [
+      Duration(seconds: 5),
+      Duration(seconds: 8),
+      Duration(seconds: 10),
+    ];
+    for (final wait in waits) {
+      if (!_connector.isConnected) return null;
+      try {
+        final reply = await _connector
+            .runLocalCliCommand(command)
+            .timeout(wait);
+        if (reply.trim().isNotEmpty) return reply;
+      } catch (_) {}
+    }
+    return null;
   }
 
   /// The radio2 profile changed (the MediaMesh settings were saved): ask again
@@ -3997,6 +4035,12 @@ class VoxVoiceService extends ChangeNotifier {
   Future<bool> canSendMedia() async {
     _mediaAirAt = null; // ask afresh: the user may just have set it up
     await _refreshMediaAir();
+    if (_mediaAir == null && _mediaAirUnanswered) {
+      // The radio didn't answer (busy right after connecting, say): once
+      // more before refusing the send.
+      _mediaAirAt = null;
+      await _refreshMediaAir();
+    }
     return _mediaAir != null;
   }
 
