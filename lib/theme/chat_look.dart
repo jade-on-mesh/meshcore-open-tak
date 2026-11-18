@@ -339,7 +339,7 @@ String classicAvatarText(String name) {
   return out.toUpperCase();
 }
 
-const Color classicSent = Color(0xFF2196F3);
+const Color classicSent = Color(0xFF2563EB);
 const Color classicBgDay = Color(0xFFFAFAFA);
 const Color classicBgNight = Color(0xFF121212);
 const Color classicRecv = Color(0xFFE0E0E0);

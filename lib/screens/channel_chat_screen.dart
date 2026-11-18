@@ -23,6 +23,7 @@ import '../helpers/ipfs_link_attach_flow.dart';
 import '../helpers/contact_share_message.dart';
 import '../helpers/marker_message.dart';
 import '../helpers/message_search.dart';
+import '../widgets/chat_chrome.dart';
 import '../widgets/chat_meta_below.dart';
 import '../widgets/chat_search_results.dart';
 import '../helpers/message_url_image_helper.dart';
@@ -464,6 +465,43 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       alignment: 0.3,
     );
   }
+
+  /// The line under the channel's name: its type (not for a hashtag
+  /// channel: the # already says it) and region.
+  String _headerSubtitle(BuildContext context, MeshCoreConnector connector) {
+    final privacy = switch (Channel.getChannelType(
+      widget.channel,
+      _communityIndex,
+    )) {
+      ChannelType.public => context.l10n.channels_public,
+      ChannelType.hashtag => null,
+      ChannelType.private => context.l10n.channels_private,
+      ChannelType.communityPublic => context.l10n.community_publicChannel,
+      ChannelType.communityHashtag => null,
+    };
+    final ownRegion = connector.getChannelRegion(widget.channel.index);
+    final region = connector.getEffectiveChannelRegion(widget.channel.index);
+    final defaultSuffix = ownRegion.isEmpty
+        ? ' ${context.l10n.channels_regionDefaultSuffix}'
+        : '';
+    final radioDefault = connector.defaultFloodScopeName;
+    final regionText = region.isNotEmpty
+        ? '${context.l10n.channels_regionSetTo(region)}$defaultSuffix'
+        : radioDefault != null &&
+              connector.channelUsesRadioDefaultScope(widget.channel.index)
+        ? '${context.l10n.channels_regionSetTo(radioDefault)} ${context.l10n.channels_regionRadioDefaultSuffix}'
+        : null;
+    return [?privacy, ?regionText].join(' • ');
+  }
+
+  /// The channel's icon, for the header's avatar in the styles that have one.
+  IconData _channelIconData(Channel channel) =>
+      switch (Channel.getChannelType(channel, _communityIndex)) {
+        ChannelType.communityPublic => Icons.groups,
+        ChannelType.communityHashtag || ChannelType.hashtag => Icons.tag,
+        ChannelType.public => Icons.sensors,
+        ChannelType.private => Icons.lock,
+      };
 
   Widget _channelIcon(Channel channel) {
     // Determine icon based on channel type
@@ -935,6 +973,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       MediaQuery.sizeOf(context).width >= 420;
 
   Widget _buildScaffold(BuildContext context) {
+    final header = ChatHeaderLook.of(context);
     return Scaffold(
       // The chat style's own app background, when that's switched on
       // (Settings > Appearance > Chat style); else the theme's.
@@ -944,6 +983,12 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       appBar: _selecting
           ? _buildSelectionAppBar(context)
           : AppBar(
+              // The chat style's app header (chat_chrome.dart); the app's
+              // own when the style has none.
+              backgroundColor: header.background,
+              foregroundColor: header.foreground,
+              surfaceTintColor: header.isPlain ? null : Colors.transparent,
+              toolbarHeight: header.toolbarHeight,
               leading: _searching
                   ? IconButton(
                       tooltip: context.l10n.chatSearch_close,
@@ -953,6 +998,38 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                   : null,
               title: _searching
                   ? _buildSearchField()
+                  : !header.isPlain
+                  ? GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => openRegionSelectDialog(widget.channel),
+                      child: Consumer<MeshCoreConnector>(
+                        builder: (context, connector, _) {
+                          final sub = _headerSubtitle(context, connector);
+                          return ChatHeaderTitle(
+                            look: header,
+                            title: widget.channel.name.isEmpty
+                                ? context.l10n.channels_channelIndex(
+                                    widget.channel.index,
+                                  )
+                                : widget.channel.name,
+                            avatar: (size) => ChatChannelAvatar(
+                              icon: _channelIconData(widget.channel),
+                              size: size,
+                            ),
+                            subtitle: sub.isEmpty
+                                ? null
+                                : Text(
+                                    sub,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                            fallbackSubtitle: header.channelSubtitle
+                                ? context.l10n.chat_channelMessages
+                                : null,
+                          );
+                        },
+                      ),
+                    )
                   : GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTap: () => openRegionSelectDialog(widget.channel),
@@ -980,49 +1057,10 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                                 ),
                                 Consumer<MeshCoreConnector>(
                                   builder: (context, connector, _) {
-                                    // Hashtag channels get no type label: the # icon
-                                    // and name already say it, and the title needs the
-                                    // room.
-                                    final privacy =
-                                        switch (Channel.getChannelType(
-                                          widget.channel,
-                                          _communityIndex,
-                                        )) {
-                                          ChannelType.public =>
-                                            context.l10n.channels_public,
-                                          ChannelType.hashtag => null,
-                                          ChannelType.private =>
-                                            context.l10n.channels_private,
-                                          ChannelType.communityPublic =>
-                                            context
-                                                .l10n
-                                                .community_publicChannel,
-                                          ChannelType.communityHashtag => null,
-                                        };
-                                    final ownRegion = connector
-                                        .getChannelRegion(widget.channel.index);
-                                    final region = connector
-                                        .getEffectiveChannelRegion(
-                                          widget.channel.index,
-                                        );
-                                    final defaultSuffix = ownRegion.isEmpty
-                                        ? ' ${context.l10n.channels_regionDefaultSuffix}'
-                                        : '';
-                                    final radioDefault =
-                                        connector.defaultFloodScopeName;
-                                    final regionText = region.isNotEmpty
-                                        ? '${context.l10n.channels_regionSetTo(region)}$defaultSuffix'
-                                        : radioDefault != null &&
-                                              connector
-                                                  .channelUsesRadioDefaultScope(
-                                                    widget.channel.index,
-                                                  )
-                                        ? '${context.l10n.channels_regionSetTo(radioDefault)} ${context.l10n.channels_regionRadioDefaultSuffix}'
-                                        : null;
-                                    final subtitle = [
-                                      ?privacy,
-                                      ?regionText,
-                                    ].join(' • ');
+                                    final subtitle = _headerSubtitle(
+                                      context,
+                                      connector,
+                                    );
                                     if (subtitle.isEmpty) {
                                       return const SizedBox.shrink();
                                     }
@@ -1039,7 +1077,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                         ],
                       ),
                     ),
-              centerTitle: false,
+              centerTitle: header.centered,
               bottom: const SyncProgressAppBarBottom(),
               actionsPadding: const EdgeInsetsDirectional.only(end: 4),
               // While searching the field gets the whole bar; the leading
@@ -2142,7 +2180,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                                   ),
                                 ),
                               ],
-                              if (isOutgoing) ...[
+                              if (isOutgoing && !metaBelow) ...[
                                 const SizedBox(width: 4),
                                 // Slick-UI: mirrors chat_screen.dart's DM
                                 // bubble — see Message.chunkIndex/chunkTotal
@@ -2199,6 +2237,28 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                   ? _displayRegion(message.region!)
                   : null,
               textScale: textScale,
+              // Mine: "Heard N Repeats" once repeats are heard, as the
+              // MeshCore app; until then the time and the send's status.
+              heardRepeats: isOutgoing ? message.repeatCount : null,
+              trailing: isOutgoing
+                  ? MessageStatusIcon(
+                      size: 16 * textScale,
+                      isAcked: false,
+                      isChannel: true,
+                      repeatCount: message.repeatCount,
+                      resendProgress: context
+                          .read<MeshCoreConnector>()
+                          .channelResendProgress(message.messageId),
+                      hopShortfall: context
+                          .read<MeshCoreConnector>()
+                          .channelHopShortfall(message.messageId),
+                      isPending: message.status == ChannelMessageStatus.pending,
+                      isFailed: message.status == ChannelMessageStatus.failed,
+                      onColor: classicMetaInk(
+                        dark: Theme.of(context).brightness == Brightness.dark,
+                      ),
+                    )
+                  : null,
               padding: EdgeInsets.only(
                 top: 4,
                 left: layoutOutgoing ? 0 : avatarSize + avatarGap + 12,
@@ -3768,6 +3828,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           : null,
       onSend: _sendMessage,
       sendTooltip: context.l10n.chat_sendMessage,
+      hintTarget: widget.channel.name.startsWith('#')
+          ? widget.channel.name
+          : '#${widget.channel.name}',
       counterTextBuilder: otpEnabled
           ? (used, max) => _otpComposeCounterText(
               context.read<MeshCoreConnector>(),

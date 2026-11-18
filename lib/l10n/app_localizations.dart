@@ -2869,6 +2869,12 @@ abstract class AppLocalizations {
   /// **'{count}-byte'**
   String chat_metaHashBytes(int count);
 
+  /// No description provided for @chat_metaHeardRepeats.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Heard 1 Repeat} other{Heard {count} Repeats}}'**
+  String chat_metaHeardRepeats(int count);
+
   /// No description provided for @appSettings_chatStyleAndroid.
   ///
   /// In en, this message translates to:
@@ -4722,6 +4728,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancel reply'**
   String get chat_cancelReply;
+
+  /// No description provided for @chat_hintSendAMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a message...'**
+  String get chat_hintSendAMessage;
+
+  /// No description provided for @chat_hintMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get chat_hintMessage;
+
+  /// No description provided for @chat_hintTextMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Text message'**
+  String get chat_hintTextMessage;
+
+  /// No description provided for @chat_hintMessageTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Message {name}'**
+  String chat_hintMessageTo(String name);
+
+  /// No description provided for @chat_channelMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'Channel Messages'**
+  String get chat_channelMessages;
+
+  /// No description provided for @chat_sendButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get chat_sendButton;
 
   /// No description provided for @chat_sendImageLora.
   ///

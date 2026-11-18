@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meshcore_open/theme/chat_look.dart';
+import 'package:meshcore_open/widgets/chat_chrome.dart';
 import 'package:meshcore_open/widgets/message_bubble_frame.dart';
 
 // Reference values from Wadamesh TAK's own nameHue (NameHue.h, the official
@@ -396,6 +397,28 @@ void main() {
       if (s == ChatStyle.classic) continue;
       expect(MeshChatLook(style: s).metaBelow, isFalse, reason: s.id);
     }
+  });
+
+  test('composer looks: the app\'s own for its own styles', () {
+    for (final s in ChatStyle.values) {
+      final own =
+          s == ChatStyle.standard ||
+          s == ChatStyle.wadamesh ||
+          s == ChatStyle.openClassic;
+      expect(ChatComposerLook(s, dark: true).isPlain, own, reason: s.id);
+    }
+    const classic = ChatComposerLook(ChatStyle.classic, dark: true);
+    expect(classic.buttonsInside, isTrue);
+    expect(classic.alwaysCount, isTrue);
+    expect(classic.fill, classicFieldNight);
+    expect(
+      const ChatComposerLook(ChatStyle.iphone, dark: false).sendInside,
+      isTrue,
+    );
+    expect(
+      const ChatComposerLook(ChatStyle.discord, dark: true).sendFill,
+      discordBlurple,
+    );
   });
 
   testWidgets('a failed send stays an error bubble in every style', (

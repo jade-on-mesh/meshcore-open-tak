@@ -1584,6 +1584,17 @@ class AppLocalizationsHu extends AppLocalizations {
   }
 
   @override
+  String chat_metaHeardRepeats(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Heard $count Repeats',
+      one: 'Heard 1 Repeat',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get appSettings_chatStyleAndroid => 'Android';
 
   @override
@@ -2705,6 +2716,26 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get chat_cancelReply => 'Válasz visszavonása';
+
+  @override
+  String get chat_hintSendAMessage => 'Send a message...';
+
+  @override
+  String get chat_hintMessage => 'Message';
+
+  @override
+  String get chat_hintTextMessage => 'Text message';
+
+  @override
+  String chat_hintMessageTo(String name) {
+    return 'Message $name';
+  }
+
+  @override
+  String get chat_channelMessages => 'Channel Messages';
+
+  @override
+  String get chat_sendButton => 'Send';
 
   @override
   String get chat_sendImageLora => 'Kép küldése MeshCore-on keresztül';
