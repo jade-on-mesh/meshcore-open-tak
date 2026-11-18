@@ -294,7 +294,8 @@ class VoxFloodPace {
   /// tighter pace loses.
   bool fast;
 
-  int get _base => fast ? voxFloodFastBaseGapMs(airMs) : voxFloodBaseGapMs(airMs);
+  int get _base =>
+      fast ? voxFloodFastBaseGapMs(airMs) : voxFloodBaseGapMs(airMs);
 
   /// The base gap, or for a listener 2+ hops away the average time for our
   /// packet to clear the next two repeaters (three airtimes and two relay

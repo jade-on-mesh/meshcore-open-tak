@@ -438,7 +438,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get vox_fastMediaMeshTitle => 'Fast MediaMesh (prototype)';
 
   @override
-  String get vox_fastMediaMeshSubtitle => 'Repair packets that mend any listener\'s gaps at once, and closer packet spacing through repeaters. Every phone in a test needs this build; switch off to compare.';
+  String get vox_fastMediaMeshSubtitle =>
+      'Repair packets that mend any listener\'s gaps at once, and closer packet spacing through repeaters. Every phone in a test needs this build; switch off to compare.';
 
   @override
   String get vox_dataAudioSubtitle =>

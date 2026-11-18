@@ -39,8 +39,7 @@ int voxFountainNeeded(int missing) =>
     missing <= 0 ? 0 : missing + (missing * 15 + 99) ~/ 100 + 1;
 
 /// Repair packets after a whole clip's first pass: about a tenth, at least 2.
-int voxFountainFirstPass(int total) =>
-    total < 2 ? 0 : (total + 9) ~/ 10 + 1;
+int voxFountainFirstPass(int total) => total < 2 ? 0 : (total + 9) ~/ 10 + 1;
 
 // ---------------------------------------------------------------- GF(256)
 

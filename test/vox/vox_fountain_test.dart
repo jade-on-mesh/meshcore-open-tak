@@ -38,7 +38,11 @@ void main() {
       Map<int, Uint8List> repairs(int count) => {
         for (var k = 0; k < count; k++)
           (start + k) % voxFountainSeeds: data(
-            voxFountainEncode('1a2b3c4d', packets, (start + k) % voxFountainSeeds),
+            voxFountainEncode(
+              '1a2b3c4d',
+              packets,
+              (start + k) % voxFountainSeeds,
+            ),
           ),
       };
       final exact = voxFountainRebuild(
@@ -69,7 +73,8 @@ void main() {
       total: 30,
       present: present,
       repairs: {
-        for (final s in [1, 2]) s: data(voxFountainEncode('00000001', packets, s)),
+        for (final s in [1, 2])
+          s: data(voxFountainEncode('00000001', packets, s)),
       },
     );
     expect(got, isEmpty);
@@ -89,18 +94,14 @@ void main() {
       }
     }
     // Pinned against scripts/vox/fountain_ref.py.
-    expect([for (var i = 0; i < 4; i++) voxFountainCoef(0, i)], const [
-      170,
-      198,
-      111,
-      183,
-    ]);
-    expect([for (var i = 250; i < 254; i++) voxFountainCoef(200, i)], const [
-      217,
-      252,
-      244,
-      168,
-    ]);
+    expect(
+      [for (var i = 0; i < 4; i++) voxFountainCoef(0, i)],
+      const [170, 198, 111, 183],
+    );
+    expect(
+      [for (var i = 250; i < 254; i++) voxFountainCoef(200, i)],
+      const [217, 252, 244, 168],
+    );
   });
 
   test('a request says it takes repair packets on a channel only', () {

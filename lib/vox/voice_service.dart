@@ -1646,7 +1646,11 @@ class VoxVoiceService extends ChangeNotifier {
             clip.envelope.sessionId,
           );
           final ok = await _connector.sendChannelDataBlobs(
-            [req.forChannel(fountain: _fastMediaMesh).encode(salt: clip.salts.next())],
+            [
+              req
+                  .forChannel(fountain: _fastMediaMesh)
+                  .encode(salt: clip.salts.next()),
+            ],
             channelIndex: clip.channelIndex!,
             dataType: voxChannelDataType,
             interChunkDelay: Duration.zero,
@@ -2733,7 +2737,11 @@ class VoxVoiceService extends ChangeNotifier {
           sid,
         );
         await _connector.sendChannelDataBlobs(
-          [req.forChannel(fountain: _fastMediaMesh).encode(salt: clip.salts.next())],
+          [
+            req
+                .forChannel(fountain: _fastMediaMesh)
+                .encode(salt: clip.salts.next()),
+          ],
           channelIndex: ch,
           dataType: voxChannelDataType,
           interChunkDelay: Duration.zero,
@@ -3646,7 +3654,8 @@ class VoxVoiceService extends ChangeNotifier {
         Uint8List payload;
         if (index < 0) {
           if (!held.whole) continue;
-          final seed = _fountainSeeds[burst.sid] ?? _rng.nextInt(voxFountainSeeds);
+          final seed =
+              _fountainSeeds[burst.sid] ?? _rng.nextInt(voxFountainSeeds);
           _fountainSeeds[burst.sid] = (seed + 1) % voxFountainSeeds;
           payload = voxFountainEncode(burst.sid, [
             for (var i = 0; i < held.total; i++) held.packets[i]!,
@@ -3724,9 +3733,7 @@ class VoxVoiceService extends ChangeNotifier {
         }
         if (zeroHop) zeroHopSent++;
         _lastChannelPacket[burst.sid] = DateTime.now();
-        if (burst.pending.isNotEmpty ||
-            again.isNotEmpty ||
-            burst.repairs > 0) {
+        if (burst.pending.isNotEmpty || again.isNotEmpty || burst.repairs > 0) {
           await Future<void>.delayed(
             zeroHop
                 ? _zeroHopGap()
