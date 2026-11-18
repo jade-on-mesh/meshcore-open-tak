@@ -39,12 +39,18 @@ class VoxVideoView extends StatefulWidget {
   /// How the frames fill the box.
   final BoxFit fit;
 
+  /// More frames are still coming in (a SuperMax clip's later parts): at the
+  /// end of what's here it waits for them instead of stopping, and frames
+  /// that extend [frames] carry on playing.
+  final bool more;
+
   const VoxVideoView({
     super.key,
     required this.frames,
     this.wav,
     this.autoPlay = false,
     this.fit = BoxFit.contain,
+    this.more = false,
   });
 
   @override
@@ -60,6 +66,11 @@ class _VoxVideoViewState extends State<VoxVideoView>
   bool _playing = false;
   int _gen = 0;
 
+  /// Where the ticker started from (ms into the clip), and whether it is
+  /// waiting at the end of what's here for more frames.
+  int _fromMs = 0;
+  bool _waiting = false;
+
   @override
   void initState() {
     super.initState();
@@ -69,12 +80,62 @@ class _VoxVideoViewState extends State<VoxVideoView>
   @override
   void didUpdateWidget(VoxVideoView old) {
     super.didUpdateWidget(old);
-    if (!identical(old.frames, widget.frames)) {
-      _stop();
-      _disposeImages();
-      _shown = 0;
-      unawaited(_load());
+    if (identical(old.frames, widget.frames)) {
+      if (_waiting && !widget.more) _stop();
+      return;
     }
+    final a = old.frames, b = widget.frames;
+    final images = _images;
+    if (images != null &&
+        images.length == a.count &&
+        b.width == a.width &&
+        b.height == a.height &&
+        b.fps == a.fps &&
+        b.count > a.count) {
+      // The clip went on (its next part came in): add the new frames and
+      // keep playing.
+      unawaited(_extend(a.count));
+      return;
+    }
+    _stop();
+    _disposeImages();
+    _shown = 0;
+    unawaited(_load());
+  }
+
+  Future<void> _extend(int from) async {
+    final gen = _gen;
+    final f = widget.frames;
+    final added = <ui.Image>[];
+    for (var i = from; i < f.count; i++) {
+      added.add(await voxRgbToUiImage(f.frame(i)));
+    }
+    final images = _images;
+    if (!mounted || gen != _gen || images == null || images.length != from) {
+      for (final i in added) {
+        i.dispose();
+      }
+      return;
+    }
+    setState(() => images.addAll(added));
+    if (_waiting) _resume();
+  }
+
+  /// Plays on from the frame it waited at, the sound with it.
+  void _resume() {
+    _waiting = false;
+    _fromMs = _shown * 1000 ~/ widget.frames.fps;
+    final p = _player;
+    if (p != null && widget.wav != null) {
+      unawaited(() async {
+        try {
+          await p.seek(Duration(milliseconds: _fromMs));
+          await p.resume();
+        } catch (_) {}
+      }());
+    }
+    if (mounted) setState(() {});
+    _ticker.start();
   }
 
   Future<void> _load() async {
@@ -101,7 +162,9 @@ class _VoxVideoViewState extends State<VoxVideoView>
     if (_images == null || _images!.isEmpty) return;
     setState(() {
       _playing = true;
+      _waiting = false;
       _shown = 0;
+      _fromMs = 0;
     });
     final wav = widget.wav;
     if (wav != null) {
@@ -117,6 +180,7 @@ class _VoxVideoViewState extends State<VoxVideoView>
   void _stop() {
     if (_ticker.isActive) _ticker.stop();
     unawaited(_player?.stop());
+    _waiting = false;
     if (mounted) {
       setState(() {
         _playing = false;
@@ -130,8 +194,19 @@ class _VoxVideoViewState extends State<VoxVideoView>
   void _tick(Duration elapsed) {
     final images = _images;
     if (images == null) return;
-    final i = elapsed.inMilliseconds * widget.frames.fps ~/ 1000;
+    final i = (_fromMs + elapsed.inMilliseconds) * widget.frames.fps ~/ 1000;
     if (i >= images.length) {
+      if (widget.more) {
+        // The rest isn't here yet: hold the last frame (and the sound) until
+        // it is.
+        _ticker.stop();
+        unawaited(_player?.pause());
+        setState(() {
+          _shown = images.length - 1;
+          _waiting = true;
+        });
+        return;
+      }
       _stop();
       return;
     }
@@ -169,6 +244,18 @@ class _VoxVideoViewState extends State<VoxVideoView>
               const Center(child: CircularProgressIndicator()),
             if (images != null && !_playing)
               const Center(child: VoxPlayBadge()),
+            if (_waiting)
+              const Center(
+                child: SizedBox(
+                  width: 36,
+                  height: 36,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 3,
+                    color: Colors.white,
+                    backgroundColor: Colors.black26,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
