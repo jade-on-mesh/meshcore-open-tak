@@ -284,6 +284,14 @@ jobs:
             $files -o libcodec2.dll -static-libgcc -Wl,--export-all-symbols -lm
           ls -la libcodec2.dll
       - run: flutter pub get --enforce-lockfile
+      - name: Cache ONNX Runtime (Windows)
+        uses: actions/cache@v4
+        with:
+          path: build/windows/x64/plugins/flutter_onnxruntime/onnxruntime
+          key: ort-windows-${{ hashFiles('pubspec.lock', 'tool/fetch_onnxruntime.sh') }}
+      - name: Fetch ONNX Runtime (Windows)
+        shell: bash
+        run: bash tool/fetch_onnxruntime.sh windows build/windows/x64/plugins/flutter_onnxruntime/onnxruntime
       - name: Build
         shell: bash
         run: |
@@ -569,6 +577,13 @@ jobs:
         timeout-minutes: 40
         run: bash tool/build_aeic_hd_desktop.sh linux third_party/aeic-linux
       - run: flutter pub get --enforce-lockfile
+      - name: Cache ONNX Runtime (Linux)
+        uses: actions/cache@v4
+        with:
+          path: build/linux/x64/release/plugins/flutter_onnxruntime/onnxruntime
+          key: ort-linux-${{ hashFiles('pubspec.lock', 'tool/fetch_onnxruntime.sh') }}
+      - name: Fetch ONNX Runtime (Linux)
+        run: bash tool/fetch_onnxruntime.sh linux build/linux/x64/release/plugins/flutter_onnxruntime/onnxruntime
       - name: Build
         # Upstream's CMake install step now builds its own AppImage (with
         # linuxdeploy); this job packages the fork's AppImage itself below.
