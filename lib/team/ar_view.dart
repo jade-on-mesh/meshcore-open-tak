@@ -259,7 +259,7 @@ class _ArViewScreenState extends State<ArViewScreen> {
         ),
       );
     }
-    for (final m in team.members) {
+    for (final m in team.mapMembers) {
       out.add(
         ArTarget(
           id: 'm:${m.key4}',
