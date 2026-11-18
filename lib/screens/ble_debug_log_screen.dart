@@ -56,13 +56,13 @@ class _BleDebugLogScreenState extends State<BleDebugLogScreen> {
                             ? entries
                                   .map(
                                     (entry) =>
-                                        '${entry.description}\n${entry.hexPreview}\n',
+                                        '${_stamp(entry.timestamp)} ${entry.description}\n${entry.hexPreview}\n',
                                   )
                                   .join('\n')
                             : rawEntries
                                   .map(
                                     (entry) =>
-                                        'RX RAW_LOG_RX_DATA\n${entry.hexPreview}\n',
+                                        '${_stamp(entry.timestamp)} RX RAW_LOG_RX_DATA\n${entry.hexPreview}\n',
                                   )
                                   .join('\n');
                         await Clipboard.setData(ClipboardData(text: text));
@@ -556,4 +556,13 @@ class _RawPacketInfo {
     required this.summary,
     required this.rawHex,
   });
+}
+
+/// "13:31:07.412": when a copied log line happened, to line it up with a
+/// disconnect or a transfer log.
+String _stamp(DateTime t) {
+  String two(int v) => v.toString().padLeft(2, '0');
+  final l = t.toLocal();
+  return '${two(l.hour)}:${two(l.minute)}:${two(l.second)}.'
+      '${l.millisecond.toString().padLeft(3, '0')}';
 }
