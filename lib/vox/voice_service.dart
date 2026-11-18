@@ -2884,7 +2884,7 @@ class VoxVoiceService extends ChangeNotifier {
     if (payload.isEmpty) return;
     // An untagged frame: find out whether this radio has radio2, for the
     // "Received via" label (cached for minutes, so not asked per packet).
-    if (via == null) unawaited(_refreshMediaAir());
+    if (via == null) unawaited(_refreshMediaAir(passive: true));
     if (channelIndex == null && payload[0] == voxVoicePacketMagic) {
       // Push-to-talk in a DM (walkie_wire.dart), addressed to this radio.
       final self = _connector.selfPublicKey;
@@ -4282,20 +4282,28 @@ class VoxVoiceService extends ChangeNotifier {
   Future<void> _mediaAirForSend() {
     final radio = _connector.isConnected ? _connector.selfPublicKeyHex : null;
     if (_mediaAir != null && radio != null && radio == _mediaAirRadio) {
-      unawaited(_refreshMediaAir());
+      unawaited(_refreshMediaAir(passive: true));
       return Future.value();
     }
     return _refreshMediaAir();
   }
 
-  Future<void> _refreshMediaAir() {
+  /// [passive]: a check in the background (a packet came in, or one behind a
+  /// send that already has a profile), which waits out [_mediaAirRetrySoon].
+  /// A send or an answer with no profile known asks at once, so nothing on
+  /// MediaMesh ever waits for it.
+  Future<void> _refreshMediaAir({bool passive = false}) {
     final radio = _connector.isConnected ? _connector.selfPublicKeyHex : null;
     final at = _mediaAirAt;
     final fresh =
         radio == _mediaAirRadio &&
         at != null &&
+        // After a missed reply only background checks wait.
+        (passive || !_mediaAirRetrySoon) &&
         DateTime.now().difference(at) <
-            (_mediaAir != null
+            (_mediaAirRetrySoon
+                ? const Duration(seconds: 30)
+                : _mediaAir != null
                 ? const Duration(minutes: 3)
                 : const Duration(minutes: 10));
     if (radio == null || fresh) {
@@ -4340,13 +4348,18 @@ class VoxVoiceService extends ChangeNotifier {
         unanswered = true;
       }
       if (air == null && unanswered) {
-        // Keep what this radio said before, if anything, and ask again next
-        // time rather than in ten minutes.
+        // Keep what this radio said before, if anything. The background
+        // checks (asked on every packet that comes in untagged) wait half a
+        // minute before asking again: asking on each of them kept the
+        // radio's CLI busy through a whole transfer, and the Bluetooth link
+        // with it. A send, or an answer with no profile known, still asks at
+        // once.
         if (radio == _mediaAirRadio) air = _mediaAir;
-        _mediaAirAt = null;
+        _mediaAirRetrySoon = true;
       } else {
-        _mediaAirAt = DateTime.now();
+        _mediaAirRetrySoon = false;
       }
+      _mediaAirAt = DateTime.now();
       _mediaAirUnanswered = air == null && unanswered;
       _mediaAir = air;
       _mediaAirRadio = radio;
@@ -4363,6 +4376,9 @@ class VoxVoiceService extends ChangeNotifier {
   /// Whether the last ask for the MediaMesh profile went unanswered (rather
   /// than the radio saying radio2 is off or not set up for photos and voice).
   bool _mediaAirUnanswered = false;
+
+  /// Some of the last ask went unanswered: ask again after 30 s.
+  bool _mediaAirRetrySoon = false;
 
   /// One CLI command, asked up to three times while it goes unanswered (no
   /// reply in time, or an empty one). Null when it never was.
