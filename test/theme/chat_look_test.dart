@@ -388,27 +388,14 @@ void main() {
     );
   });
 
-  testWidgets('MeshCore style: Classic\'s bubbles, the meta line below', (
-    tester,
-  ) async {
-    const look = MeshChatLook(style: ChatStyle.meshcore);
+  test('classic style: the time, hops and hash size under the bubble', () {
+    const look = MeshChatLook(style: ChatStyle.classic);
     expect(look.classicBubbles, isTrue);
     expect(look.metaBelow, isTrue);
-    expect(const MeshChatLook(style: ChatStyle.classic).metaBelow, isFalse);
-    for (final b in Brightness.values) {
-      final recv = await colorsIn(
-        tester,
-        ChatStyle.meshcore,
-        outgoing: false,
-        brightness: b,
-      );
-      expect(recv.background, classicRecv);
-      expect(recv.name, classicNameColor('Alpha-1'));
+    for (final s in ChatStyle.values) {
+      if (s == ChatStyle.classic) continue;
+      expect(MeshChatLook(style: s).metaBelow, isFalse, reason: s.id);
     }
-    expect(
-      messageBubbleRadius(isOutgoing: true, style: ChatStyle.meshcore),
-      messageBubbleRadius(isOutgoing: true, style: ChatStyle.classic),
-    );
   });
 
   testWidgets('a failed send stays an error bubble in every style', (

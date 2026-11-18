@@ -1,4 +1,4 @@
-// MeshCore Open TAK - the MeshCore chat style's line under a bubble, as the
+// MeshCore Open TAK - the MeshCore Classic chat style's line under a bubble, as the
 // MeshCore app draws it: `5:38AM • 3 Hops • 1-byte`.
 
 import 'package:flutter/material.dart';
@@ -7,7 +7,7 @@ import 'chat_day_separator.dart' show formatChatTime;
 import '../l10n/l10n.dart';
 
 /// The time, how far the message came and the path hash size, on one quiet
-/// line under its bubble (ChatStyle.meshcore). [hops] null: not known (a
+/// line under its bubble (ChatStyle.classic). [hops] null: not known (a
 /// message of mine, a flood); 0: direct. [hashBytes] shows with hops only.
 class ChatMetaBelow extends StatelessWidget {
   final DateTime time;

@@ -1560,12 +1560,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get appSettings_chatStyleIphoneHelp =>
       'Like Messages on an iPhone: blue bubbles for yours, grey for others, runs of messages joined, the time in headers';
 
-  @override
-  String get appSettings_chatStyleMeshcore => 'MeshCore';
 
-  @override
-  String get appSettings_chatStyleMeshcoreHelp =>
-      'Like the MeshCore app today: MeshCore Classic\'s bubbles, with the time, hops and path hash size under each one';
 
   @override
   String chat_metaHops(int count) {
@@ -1630,7 +1625,7 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get appSettings_chatStyleClassicHelp =>
-      'Blue bubbles for yours and grey for others, like the official MeshCore app';
+      'Blue bubbles for yours and grey for others, with the time, hops and path hash size under each one, like the official MeshCore app';
 
   @override
   String get appSettings_chatStyleIcq => 'ICQ';

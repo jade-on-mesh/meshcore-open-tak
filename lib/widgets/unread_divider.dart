@@ -116,8 +116,6 @@ class UnreadDivider extends StatelessWidget {
       case ChatStyle.standard:
       case ChatStyle.openClassic:
       case ChatStyle.classic:
-        return _pill(context, Theme.of(context).colorScheme.primary, label);
-      case ChatStyle.meshcore:
         // As in the MeshCore app: a thin red line either side of the words in
         // bold red, nearly edge to edge.
         final red = dark ? const Color(0xFFF44336) : const Color(0xFFD32F2F);
