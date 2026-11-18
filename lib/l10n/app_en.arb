@@ -663,6 +663,8 @@
   "@chat_metaHops": {"placeholders": {"count": {"type": "int"}}},
   "chat_metaHashBytes": "{count}-byte",
   "@chat_metaHashBytes": {"placeholders": {"count": {"type": "int"}}},
+  "chat_metaHeardRepeats": "{count, plural, =1{Heard 1 Repeat} other{Heard {count} Repeats}}",
+  "@chat_metaHeardRepeats": {"placeholders": {"count": {"type": "int"}}},
   "appSettings_chatStyleAndroid": "Android",
   "appSettings_chatStyleAndroidHelp": "Like Google Messages: soft blue bubbles for yours, grey for others, runs of messages joined, names and avatars in colour",
   "appSettings_chatStyleBackground": "App background",

@@ -2857,6 +2857,12 @@ abstract class AppLocalizations {
   /// **'{count}-byte'**
   String chat_metaHashBytes(int count);
 
+  /// No description provided for @chat_metaHeardRepeats.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Heard 1 Repeat} other{Heard {count} Repeats}}'**
+  String chat_metaHeardRepeats(int count);
+
   /// No description provided for @appSettings_chatStyleAndroid.
   ///
   /// In en, this message translates to:
