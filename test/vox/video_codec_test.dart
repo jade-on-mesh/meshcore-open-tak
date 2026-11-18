@@ -209,7 +209,9 @@ void main() {
         final info = voxVideoInfo(p)!;
         expect(info.partCount, all.length);
         expect(info.partIndex, k);
-        expect(info.partTotals, [for (final q in all) voxVideoPacketsFor(q.length)]);
+        expect(info.partTotals, [
+          for (final q in all) voxVideoPacketsFor(q.length),
+        ]);
         expect(info.width, voxVideoSuperMaxSide);
         expect(info.fps, voxVideoSourceFps);
         // The sound and the thumbnail go in the first part only.
