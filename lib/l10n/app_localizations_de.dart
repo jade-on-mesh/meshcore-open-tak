@@ -454,11 +454,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get vox_dataAudioTitle => 'Data Audio';
 
   @override
-  String get vox_fastMediaMeshTitle => 'Fast MediaMesh (prototype)';
+  String get vox_fastMediaMeshTitle => 'Fast MediaMesh';
 
   @override
   String get vox_fastMediaMeshSubtitle =>
-      'Repair packets that mend any listener\'s gaps at once, and closer packet spacing through repeaters. Every phone in a test needs this build; switch off to compare.';
+      'Repair packets that mend every listener\'s gaps at once, and closer packet spacing through repeaters. Switch off to go back to the way transfers worked before.';
 
   @override
   String get vox_dataAudioSubtitle =>

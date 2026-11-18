@@ -1,5 +1,5 @@
 // MeshCore Open TAK - rateless repair packets for MediaMesh transfers
-// (prototype).
+//.
 //
 // The block parity in vox_fec.dart mends a packet or two per block of 20.
 // When listeners each miss different packets, every one of them has to ask

@@ -168,7 +168,7 @@ class _IncomingClip {
   /// Parity packets heard (vox_fec.dart): info byte -> `[lastLen][parity]`.
   final Map<int, Uint8List> parity = {};
 
-  /// Repair packets heard (vox_fountain.dart, prototype): seed ->
+  /// Repair packets heard (vox_fountain.dart, Fast MediaMesh): seed ->
   /// `[lastLen][repair]`.
   final Map<int, Uint8List> fountain = {};
 
@@ -2345,7 +2345,7 @@ class VoxVoiceService extends ChangeNotifier {
   static const _kFastMediaMesh = 'vox_fast_mediamesh';
   bool _fastMediaMesh = true;
 
-  /// Fast MediaMesh (prototype): answers ask for and send rateless repair
+  /// Fast MediaMesh: answers ask for and send rateless repair
   /// packets (vox_fountain.dart) instead of each missing packet, and
   /// flooded answers start at, and may learn down to, a tighter spacing
   /// (VoxFloodPace.fast). Off: as before, for comparing.
@@ -3489,7 +3489,7 @@ class VoxVoiceService extends ChangeNotifier {
     burst.askedAt ??= DateTime.now();
     final wanted = req.missingIndices ?? List<int>.generate(total, (i) => i);
     final before = burst.pending.length;
-    // Fast repair (prototype): a listener that rebuilds from repair packets
+    // Fast repair: a listener that rebuilds from repair packets
     // and lacks some gets that many fresh ones (and a margin), which mend
     // whatever it lacks, and any other listener's gaps too. Only from the
     // whole clip, and only with this phone's fast repair on.
@@ -3635,7 +3635,7 @@ class VoxVoiceService extends ChangeNotifier {
           _connector.isConnected) {
         final int index;
         if (burst.pending.isEmpty && burst.repairs > 0) {
-          // Fast repair (prototype): a fresh repair packet.
+          // Fast repair: a fresh repair packet.
           index = -1;
           burst.repairs--;
         } else if (burst.pending.isNotEmpty) {
@@ -4983,7 +4983,7 @@ class _ChannelBurst {
   static const int parityBase = 1000;
 
   /// Fresh repair packets to send after the data (vox_fountain.dart,
-  /// prototype): enough for the listener missing the most.
+  /// Fast MediaMesh): enough for the listener missing the most.
   int repairs = 0;
 
   void addParity(int total, {required bool image}) {

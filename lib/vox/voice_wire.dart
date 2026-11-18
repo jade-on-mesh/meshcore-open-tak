@@ -176,7 +176,7 @@ const int voxVoicePacketSaltedMagic = 0x57; // 'W'
 /// by its data type (0x5643), whatever is in it.
 const int voxFetchFlagMarkOk = 0x08;
 
-/// VOX extension (prototype): the requester rebuilds packets from rateless
+/// VOX extension: the requester rebuilds packets from rateless
 /// repair packets (vox_fountain.dart), so a holder can answer "these are
 /// missing" with that many fresh repair packets, which mend every listener
 /// at once. Channel requests only, as [voxFetchFlagMarkOk].

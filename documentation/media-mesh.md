@@ -168,6 +168,18 @@ A listener missing packets asks for them, and the photo's sender answers with ju
   - on a timeout, how long ago it asked and how far apart packets came;
   - on the sender, how long after the request it started, how long a busy MediaMesh held it back, and how long the whole answer took.
 
+## Fast MediaMesh
+
+**Settings → App Settings → Fast MediaMesh** (on by default) makes transfers on MediaMesh quicker, through repeaters especially:
+
+- **Repair packets.** A repair packet is a mix of all of a photo's or clip's packets, so any listener missing *m* packets rebuilds them from any *m* repair packets (practically always *m* + 1). A request on the channel says the listener takes them. Whoever answers then sends that many fresh repair packets, plus a margin, instead of the specific packets. One answer mends every listener's gaps at once, whichever packets each one lacks, with far fewer requests on the air. A whole photo sent at once ends with about a tenth repair packets instead of the block parity.
+- **Closer spacing through repeaters.** Packets flooded through repeaters start about 2.4 airtimes apart (about 0.8 s at 250 kHz) instead of 4 (1.5 s). As before, an answer that loses a third of its packets slows the spacing.
+- **Timing in the log.** The sender's log line says how long the radio took to accept each packet, next to its airtime.
+
+Wadamesh TAK standalones do the same (**Settings → MediaMesh → Fast MediaMesh**). Older apps and standalones still get every packet itself: they don't ask for repair packets, and they ignore any they hear.
+
+**Rolling back.** Switch Fast MediaMesh off, on one phone or standalone or on all of them, and transfers work exactly as they did before. That covers the requests, the answers and the spacing. Phones and standalones with it on and off still work together. To take it out of the app altogether, revert the pull request that added it (and its Wadamesh TAK counterpart).
+
 ## Transfer test
 
 The voice diagnostics sheet (ⓘ) has **Transfer test**: pick a contact or a channel and 3, 5 or 10 photos. The app sends a small test photo (Standard detail), waits for it to arrive, then sends the next, and shows:

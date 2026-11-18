@@ -904,13 +904,13 @@ abstract class AppLocalizations {
   /// No description provided for @vox_fastMediaMeshTitle.
   ///
   /// In en, this message translates to:
-  /// **'Fast MediaMesh (prototype)'**
+  /// **'Fast MediaMesh'**
   String get vox_fastMediaMeshTitle;
 
   /// No description provided for @vox_fastMediaMeshSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Repair packets that mend any listener\'s gaps at once, and closer packet spacing through repeaters. Every phone in a test needs this build; switch off to compare.'**
+  /// **'Repair packets that mend every listener\'s gaps at once, and closer packet spacing through repeaters. Switch off to go back to the way transfers worked before.'**
   String get vox_fastMediaMeshSubtitle;
 
   /// No description provided for @vox_dataAudioSubtitle.

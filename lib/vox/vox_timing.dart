@@ -247,7 +247,7 @@ int voxRelayMs(int airMs) => (airMs + 2.5 * airMs * 1.15).round();
 /// MediaMesh that wasted a fifth of a direct transfer).
 int voxFloodBaseGapMs(int airMs) => max(400, airMs * 4 + 150);
 
-/// Fast MediaMesh (prototype): our airtime, one repeater's average relay
+/// Fast MediaMesh: our airtime, one repeater's average relay
 /// wait and its relay (about 2.4 airtimes) and a little. A repeater's copy
 /// can still meet our next packet at a listener hearing both; the pace slows
 /// when answers lose a third, and repair packets mend the rest.
@@ -288,7 +288,7 @@ class VoxFloodPace {
   int _gapMs;
   int _extraRelays = 0;
 
-  /// Fast MediaMesh (prototype): start at [voxFloodFastBaseGapMs] and learn
+  /// Fast MediaMesh: start at [voxFloodFastBaseGapMs] and learn
   /// down to it, not the base gap. The losses that follow an answer still
   /// slow it (by half, up to the slow gap), and repair packets mend what a
   /// tighter pace loses.
