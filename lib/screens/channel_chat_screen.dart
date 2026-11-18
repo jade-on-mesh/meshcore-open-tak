@@ -2142,7 +2142,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                                   ),
                                 ),
                               ],
-                              if (isOutgoing) ...[
+                              if (isOutgoing && !metaBelow) ...[
                                 const SizedBox(width: 4),
                                 // Slick-UI: mirrors chat_screen.dart's DM
                                 // bubble — see Message.chunkIndex/chunkTotal
@@ -2199,6 +2199,29 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                   ? _displayRegion(message.region!)
                   : null,
               textScale: textScale,
+              // Mine: "Heard N Repeats" once repeats are heard, as the
+              // MeshCore app; until then the time and the send's status.
+              heardRepeats: isOutgoing ? message.repeatCount : null,
+              trailing: isOutgoing
+                  ? MessageStatusIcon(
+                      size: 16 * textScale,
+                      isAcked: false,
+                      isChannel: true,
+                      repeatCount: message.repeatCount,
+                      resendProgress: context
+                          .read<MeshCoreConnector>()
+                          .channelResendProgress(message.messageId),
+                      hopShortfall: context
+                          .read<MeshCoreConnector>()
+                          .channelHopShortfall(message.messageId),
+                      isPending:
+                          message.status == ChannelMessageStatus.pending,
+                      isFailed: message.status == ChannelMessageStatus.failed,
+                      onColor: classicMetaInk(
+                        dark: Theme.of(context).brightness == Brightness.dark,
+                      ),
+                    )
+                  : null,
               padding: EdgeInsets.only(
                 top: 4,
                 left: layoutOutgoing ? 0 : avatarSize + avatarGap + 12,

@@ -1565,6 +1565,16 @@ class AppLocalizationsSv extends AppLocalizations {
   }
 
   @override
+  String chat_metaHeardRepeats(int count) {
+    return intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Heard $count Repeats',
+      one: 'Heard 1 Repeat',
+    );
+  }
+
+  @override
   String get appSettings_chatStyleAndroid => 'Android';
 
   @override

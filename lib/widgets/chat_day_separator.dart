@@ -129,9 +129,36 @@ class ChatDaySeparator extends StatelessWidget {
             ),
           ),
         );
+      case ChatStyle.classic:
+        // As in the MeshCore app: the full date ("24 October 2026", today's
+        // too) in bold grey between two grey lines.
+        final ink = dark ? const Color(0xFF9E9E9E) : const Color(0xFF616161);
+        final line = Expanded(
+          child: Container(height: 1, color: ink.withValues(alpha: 0.6)),
+        );
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+          child: Row(
+            children: [
+              line,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
+                  DateFormat('d MMMM y', locale).format(day.toLocal()),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1,
+                    color: ink,
+                  ),
+                ),
+              ),
+              line,
+            ],
+          ),
+        );
       case ChatStyle.standard:
       case ChatStyle.wadamesh:
-      case ChatStyle.classic:
       case ChatStyle.openClassic:
       case ChatStyle.icq:
         return _plain(context, grey);
