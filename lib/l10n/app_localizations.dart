@@ -4717,6 +4717,42 @@ abstract class AppLocalizations {
   /// **'Cancel reply'**
   String get chat_cancelReply;
 
+  /// No description provided for @chat_hintSendAMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a message...'**
+  String get chat_hintSendAMessage;
+
+  /// No description provided for @chat_hintMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get chat_hintMessage;
+
+  /// No description provided for @chat_hintTextMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Text message'**
+  String get chat_hintTextMessage;
+
+  /// No description provided for @chat_hintMessageTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Message {name}'**
+  String chat_hintMessageTo(String name);
+
+  /// No description provided for @chat_channelMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'Channel Messages'**
+  String get chat_channelMessages;
+
+  /// No description provided for @chat_sendButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get chat_sendButton;
+
   /// No description provided for @chat_sendImageLora.
   ///
   /// In en, this message translates to:
