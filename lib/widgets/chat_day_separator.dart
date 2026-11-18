@@ -132,6 +132,7 @@ class ChatDaySeparator extends StatelessWidget {
       case ChatStyle.standard:
       case ChatStyle.wadamesh:
       case ChatStyle.classic:
+      case ChatStyle.meshcore:
       case ChatStyle.openClassic:
       case ChatStyle.icq:
         return _plain(context, grey);

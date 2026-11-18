@@ -23,6 +23,11 @@ enum ChatStyle {
   /// rounded the same on every corner.
   classic('classic'),
 
+  /// The MeshCore app as it is now: MeshCore Classic's bubbles and avatars,
+  /// with the time, hops and path hash size on one quiet line under each
+  /// bubble (`5:38AM • 3 Hops • 1-byte`) instead of inside it.
+  meshcore('meshcore'),
+
   /// MeshCore Open as it was: the app's own bubbles, and people's colours
   /// from its six-colour palette rather than the official app's.
   openClassic('open_classic'),
@@ -88,6 +93,15 @@ class MeshChatLook extends ThemeExtension<MeshChatLook> {
   });
 
   static const standard = MeshChatLook();
+
+  /// The official MeshCore app's bubbles, avatars and colours (MeshCore
+  /// Classic, and MeshCore).
+  bool get classicBubbles =>
+      style == ChatStyle.classic || style == ChatStyle.meshcore;
+
+  /// The time, hops and path hash size on a line under the bubble, not in it
+  /// (MeshCore).
+  bool get metaBelow => style == ChatStyle.meshcore;
 
   /// A flat chat log (mIRC, ICQ, Discord): every line on the left, no
   /// bubbles, each message's sender named, mine too.
@@ -167,7 +181,8 @@ class MeshChatLook extends ThemeExtension<MeshChatLook> {
       ChatStyle.android => dark ? androidBgNight : Colors.white,
       ChatStyle.mirc => dark ? mircBgNight : Colors.white,
       ChatStyle.icq => dark ? icqBgNight : Colors.white,
-      ChatStyle.classic => dark ? classicBgNight : classicBgDay,
+      ChatStyle.classic ||
+      ChatStyle.meshcore => dark ? classicBgNight : classicBgDay,
       ChatStyle.standard || ChatStyle.openClassic || ChatStyle.wadamesh => null,
     };
   }

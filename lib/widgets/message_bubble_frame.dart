@@ -150,6 +150,7 @@ class MessageBubbleColors {
             flat: true,
           );
         case ChatStyle.classic:
+        case ChatStyle.meshcore:
           final name = senderName?.trim() ?? '';
           final bg = isOutgoing ? classicSent : classicRecv;
           final ink = isOutgoing ? Colors.white : classicRecvInk;
@@ -192,7 +193,7 @@ BorderRadius messageBubbleRadius({
   ChatStyle style = ChatStyle.standard,
   ChatRun run = ChatRun.solo,
 }) {
-  if (style == ChatStyle.classic) {
+  if (style == ChatStyle.classic || style == ChatStyle.meshcore) {
     return BorderRadius.circular(classicRadius);
   }
   final look = MeshChatLook(style: style);

@@ -117,6 +117,31 @@ class UnreadDivider extends StatelessWidget {
       case ChatStyle.openClassic:
       case ChatStyle.classic:
         return _pill(context, Theme.of(context).colorScheme.primary, label);
+      case ChatStyle.meshcore:
+        // As in the MeshCore app: a thin red line either side of the words in
+        // bold red, nearly edge to edge.
+        final red = dark ? const Color(0xFFF44336) : const Color(0xFFD32F2F);
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+          child: Row(
+            children: [
+              Expanded(child: Container(height: 1, color: red)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: red,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ),
+              Expanded(child: Container(height: 1, color: red)),
+            ],
+          ),
+        );
     }
   }
 

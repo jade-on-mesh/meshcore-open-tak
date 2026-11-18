@@ -20,6 +20,7 @@ import '../helpers/cyr2lat.dart';
 import '../helpers/message_url_image_helper.dart';
 import '../helpers/path_helper.dart';
 import '../helpers/reaction_helper.dart';
+import '../widgets/chat_meta_below.dart';
 import '../widgets/message_status_icon.dart';
 import '../widgets/empty_state.dart';
 import '../helpers/chat_scroll_controller.dart';
@@ -2295,7 +2296,9 @@ class _MessageBubble extends StatelessWidget {
     // The time under the text: Discord has it in the header and mIRC at the
     // start of the line; the bubble styles under a run's last message
     // (iMessage: never, its time headers say when).
-    final showTime = discord || mirc
+    // MeshCore: the time and hops go on a line under the bubble.
+    final metaBelow = look.metaBelow && !log;
+    final showTime = discord || mirc || metaBelow
         ? false
         : look.bubbleRuns
         ? look.bubbleTimes && !run.joinsBelow
@@ -2768,6 +2771,25 @@ class _MessageBubble extends StatelessWidget {
               ),
             ),
           ),
+          if (metaBelow)
+            ChatMetaBelow(
+              time: message.timestamp,
+              hops: isOutgoing || (message.pathLength ?? -1) < 0
+                  ? null
+                  : message.pathLength,
+              hashBytes:
+                  (message.pathLength ?? 0) > 0 && message.pathBytes.isNotEmpty
+                  ? message.pathBytes.length ~/ message.pathLength!
+                  : null,
+              textScale: textScale,
+              padding: EdgeInsets.only(
+                top: 4,
+                left: layoutOutgoing || noAvatarOneToOne
+                    ? 0
+                    : avatarSize + avatarGap + 12,
+                right: layoutOutgoing ? 12 : 0,
+              ),
+            ),
           if (message.reactions.isNotEmpty) ...[
             const SizedBox(height: 4),
             Padding(
