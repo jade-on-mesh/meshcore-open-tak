@@ -1563,16 +1563,18 @@ class AppLocalizationsUk extends AppLocalizations {
   String get appSettings_chatStyleMeshcore => 'MeshCore';
 
   @override
-  String get appSettings_chatStyleMeshcoreHelp => 'Like the MeshCore app today: MeshCore Classic\'s bubbles, with the time, hops and path hash size under each one';
+  String get appSettings_chatStyleMeshcoreHelp =>
+      'Like the MeshCore app today: MeshCore Classic\'s bubbles, with the time, hops and path hash size under each one';
 
   @override
   String chat_metaHops(int count) {
-    return intl.Intl.pluralLogic(
+    String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
       other: '$count Hops',
       one: '1 Hop',
     );
+    return '$_temp0';
   }
 
   @override
