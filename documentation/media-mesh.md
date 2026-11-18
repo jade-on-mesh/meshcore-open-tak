@@ -15,12 +15,14 @@ switching between them, so you keep hearing the main mesh.
 2. **Sent on radio2**: *Photos & voice* puts photos and voice clips there and
    keeps text on the main mesh. A mix set from the console shows as *Custom*
    and is left alone.
-3. Pick a **Preset**, or set the **radio2 frequency**, **Bandwidth**,
+3. Pick the **Preset**, or set the **radio2 frequency**, **Bandwidth**,
    **Spreading factor** and **Coding rate** yourself:
    - **250 kHz · fast** (the default): 911.150 MHz, 250 kHz, SF7, 4/5. About
      four times as fast as SF7/62.5, for roughly 6 dB less range.
-   - **125 kHz · range**: the same at 125 kHz. About half the speed of the fast
-     preset and roughly 40% farther.
+
+   The old *125 kHz · range* preset is gone: it confused people and nobody
+   used it. A radio2 still set to 125 kHz shows no preset picked and keeps
+   working.
 
    911.150 is a quiet spot found on site, inside a BayMesh 3 cavity filter
    tuned for 910.525 (flat about 908.6-912.8 MHz) and 625 kHz above the main
@@ -62,12 +64,11 @@ to listening, in about 20 more seconds:
    (keymindCascade, `tx.reply both` by default) answer on both of their radios,
    so their radio2 answer is only heard when radio2 listens on the preset they
    run. The rise in `get radio2.status`'s radio2 receive count shows it.
-3. About 9 seconds later, the same on *125 kHz · range*.
-4. `set tempradio2 off` brings the saved radio2 back, and the preset that heard
-   packets is offered (a tie goes to 250 kHz).
+3. About 9 seconds later, `set tempradio2 off` brings the saved radio2 back,
+   and if radio2 heard packets the 250 kHz preset is offered.
 
 It needs a MediaMesh repeater in direct range. Repeaters answer at most four
-discovery requests every two minutes (asking uses one, listening two more), so
+discovery requests every two minutes (asking uses one, listening one more), so
 running it twice in a row may find nothing the second time. The listening
 fallback won't run while a temporary radio2 is running. Wadamesh TAK
 standalones have the same button (Settings → MediaMesh).

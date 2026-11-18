@@ -14569,7 +14569,7 @@ abstract class AppLocalizations {
   /// No description provided for @mediaMesh_presetHelp.
   ///
   /// In en, this message translates to:
-  /// **'250 kHz sends photos and voice about twice as fast; 125 kHz reaches about 40% farther. Every radio on MediaMesh must use the same settings.'**
+  /// **'MediaMesh sends photos and voice at 250 kHz, SF7, CR 4/5. Every radio on MediaMesh must use the same settings.'**
   String get mediaMesh_presetHelp;
 
   /// No description provided for @mediaMesh_conflictsWith.
@@ -15235,7 +15235,7 @@ abstract class AppLocalizations {
   /// No description provided for @mediaMesh_findHelp.
   ///
   /// In en, this message translates to:
-  /// **'Asks the repeaters in range which radio2 profile they run, like Discover Repeaters. If none can say, radio2 listens on each preset for about 10 seconds instead.'**
+  /// **'Asks the repeaters in range which radio2 profile they run, like Discover Repeaters. If none can say, radio2 listens on the 250 kHz preset for about 10 seconds instead.'**
   String get mediaMesh_findHelp;
 
   /// No description provided for @mediaMesh_findListening.
@@ -15243,6 +15243,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Listening on {preset} ({step}/2)…'**
   String mediaMesh_findListening(String preset, int step);
+
+  /// No description provided for @mediaMesh_findListeningOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening on {preset}…'**
+  String mediaMesh_findListeningOn(String preset);
 
   /// No description provided for @mediaMesh_findFound.
   ///
@@ -15253,7 +15259,7 @@ abstract class AppLocalizations {
   /// No description provided for @mediaMesh_findNone.
   ///
   /// In en, this message translates to:
-  /// **'No MediaMesh answered on 250 or 125 kHz at {frequency} MHz.'**
+  /// **'No MediaMesh answered on 250 kHz at {frequency} MHz.'**
   String mediaMesh_findNone(String frequency);
 
   /// No description provided for @mediaMesh_findNoneOnRadio2.
