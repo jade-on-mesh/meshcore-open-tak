@@ -2713,6 +2713,26 @@ class AppLocalizationsSl extends AppLocalizations {
   String get chat_cancelReply => 'Prekliči odgovor';
 
   @override
+  String get chat_hintSendAMessage => 'Send a message...';
+
+  @override
+  String get chat_hintMessage => 'Message';
+
+  @override
+  String get chat_hintTextMessage => 'Text message';
+
+  @override
+  String chat_hintMessageTo(String name) {
+    return 'Message $name';
+  }
+
+  @override
+  String get chat_channelMessages => 'Channel Messages';
+
+  @override
+  String get chat_sendButton => 'Send';
+
+  @override
   String get chat_sendImageLora => 'Pošlji sliko prek MeshCore';
 
   @override

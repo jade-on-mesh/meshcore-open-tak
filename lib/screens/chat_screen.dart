@@ -20,6 +20,7 @@ import '../helpers/cyr2lat.dart';
 import '../helpers/message_url_image_helper.dart';
 import '../helpers/path_helper.dart';
 import '../helpers/reaction_helper.dart';
+import '../widgets/chat_chrome.dart';
 import '../widgets/chat_meta_below.dart';
 import '../widgets/message_status_icon.dart';
 import '../widgets/empty_state.dart';
@@ -449,6 +450,7 @@ class _ChatScreenState extends State<ChatScreen> {
       MediaQuery.sizeOf(context).width >= 420;
 
   Widget _buildScaffold(BuildContext context) {
+    final header = ChatHeaderLook.of(context);
     return Scaffold(
       // The chat style's own app background, when that's switched on
       // (Settings > Appearance > Chat style); else the theme's.
@@ -456,6 +458,12 @@ class _ChatScreenState extends State<ChatScreen> {
         context,
       ).background(dark: Theme.of(context).brightness == Brightness.dark),
       appBar: AppBar(
+        // The chat style's app header (chat_chrome.dart); the app's own
+        // when the style has none.
+        backgroundColor: header.background,
+        foregroundColor: header.foreground,
+        surfaceTintColor: header.isPlain ? null : Colors.transparent,
+        toolbarHeight: header.toolbarHeight,
         leading: _searching
             ? IconButton(
                 tooltip: context.l10n.chatSearch_close,
@@ -469,6 +477,28 @@ class _ChatScreenState extends State<ChatScreen> {
                 builder: (context, pathService, connector, _) {
                   final contact = _resolveContact(connector);
                   final pathLabel = _currentPathLabel(contact);
+                  if (!header.isPlain) {
+                    return ChatHeaderTitle(
+                      look: header,
+                      title: contact.name,
+                      avatar: (size) =>
+                          _buildAvatar(context, contact.name, size: size),
+                      subtitle: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () =>
+                            ContactRoutingSheet.show(context, contact: contact),
+                        child: Text(
+                          pathLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            decoration: TextDecoration.underline,
+                            decorationStyle: TextDecorationStyle.dotted,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -512,7 +542,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   );
                 },
               ),
-        centerTitle: false,
+        centerTitle: header.centered,
         bottom: const SyncProgressAppBarBottom(),
         actionsPadding: const EdgeInsetsDirectional.only(end: 4),
         // While searching the field gets the whole bar; the leading arrow
@@ -1080,6 +1110,7 @@ class _ChatScreenState extends State<ChatScreen> {
       sendTooltip: context.l10n.chat_sendMessageTo(
         _resolveContact(connector).name,
       ),
+      hintTarget: '@${_resolveContact(connector).name}',
       actionsBuilder: () {
         final showIpfsAction = context
             .read<AppSettingsService>()

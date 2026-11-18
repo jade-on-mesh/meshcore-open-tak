@@ -22,6 +22,17 @@ Two more Appearance controls change only the chats, and work with any theme:
   - **ICQ** is the classic ICQ message window: no bubbles, each message under its sender's `Name (time):` line, yours in red and theirs in blue, plain text beneath.
   - **Discord** has no bubbles either: each message has an avatar on the left (one of Discord's default avatar colours, with a white initial), the name in the person's colour, and the text below.
 
+  The chat screen's header and message box follow the style too, as its app draws them:
+  - **MeshCore Classic:** the MeshCore app's slate header (at night) with a round avatar, a large name and **Channel Messages** (or the channel's type and region) under it. The box is a pill with ⊕ and the send arrow inside it, the character count (`0/127`) always under it, and "Send a message...".
+  - **Signal:** the header on the chat's background with an avatar, a pill-shaped box, "+" on its left, and Signal's blue round send button.
+  - **iPhone:** a centred avatar with the name small under it, a round grey "+", and an outlined box with the blue ↑ inside it.
+  - **Android:** an avatar and name, a filled pill box ("Text message"), and the send button as a soft blue circle.
+  - **Discord:** "# name" in bold, a grey "+" circle, a filled box saying "Message #name" (or "@name"), and the blurple send button.
+  - **mIRC:** a monospace title and a square monospace input line.
+  - **ICQ:** a square box and a **Send** button.
+
+  The app's own styles keep the app's header and box. Where a style's app has no microphone, the voice message button still takes the send button's place while the box is empty.
+
   The **New messages** line follows the style: Discord's red line with a red **NEW** tag at its end; mIRC's plain red marker line; Signal's grey chip; a small grey caption for iPhone; a grey rule for ICQ; MeshCore Classic's thin red line either side of the words in bold red, as the official app draws it; and the app's pill (in the style's accent) for the rest.
 A person's colour, on their avatar and name, comes from their name, the same way the official MeshCore app and Wadamesh TAK work it out. So a person has the same colour in this app, in the official app and on a standalone, in every chat style but MeshCore Open Classic.
 - **Brighter chat icons:** fills each avatar circle with its colour, with the initials or icon in black or white, in place of the faint tint.

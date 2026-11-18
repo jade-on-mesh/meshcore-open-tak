@@ -5,9 +5,11 @@ import 'package:provider/provider.dart';
 import '../helpers/gif_helper.dart';
 import '../l10n/l10n.dart';
 import '../services/app_settings_service.dart';
+import '../theme/chat_look.dart';
 import '../theme/mesh_theme.dart';
 import '../utils/radio_guard.dart';
 import 'byte_count_input.dart';
+import 'chat_chrome.dart';
 import 'connect_sheet.dart';
 import 'gif_message.dart';
 import 'gif_picker.dart';
@@ -84,6 +86,10 @@ class ChatComposer extends StatelessWidget {
   final Color Function(int usedBytes, int maxBytes, Color defaultColor)?
   counterColorBuilder;
 
+  /// Who the message goes to, as the field's hint names it in the Discord
+  /// style ("Message #gaming", "Message @Ana").
+  final String? hintTarget;
+
   const ChatComposer({
     super.key,
     required this.controller,
@@ -100,6 +106,7 @@ class ChatComposer extends StatelessWidget {
     this.idleTrailing,
     this.counterTextBuilder,
     this.counterColorBuilder,
+    this.hintTarget,
   });
 
   /// MeshCore Open TAK: everything the composer offers is in the one "+"
@@ -165,6 +172,8 @@ class ChatComposer extends StatelessWidget {
     // Offline the chat is read-only. The draft stays in [controller] (owned
     // by the screen) and is back when the radio reconnects.
     if (context.radioReadOnly) return const OfflineComposerBar();
+    final look = ChatComposerLook.of(context);
+    if (!look.isPlain) return _buildStyled(context, look);
     return Container(
       decoration: BoxDecoration(
         color: scheme.surface,
@@ -237,6 +246,173 @@ class ChatComposer extends StatelessWidget {
     );
   }
 
+  /// The composer as the chat style's app draws it (chat_chrome.dart).
+  Widget _buildStyled(BuildContext context, ChatComposerLook look) {
+    final scheme = Theme.of(context).colorScheme;
+    final dark = look.dark;
+    final bar = MeshChatLook.of(context).background(dark: dark);
+    Widget plus(BuildContext buttonContext) {
+      final fill = look.plusFill;
+      final icon = Icon(
+        look.plusIcon,
+        color: look.buttonsInside
+            ? (dark ? Colors.white : const Color(0xFF424242))
+            : (fill != null ? look.hint : null),
+      );
+      return IconButton(
+        icon: icon,
+        tooltip: context.l10n.chat_selectSendAction,
+        style: fill == null
+            ? null
+            : IconButton.styleFrom(
+                backgroundColor: fill,
+                minimumSize: const Size(36, 36),
+                shape: const CircleBorder(),
+              ),
+        onPressed: () => _openActionMenu(buttonContext),
+      );
+    }
+
+    Widget send(bool hasText) {
+      void go() {
+        HapticFeedback.lightImpact();
+        onSend();
+      }
+
+      if (look.style == ChatStyle.icq) {
+        return Padding(
+          padding: const EdgeInsets.only(left: 6),
+          child: OutlinedButton(
+            onPressed: hasText ? go : null,
+            style: OutlinedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(2),
+              ),
+              side: BorderSide(color: look.border ?? scheme.outline),
+              foregroundColor: dark ? icqInkNight : icqInkDay,
+              minimumSize: const Size(64, 40),
+            ),
+            child: Text(context.l10n.chat_sendButton),
+          ),
+        );
+      }
+      final fill = look.sendFill;
+      if (fill == null) {
+        // The MeshCore app's (and mIRC's) plain arrow.
+        return IconButton(
+          icon: Icon(look.sendIcon, color: look.sendInk),
+          tooltip: sendTooltip,
+          onPressed: hasText ? go : null,
+        );
+      }
+      final small = look.sendInside;
+      return Padding(
+        padding: EdgeInsets.only(left: small ? 0 : 6, right: small ? 4 : 0),
+        child: IconButton.filled(
+          icon: Icon(look.sendIcon, size: small ? 18 : 20, color: look.sendInk),
+          tooltip: sendTooltip,
+          style: IconButton.styleFrom(
+            backgroundColor: fill,
+            disabledBackgroundColor: fill.withValues(alpha: 0.4),
+            minimumSize: Size.square(small ? 30 : 42),
+            maximumSize: Size.square(small ? 30 : 42),
+            padding: EdgeInsets.zero,
+            shape: const CircleBorder(),
+          ),
+          onPressed: hasText ? go : null,
+        ),
+      );
+    }
+
+    final field = ValueListenableBuilder<TextEditingValue>(
+      valueListenable: controller,
+      builder: (context, value, _) {
+        final gifId = GifHelper.parseGif(value.text);
+        if (gifId != null) return _buildGifPreview(context, gifId, scheme);
+        final hasText = value.text.trim().isNotEmpty;
+        final idle = idleTrailing;
+        Widget? inside;
+        if (look.sendInside) {
+          inside = !hasText && idle != null ? idle : send(hasText);
+        }
+        return _buildTextField(
+          context,
+          scheme,
+          look: look,
+          prefix: look.buttonsInside
+              ? Builder(builder: (buttonContext) => plus(buttonContext))
+              : null,
+          suffix: inside,
+        );
+      },
+    );
+
+    return Container(
+      color: bar,
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ...header,
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                look.buttonsInside ? 8 : 4,
+                6,
+                8,
+                look.alwaysCount ? 2 : 6,
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (!look.buttonsInside)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4, right: 2),
+                      child: Builder(
+                        builder: (buttonContext) => plus(buttonContext),
+                      ),
+                    ),
+                  Expanded(child: field),
+                  if (!look.sendInside)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: controller,
+                        builder: (context, value, _) {
+                          final hasText = value.text.trim().isNotEmpty;
+                          final idle = idleTrailing;
+                          if (!hasText &&
+                              idle != null &&
+                              look.style != ChatStyle.icq) {
+                            return idle;
+                          }
+                          return send(hasText);
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _hintFor(BuildContext context, ChatComposerLook look) {
+    final l10n = context.l10n;
+    return switch (look.style) {
+      ChatStyle.classic => l10n.chat_hintSendAMessage,
+      ChatStyle.signal || ChatStyle.iphone => l10n.chat_hintMessage,
+      ChatStyle.android => l10n.chat_hintTextMessage,
+      ChatStyle.discord =>
+        hintTarget == null
+            ? l10n.chat_hintMessage
+            : l10n.chat_hintMessageTo(hintTarget!),
+      ChatStyle.mirc || ChatStyle.icq => '',
+      _ => l10n.chat_typeMessage,
+    };
+  }
+
   Widget _buildGifPreview(
     BuildContext context,
     String gifId,
@@ -280,12 +456,70 @@ class ChatComposer extends StatelessWidget {
     );
   }
 
-  Widget _buildTextField(BuildContext context, ColorScheme scheme) {
+  Widget _buildTextField(
+    BuildContext context,
+    ColorScheme scheme, {
+    ChatComposerLook? look,
+    Widget? prefix,
+    Widget? suffix,
+  }) {
     OutlineInputBorder border(Color color, [double width = 1]) =>
         OutlineInputBorder(
           borderRadius: BorderRadius.circular(MeshRadii.md),
           borderSide: BorderSide(color: color, width: width),
         );
+    if (look != null && !look.isPlain) {
+      final media = MediaQuery.of(context);
+      final room =
+          media.size.height - media.viewInsets.bottom - media.padding.top;
+      final lines = (room * 0.3 / 26).floor().clamp(1, 6);
+      final edge = look.border;
+      InputBorder styled([double width = 1]) => OutlineInputBorder(
+        borderRadius: BorderRadius.circular(look.radius),
+        borderSide: edge == null
+            ? BorderSide.none
+            : BorderSide(color: edge, width: width),
+      );
+      final hint = _hintFor(context, look);
+      return ByteCountedTextField(
+        maxBytes: maxBytes,
+        maxLines: lines,
+        softLimitBytes: softLimitBytes,
+        softLimitNote: softLimitNote,
+        controller: controller,
+        focusNode: focusNode,
+        hintText: hint,
+        onSubmitted: (_) => onSend(),
+        encoder: encoder,
+        counterTextBuilder:
+            counterTextBuilder ??
+            (look.alwaysCount ? (used, max) => '$used/$max' : null),
+        counterColorBuilder: counterColorBuilder,
+        hideCounterWhenEmpty: !look.alwaysCount,
+        style: look.textStyle,
+        decoration: InputDecoration(
+          hintText: hint.isEmpty ? null : hint,
+          hintMaxLines: 1,
+          hintStyle: TextStyle(color: look.hint),
+          border: styled(),
+          enabledBorder: styled(),
+          focusedBorder: styled(edge == null ? 1 : 1.5),
+          filled: true,
+          fillColor: look.fill,
+          isDense: look.style == ChatStyle.mirc,
+          prefixIcon: prefix,
+          suffixIcon: suffix,
+          suffixIconConstraints: const BoxConstraints(
+            minWidth: 36,
+            minHeight: 36,
+          ),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: prefix == null ? 16 : 4,
+            vertical: look.buttonsInside ? 16 : 11,
+          ),
+        ),
+      );
+    }
     // Grows with the message up to about a third of the room the keyboard
     // leaves (6 lines at most, 1 in landscape with the keyboard up), then
     // scrolls inside itself, so it never reaches under the keyboard or
