@@ -288,7 +288,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build/windows/x64/plugins/flutter_onnxruntime/onnxruntime
-          key: ort-windows-${{ hashFiles('pubspec.lock') }}
+          key: ort-windows-${{ hashFiles('pubspec.lock', 'tool/fetch_onnxruntime.sh') }}
       - name: Fetch ONNX Runtime (Windows)
         shell: bash
         run: bash tool/fetch_onnxruntime.sh windows build/windows/x64/plugins/flutter_onnxruntime/onnxruntime
@@ -581,7 +581,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build/linux/x64/release/plugins/flutter_onnxruntime/onnxruntime
-          key: ort-linux-${{ hashFiles('pubspec.lock') }}
+          key: ort-linux-${{ hashFiles('pubspec.lock', 'tool/fetch_onnxruntime.sh') }}
       - name: Fetch ONNX Runtime (Linux)
         run: bash tool/fetch_onnxruntime.sh linux build/linux/x64/release/plugins/flutter_onnxruntime/onnxruntime
       - name: Build

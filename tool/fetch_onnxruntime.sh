@@ -72,9 +72,20 @@ for c in "${candidates[@]}"; do
     mkdir -p "$out/include" "$out/lib"
     cp -R "$tmp/n/build/native/include/." "$out/include/"
     cp -R "$tmp/n/runtimes/$rid/native/." "$out/lib/"
-    if [ "$plat" = linux ] && [ ! -e "$out/lib/libonnxruntime.so" ]; then
-      so=$(ls "$out/lib"/libonnxruntime.so.* | head -1)
-      ln -s "$(basename "$so")" "$out/lib/libonnxruntime.so"
+    if [ "$plat" = linux ]; then
+      # As the release archive has it: the library under its full version,
+      # with the soname (libonnxruntime.so.1, which the plugin links to) and
+      # the plain name pointing at it.
+      (
+        cd "$out/lib"
+        if [ -f libonnxruntime.so ] && [ ! -L libonnxruntime.so ]; then
+          mv libonnxruntime.so "libonnxruntime.so.$c"
+        fi
+        real=$(ls libonnxruntime.so.[0-9]*.[0-9]* 2>/dev/null | head -1)
+        [ -n "$real" ] || real=$(ls libonnxruntime.so.* | head -1)
+        [ -e libonnxruntime.so.1 ] || ln -s "$real" libonnxruntime.so.1
+        [ -e libonnxruntime.so ] || ln -s libonnxruntime.so.1 libonnxruntime.so
+      )
     fi
     ls -la "$out/lib"
     echo "ONNX Runtime $c from NuGet (for $v)"
