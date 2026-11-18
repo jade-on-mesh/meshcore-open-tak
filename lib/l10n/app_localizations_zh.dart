@@ -8207,7 +8207,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get mediaMesh_presetHelp =>
-      '250 kHz sends photos and voice about twice as fast; 125 kHz reaches about 40% farther. Every radio on MediaMesh must use the same settings.';
+      'MediaMesh sends photos and voice at 250 kHz, SF7, CR 4/5. Every radio on MediaMesh must use the same settings.';
 
   @override
   String mediaMesh_conflictsWith(String name) {
@@ -8593,11 +8593,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get mediaMesh_findHelp =>
-      'Asks the repeaters in range which radio2 profile they run, like Discover Repeaters. If none can say, radio2 listens on each preset for about 10 seconds instead.';
+      'Asks the repeaters in range which radio2 profile they run, like Discover Repeaters. If none can say, radio2 listens on the 250 kHz preset for about 10 seconds instead.';
 
   @override
   String mediaMesh_findListening(String preset, int step) {
     return 'Listening on $preset ($step/2)…';
+  }
+
+  @override
+  String mediaMesh_findListeningOn(String preset) {
+    return 'Listening on $preset…';
   }
 
   @override
@@ -8607,7 +8612,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String mediaMesh_findNone(String frequency) {
-    return 'No MediaMesh answered on 250 or 125 kHz at $frequency MHz.';
+    return 'No MediaMesh answered on 250 kHz at $frequency MHz.';
   }
 
   @override

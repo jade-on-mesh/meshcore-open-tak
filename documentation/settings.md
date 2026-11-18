@@ -70,7 +70,7 @@ Opens a dialog pre-populated with the device's current radio settings. Contains:
 Below Radio Settings. Sends and receives photos and voice clips on a second frequency of the same radio (its `radio2` profile), while text stays on the main mesh:
 - **radio2**: Off or On (listen and send)
 - **Sent on radio2**: Photos & voice (text stays on the main mesh)
-- **Preset**: *250 kHz · fast* (the default) or *125 kHz · range*, both SF7, CR 4/5; picking one leaves the frequency alone
+- **Preset**: *250 kHz · fast* (SF7, CR 4/5); picking it leaves the frequency alone
 - **MediaMesh frequency** (MHz), **Bandwidth**, **Spreading factor**, **Coding rate**: default 911.150 MHz, 250 kHz, SF7, 4/5. Must differ from the main radio and stay clear of every listed community mesh preset ("Conflicts with …")
 
 Open TAK's photos and voice only send when the radio puts them on radio2 alone.

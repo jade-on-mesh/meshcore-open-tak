@@ -8,18 +8,18 @@ void main() {
   test('picks the preset radio2 heard on', () {
     expect(mediaMeshFindPick(0, 0), isNull);
     expect(mediaMeshFindPick(3, 0), LoRaBandwidth.bw250);
-    expect(mediaMeshFindPick(0, 2), LoRaBandwidth.bw125);
-    expect(mediaMeshFindPick(1, 5), LoRaBandwidth.bw125);
-    expect(mediaMeshFindPick(4, 4), LoRaBandwidth.bw250); // a tie: fast
+    // 125 kHz isn't listened on any more.
+    expect(mediaMeshFindPick(0, 2), isNull);
+    expect(mediaMeshFindPick(1, 5), LoRaBandwidth.bw250);
   });
 
   test('result reports the packets heard on its pick', () {
     const r = MediaMeshFindResult(
-      heard: [1, 6],
+      heard: [6],
       repeatersAnswered: 3,
       frequencyMHz: 911.15,
     );
-    expect(r.pick, LoRaBandwidth.bw125);
+    expect(r.pick, LoRaBandwidth.bw250);
     expect(r.heardOnPick, 6);
   });
 

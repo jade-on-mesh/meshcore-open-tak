@@ -118,16 +118,13 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
   bool get _profileValid =>
       !_frequencyInvalid && !_frequencyOnMain && _conflict == null;
 
-  /// The preset these settings match (SF7, CR 4/5 at 250 or 125 kHz), if any.
+  /// The preset these settings match (SF7, CR 4/5 at 250 kHz), if any. A
+  /// radio2 still on the dropped 125 kHz range preset matches none.
   static Set<LoRaBandwidth> _presetOf(MediaMeshSettings s) {
     final standard =
         s.spreadingFactor == LoRaSpreadingFactor.sf7 &&
         s.codingRate == LoRaCodingRate.cr4_5;
-    if (standard &&
-        (s.bandwidth == LoRaBandwidth.bw250 ||
-            s.bandwidth == LoRaBandwidth.bw125)) {
-      return {s.bandwidth};
-    }
+    if (standard && s.bandwidth == LoRaBandwidth.bw250) return {s.bandwidth};
     return {};
   }
 
@@ -219,11 +216,8 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
                   child: Text(
                     i < 0
                         ? l10n.mediaMesh_findAsking
-                        : l10n.mediaMesh_findListening(
-                            i == 0
-                                ? l10n.mediaMesh_presetFast
-                                : l10n.mediaMesh_presetRange,
-                            i + 1,
+                        : l10n.mediaMesh_findListeningOn(
+                            l10n.mediaMesh_presetFast,
                           ),
                   ),
                 ),
@@ -262,9 +256,7 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
       return;
     }
     final pick = r.pick;
-    final presetName = pick == LoRaBandwidth.bw125
-        ? l10n.mediaMesh_presetRange
-        : l10n.mediaMesh_presetFast;
+    final presetName = l10n.mediaMesh_presetFast;
     final use = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -574,10 +566,6 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
               ButtonSegment(
                 value: LoRaBandwidth.bw250,
                 label: Text(l10n.mediaMesh_presetFast),
-              ),
-              ButtonSegment(
-                value: LoRaBandwidth.bw125,
-                label: Text(l10n.mediaMesh_presetRange),
               ),
             ],
             selected: _presetOf(_settings),

@@ -23,11 +23,9 @@ import '../connector/meshcore_protocol.dart';
 import '../models/radio_settings.dart';
 import 'media_mesh.dart';
 
-/// The two presets, in the order they are tried.
-const List<LoRaBandwidth> mediaMeshFindPresets = [
-  LoRaBandwidth.bw250,
-  LoRaBandwidth.bw125,
-];
+/// The presets listened on, in order. Only the 250 kHz preset now: the
+/// 125 kHz range preset was dropped (it confused people and nobody used it).
+const List<LoRaBandwidth> mediaMeshFindPresets = [LoRaBandwidth.bw250];
 
 /// After the retune, before asking.
 const Duration mediaMeshFindSettle = Duration(milliseconds: 1500);
@@ -35,12 +33,11 @@ const Duration mediaMeshFindSettle = Duration(milliseconds: 1500);
 /// Repeaters answer after a random delay (widened four times).
 const Duration mediaMeshFindListen = Duration(seconds: 9);
 
-/// The preset that heard more (a tie goes to the fast one), or null when
-/// neither heard anything. The same rule as Wadamesh's mediamesh::findPick.
-LoRaBandwidth? mediaMeshFindPick(int heardFast, int heardRange) {
-  if (heardFast <= 0 && heardRange <= 0) return null;
-  return heardRange > heardFast ? LoRaBandwidth.bw125 : LoRaBandwidth.bw250;
-}
+/// The 250 kHz preset when it heard anything, or null. [heardRange] is no
+/// longer listened on and is ignored. The same rule as Wadamesh's
+/// mediamesh::findPick.
+LoRaBandwidth? mediaMeshFindPick(int heardFast, [int heardRange = 0]) =>
+    heardFast > 0 ? LoRaBandwidth.bw250 : null;
 
 /// A radio2 profile repeaters reported, and how many run it.
 class MediaMeshProfile {
@@ -162,11 +159,9 @@ class MediaMeshFindResult {
   bool get asked => nearby.any((n) => n.radio2 != null);
 
   /// The listening fallback's preset.
-  LoRaBandwidth? get pick =>
-      heard.length < 2 ? null : mediaMeshFindPick(heard[0], heard[1]);
+  LoRaBandwidth? get pick => heard.isEmpty ? null : mediaMeshFindPick(heard[0]);
 
-  int get heardOnPick =>
-      pick == null ? 0 : heard[pick == LoRaBandwidth.bw250 ? 0 : 1];
+  int get heardOnPick => pick == null ? 0 : heard[0];
 }
 
 class MediaMeshFinder {

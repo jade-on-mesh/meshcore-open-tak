@@ -70,9 +70,9 @@ it plays. Wadamesh TAK standalones show talks the same way.
 A talk is Codec2 at 1200 bps: one packet per 1.04 seconds of speech, the same
 packets a voice message uses. At MediaMesh's 250 kHz preset a packet takes
 about 0.16 s on air, so each hop uses about a sixth of the channel while
-someone talks. At the 125 kHz preset, packets through repeaters can't quite
-keep up with speech: the talk still arrives, a little later the longer it
-runs. Use **Direct** there for live talk.
+someone talks. On a slower custom radio2 profile (125 kHz, say), packets
+through repeaters can't quite keep up with speech: the talk still arrives, a
+little later the longer it runs. Use **Direct** there for live talk.
 
 The voice message announcing the talk is a normal channel message on the main
 mesh, as for any voice message.
