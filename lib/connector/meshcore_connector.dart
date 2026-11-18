@@ -6419,7 +6419,20 @@ class MeshCoreConnector extends ChangeNotifier {
       _bleMotaChannelError = null;
       _connectionSubscription = device.connectionState.listen((state) {
         if (state == BluetoothConnectionState.disconnected && isConnected) {
+          // Why the link dropped, as the phone's Bluetooth stack says
+          // (iOS: 6 = timed out, 7 = the radio ended it), for the logs.
+          final r = device.disconnectReason;
+          final why = r == null
+              ? 'no reason given'
+              : '${r.platform.name} ${r.code}: ${r.description}';
+          _bleDebugLogService?.logEvent('DISCONNECTED ($why)');
+          _appDebugLogService?.warn(
+            'BLE link dropped ($why)',
+            tag: 'BLE Connect',
+          );
           _handleDisconnection();
+        } else if (state == BluetoothConnectionState.connected) {
+          _bleDebugLogService?.logEvent('CONNECTED');
         }
       });
 
