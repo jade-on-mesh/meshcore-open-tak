@@ -42,6 +42,8 @@ Older app versions and standalones ignore the extra bytes.
 | Stale | under an hour ago |
 | Lost | older |
 
+On the team list, stale teammates are greyed out. Lost ones move to a collapsed **Not heard lately (N)** section at the bottom, and they're off the map and AR until their next beacon puts them back. Wadamesh TAK standalones list them the same way, and already left lost teammates off the map.
+
 The app keeps teammates across restarts for 24 hours, with their last position and when it was heard, so the list doesn't start empty. A teammate who isn't live can be removed from their sheet (**Remove from the team list**).
 
 ## The team channel

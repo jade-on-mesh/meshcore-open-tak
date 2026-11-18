@@ -203,7 +203,7 @@ class TeamMapLayer extends StatelessWidget {
           strokeWidth: 3,
           pattern: StrokePattern.dotted(spacingFactor: 2),
         ),
-      for (final m in team.members)
+      for (final m in team.mapMembers)
         if (team.showTracks && m.trail.length > 1)
           Polyline(
             points: [for (final p in m.trail) LatLng(p.$1, p.$2)],
@@ -374,7 +374,7 @@ class TeamMapLayer extends StatelessWidget {
       for (final r in team.reports) _reportMarker(context, r),
       for (final c in team.casevacs) _casevacMarker(context, c),
       for (final m in team.markers) _pinMarker(context, team, m),
-      for (final m in team.members) _memberMarker(context, m),
+      for (final m in team.mapMembers) _memberMarker(context, m),
       for (final a in team.activeAlerts)
         if (a.lat != null && a.lon != null)
           Marker(

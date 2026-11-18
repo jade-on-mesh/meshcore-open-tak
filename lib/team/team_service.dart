@@ -699,6 +699,14 @@ class TeamService extends ChangeNotifier implements TeamCompatHost {
       if (m.position.hasPosition) m,
   ];
 
+  /// Teammates to draw on the map and in AR: [members] heard within the last
+  /// hour. A lost one ([TeamFreshness.lost]) comes back with its next beacon;
+  /// the team list keeps it under "Not heard lately".
+  List<TeamMember> get mapMembers => [
+    for (final m in members)
+      if (m.freshness != TeamFreshness.lost) m,
+  ];
+
   /// Every teammate heard, newest first, including those with no GPS fix or
   /// location set ("here, no position" beacons): the team list.
   List<TeamMember> get allMembers =>
