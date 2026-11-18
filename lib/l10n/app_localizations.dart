@@ -2845,6 +2845,18 @@ abstract class AppLocalizations {
   /// **'Like Messages on an iPhone: blue bubbles for yours, grey for others, runs of messages joined, the time in headers'**
   String get appSettings_chatStyleIphoneHelp;
 
+  /// No description provided for @chat_metaHops.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 Hop} other{{count} Hops}}'**
+  String chat_metaHops(int count);
+
+  /// No description provided for @chat_metaHashBytes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}-byte'**
+  String chat_metaHashBytes(int count);
+
   /// No description provided for @appSettings_chatStyleAndroid.
   ///
   /// In en, this message translates to:
@@ -2926,7 +2938,7 @@ abstract class AppLocalizations {
   /// No description provided for @appSettings_chatStyleClassicHelp.
   ///
   /// In en, this message translates to:
-  /// **'Blue bubbles for yours and grey for others, like the official MeshCore app'**
+  /// **'Blue bubbles for yours and grey for others, with the time, hops and path hash size under each one, like the official MeshCore app'**
   String get appSettings_chatStyleClassicHelp;
 
   /// No description provided for @appSettings_chatStyleIcq.

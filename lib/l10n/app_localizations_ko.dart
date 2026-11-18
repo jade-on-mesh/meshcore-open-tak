@@ -1502,6 +1502,22 @@ class AppLocalizationsKo extends AppLocalizations {
       'Like Messages on an iPhone: blue bubbles for yours, grey for others, runs of messages joined, the time in headers';
 
   @override
+  String chat_metaHops(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Hops',
+      one: '1 Hop',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String chat_metaHashBytes(int count) {
+    return '$count-byte';
+  }
+
+  @override
   String get appSettings_chatStyleAndroid => 'Android';
 
   @override
@@ -1548,7 +1564,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get appSettings_chatStyleClassicHelp =>
-      'Blue bubbles for yours and grey for others, like the official MeshCore app';
+      'Blue bubbles for yours and grey for others, with the time, hops and path hash size under each one, like the official MeshCore app';
 
   @override
   String get appSettings_chatStyleIcq => 'ICQ';

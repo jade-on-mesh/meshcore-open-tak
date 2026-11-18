@@ -23,6 +23,7 @@ import '../helpers/ipfs_link_attach_flow.dart';
 import '../helpers/contact_share_message.dart';
 import '../helpers/marker_message.dart';
 import '../helpers/message_search.dart';
+import '../widgets/chat_meta_below.dart';
 import '../widgets/chat_search_results.dart';
 import '../helpers/message_url_image_helper.dart';
 import '../helpers/path_helper.dart';
@@ -1684,7 +1685,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     // The time under the text: Discord has it in the header and mIRC at the
     // start of the line; the bubble styles under a run's last message
     // (iMessage: never, its time headers say when).
-    final showTime = discord || mirc
+    // MeshCore: the time, hops and hash size go on a line under the bubble.
+    final metaBelow = look.metaBelow && !log;
+    final showTime = discord || mirc || metaBelow
         ? false
         : look.bubbleRuns
         ? look.bubbleTimes && !run.joinsBelow
@@ -2012,7 +2015,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                               buildTextContent(),
                             ],
                           ),
-                        if (displayPath.isNotEmpty) ...[
+                        if (displayPath.isNotEmpty && !metaBelow) ...[
                           const SizedBox(height: 3),
                           Padding(
                             padding: gifId != null
@@ -2187,6 +2190,21 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
               ),
             ],
           ),
+          if (metaBelow)
+            ChatMetaBelow(
+              time: message.timestamp,
+              hops: isOutgoing ? null : displayHopCount,
+              hashBytes: displayPathHashWidth,
+              region: message.region?.isNotEmpty ?? false
+                  ? _displayRegion(message.region!)
+                  : null,
+              textScale: textScale,
+              padding: EdgeInsets.only(
+                top: 4,
+                left: layoutOutgoing ? 0 : avatarSize + avatarGap + 12,
+                right: layoutOutgoing ? 12 : 0,
+              ),
+            ),
           if (message.reactions.isNotEmpty) ...[
             const SizedBox(height: 4),
             Padding(

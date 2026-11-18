@@ -332,7 +332,7 @@ class AvatarCircle extends StatelessWidget {
     // official app gives their name, the name's first emoji or initials in
     // white on it. Node-type avatars (a fixed colour or an icon) stay as they
     // are.
-    if (look.style == ChatStyle.classic &&
+    if (look.classicBubbles &&
         color == null &&
         icon == null &&
         iconSlot == null) {

@@ -20,7 +20,8 @@ enum ChatStyle {
   wadamesh('wadamesh'),
 
   /// The classic MeshCore app look: blue bubbles of mine, grey for others,
-  /// rounded the same on every corner.
+  /// rounded the same on every corner, and the time, hops and path hash size
+  /// on one quiet line under each bubble (`5:38AM • 3 Hops • 1-byte`).
   classic('classic'),
 
   /// MeshCore Open as it was: the app's own bubbles, and people's colours
@@ -88,6 +89,14 @@ class MeshChatLook extends ThemeExtension<MeshChatLook> {
   });
 
   static const standard = MeshChatLook();
+
+  /// The official MeshCore app's bubbles, avatars and colours (MeshCore
+  /// Classic).
+  bool get classicBubbles => style == ChatStyle.classic;
+
+  /// The time, hops and path hash size on a line under the bubble, not in it
+  /// (MeshCore Classic, as the official app).
+  bool get metaBelow => style == ChatStyle.classic;
 
   /// A flat chat log (mIRC, ICQ, Discord): every line on the left, no
   /// bubbles, each message's sender named, mine too.

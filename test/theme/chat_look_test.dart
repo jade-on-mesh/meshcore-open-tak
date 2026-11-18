@@ -388,6 +388,16 @@ void main() {
     );
   });
 
+  test('classic style: the time, hops and hash size under the bubble', () {
+    const look = MeshChatLook(style: ChatStyle.classic);
+    expect(look.classicBubbles, isTrue);
+    expect(look.metaBelow, isTrue);
+    for (final s in ChatStyle.values) {
+      if (s == ChatStyle.classic) continue;
+      expect(MeshChatLook(style: s).metaBelow, isFalse, reason: s.id);
+    }
+  });
+
   testWidgets('a failed send stays an error bubble in every style', (
     tester,
   ) async {
