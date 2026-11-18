@@ -83,6 +83,23 @@ class BleDebugLogService extends ChangeNotifier {
     _notifyListenersSafely();
   }
 
+  /// A connection event (connected, disconnected and why), shown in the
+  /// log as a line of its own between the frames.
+  void logEvent(String text) {
+    _entries.add(
+      BleDebugLogEntry(
+        timestamp: DateTime.now(),
+        outgoing: false,
+        description: '— $text',
+        payload: Uint8List(0),
+      ),
+    );
+    if (_entries.length > maxEntries) {
+      _entries.removeRange(0, _entries.length - maxEntries);
+    }
+    _notifyListenersSafely();
+  }
+
   void clear() {
     _entries.clear();
     _rawLogRxEntries.clear();
