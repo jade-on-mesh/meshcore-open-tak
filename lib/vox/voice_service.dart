@@ -4006,11 +4006,17 @@ class VoxVoiceService extends ChangeNotifier {
   /// One CLI command, asked up to three times while it goes unanswered (no
   /// reply in time, or an empty one). Null when it never was.
   Future<String?> _askCli(String command) async {
-    const waits = [Duration(seconds: 5), Duration(seconds: 8), Duration(seconds: 10)];
+    const waits = [
+      Duration(seconds: 5),
+      Duration(seconds: 8),
+      Duration(seconds: 10),
+    ];
     for (final wait in waits) {
       if (!_connector.isConnected) return null;
       try {
-        final reply = await _connector.runLocalCliCommand(command).timeout(wait);
+        final reply = await _connector
+            .runLocalCliCommand(command)
+            .timeout(wait);
         if (reply.trim().isNotEmpty) return reply;
       } catch (_) {}
     }
