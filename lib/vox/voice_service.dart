@@ -4149,7 +4149,9 @@ class VoxVoiceService extends ChangeNotifier {
         radio == _mediaAirRadio &&
         at != null &&
         DateTime.now().difference(at) <
-            (_mediaAir != null
+            (_mediaAirRetrySoon
+                ? const Duration(seconds: 30)
+                : _mediaAir != null
                 ? const Duration(minutes: 3)
                 : const Duration(minutes: 10));
     if (radio == null || fresh) {
@@ -4194,13 +4196,17 @@ class VoxVoiceService extends ChangeNotifier {
         unanswered = true;
       }
       if (air == null && unanswered) {
-        // Keep what this radio said before, if anything, and ask again next
-        // time rather than in ten minutes.
+        // Keep what this radio said before, if anything, and ask again in
+        // half a minute rather than in ten. Not at once: this is asked on
+        // every packet that comes in untagged, and asking again on each of
+        // them kept the radio's CLI busy through a whole transfer (and the
+        // Bluetooth link with it). A send asks afresh anyway (canSendMedia).
         if (radio == _mediaAirRadio) air = _mediaAir;
-        _mediaAirAt = null;
+        _mediaAirRetrySoon = true;
       } else {
-        _mediaAirAt = DateTime.now();
+        _mediaAirRetrySoon = false;
       }
+      _mediaAirAt = DateTime.now();
       _mediaAirUnanswered = air == null && unanswered;
       _mediaAir = air;
       _mediaAirRadio = radio;
@@ -4217,6 +4223,9 @@ class VoxVoiceService extends ChangeNotifier {
   /// Whether the last ask for the MediaMesh profile went unanswered (rather
   /// than the radio saying radio2 is off or not set up for photos and voice).
   bool _mediaAirUnanswered = false;
+
+  /// Some of the last ask went unanswered: ask again after 30 s.
+  bool _mediaAirRetrySoon = false;
 
   /// One CLI command, asked up to three times while it goes unanswered (no
   /// reply in time, or an empty one). Null when it never was.
