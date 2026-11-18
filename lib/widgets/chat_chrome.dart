@@ -255,11 +255,14 @@ class ChatHeaderTitle extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Flexible(child: name),
-              Icon(Icons.chevron_right, size: 14, color: fg.withValues(alpha: 0.5)),
+              Icon(
+                Icons.chevron_right,
+                size: 14,
+                color: fg.withValues(alpha: 0.5),
+              ),
             ],
           ),
-          if (sub != null)
-            DefaultTextStyle.merge(style: subStyle, child: sub),
+          if (sub != null) DefaultTextStyle.merge(style: subStyle, child: sub),
         ],
       );
     }
@@ -319,7 +322,8 @@ class ChatComposerLook {
 
   Color? get fill => switch (style) {
     ChatStyle.classic => dark ? classicFieldNight : classicFieldDay,
-    ChatStyle.signal => dark ? const Color(0xFF2A2A2A) : const Color(0xFFF0F0F0),
+    ChatStyle.signal =>
+      dark ? const Color(0xFF2A2A2A) : const Color(0xFFF0F0F0),
     ChatStyle.iphone => Colors.transparent,
     ChatStyle.android => dark ? androidRecvNight : androidRecvDay,
     ChatStyle.discord => dark ? discordFieldNight : discordFieldDay,
@@ -330,7 +334,8 @@ class ChatComposerLook {
 
   /// A border round the field (iMessage, mIRC, ICQ), else none.
   Color? get border => switch (style) {
-    ChatStyle.iphone => dark ? const Color(0xFF3A3A3C) : const Color(0xFFC6C6C8),
+    ChatStyle.iphone =>
+      dark ? const Color(0xFF3A3A3C) : const Color(0xFFC6C6C8),
     ChatStyle.mirc => const Color(0xFF808080),
     ChatStyle.icq => dark ? const Color(0xFF6A6A6A) : const Color(0xFF7F9DB9),
     _ => null,
@@ -367,7 +372,8 @@ class ChatComposerLook {
 
   /// The "+" on the left: a grey circle behind it (iMessage, Discord).
   Color? get plusFill => switch (style) {
-    ChatStyle.iphone => dark ? const Color(0xFF3A3A3C) : const Color(0xFFE9E9EB),
+    ChatStyle.iphone =>
+      dark ? const Color(0xFF3A3A3C) : const Color(0xFFE9E9EB),
     ChatStyle.discord => dark ? discordFieldNight : discordFieldDay,
     _ => null,
   };

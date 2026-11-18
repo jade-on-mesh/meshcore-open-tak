@@ -411,7 +411,10 @@ void main() {
     expect(classic.buttonsInside, isTrue);
     expect(classic.alwaysCount, isTrue);
     expect(classic.fill, classicFieldNight);
-    expect(const ChatComposerLook(ChatStyle.iphone, dark: false).sendInside, isTrue);
+    expect(
+      const ChatComposerLook(ChatStyle.iphone, dark: false).sendInside,
+      isTrue,
+    );
     expect(
       const ChatComposerLook(ChatStyle.discord, dark: true).sendFill,
       discordBlurple,
