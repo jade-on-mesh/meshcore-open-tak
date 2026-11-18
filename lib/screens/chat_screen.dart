@@ -481,8 +481,13 @@ class _ChatScreenState extends State<ChatScreen> {
                     return ChatHeaderTitle(
                       look: header,
                       title: contact.name,
-                      avatar: (size) =>
-                          _buildAvatar(context, contact.name, size: size),
+                      avatar: (size) => AvatarCircle(
+                        name: contact.name,
+                        size: size,
+                        photoKey: contact.type == advTypeRoom
+                            ? null
+                            : contact.publicKeyHex,
+                      ),
                       subtitle: GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () =>
