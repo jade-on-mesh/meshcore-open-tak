@@ -19,6 +19,17 @@
 //   [duration ms:2][sound mode:1][sound length:2]
 //   [sound][video stream]
 //
+// Version 4 is one part of a clip sent as several transfers (SuperMax):
+//
+//   [4][thumb length][thumb OBUs][parts:1][this part:1][packets:1 per part]
+//   then as version 3
+//
+// Each part is a run of the clip coded on its own, so it plays as soon as it
+// is in. The first part is the one announced (its envelope's length is the
+// whole clip's), with the thumbnail and all the sound; part k's session id
+// is voxVideoPartSid(the first's, k), and the packet counts tell a receiver
+// how many to ask for.
+//
 // The thumbnail is the first frame as an AV1 still, so a bubble shows it as
 // soon as the first two packets are in. The sound mode is the voice
 // envelope's mode id (VoxVoiceMode.wireId), 255 for none. The video stream is
@@ -37,6 +48,15 @@ import 'voice_wire.dart';
 /// Payload format version of a video (photos are 1 and 2).
 const int voxVideoPayloadVersion = 3;
 
+/// A part of a clip sent as several transfers (SuperMax).
+const int voxVideoPartsPayloadVersion = 4;
+
+/// The session id of part [k] (from 1) of the clip whose first part is
+/// [firstSid]. Distinct from parity ids (vox_fec.dart's XOR).
+String voxVideoPartSid(String firstSid, int k) => voxSessionIdFromInt(
+  int.parse(firstSid, radix: 16) ^ (0x7A000000 + k * 0x00010101),
+);
+
 /// Longest side the picked clip is read at (the largest frame we send).
 const int voxVideoSourceSide = 256;
 
@@ -51,10 +71,13 @@ const int voxVideoMaxSeconds = 15;
 const int voxVideoSuperMaxSide = 512;
 
 /// SuperMax's longest clip. It runs at Max's frame rate
-/// ([voxVideoSuperMaxFps]), so four times Max's pixels in Max's one transfer
-/// leaves room for only a second or two: the clip is cut to what fits
-/// ([voxSuperMaxFrames]).
-const int voxVideoSuperMaxSeconds = 2;
+/// ([voxVideoSuperMaxFps]) at four times Max's pixels, so each Max-sized
+/// part carries about 1.5 s ([voxSuperMaxFrames]); its
+/// [voxVideoSuperMaxParts] parts about 4.5 s.
+const int voxVideoSuperMaxSeconds = 5;
+
+/// Transfers a SuperMax clip goes in, each Max's size.
+const int voxVideoSuperMaxParts = 3;
 
 /// SuperMax's frame rate: Max's fastest, [voxVideoSourceFps].
 const int voxVideoSuperMaxFps = voxVideoSourceFps;
@@ -75,18 +98,26 @@ const int voxVideoFinalSpeed = 4;
 const double voxVideoMinBitsPerPixel = 0.12;
 
 /// How much airtime to spend, in voice messages, as photos do. Max is
-/// exactly Super Sharp: the most one transfer carries. SuperMax spends the
-/// same, on four times Max's resolution ([voxVideoSuperMaxSide]) for a
-/// shorter clip.
+/// exactly Super Sharp: the most one transfer carries. SuperMax spends that
+/// on each of [voxVideoSuperMaxParts] transfers, at four times Max's
+/// resolution ([voxVideoSuperMaxSide]) and Max's frame rate.
 enum VoxVideoDetail {
   quick(4, 'Quick', 6),
   clear(8, 'Clear', 10),
   maximum(14, 'Max', voxVideoMaxSeconds),
-  superMax(14, 'SuperMax', voxVideoSuperMaxSeconds);
+  superMax(14, 'SuperMax', voxVideoSuperMaxSeconds, voxVideoSuperMaxParts);
 
-  const VoxVideoDetail(this.multiple, this.label, this.maxSeconds);
+  const VoxVideoDetail(
+    this.multiple,
+    this.label,
+    this.maxSeconds, [
+    this.parts = 1,
+  ]);
   final int multiple;
   final String label;
+
+  /// Transfers it goes in, each [budget] bytes.
+  final int parts;
 
   /// Longest clip at this level: the start of a longer one is sent.
   final int maxSeconds;
@@ -169,7 +200,12 @@ class VoxVideoFrames {
 
 /// A clip ready to send.
 class VoxEncodedVideo {
+  /// The first (announced) part's payload; the whole clip unless SuperMax.
   final Uint8List payload;
+
+  /// The other parts' payloads, in order (SuperMax), sent as transfers of
+  /// their own at [voxVideoPartSid].
+  final List<Uint8List> moreParts;
 
   /// What the receiver will see, decoded from [payload].
   final VoxVideoFrames preview;
@@ -185,6 +221,7 @@ class VoxEncodedVideo {
 
   const VoxEncodedVideo({
     required this.payload,
+    this.moreParts = const [],
     required this.preview,
     required this.detail,
     required this.durationMs,
@@ -211,12 +248,19 @@ class VoxPlayableVideo {
   /// The clip was sent with sound.
   final bool hasSound;
 
+  /// Parts decoded into [frames] (SuperMax goes in several), and whether
+  /// more are still to come in.
+  final int parts;
+  final bool more;
+
   const VoxPlayableVideo({
     required this.frames,
     required this.durationMs,
     this.wav,
     this.soundNote,
     this.hasSound = false,
+    this.parts = 1,
+    this.more = false,
   });
 }
 
@@ -230,6 +274,12 @@ class VoxVideoInfo {
   final VoxVoiceMode? soundMode;
   final Uint8List sound;
   final Uint8List stream;
+
+  /// Parts the clip was sent in (1: one transfer), which this one is (from
+  /// 0), and each part's packet count (empty for one part).
+  final int partCount;
+  final int partIndex;
+  final List<int> partTotals;
   const VoxVideoInfo({
     required this.width,
     required this.height,
@@ -239,6 +289,9 @@ class VoxVideoInfo {
     required this.soundMode,
     required this.sound,
     required this.stream,
+    this.partCount = 1,
+    this.partIndex = 0,
+    this.partTotals = const [],
   });
 
   double get aspect => width / height;
@@ -303,43 +356,35 @@ VoxVideoFrames voxTrimFrames(VoxVideoFrames src, int seconds) {
   );
 }
 
-/// Encodes [source] (with [sound], already coded in [soundMode], or none) to
-/// fit [detail]'s budget. [encodeStill] makes the thumbnail.
-VoxEncodedVideo voxEncodeVideo({
-  required VoxVideoFrames source,
+/// One coded run of frames: the frames as sent, the stream, its quantizer,
+/// and how many of the given source frames it covers.
+class _VoxSegment {
+  final VoxVideoFrames frames;
+  final Uint8List data;
+  final int q;
+  final int sourceFrames;
+  final int durationMs;
+  const _VoxSegment(
+    this.frames,
+    this.data,
+    this.q,
+    this.sourceFrames,
+    this.durationMs,
+  );
+}
+
+/// Codes [clip] in at most [budget] bytes. Ordinary levels pick the frame
+/// size and rate (dropping to smaller ones until it fits); SuperMax keeps
+/// its size and frame rate and codes a shorter run instead.
+_VoxSegment _encodeSegment({
+  required VoxVideoFrames clip,
+  required int budget,
   required VoxVideoDetail detail,
   required VoxAv1ClipEncode encode,
-  required VoxAv1ClipDecode decode,
-  required VoxAv1Encode encodeStill,
-  VoxVoiceMode? soundMode,
-  Uint8List? sound,
-  VoxFocusRegions focus = VoxFocusRegions.none,
+  required VoxFocusRegions focus,
+  required double aspect,
 }) {
-  if (source.count == 0) throw StateError('The clip has no frames');
-  var clip = voxTrimFrames(source, detail.maxSeconds);
-  final soundBytes = soundMode == null ? Uint8List(0) : (sound ?? Uint8List(0));
-  final thumb = voxEncodeThumb(clip.frame(0), encodeStill) ?? Uint8List(0);
-  final budget =
-      detail.budget -
-      2 -
-      thumb.length -
-      voxVideoHeaderBytes -
-      soundBytes.length;
-  if (budget < 512) {
-    throw StateError('No room for the picture at ${detail.label}');
-  }
-
-  final aspect = clip.width / clip.height;
   final superMax = detail == VoxVideoDetail.superMax;
-  // The source frames per SuperMax frame (the source may be slower).
-  final perFrame = clip.fps / min(clip.fps, voxVideoSuperMaxFps);
-  if (superMax) {
-    // Max's frame rate at four times its pixels: as long as the bytes code
-    // well, the rest cut.
-    final (w, h) = voxVideoSize(aspect, voxVideoSuperMaxSide);
-    final fits = voxSuperMaxFrames(budget, w, h);
-    clip = voxTrimFrameCount(clip, (fits * perFrame).floor());
-  }
   final seconds = clip.duration.inMilliseconds / 1000;
   final maxSide = max(clip.width, clip.height);
   var shape = voxPickVideoShape(
@@ -369,29 +414,29 @@ VoxEncodedVideo voxEncodeVideo({
     return best;
   }
 
+  var run = clip;
   late VoxVideoFrames f;
   late (int, Uint8List) fit;
   while (true) {
     final (w, h) = voxVideoSize(aspect, shape.$1);
-    f = voxResampleFrames(clip, w, h, shape.$2);
-    if (!focus.isEmpty) f = _softenOutside(f, focus, w / clip.width, detail);
+    f = voxResampleFrames(run, w, h, shape.$2);
+    if (!focus.isEmpty) f = _softenOutside(f, focus, w / run.width, detail);
     final found = fitQ(f);
     if (found != null) {
       fit = found;
       break;
     }
-    final i = detail.shapes.indexOf(shape);
-    if (superMax && f.count > 1) {
-      // SuperMax keeps its size and frame rate: a shorter clip instead.
-      clip = voxTrimFrameCount(clip, (clip.count * 0.8).floor());
+    if (superMax && run.count > 1) {
+      // SuperMax keeps its size and frame rate: a shorter run instead.
+      run = voxTrimFrameCount(run, (run.count * 0.8).floor());
       continue;
     }
+    final i = detail.shapes.indexOf(shape);
     if (i <= 0) {
       throw StateError('The clip does not fit in ${detail.budget} bytes');
     }
     shape = detail.shapes[i - 1];
   }
-  final durationMs = clip.duration.inMilliseconds;
   // A slower final pass at the quantizer found (or the next ones up, if it
   // came out bigger); the trial encode if none fits.
   var q = fit.$1;
@@ -404,38 +449,196 @@ VoxEncodedVideo voxEncodeVideo({
       break;
     }
   }
-  final decoded = decode(data, f.width, f.height, f.count);
-  if (decoded == null) throw StateError('The clip did not decode');
-  final preview = VoxVideoFrames(f.width, f.height, f.fps, decoded);
+  return _VoxSegment(f, data, q, run.count, run.duration.inMilliseconds);
+}
 
-  final head = 2 + thumb.length;
+/// The part block's length in a [parts]-part payload (version 4): the part
+/// count, this part's index, and every part's packet count.
+int voxVideoPartBlockBytes(int parts) => parts > 1 ? 2 + parts : 0;
+
+/// Packets a payload of [bytes] takes.
+int voxVideoPacketsFor(int bytes) {
+  final per = VoxVoiceMode.av1Video.bytesPerPacket;
+  return (bytes + per - 1) ~/ per;
+}
+
+/// A payload: version 3, or 4 with the part block ([partCount] > 1;
+/// [partTotals] filled in afterwards, see [voxVideoSetPartTotals]).
+Uint8List _videoPayload({
+  required Uint8List thumb,
+  required int partCount,
+  required int partIndex,
+  required VoxVideoFrames f,
+  required int frames,
+  required int durationMs,
+  required VoxVoiceMode? soundMode,
+  required Uint8List sound,
+  required Uint8List data,
+}) {
+  final block = voxVideoPartBlockBytes(partCount);
+  final head = 2 + thumb.length + block;
   final payload = Uint8List(
-    head + voxVideoHeaderBytes + soundBytes.length + data.length,
+    head + voxVideoHeaderBytes + sound.length + data.length,
   );
-  payload[0] = voxVideoPayloadVersion;
+  payload[0] = partCount > 1 ? voxVideoPartsPayloadVersion : 3;
   payload[1] = thumb.length;
-  payload.setRange(2, head, thumb);
+  payload.setRange(2, 2 + thumb.length, thumb);
+  if (partCount > 1) {
+    payload[2 + thumb.length] = partCount;
+    payload[3 + thumb.length] = partIndex;
+  }
   ByteData.sublistView(payload, head, head + voxVideoHeaderBytes)
     ..setUint16(0, f.width)
     ..setUint16(2, f.height)
     ..setUint8(4, f.fps)
-    ..setUint16(5, preview.count)
+    ..setUint16(5, frames)
     ..setUint16(7, min(durationMs, 0xFFFF))
     ..setUint8(9, soundMode?.wireId ?? voxVideoNoSound)
-    ..setUint16(10, soundBytes.length);
+    ..setUint16(10, sound.length);
   var o = head + voxVideoHeaderBytes;
-  payload.setRange(o, o + soundBytes.length, soundBytes);
-  o += soundBytes.length;
+  payload.setRange(o, o + sound.length, sound);
+  o += sound.length;
   payload.setRange(o, o + data.length, data);
+  return payload;
+}
+
+/// Writes every part's packet count into each of [payloads] (a version 4
+/// clip's parts, in order).
+void voxVideoSetPartTotals(List<Uint8List> payloads) {
+  final totals = [for (final p in payloads) voxVideoPacketsFor(p.length)];
+  for (final p in payloads) {
+    final at = 4 + p[1];
+    for (var i = 0; i < totals.length; i++) {
+      p[at + i] = min(totals[i], voxMaxPackets);
+    }
+  }
+}
+
+/// Encodes [source] (with [sound], already coded in [soundMode], or none) to
+/// fit [detail]'s budget. [encodeStill] makes the thumbnail.
+///
+/// SuperMax sends up to [VoxVideoDetail.parts] parts, each a Max-sized
+/// transfer of its own: the clip in runs at 512 px and Max's frame rate, as
+/// much in each as Max's bytes code well. The thumbnail and all the sound go
+/// in the first part, so it plays (with sound) while the rest come in.
+VoxEncodedVideo voxEncodeVideo({
+  required VoxVideoFrames source,
+  required VoxVideoDetail detail,
+  required VoxAv1ClipEncode encode,
+  required VoxAv1ClipDecode decode,
+  required VoxAv1Encode encodeStill,
+  VoxVoiceMode? soundMode,
+  Uint8List? sound,
+  VoxFocusRegions focus = VoxFocusRegions.none,
+}) {
+  if (source.count == 0) throw StateError('The clip has no frames');
+  final clip = voxTrimFrames(source, detail.maxSeconds);
+  final soundBytes = soundMode == null ? Uint8List(0) : (sound ?? Uint8List(0));
+  final thumb = voxEncodeThumb(clip.frame(0), encodeStill) ?? Uint8List(0);
+  final aspect = clip.width / clip.height;
+  final superMax = detail == VoxVideoDetail.superMax;
+  final block = voxVideoPartBlockBytes(detail.parts);
+  // The source frames per SuperMax frame (the source may be slower).
+  final perFrame = clip.fps / min(clip.fps, voxVideoSuperMaxFps);
+
+  final segments = <_VoxSegment>[];
+  var cursor = 0;
+  for (var k = 0; k < detail.parts && cursor < clip.count; k++) {
+    final first = k == 0;
+    final budget =
+        detail.budget -
+        2 -
+        (first ? thumb.length + soundBytes.length : 0) -
+        block -
+        voxVideoHeaderBytes;
+    if (budget < 512) {
+      throw StateError('No room for the picture at ${detail.label}');
+    }
+    var run = voxSliceFrames(clip, cursor, clip.count - cursor);
+    if (superMax) {
+      // Max's frame rate at four times its pixels: as long as the bytes code
+      // well; the next part carries on from there.
+      final (w, h) = voxVideoSize(aspect, voxVideoSuperMaxSide);
+      final fits = voxSuperMaxFrames(budget, w, h);
+      run = voxTrimFrameCount(run, max(1, (fits * perFrame).floor()));
+    }
+    final seg = _encodeSegment(
+      clip: run,
+      budget: budget,
+      detail: detail,
+      encode: encode,
+      focus: focus,
+      aspect: aspect,
+    );
+    segments.add(seg);
+    cursor += seg.sourceFrames;
+  }
+
+  final n = segments.length;
+  final payloads = <Uint8List>[];
+  final previews = <VoxVideoFrames>[];
+  var durationMs = 0;
+  for (var k = 0; k < n; k++) {
+    final seg = segments[k];
+    final f = seg.frames;
+    final decoded = decode(seg.data, f.width, f.height, f.count);
+    if (decoded == null) throw StateError('The clip did not decode');
+    final preview = VoxVideoFrames(f.width, f.height, f.fps, decoded);
+    previews.add(preview);
+    durationMs += seg.durationMs;
+    payloads.add(
+      _videoPayload(
+        thumb: k == 0 ? thumb : Uint8List(0),
+        partCount: n,
+        partIndex: k,
+        f: f,
+        frames: preview.count,
+        durationMs: seg.durationMs,
+        soundMode: k == 0 ? soundMode : null,
+        sound: k == 0 ? soundBytes : Uint8List(0),
+        data: seg.data,
+      ),
+    );
+  }
+  if (n > 1) voxVideoSetPartTotals(payloads);
   return VoxEncodedVideo(
-    payload: payload,
-    preview: preview,
+    payload: payloads.first,
+    moreParts: payloads.sublist(1),
+    preview: voxJoinFrames(previews),
     detail: detail,
     durationMs: durationMs,
     soundMode: soundMode,
     sound: soundBytes,
-    q: q,
+    q: segments.map((s) => s.q).reduce(max),
   );
+}
+
+/// [count] frames of [src] from [start].
+VoxVideoFrames voxSliceFrames(VoxVideoFrames src, int start, int count) {
+  final s = start.clamp(0, src.count);
+  final n = count.clamp(0, src.count - s);
+  if (s == 0 && n == src.count) return src;
+  return VoxVideoFrames(
+    src.width,
+    src.height,
+    src.fps,
+    Uint8List.sublistView(
+      src.rgb,
+      s * src.frameBytes,
+      (s + n) * src.frameBytes,
+    ),
+  );
+}
+
+/// [parts] one after another (all the same size and rate).
+VoxVideoFrames voxJoinFrames(List<VoxVideoFrames> parts) {
+  if (parts.length == 1) return parts.first;
+  final b = BytesBuilder(copy: false);
+  for (final p in parts) {
+    b.add(p.rgb);
+  }
+  final f = parts.first;
+  return VoxVideoFrames(f.width, f.height, f.fps, b.toBytes());
 }
 
 /// Faces and text ([focus], in [k]-scaled pixels) kept as they are, the rest
@@ -467,8 +670,28 @@ VoxVideoFrames _softenOutside(
 /// The parts of a received payload; null if it isn't a video this build
 /// reads.
 VoxVideoInfo? voxVideoInfo(Uint8List payload) {
-  if (payload.length < 2 || payload[0] != voxVideoPayloadVersion) return null;
-  final head = 2 + payload[1];
+  if (payload.length < 2) return null;
+  final v = payload[0];
+  if (v != voxVideoPayloadVersion && v != voxVideoPartsPayloadVersion) {
+    return null;
+  }
+  var head = 2 + payload[1];
+  var partCount = 1, partIndex = 0;
+  var partTotals = const <int>[];
+  if (v == voxVideoPartsPayloadVersion) {
+    if (payload.length < head + 2) return null;
+    partCount = payload[head];
+    partIndex = payload[head + 1];
+    if (partCount < 2 ||
+        partIndex >= partCount ||
+        payload.length < head + 2 + partCount) {
+      return null;
+    }
+    partTotals = List<int>.unmodifiable(
+      payload.sublist(head + 2, head + 2 + partCount),
+    );
+    head += 2 + partCount;
+  }
   if (payload.length < head + voxVideoHeaderBytes) return null;
   final h = ByteData.sublistView(payload, head, head + voxVideoHeaderBytes);
   final width = h.getUint16(0), height = h.getUint16(2);
@@ -497,6 +720,9 @@ VoxVideoInfo? voxVideoInfo(Uint8List payload) {
     soundMode: soundMode != null && soundMode.isAudio ? soundMode : null,
     sound: Uint8List.sublistView(payload, soundAt, streamAt),
     stream: Uint8List.sublistView(payload, streamAt),
+    partCount: partCount,
+    partIndex: partIndex,
+    partTotals: partTotals,
   );
 }
 

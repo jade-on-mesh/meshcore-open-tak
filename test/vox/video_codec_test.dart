@@ -5,6 +5,7 @@ import 'package:meshcore_open/vox/av1_ffi.dart';
 import 'package:meshcore_open/vox/image_codec.dart';
 import 'package:meshcore_open/vox/video_codec.dart';
 import 'package:meshcore_open/vox/voice_wire.dart';
+import 'package:meshcore_open/vox/vox_fec.dart';
 
 /// [seconds] of a moving gradient at [fps].
 VoxVideoFrames _clip(int w, int h, int fps, int seconds) {
@@ -183,27 +184,71 @@ void main() {
       expect(frames.count, enc.preview.count);
     });
 
-    test('SuperMax sends 512 px frames at Max\'s frame rate, cut to fit', () {
+    test('SuperMax: Max\'s frame rate, in Max-sized parts that play alone', () {
       final av1 = _FakeAv1();
+      final sound = Uint8List.fromList(List.generate(600, (i) => i & 0xFF));
       final enc = voxEncodeVideo(
         source: _clip(512, 288, 12, 6),
         detail: VoxVideoDetail.superMax,
         encode: av1.encodeClip,
         decode: av1.decodeClip,
         encodeStill: av1.encodeStill,
+        soundMode: VoxVoiceMode.mimi,
+        sound: sound,
       );
       expect(enc.preview.width, voxVideoSuperMaxSide);
-      expect(
-        enc.payload.length,
-        lessThanOrEqualTo(VoxVideoDetail.superMax.budget),
-      );
       expect(enc.preview.fps, voxVideoSourceFps);
-      expect(enc.durationMs, greaterThan(0));
+      expect(enc.moreParts, hasLength(voxVideoSuperMaxParts - 1));
       expect(enc.durationMs, lessThanOrEqualTo(voxVideoSuperMaxSeconds * 1000));
-      final info = voxVideoInfo(enc.payload)!;
-      expect(info.width, voxVideoSuperMaxSide);
-      expect(info.fps, voxVideoSourceFps);
-      expect(info.frames * 1000 ~/ info.fps, enc.durationMs);
+      final all = [enc.payload, ...enc.moreParts];
+      var frames = 0;
+      for (var k = 0; k < all.length; k++) {
+        final p = all[k];
+        expect(p.length, lessThanOrEqualTo(VoxVideoDetail.superMax.budget));
+        expect(p[0], voxVideoPartsPayloadVersion);
+        final info = voxVideoInfo(p)!;
+        expect(info.partCount, all.length);
+        expect(info.partIndex, k);
+        expect(info.partTotals, [for (final q in all) voxVideoPacketsFor(q.length)]);
+        expect(info.width, voxVideoSuperMaxSide);
+        expect(info.fps, voxVideoSourceFps);
+        // The sound and the thumbnail go in the first part only.
+        expect(info.sound, k == 0 ? sound : isEmpty);
+        expect(voxImageThumbObus(p) != null, k == 0);
+        // Each part plays on its own.
+        final f = voxDecodeVideoPayload(p, av1.decodeClip)!;
+        expect(f.count, info.frames);
+        frames += f.count;
+      }
+      expect(frames, enc.preview.count);
+      // Each part's length is rounded down to the millisecond.
+      expect(
+        (enc.durationMs - frames * 1000 ~/ voxVideoSourceFps).abs(),
+        lessThanOrEqualTo(all.length),
+      );
+    });
+
+    test('a short SuperMax clip goes in one transfer, as before', () {
+      final av1 = _FakeAv1();
+      final enc = voxEncodeVideo(
+        source: _clip(512, 288, 12, 1),
+        detail: VoxVideoDetail.superMax,
+        encode: av1.encodeClip,
+        decode: av1.decodeClip,
+        encodeStill: av1.encodeStill,
+      );
+      expect(enc.moreParts, isEmpty);
+      expect(enc.payload[0], voxVideoPayloadVersion);
+      expect(voxVideoInfo(enc.payload)!.partCount, 1);
+    });
+
+    test('part session ids differ from the clip, each other and parity', () {
+      const sid = '1a2b3c4d';
+      final ids = {sid, for (var k = 1; k <= 3; k++) voxVideoPartSid(sid, k)};
+      expect(ids, hasLength(4));
+      for (final id in ids) {
+        expect(ids.contains(voxFecParitySid(id)), isFalse);
+      }
     });
 
     test('the thumbnail is where a photo has it', () {

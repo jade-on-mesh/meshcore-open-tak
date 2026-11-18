@@ -518,9 +518,11 @@ Uint8List? voxImagePhotoObus(Uint8List payload) {
 /// [voxThumbPackets] packets are enough); null when there is none, or not all
 /// of it is in [prefix] yet.
 Uint8List? voxImageThumbObus(Uint8List prefix) {
-  // Videos (version 3, video_codec.dart) start the same way.
+  // Videos (versions 3 and 4, video_codec.dart) start the same way.
   if (prefix.length < 2 ||
-      (prefix[0] != voxImagePayloadVersion && prefix[0] != 3)) {
+      (prefix[0] != voxImagePayloadVersion &&
+          prefix[0] != 3 &&
+          prefix[0] != 4)) {
     return null;
   }
   final n = prefix[1];

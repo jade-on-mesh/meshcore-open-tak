@@ -1073,6 +1073,23 @@ class VoxVoiceService extends ChangeNotifier {
     );
   }
 
+  /// Keeps a SuperMax clip's other parts ready to serve, under the session
+  /// ids its first part ([env]) names (voxVideoPartSid).
+  void _registerParts(VoxVoiceEnvelope env, List<Uint8List> parts) {
+    for (var k = 1; k <= parts.length; k++) {
+      final sid = voxVideoPartSid(env.sessionId, k);
+      _remember(sid, VoxVoiceMode.av1Video, parts[k - 1], own: true);
+    }
+    if (parts.isNotEmpty) {
+      _logEvent(
+        'and ${parts.length} more parts: '
+        '${[for (final p in parts) voxVideoPacketsFor(p.length)].join(' + ')} '
+        'packets',
+        env.sessionId,
+      );
+    }
+  }
+
   /// Keeps [clip] ready to serve without announcing it in a chat (used for
   /// photos and voice notes attached to team pins). Returns its envelope.
   VoxVoiceEnvelope registerClip(VoxEncodedClip clip) {
@@ -1106,11 +1123,13 @@ class VoxVoiceService extends ChangeNotifier {
     Contact contact,
     VoxEncodedClip clip, {
     String caption = '',
+    List<Uint8List> moreParts = const [],
   }) async {
     await _ensureMediaAllowed();
     final env = _register(clip).withCaption(
       voxFitCaption(caption, voxCaptionMaxBytes(maxContactMessageBytes())),
     );
+    _registerParts(env, moreParts);
     unawaited(_refreshMediaAir()); // ready before the first request
     _logEvent(
       'sent ${env.totalPackets}-packet ${clip.mode.label} '
@@ -1136,6 +1155,7 @@ class VoxVoiceService extends ChangeNotifier {
     Channel channel,
     VoxEncodedClip clip, {
     String caption = '',
+    List<Uint8List> moreParts = const [],
   }) async {
     // Public and #public refuse photos and voice unless switched on.
     if (MediaLockdown.blocksChannel(channel)) {
@@ -1145,6 +1165,7 @@ class VoxVoiceService extends ChangeNotifier {
     final env = _register(clip).withCaption(
       voxFitCaption(caption, voxCaptionMaxBytes(maxChannelTextBytes(channel))),
     );
+    _registerParts(env, moreParts);
     unawaited(_refreshMediaAir()); // ready before the first request
     _logEvent(
       'sent ${env.totalPackets}-packet ${clip.mode.label} clip to channel ${channel.name}',
@@ -1159,7 +1180,13 @@ class VoxVoiceService extends ChangeNotifier {
       final lead = voxPushLead(_mainAirtime(env.encode().length));
       _logEvent('pushing in ${lead.inMilliseconds}ms', sid);
       unawaited(
-        Future<void>.delayed(lead).then((_) => _pushToChannel(sid, index)),
+        Future<void>.delayed(lead).then((_) {
+          _pushToChannel(sid, index);
+          // A SuperMax clip's other parts follow it, in order.
+          for (var k = 1; k <= moreParts.length; k++) {
+            _pushToChannel(voxVideoPartSid(sid, k), index);
+          }
+        }),
       );
     }
     notifyListeners();
@@ -1268,6 +1295,36 @@ class VoxVoiceService extends ChangeNotifier {
 
   VoxClipState stateFor(VoxVoiceEnvelope env) {
     final sid = env.sessionId;
+    final parts = env.isVideo ? _partsOf(env) : const <VoxVoiceEnvelope>[];
+    if (parts.isNotEmpty) {
+      // SuperMax: the first part is in; the rest come as transfers of their
+      // own. The progress is the whole clip's, the status the next part's.
+      var received = env.totalPackets, total = env.totalPackets;
+      VoxClipStatus? status;
+      String? message;
+      for (final p in parts) {
+        total += p.totalPackets;
+        if (_bits.containsKey(p.sessionId)) {
+          received += p.totalPackets;
+          continue;
+        }
+        final c = _incoming[p.sessionId];
+        received += c?.packets.length ?? 0;
+        if (status == null) {
+          status = c?.status ?? VoxClipStatus.remote;
+          message = c?.message;
+        }
+      }
+      if (status != null) {
+        return VoxClipState(
+          status == VoxClipStatus.complete ? VoxClipStatus.receiving : status,
+          received: received,
+          total: total,
+          message: message,
+          viaPaths: _pathsFor(sid),
+        );
+      }
+    }
     if (_bits.containsKey(sid)) {
       final r2 = ((_viaMask[sid] ?? 0) & 2) != 0;
       return VoxClipState(
@@ -1303,6 +1360,10 @@ class VoxVoiceService extends ChangeNotifier {
     int? channelIndex,
   }) async {
     final sid = env.sessionId;
+    if (env.isVideo && (sender != null || channelIndex != null)) {
+      final r = _videoRoute[sid];
+      _videoRoute[sid] = (sender ?? r?.$1, channelIndex ?? r?.$2);
+    }
     if (await _loadFromStore(sid)) {
       notifyListeners();
       return true;
@@ -1356,7 +1417,14 @@ class VoxVoiceService extends ChangeNotifier {
     Contact? sender,
     int? channelIndex,
   }) async {
-    if (await warmUp(env, sender: sender, channelIndex: channelIndex)) return;
+    if (env.isVideo && !_partFirst.containsKey(env.sessionId)) {
+      _wantedParts.add(env.sessionId);
+    }
+    if (await warmUp(env, sender: sender, channelIndex: channelIndex)) {
+      // A SuperMax clip whose first part is in: on to the rest.
+      if (env.isVideo) await _continueParts(env);
+      return;
+    }
     final clip = _incoming[env.sessionId]!;
     if (clip.status == VoxClipStatus.requesting ||
         clip.status == VoxClipStatus.receiving) {
@@ -1954,6 +2022,104 @@ class VoxVoiceService extends ChangeNotifier {
   /// Whether this build can encode and show video messages.
   bool get videosAvailable => VoxAv1.instanceOrNull?.hasClips ?? false;
 
+  // SuperMax clips go in several transfers (video_codec.dart, version 4):
+  // the announced first part names the rest. They are asked for one after
+  // another once it is in, when this phone asked for the clip; packets for
+  // them heard meanwhile (someone else asking) are kept either way.
+
+  /// A first part's session id -> its other parts' envelopes (empty: one).
+  final Map<String, List<VoxVoiceEnvelope>> _videoParts = {};
+
+  /// A later part's session id -> its first part's.
+  final Map<String, String> _partFirst = {};
+
+  /// A first part's session id -> its envelope.
+  final Map<String, VoxVoiceEnvelope> _firstEnv = {};
+
+  /// Clips this phone asked for: their later parts are asked for too.
+  final Set<String> _wantedParts = {};
+
+  /// Who sent a video, and on which channel: where its parts are asked.
+  final Map<String, (Contact?, int?)> _videoRoute = {};
+
+  /// [env]'s later parts, once its first part is in (empty for a clip sent
+  /// in one transfer, or before then).
+  List<VoxVoiceEnvelope> _partsOf(VoxVoiceEnvelope env) {
+    final sid = env.sessionId;
+    final known = _videoParts[sid];
+    if (known != null) return known;
+    final bits = _bits[sid];
+    if (!env.isVideo || bits == null) return const [];
+    final info = voxVideoInfo(bits);
+    if (info == null || info.partCount < 2 || info.partIndex != 0) {
+      return _videoParts[sid] = const [];
+    }
+    final parts = [
+      for (var k = 1; k < info.partCount; k++)
+        VoxVoiceEnvelope(
+          sessionId: voxVideoPartSid(sid, k),
+          mode: VoxVoiceMode.av1Video,
+          totalPackets: max(1, info.partTotals[k]),
+          durationSeconds: env.durationSeconds,
+        ),
+    ];
+    for (final p in parts) {
+      _partFirst[p.sessionId] = sid;
+    }
+    _firstEnv[sid] = env;
+    return _videoParts[sid] = parts;
+  }
+
+  /// Which part (from 1) the session id [sid] is.
+  int _partIndex(String sid) {
+    final first = _partFirst[sid];
+    if (first == null) return 1;
+    final parts = _videoParts[first] ?? const [];
+    return 2 + parts.indexWhere((p) => p.sessionId == sid);
+  }
+
+  /// How many of [env]'s parts are in, in order from the first (0: none).
+  int videoPartsIn(VoxVoiceEnvelope env) {
+    if (!_bits.containsKey(env.sessionId)) return 0;
+    var n = 1;
+    for (final p in _partsOf(env)) {
+      if (!_bits.containsKey(p.sessionId)) break;
+      n++;
+    }
+    return n;
+  }
+
+  /// [env]'s first part is in: keeps packets heard for the rest, and when
+  /// this phone asked for the clip asks for the next part not yet in.
+  Future<void> _continueParts(VoxVoiceEnvelope env) async {
+    final parts = _partsOf(env);
+    if (parts.isEmpty) return;
+    final route = _videoRoute[env.sessionId];
+    final sender = route?.$1 ?? _incoming[env.sessionId]?.sender;
+    final channel = route?.$2 ?? _incoming[env.sessionId]?.channelIndex;
+    for (final p in parts) {
+      await warmUp(p, sender: sender, channelIndex: channel);
+    }
+    if (!_wantedParts.contains(env.sessionId)) return;
+    for (final p in parts) {
+      if (_bits.containsKey(p.sessionId)) continue;
+      final c = _incoming[p.sessionId];
+      if (c != null &&
+          (c.status == VoxClipStatus.requesting ||
+              c.status == VoxClipStatus.receiving)) {
+        return;
+      }
+      _logEvent(
+        'asking for part ${_partIndex(p.sessionId)} of ${parts.length + 1} '
+        '(${p.totalPackets} packets)',
+        env.sessionId,
+      );
+      await requestClip(p, sender: sender, channelIndex: channel);
+      return;
+    }
+    _wantedParts.remove(env.sessionId);
+  }
+
   /// Decoded clips, most recently used last (a few: they are big).
   final Map<String, VoxPlayableVideo> _videoCache = {};
   final Map<String, Future<VoxPlayableVideo?>> _videoDecoding = {};
@@ -1968,11 +2134,18 @@ class VoxVoiceService extends ChangeNotifier {
   Future<VoxPlayableVideo?> videoFor(VoxVoiceEnvelope env) {
     final sid = env.sessionId;
     final cached = _videoCache.remove(sid);
-    if (cached != null) {
+    if (cached != null && cached.parts >= videoPartsIn(env)) {
       _videoCache[sid] = cached;
       return Future.value(cached);
     }
-    return _videoDecoding[sid] ??= () async {
+    final pending = _videoDecoding[sid];
+    if (pending != null) {
+      // Decode again once this one is done if more parts have come in.
+      return pending.then(
+        (v) => v != null && v.parts < videoPartsIn(env) ? videoFor(env) : v,
+      );
+    }
+    return _videoDecoding[sid] = () async {
       try {
         await _loadFromStore(sid);
         final bits = _bits[sid];
@@ -1983,15 +2156,35 @@ class VoxVoiceService extends ChangeNotifier {
           return null;
         }
         final sw = Stopwatch()..start();
-        final frames = await compute(_decodeVideoJob, bits);
-        if (frames == null) {
+        final firstFrames = await compute(_decodeVideoJob, bits);
+        if (firstFrames == null) {
           _logEvent('video did not decode', sid);
           return null;
+        }
+        var frames = firstFrames;
+        // A SuperMax clip: the parts in so far, played on one after another.
+        final parts = _partsOf(env);
+        var partsIn = 1;
+        for (final p in parts) {
+          await _loadFromStore(p.sessionId);
+          final pb = _bits[p.sessionId];
+          if (pb == null) break;
+          final pf = await compute(_decodeVideoJob, pb);
+          if (pf == null ||
+              pf.width != frames.width ||
+              pf.height != frames.height ||
+              pf.fps != frames.fps) {
+            _logEvent('part ${partsIn + 1} did not decode', sid);
+            break;
+          }
+          frames = voxJoinFrames([frames, pf]);
+          partsIn++;
         }
         _logEvent(
           'video decoded in ${sw.elapsedMilliseconds}ms: '
           '${frames.count} frames ${frames.width}x${frames.height} '
-          '@${frames.fps}fps',
+          '@${frames.fps}fps'
+          '${parts.isEmpty ? '' : ', $partsIn of ${parts.length + 1} parts'}',
           sid,
         );
         Uint8List? wav;
@@ -2013,10 +2206,12 @@ class VoxVoiceService extends ChangeNotifier {
         }
         final v = VoxPlayableVideo(
           frames: frames,
-          durationMs: info.durationMs,
+          durationMs: frames.duration.inMilliseconds,
           wav: wav,
           soundNote: soundNote,
           hasSound: sm != null,
+          parts: partsIn,
+          more: partsIn < parts.length + 1,
         );
         _videoCache[sid] = v;
         while (_videoCache.length > 4) {
@@ -2103,13 +2298,23 @@ class VoxVoiceService extends ChangeNotifier {
     Contact contact,
     VoxEncodedVideo video, {
     String caption = '',
-  }) => sendClipToContact(contact, _videoClip(video), caption: caption);
+  }) => sendClipToContact(
+    contact,
+    _videoClip(video),
+    caption: caption,
+    moreParts: video.moreParts,
+  );
 
   Future<VoxVoiceEnvelope> sendVideoToChannel(
     Channel channel,
     VoxEncodedVideo video, {
     String caption = '',
-  }) => sendClipToChannel(channel, _videoClip(video), caption: caption);
+  }) => sendClipToChannel(
+    channel,
+    _videoClip(video),
+    caption: caption,
+    moreParts: video.moreParts,
+  );
 
   VoxEncodedClip _videoClip(VoxEncodedVideo video) =>
       VoxEncodedClip(VoxVoiceMode.av1Video, video.payload, video.seconds);
@@ -2538,6 +2743,16 @@ class VoxVoiceService extends ChangeNotifier {
 
   void _onClipComplete(VoxVoiceEnvelope env) {
     final sid = env.sessionId;
+    final first = _partFirst[sid];
+    if (first != null) {
+      // A later part of a SuperMax clip: it plays on from what's in.
+      _logEvent('part ${_partIndex(sid)} of the clip is in', first);
+      final fe = _firstEnv[first];
+      if (fe != null) unawaited(_continueParts(fe));
+      notifyListeners();
+      return;
+    }
+    if (env.isVideo) unawaited(_continueParts(env));
     final clip = _incoming[sid];
     if (clip != null && clip.rebuilt > 0) {
       _logEvent(

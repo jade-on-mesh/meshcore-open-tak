@@ -120,16 +120,21 @@ class _VoxVideoMessageContentState extends State<VoxVideoMessageContent> {
         );
       }
     }
-    if (_video != null || _loading || _failed) return;
-    if (s.stateFor(widget.envelope).status != VoxClipStatus.complete) return;
+    if (_loading || _failed) return;
+    // Plays as soon as its first part is in (SuperMax goes in several), and
+    // carries on as the rest come in.
+    final partsIn = s.videoPartsIn(widget.envelope);
+    if (partsIn == 0) return;
+    final shown = _video;
+    if (shown != null && shown.parts >= partsIn) return;
     _loading = true;
     final gen = _gen;
     unawaited(() async {
       final v = await s.videoFor(widget.envelope);
       if (!mounted || gen != _gen) return;
       setState(() {
-        _video = v;
-        _failed = v == null;
+        _video = v ?? _video;
+        _failed = _video == null;
         _loading = false;
       });
     }());
@@ -144,6 +149,7 @@ class _VoxVideoMessageContentState extends State<VoxVideoMessageContent> {
         st.status == VoxClipStatus.complete) {
       return;
     }
+    // Also gets the rest of a SuperMax clip whose first part is here.
     await s.requestAndPlay(
       widget.envelope,
       sender: widget.sender,
@@ -236,6 +242,7 @@ class _VoxVideoMessageContentState extends State<VoxVideoMessageContent> {
       picture = VoxVideoView(
         frames: video.frames,
         wav: video.wav,
+        more: video.more,
         fit: BoxFit.cover,
       );
     } else {
@@ -306,6 +313,19 @@ class _VoxVideoMessageContentState extends State<VoxVideoMessageContent> {
             Flexible(
               child: Text(status, style: TextStyle(color: meta, fontSize: 12)),
             ),
+            if (video != null &&
+                video.more &&
+                !widget.isOutgoing &&
+                (st.status == VoxClipStatus.remote ||
+                    st.status == VoxClipStatus.unavailable))
+              TextButton(
+                onPressed: _download,
+                style: TextButton.styleFrom(
+                  foregroundColor: color,
+                  visualDensity: VisualDensity.compact,
+                ),
+                child: const Text('Get the rest'),
+              ),
             if (video != null)
               IconButton(
                 icon: Icon(Icons.fullscreen, size: 18, color: meta),

@@ -343,7 +343,7 @@ class _VoxVideoSendSheetState extends State<VoxVideoSendSheet> {
   }
 
   String _airFor(VoxVideoDetail d) {
-    final packets = (d.budget / voxMaxCodecBytesPerPacket).ceil();
+    final packets = (d.budget / voxMaxCodecBytesPerPacket).ceil() * d.parts;
     final air = context.read<VoxVoiceService>().mediaAirtime(packets);
     if (air == null) return 'up to $packets packets';
     return 'up to $packets packets · ~${(air.inMilliseconds / 1000).round()}s '
@@ -458,7 +458,7 @@ class _VoxVideoSendSheetState extends State<VoxVideoSendSheet> {
                   VoxVideoDetail.quick => 'Up to ${_detail.maxSeconds}s, a Sharp photo\'s airtime',
                   VoxVideoDetail.clear => 'Up to ${_detail.maxSeconds}s, 8× a voice message',
                   VoxVideoDetail.maximum => 'Up to ${_detail.maxSeconds}s, a Super Sharp photo\'s airtime',
-                  VoxVideoDetail.superMax => 'About 1½ s at $voxVideoSuperMaxSide px and $voxVideoSuperMaxFps fps: 4× Max\'s resolution, Max\'s frame rate, in Max\'s airtime',
+                  VoxVideoDetail.superMax => 'About 4½ s at $voxVideoSuperMaxSide px and $voxVideoSuperMaxFps fps, sent as ${_detail.parts} Max-sized parts: plays as soon as the first is in',
                 }}'
                 ' · ${_airFor(_detail)}',
                 style: theme.textTheme.bodySmall,
@@ -538,7 +538,8 @@ class _VoxVideoSendSheetState extends State<VoxVideoSendSheet> {
                   if (enc != null)
                     Expanded(
                       child: Text(
-                        '${enc.payload.length} bytes · '
+                        '${enc.payload.length + enc.moreParts.fold<int>(0, (n, p) => n + p.length)} bytes'
+                        '${enc.moreParts.isEmpty ? '' : ' in ${enc.moreParts.length + 1} parts'} · '
                         '${enc.preview.width}×${enc.preview.height} at '
                         '${enc.preview.fps} fps · '
                         '${(enc.durationMs / 1000).toStringAsFixed(1)} s',
