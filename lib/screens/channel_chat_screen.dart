@@ -2214,8 +2214,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                       hopShortfall: context
                           .read<MeshCoreConnector>()
                           .channelHopShortfall(message.messageId),
-                      isPending:
-                          message.status == ChannelMessageStatus.pending,
+                      isPending: message.status == ChannelMessageStatus.pending,
                       isFailed: message.status == ChannelMessageStatus.failed,
                       onColor: classicMetaInk(
                         dark: Theme.of(context).brightness == Brightness.dark,

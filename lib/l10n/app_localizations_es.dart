@@ -1579,12 +1579,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String chat_metaHeardRepeats(int count) {
-    return intl.Intl.pluralLogic(
+    String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
       other: 'Heard $count Repeats',
       one: 'Heard 1 Repeat',
     );
+    return '$_temp0';
   }
 
   @override
