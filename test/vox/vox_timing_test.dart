@@ -345,4 +345,23 @@ void main() {
       expect(other.gapMs(0, nowMs: 0), voxFloodFastBaseGapMs(338));
     });
   });
+
+  test('the gap runs from the send: the radio\'s accept time is in it', () {
+    const gap = Duration(milliseconds: 517);
+    expect(
+      voxGapAfterSend(gap, const Duration(milliseconds: 176)),
+      const Duration(milliseconds: 341),
+    );
+    expect(
+      voxGapAfterSend(gap, const Duration(milliseconds: 900)),
+      Duration.zero,
+    );
+  });
+
+  test('a small answer goes before bigger ones queued ahead of it', () {
+    expect(voxPickServe([245, 222]), 0);
+    expect(voxPickServe([222, 20]), 1);
+    expect(voxPickServe([222, 40, 17]), 1);
+    expect(voxPickServe([255]), 0);
+  });
 }

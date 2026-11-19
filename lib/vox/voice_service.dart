@@ -688,6 +688,43 @@ class VoxVoiceService extends ChangeNotifier {
 
   Future<void> _serveChain = Future.value();
 
+  /// Adaptive spacing (with Fast MediaMesh) also times packets from when
+  /// they go to the radio, and answers small requests first.
+  bool get _adaptiveTiming => _fastMediaMesh && _adaptiveSpacing;
+
+  /// Answers waiting their turn (adaptive spacing): a small one goes before
+  /// a big one queued ahead of it (voxSmallAnswerPackets), so a repair for
+  /// one part of a clip doesn't wait minutes behind the push of the next.
+  final List<_ServeTask> _serveQueue = [];
+  bool _servePumping = false;
+
+  /// Runs [run] after the answers before it. [size] says how many packets it
+  /// will send, asked when it's picked (a burst gathers more while it waits).
+  void _enqueueServe(int Function() size, Future<void> Function() run) {
+    if (!_adaptiveTiming) {
+      _serveChain = _serveChain.then((_) => run()).catchError((_) {});
+      return;
+    }
+    _serveQueue.add(_ServeTask(size, run));
+    if (_servePumping) return;
+    _servePumping = true;
+    _serveChain = _serveChain
+        .then((_) async {
+          try {
+            while (_serveQueue.isNotEmpty) {
+              final i = voxPickServe([for (final t in _serveQueue) t.size()]);
+              final t = _serveQueue.removeAt(i);
+              try {
+                await t.run();
+              } catch (_) {}
+            }
+          } finally {
+            _servePumping = false;
+          }
+        })
+        .catchError((_) {});
+  }
+
   final List<VoxLogEntry> _log = [];
 
   /// Bumps on every new log line (the diagnostics sheet listens to it).
@@ -1257,9 +1294,10 @@ class VoxVoiceService extends ChangeNotifier {
     );
     if (burst.running) return;
     burst.running = true;
-    _serveChain = _serveChain
-        .then((_) => _runChannelBurst(key, burst))
-        .catchError((_) {});
+    _enqueueServe(
+      () => burst.pending.length + burst.repairs,
+      () => _runChannelBurst(key, burst),
+    );
   }
 
   /// A listener in range asking for the whole clip while it is being
@@ -3639,9 +3677,10 @@ class VoxVoiceService extends ChangeNotifier {
     );
     if (burst.running) return;
     burst.running = true;
-    _serveChain = _serveChain
-        .then((_) => _runChannelBurst(key, burst))
-        .catchError((_) {});
+    _enqueueServe(
+      () => burst.pending.length + burst.repairs,
+      () => _runChannelBurst(key, burst),
+    );
   }
 
   /// The next repair packet seed for each clip this phone answers for, so
@@ -3851,10 +3890,18 @@ class VoxVoiceService extends ChangeNotifier {
         if (zeroHop) zeroHopSent++;
         _lastChannelPacket[burst.sid] = DateTime.now();
         if (burst.pending.isNotEmpty || again.isNotEmpty || burst.repairs > 0) {
+          final gap = zeroHop
+              ? _zeroHopGap()
+              : Duration(milliseconds: pace.gapMs(burst.maxHops));
+          // Adaptive spacing: the gap runs from when this packet went to the
+          // radio, so the time the radio took to accept it (often 150-320
+          // ms over Bluetooth) is part of it, not added to it: a "517 ms"
+          // pace went out about 700 ms apart. Off: after the radio took it,
+          // as before.
           await Future<void>.delayed(
-            zeroHop
-                ? _zeroHopGap()
-                : Duration(milliseconds: pace.gapMs(burst.maxHops)),
+            _adaptiveTiming
+                ? voxGapAfterSend(gap, DateTime.now().difference(confirmFrom))
+                : gap,
           );
         }
       }
@@ -4015,9 +4062,10 @@ class VoxVoiceService extends ChangeNotifier {
       (_, t) => now.difference(t) > const Duration(minutes: 10),
     );
     final askedAt = DateTime.now();
-    _serveChain = _serveChain
-        .then((_) => _serve(req, viaChannel, waitForRoute, key, gen, askedAt))
-        .catchError((_) {});
+    _enqueueServe(
+      () => req.missingIndices?.length ?? voxMaxPackets,
+      () => _serve(req, viaChannel, waitForRoute, key, gen, askedAt),
+    );
   }
 
   // ------------------------------------------------- Codec2 copies of Mimi
@@ -5194,6 +5242,13 @@ class _ChannelBurst {
       pending.add(parityBase + k);
     }
   }
+}
+
+/// An answer waiting its turn (VoxVoiceService._enqueueServe).
+class _ServeTask {
+  _ServeTask(this.size, this.run);
+  final int Function() size;
+  final Future<void> Function() run;
 }
 
 /// What a listener that rebuilds from repair packets lacked when it asked,
