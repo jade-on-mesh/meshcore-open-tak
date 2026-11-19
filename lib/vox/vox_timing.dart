@@ -258,6 +258,26 @@ int voxFloodFastBaseGapMs(int airMs) => max(400, (airMs * 2.4).round() + 150);
 /// only being sent slowly. Packets that come faster shorten its wait.
 int voxFloodSlowGapMs(int airMs) => 2 * voxFloodBaseGapMs(airMs);
 
+/// Adaptive spacing: how long to wait after sending a packet that took
+/// [spent] to go to the radio, for the next to follow [gap] after it.
+Duration voxGapAfterSend(Duration gap, Duration spent) {
+  final wait = gap - spent;
+  return wait.isNegative ? Duration.zero : wait;
+}
+
+/// Adaptive spacing: an answer of at most this many packets (a repair, a
+/// few missing packets) goes before bigger ones queued ahead of it.
+const int voxSmallAnswerPackets = 40;
+
+/// Which of the answers waiting (their sizes, in the order they came) goes
+/// next: the first small one, else the first.
+int voxPickServe(List<int> sizes) {
+  for (var i = 0; i < sizes.length; i++) {
+    if (sizes[i] <= voxSmallAnswerPackets) return i;
+  }
+  return 0;
+}
+
 /// Adaptive spacing: the tightest an answer's gap may learn (1.6 airtimes
 /// and a little, at least 300 ms).
 int voxFloodAdaptiveFloorMs(int airMs) => max(300, (airMs * 1.6).round() + 150);

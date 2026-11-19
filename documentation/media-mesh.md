@@ -189,6 +189,8 @@ Wadamesh TAK standalones do the same (**Settings → MediaMesh → Fast MediaMes
 - A listener lost under 3% of an answer: the gap goes down a tenth, to at most 1.6 airtimes and 150 ms (395 ms at 153 ms a packet).
 - A listener lost 7 points more than it did at its widest recent gap (2% at 517 ms, 9% at 465, say): the spacing caused it, so the gap goes up a quarter (by half if it lost a third) and stays 10% above the gap that lost for 30 minutes.
 - A listener that lost as much at a wider gap is on a poor link of its own: the gap stays, and repair packets sized for it cover it. A listener not heard from before that loses 10% puts the gap up a quarter (without the hold), since there's nothing yet to compare with.
+- The gap runs from when a packet goes to the radio, so the time the radio takes to accept it over Bluetooth (often 150-320 ms) is part of the gap, not added to it. Before, a "517 ms" pace went out about 700 ms apart.
+- Answers wait their turn, but a small one (40 packets or fewer: repair packets, a few missing packets) goes before bigger ones queued ahead of it, so a repair for one part of a clip doesn't wait minutes behind the push of the next part.
 - The learnt gap is kept across restarts, per channel, and starts again when the radio2 settings change. The sender's log line says "N ms apart (adaptive)".
 
 Switch it off for the spacing of the 2026-11-18 field test (a 3-part SuperMax in 10.0 minutes), kept as the branch `mediamesh-gold-2026-11-18` in this repo and in Wadamesh TAK.
