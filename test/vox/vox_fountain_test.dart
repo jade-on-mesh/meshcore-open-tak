@@ -126,6 +126,16 @@ void main() {
     expect(voxFountainFirstPass(217), 23);
   });
 
+  test('repair packets owed: data going out anyway counts towards them', () {
+    // 18:00 field test: a listener lacking 221 of 226, all going out as
+    // data for a listener on an older app, was owed 144 repair packets.
+    expect(voxFountainOwed(uncovered: 0, covered: 221), 24);
+    expect(voxFountainOwed(uncovered: 4, covered: 0), voxFountainNeeded(4));
+    expect(voxFountainOwed(uncovered: 10, covered: 100, sentSince: 5), 19);
+    expect(voxFountainOwed(uncovered: 2, covered: 0, sentSince: 50), 0);
+    expect(voxFountainListCap, voxSaltedFetchIndices);
+  });
+
   test('fast pace starts tighter and learns down only to its floor', () {
     const air = 338;
     final slow = VoxFloodPace(air);

@@ -41,6 +41,27 @@ int voxFountainNeeded(int missing) =>
 /// Repair packets after a whole clip's first pass: about a tenth, at least 2.
 int voxFountainFirstPass(int total) => total < 2 ? 0 : (total + 9) ~/ 10 + 1;
 
+/// Repair packets still owed a listener that rebuilds from them, with
+/// [uncovered] of the packets it lacks going out only as repair packets,
+/// [covered] of them going out (or gone out since it asked) as data packets
+/// anyway (for a listener that can't use repair packets, say), and
+/// [sentSince] repair packets sent since it asked. A covered packet is lost
+/// now and then like any other (radios scanning radio2 miss some while on the
+/// main mesh), so it costs a first pass's share, not a repair packet each.
+int voxFountainOwed({
+  required int uncovered,
+  required int covered,
+  int sentSince = 0,
+}) {
+  final owed =
+      voxFountainNeeded(uncovered) + voxFountainFirstPass(covered) - sentSince;
+  return owed < 0 ? 0 : owed;
+}
+
+/// A request lists at most this many packets (voxSaltedFetchIndices): one
+/// that lists this many may lack more after the last it names.
+const int voxFountainListCap = voxSaltedFetchIndices;
+
 // ---------------------------------------------------------------- GF(256)
 
 final Uint8List _exp = () {
