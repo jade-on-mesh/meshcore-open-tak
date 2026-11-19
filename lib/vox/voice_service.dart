@@ -1243,7 +1243,12 @@ class VoxVoiceService extends ChangeNotifier {
     _pushedAt.removeWhere(
       (_, t) => DateTime.now().difference(t) > const Duration(minutes: 10),
     );
-    _logEvent('pushing $total packets zero-hop to the channel', sid);
+    _logEvent(
+      _floodOnRadio2
+          ? 'pushing $total packets to the channel, through repeaters'
+          : 'pushing $total packets zero-hop to the channel',
+      sid,
+    );
     if (burst.running) return;
     burst.running = true;
     _serveChain = _serveChain
@@ -3771,7 +3776,7 @@ class VoxVoiceService extends ChangeNotifier {
               );
           if (mark) markedSent++;
         }
-        final zeroHop = burst.maxHops == 0;
+        final zeroHop = burst.maxHops == 0 && !_floodOnRadio2;
         busyMs += await _radio2Quiet(burst.sid);
         firstAt ??= DateTime.now();
         final confirmFrom = DateTime.now();
@@ -4389,7 +4394,13 @@ class VoxVoiceService extends ChangeNotifier {
                 : const Duration(minutes: 10));
     if (radio == null || fresh) {
       if (radio == null) {
-        _mediaAir = null;
+        // Kept for this radio (_mediaAirRadio) over a dropped connection:
+        // a radio busy on the air often leaves the first questions after
+        // reconnecting unanswered, and with the profile dropped every
+        // request went unanswered ("it would go out on the main mesh") until
+        // it did: a SuperMax transfer never finished. Asked again once
+        // reconnected; another radio asks afresh.
+        _mediaAirAt = null;
         VoxReceivedVia.connectedRadioHasRadio2 = null;
       }
       return Future.value();
@@ -4486,9 +4497,22 @@ class VoxVoiceService extends ChangeNotifier {
   /// before the next transfer.
   void mediaRoutingChanged() => _mediaAirAt = null;
 
+  /// Fast MediaMesh on radio2: every answer and push is flooded through the
+  /// MediaMesh repeaters, never sent zero-hop. A field test (all radios
+  /// scanning radio2) had zero-hop parts arrive with 41-46% of their packets
+  /// against 91% for one flooded at the fast pace: a scanning radio misses
+  /// packets while it's on the main mesh, and a repeater's copy is a second
+  /// chance. Flooded, a push also reaches listeners repeaters away, who no
+  /// longer have to ask. The fast pace (VoxFloodPace) spaces them and learns
+  /// from what listeners still lack.
+  bool get _floodOnRadio2 => _fastMediaMesh && _mediaAir != null;
+
   /// Photos and voice go out only on MediaMesh (radio2) alone
   /// (MediaLockdown).
-  bool get _mediaAllowed => _mediaAir != null;
+  bool get _mediaAllowed =>
+      _mediaAir != null &&
+      _connector.isConnected &&
+      _connector.selfPublicKeyHex == _mediaAirRadio;
 
   /// Whether this radio can send photos and voice now (asks it if needed).
   Future<bool> canSendMedia() async {
