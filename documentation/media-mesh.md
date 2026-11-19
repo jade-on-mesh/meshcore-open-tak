@@ -170,7 +170,7 @@ A listener missing packets asks for them, and the photo's sender answers with ju
 
 ## Fast MediaMesh
 
-**Settings → App Settings → Fast MediaMesh** (on by default) makes transfers on MediaMesh quicker, through repeaters especially:
+**Fast MediaMesh** in **Settings → MediaMesh Settings**, under Map MediaMesh coverage (on by default), makes transfers on MediaMesh quicker, through repeaters especially:
 
 - **Repair packets.** A repair packet is a mix of all of a photo's or clip's packets, so any listener missing *m* packets rebuilds them from any *m* repair packets (practically always *m* + 1). A request on the channel says the listener takes them. Whoever answers then sends that many fresh repair packets, plus a margin, instead of the specific packets. One answer mends every listener's gaps at once, whichever packets each one lacks, with far fewer requests on the air. A whole photo sent at once ends with about a tenth repair packets instead of the block parity.
 - **Closer spacing through repeaters.** Packets flooded through repeaters start about 2.4 airtimes apart (about 0.8 s at 250 kHz) instead of 4 (1.5 s). As before, an answer that loses a third of its packets slows the spacing.
