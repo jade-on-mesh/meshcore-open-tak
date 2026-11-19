@@ -43,10 +43,12 @@ Uri? coverageEndpoint(String analyzer) {
   while (path.endsWith('/')) {
     path = path.substring(0, path.length - 1);
   }
-  return u.replace(
+  // a new Uri: replace() keeps a query and fragment it is given null for
+  return Uri(
+    scheme: u.scheme,
+    host: u.host,
+    port: u.hasPort ? u.port : null,
     path: '$path/api/mediamesh/coverage-points',
-    query: null,
-    fragment: null,
   );
 }
 
