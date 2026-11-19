@@ -605,6 +605,22 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
           service: context.read<VoxVoiceService>(),
           contentPadding: EdgeInsets.zero,
         ),
+        // Repair packets and closer spacing for transfers (Fast MediaMesh);
+        // off goes back to the way transfers worked before.
+        ListenableBuilder(
+          listenable: context.read<VoxVoiceService>(),
+          builder: (context, _) {
+            final voice = context.read<VoxVoiceService>();
+            return SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              secondary: const Icon(Icons.speed),
+              title: Text(l10n.vox_fastMediaMeshTitle),
+              subtitle: Text(l10n.vox_fastMediaMeshSubtitle),
+              value: voice.fastMediaMesh,
+              onChanged: voice.setFastMediaMesh,
+            );
+          },
+        ),
         const SizedBox(height: 16),
         DropdownButtonFormField<LoRaBandwidth>(
           key: ValueKey('bw-${_settings.bandwidth.name}'),
