@@ -441,7 +441,7 @@ class VoxFloodPace {
       answer._slowed = true;
       _gapMs = min(_gapMs * 3 ~/ 2, voxFloodSlowGapMs(airMs));
     }
-    if (sent.length < 2) return;
+    if (sent.length < 2) return moved;
     final firstLost = missing.contains(sent.first);
     if (!firstLost) {
       if (!answer._firstCame) {
