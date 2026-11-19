@@ -446,7 +446,8 @@ class AppLocalizationsHu extends AppLocalizations {
   String get vox_adaptiveSpacingTitle => 'Adaptive spacing';
 
   @override
-  String get vox_adaptiveSpacingSubtitle => 'Packets learn to go closer together while the farthest listeners lose almost none, and back off as soon as they lose more. Needs Fast MediaMesh. Switch off for the spacing as it was.';
+  String get vox_adaptiveSpacingSubtitle =>
+      'Packets learn to go closer together while the farthest listeners lose almost none, and back off as soon as they lose more. Needs Fast MediaMesh. Switch off for the spacing as it was.';
 
   @override
   String get vox_dataAudioMediaSubtitle =>

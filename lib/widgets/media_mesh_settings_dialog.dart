@@ -633,9 +633,7 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
               title: Text(l10n.vox_adaptiveSpacingTitle),
               subtitle: Text(l10n.vox_adaptiveSpacingSubtitle),
               value: voice.fastMediaMesh && voice.adaptiveSpacing,
-              onChanged: voice.fastMediaMesh
-                  ? voice.setAdaptiveSpacing
-                  : null,
+              onChanged: voice.fastMediaMesh ? voice.setAdaptiveSpacing : null,
             );
           },
         ),

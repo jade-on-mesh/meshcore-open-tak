@@ -3950,8 +3950,9 @@ class VoxVoiceService extends ChangeNotifier {
     final air = _packetAir().inMilliseconds;
     final p = _floodPace.putIfAbsent(
       channel,
-      () => VoxFloodPace(air, fast: _fastMediaMesh)
-        ..restoreAdaptive(_paceSaved[channel]),
+      () =>
+          VoxFloodPace(air, fast: _fastMediaMesh)
+            ..restoreAdaptive(_paceSaved[channel]),
     );
     p.airMs = air;
     p.fast = _fastMediaMesh;
