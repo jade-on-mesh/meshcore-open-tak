@@ -3512,10 +3512,7 @@ class VoxVoiceService extends ChangeNotifier {
     // towards them (_ChannelBurst.repairs).
     final fountain = _fastMediaMesh && req.fountainOk && held.whole;
     if (fountain) {
-      burst.need(
-        req.requesterKey6,
-        wanted.where((i) => i >= 0 && i < total),
-      );
+      burst.need(req.requesterKey6, wanted.where((i) => i >= 0 && i < total));
     }
     if (!fountain || listed == null || capped) {
       burst.pending.addAll(
