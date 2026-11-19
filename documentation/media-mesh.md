@@ -126,7 +126,7 @@ On Android a notification shows while it's recording, so it keeps going with the
 - **Analyzer** is where they go: `https://analyzer.cascadiamesh.org` unless you enter your own area's (any CoreScope with the CascadiaMesh fork's coverage points).
 - Points go out about every 10 samples or 5 minutes while recording, and all that are waiting when you switch it on or tap **Send now**. Only points the connected radio recorded are sent, at most 500 at a time, each batch signed by the radio's key (`CMD_SIGN_START`/`_DATA`/`_FINISH`) over `corescope-coverage:` and the SHA-256 of the batch. The analyzer only takes radios it has heard, so send an advert first if it says it hasn't.
 - What goes: each point's time, position, GPS accuracy and speed (so the analyzer can tell a walk from a drive), and each MediaMesh repeater that answered with its key, SNR both ways and the estimated margin.
-- **Remove my points from the analyzer** asks it to delete every point that radio sent. The points on the phone stay.
+- **Remove my points from the analyzer** asks it to delete every point that radio sent, and switches sharing off. The points on the phone stay.
 
 The analyzer side is documented in CoreScope's `docs/mediamesh-coverage-points.md`.
 

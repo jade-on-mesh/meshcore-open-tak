@@ -3239,7 +3239,7 @@
   "coverage_shareError": "Couldn't send: {error}",
   "@coverage_shareError": {"placeholders": {"error": {"type": "String"}}},
   "coverage_removeMine": "Remove my points from the analyzer",
-  "coverage_removeConfirm": "Remove every coverage point this radio sent to {analyzer}? Points on this phone stay.",
+  "coverage_removeConfirm": "Remove every coverage point this radio sent to {analyzer}? Points on this phone stay, and sharing switches off.",
   "@coverage_removeConfirm": {"placeholders": {"analyzer": {"type": "String"}}},
   "coverage_removed": "{count, plural, =0{The analyzer had no points from this radio} =1{1 point removed} other{{count} points removed}}",
   "@coverage_removed": {"placeholders": {"count": {"type": "int"}}},

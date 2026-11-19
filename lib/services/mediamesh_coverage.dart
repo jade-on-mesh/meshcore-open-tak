@@ -587,8 +587,8 @@ class MediaMeshCoverageService extends ChangeNotifier {
     }
   }
 
-  /// Asks the analyzer to remove every point the connected radio sent.
-  /// The number removed, or null (see [shareStatus]).
+  /// Asks the analyzer to remove every point the connected radio sent, and
+  /// switches sharing off. The number removed, or null (see [shareStatus]).
   Future<int?> removeMine() async {
     final endpoint = coverageEndpoint(_analyzer);
     if (endpoint == null ||
@@ -625,9 +625,12 @@ class MediaMeshCoverageService extends ChangeNotifier {
       }
       final j = jsonDecode(res.body);
       final n = j is Map && j['removed'] is int ? j['removed'] as int : 0;
-      // so turning sharing on again sends them all again
+      // sharing switches off; switched on again, it sends them all again
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_sentKey(radio));
+      _share = false;
+      _shareTimer?.cancel();
+      await prefs.setBool(_kShare, false);
       _setShareStatus(CoverageShareStatus.removed(n, DateTime.now()));
       return n;
     } catch (e) {

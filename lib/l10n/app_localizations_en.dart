@@ -5951,7 +5951,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String coverage_removeConfirm(String analyzer) {
-    return 'Remove every coverage point this radio sent to $analyzer? Points on this phone stay.';
+    return 'Remove every coverage point this radio sent to $analyzer? Points on this phone stay, and sharing switches off.';
   }
 
   @override

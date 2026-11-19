@@ -10274,7 +10274,7 @@ abstract class AppLocalizations {
   /// No description provided for @coverage_removeConfirm.
   ///
   /// In en, this message translates to:
-  /// **'Remove every coverage point this radio sent to {analyzer}? Points on this phone stay.'**
+  /// **'Remove every coverage point this radio sent to {analyzer}? Points on this phone stay, and sharing switches off.'**
   String coverage_removeConfirm(String analyzer);
 
   /// No description provided for @coverage_removed.
