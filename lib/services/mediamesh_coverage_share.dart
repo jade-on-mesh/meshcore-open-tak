@@ -30,13 +30,13 @@ const String coverageDeletePrefix = 'corescope-coverage-delete:';
 /// analyzer under a sub-path works). null when it isn't a web address.
 Uri? coverageEndpoint(String analyzer) {
   var s = analyzer.trim();
-  if (s.isEmpty) return null;
+  if (s.isEmpty || RegExp(r'\s').hasMatch(s)) return null;
   if (!s.contains('://')) s = 'https://$s';
   final u = Uri.tryParse(s);
   if (u == null ||
       (u.scheme != 'https' && u.scheme != 'http') ||
       u.host.isEmpty ||
-      u.host.contains(' ')) {
+      !RegExp(r'^[A-Za-z0-9.\-]+$').hasMatch(u.host)) {
     return null;
   }
   var path = u.path;
