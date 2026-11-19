@@ -2552,6 +2552,9 @@ class AppLocalizationsBg extends AppLocalizations {
   String get chatSearch_tooltip => 'Търсене на съобщения';
 
   @override
+  String get chat_addEmoji => 'Add emoji';
+
+  @override
   String get chatSearch_hint => 'Търсене на съобщения';
 
   @override

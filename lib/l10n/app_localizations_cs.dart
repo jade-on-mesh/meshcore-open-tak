@@ -2534,6 +2534,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get chatSearch_tooltip => 'Hledat zprávy';
 
   @override
+  String get chat_addEmoji => 'Add emoji';
+
+  @override
   String get chatSearch_hint => 'Hledat zprávy';
 
   @override

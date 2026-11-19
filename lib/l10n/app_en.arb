@@ -1185,6 +1185,7 @@
   "channels_manageRegions": "Manage regions",
   "chat_noMessages": "No messages yet",
   "chatSearch_tooltip": "Search messages",
+  "chat_addEmoji": "Add emoji",
   "chatSearch_hint": "Search messages",
   "chatSearch_close": "Close search",
   "chatSearch_resultCount": "{count, plural, =1{1 result} other{{count} results}}",

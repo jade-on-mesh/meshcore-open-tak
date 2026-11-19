@@ -2543,6 +2543,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get chatSearch_tooltip => 'Поиск сообщений';
 
   @override
+  String get chat_addEmoji => 'Add emoji';
+
+  @override
   String get chatSearch_hint => 'Поиск сообщений';
 
   @override

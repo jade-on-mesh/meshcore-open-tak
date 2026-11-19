@@ -2554,6 +2554,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get chatSearch_tooltip => 'Nachrichten durchsuchen';
 
   @override
+  String get chat_addEmoji => 'Add emoji';
+
+  @override
   String get chatSearch_hint => 'Nachrichten durchsuchen';
 
   @override

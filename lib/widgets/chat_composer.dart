@@ -11,6 +11,7 @@ import '../utils/radio_guard.dart';
 import 'byte_count_input.dart';
 import 'chat_chrome.dart';
 import 'connect_sheet.dart';
+import 'emoji_picker.dart';
 import 'gif_message.dart';
 import 'gif_picker.dart';
 import 'mesh_ui.dart';
@@ -246,8 +247,135 @@ class ChatComposer extends StatelessWidget {
     );
   }
 
+  /// Puts [text] where the cursor is (or at the end), replacing a selection.
+  void _insert(String text) {
+    final value = controller.value;
+    final sel = value.selection.isValid
+        ? value.selection
+        : TextSelection.collapsed(offset: value.text.length);
+    controller.value = TextEditingValue(
+      text: value.text.replaceRange(sel.start, sel.end, text),
+      selection: TextSelection.collapsed(offset: sel.start + text.length),
+    );
+  }
+
+  /// Discord's mobile composer: one rounded field with "+" on the left and
+  /// GIF, emoji and the mic on the right; once there's text, the mic gives
+  /// way to the blurple send button. Its own colours, the bar's edges.
+  Widget _buildAllInside(BuildContext context, ChatComposerLook look) {
+    final scheme = Theme.of(context).colorScheme;
+    final bar = MeshChatLook.of(context).background(dark: look.dark);
+    final ink = look.iconInk;
+    Widget icon(IconData data, String tip, VoidCallback onTap) => IconButton(
+      icon: Icon(data, size: 26, color: ink),
+      tooltip: tip,
+      visualDensity: VisualDensity.compact,
+      constraints: const BoxConstraints.tightFor(width: 42, height: 42),
+      padding: EdgeInsets.zero,
+      onPressed: onTap,
+    );
+    final field = ValueListenableBuilder<TextEditingValue>(
+      valueListenable: controller,
+      builder: (context, value, _) {
+        final gifId = GifHelper.parseGif(value.text);
+        if (gifId != null) return _buildGifPreview(context, gifId, scheme);
+        final hasText = value.text.trim().isNotEmpty;
+        final idle = idleTrailing;
+        final Widget last = !hasText && idle != null
+            ? Theme(
+                // The mic in the field's grey, at the other icons' size.
+                data: Theme.of(context).copyWith(
+                  iconButtonTheme: IconButtonThemeData(
+                    style: IconButton.styleFrom(
+                      foregroundColor: ink,
+                      iconSize: 26,
+                    ),
+                  ),
+                ),
+                child: idle,
+              )
+            : Padding(
+                padding: const EdgeInsets.only(left: 2),
+                child: IconButton.filled(
+                  icon: const Icon(Icons.send, size: 18, color: Colors.white),
+                  tooltip: sendTooltip,
+                  style: IconButton.styleFrom(
+                    backgroundColor: discordBlurple,
+                    disabledBackgroundColor: discordBlurple.withValues(
+                      alpha: 0.4,
+                    ),
+                    minimumSize: const Size.square(36),
+                    maximumSize: const Size.square(36),
+                    padding: EdgeInsets.zero,
+                    shape: const CircleBorder(),
+                  ),
+                  onPressed: hasText
+                      ? () {
+                          HapticFeedback.lightImpact();
+                          onSend();
+                        }
+                      : null,
+                ),
+              );
+        return _buildTextField(
+          context,
+          scheme,
+          look: look,
+          prefix: Builder(
+            builder: (buttonContext) => Padding(
+              padding: const EdgeInsets.only(left: 8, right: 4),
+              child: icon(
+                Icons.add,
+                context.l10n.chat_selectSendAction,
+                () => _openActionMenu(buttonContext),
+              ),
+            ),
+          ),
+          suffix: Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                icon(
+                  Icons.gif_box_outlined,
+                  context.l10n.chat_sendGif,
+                  () => showChatGifPicker(context, controller),
+                ),
+                icon(
+                  Icons.sentiment_satisfied_alt,
+                  context.l10n.chat_addEmoji,
+                  () => showMeshSheet<void>(
+                    context,
+                    builder: (_) => EmojiPicker(onEmojiSelected: _insert),
+                  ),
+                ),
+                last,
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    return Container(
+      color: bar,
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ...header,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: field,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// The composer as the chat style's app draws it (chat_chrome.dart).
   Widget _buildStyled(BuildContext context, ChatComposerLook look) {
+    if (look.allInside) return _buildAllInside(context, look);
     final scheme = Theme.of(context).colorScheme;
     final dark = look.dark;
     final bar = MeshChatLook.of(context).background(dark: dark);
@@ -513,9 +641,12 @@ class ChatComposer extends StatelessWidget {
             minWidth: 36,
             minHeight: 36,
           ),
+          prefixIconConstraints: look.allInside
+              ? const BoxConstraints(minWidth: 40, minHeight: 42)
+              : null,
           contentPadding: EdgeInsets.symmetric(
             horizontal: prefix == null ? 16 : 4,
-            vertical: look.buttonsInside ? 16 : 11,
+            vertical: look.buttonsInside || look.allInside ? 16 : 11,
           ),
         ),
       );

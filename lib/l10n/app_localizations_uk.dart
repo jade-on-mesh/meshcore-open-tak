@@ -2537,6 +2537,9 @@ class AppLocalizationsUk extends AppLocalizations {
   String get chatSearch_tooltip => 'Пошук повідомлень';
 
   @override
+  String get chat_addEmoji => 'Add emoji';
+
+  @override
   String get chatSearch_hint => 'Пошук повідомлень';
 
   @override

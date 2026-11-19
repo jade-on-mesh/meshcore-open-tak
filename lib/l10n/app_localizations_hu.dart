@@ -2543,6 +2543,9 @@ class AppLocalizationsHu extends AppLocalizations {
   String get chatSearch_tooltip => 'Üzenetek keresése';
 
   @override
+  String get chat_addEmoji => 'Add emoji';
+
+  @override
   String get chatSearch_hint => 'Üzenetek keresése';
 
   @override

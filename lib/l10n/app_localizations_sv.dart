@@ -2521,6 +2521,9 @@ class AppLocalizationsSv extends AppLocalizations {
   String get chatSearch_tooltip => 'Sök i meddelanden';
 
   @override
+  String get chat_addEmoji => 'Add emoji';
+
+  @override
   String get chatSearch_hint => 'Sök i meddelanden';
 
   @override
