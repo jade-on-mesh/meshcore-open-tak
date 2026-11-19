@@ -15766,6 +15766,48 @@ abstract class AppLocalizations {
   /// **'Out'**
   String get coverage_out;
 
+  /// No description provided for @coverage_pointTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'MediaMesh coverage here'**
+  String get coverage_pointTitle;
+
+  /// No description provided for @coverage_pointWhen.
+  ///
+  /// In en, this message translates to:
+  /// **'Measured {when}'**
+  String coverage_pointWhen(String when);
+
+  /// No description provided for @coverage_pointNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No MediaMesh repeater answered here.'**
+  String get coverage_pointNone;
+
+  /// No description provided for @coverage_pointRepeaters.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 MediaMesh repeater heard} other{{count} MediaMesh repeaters heard}}'**
+  String coverage_pointRepeaters(int count);
+
+  /// No description provided for @coverage_pointMargin.
+  ///
+  /// In en, this message translates to:
+  /// **'{margin} dB to spare on radio2'**
+  String coverage_pointMargin(String margin);
+
+  /// No description provided for @coverage_pointSnr.
+  ///
+  /// In en, this message translates to:
+  /// **'SNR {heard} dB heard here, {theirs} dB at the repeater'**
+  String coverage_pointSnr(String heard, String theirs);
+
+  /// No description provided for @coverage_pointHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'SNR is measured on the main mesh, both ways. To spare: radio2\'s estimated margin over what it can decode, after its wider bandwidth.'**
+  String get coverage_pointHelp;
+
   /// No description provided for @coverage_none.
   ///
   /// In en, this message translates to:

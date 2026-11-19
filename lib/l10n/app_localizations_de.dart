@@ -9424,6 +9424,42 @@ class AppLocalizationsDe extends AppLocalizations {
   String get coverage_out => 'Out';
 
   @override
+  String get coverage_pointTitle => 'MediaMesh coverage here';
+
+  @override
+  String coverage_pointWhen(String when) {
+    return 'Measured $when';
+  }
+
+  @override
+  String get coverage_pointNone => 'No MediaMesh repeater answered here.';
+
+  @override
+  String coverage_pointRepeaters(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count MediaMesh repeaters heard',
+      one: '1 MediaMesh repeater heard',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String coverage_pointMargin(String margin) {
+    return '$margin dB to spare on radio2';
+  }
+
+  @override
+  String coverage_pointSnr(String heard, String theirs) {
+    return 'SNR $heard dB heard here, $theirs dB at the repeater';
+  }
+
+  @override
+  String get coverage_pointHelp =>
+      'SNR is measured on the main mesh, both ways. To spare: radio2\'s estimated margin over what it can decode, after its wider bandwidth.';
+
+  @override
   String get coverage_none => 'None';
 
   @override
