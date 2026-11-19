@@ -185,6 +185,14 @@ A listener missing packets asks for them, and the photo's sender answers with ju
 
 Wadamesh TAK standalones do the same (**Settings → MediaMesh → Fast MediaMesh**). Older apps and standalones still get every packet itself: they don't ask for repair packets, and they ignore any they hear.
 
+**Adaptive spacing** (**Settings → MediaMesh Settings**, under Fast MediaMesh; on by default, needs Fast MediaMesh). The gap between an answer's packets learns from what listeners' requests say they lost, starting at the fast gap (2.4 airtimes and 150 ms: 517 ms at 153 ms a packet). Hop counts play no part: in a dense mesh a listener next door can be 3 hops away, and what limits the spacing is how many repeaters relay each packet.
+- A listener lost under 3% of an answer: the gap goes down a tenth, to at most 1.6 airtimes and 150 ms (395 ms at 153 ms a packet).
+- A listener lost 7 points more than it did at its widest recent gap (2% at 517 ms, 9% at 465, say): the spacing caused it, so the gap goes up a quarter (by half if it lost a third) and stays 10% above the gap that lost for 30 minutes.
+- A listener that lost as much at a wider gap is on a poor link of its own: the gap stays, and repair packets sized for it cover it. A listener not heard from before that loses 10% puts the gap up a quarter (without the hold), since there's nothing yet to compare with.
+- The learnt gap is kept across restarts, per channel, and starts again when the radio2 settings change. The sender's log line says "N ms apart (adaptive)".
+
+Switch it off for the spacing of the 2026-11-18 field test (a 3-part SuperMax in 10.0 minutes), kept as the branch `mediamesh-gold-2026-11-18` in this repo and in Wadamesh TAK.
+
 **Rolling back.** Switch Fast MediaMesh off, on one phone or standalone or on all of them, and transfers work exactly as they did before. That covers the requests, the answers and the spacing. Phones and standalones with it on and off still work together. To take it out of the app altogether, revert the pull request that added it (and its Wadamesh TAK counterpart).
 
 ## Transfer test
