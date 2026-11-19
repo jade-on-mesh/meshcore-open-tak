@@ -2444,6 +2444,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get chatSearch_tooltip => '메시지 검색';
 
   @override
+  String get chat_addEmoji => 'Add emoji';
+
+  @override
   String get chatSearch_hint => '메시지 검색';
 
   @override

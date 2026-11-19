@@ -11,8 +11,9 @@
 //   an outlined field with the blue ↑ inside it.
 // - Android (Google Messages): avatar and name on the chat's background; a
 //   filled pill field, the send button a tonal circle.
-// - Discord: "# name" in bold; a grey "+" circle, a filled field saying
-//   "Message #name", the blurple send button.
+// - Discord: "# name" in bold; one rounded field holding everything, as
+//   Discord's mobile app: "+" on the left, "Message #name", then GIF, emoji
+//   and the mic, which becomes the blurple send button once there's text.
 // - mIRC: a monospace title and a square monospace input line.
 // - ICQ: a square field and a "Send" button.
 // The app's own styles (MeshCore Open TAK, Wadamesh TAK, MeshCore Open
@@ -31,10 +32,15 @@ const Color classicFieldDay = Color(0xFFECEFF1);
 const Color classicHintNight = Color(0xFFC3C6CF);
 const Color classicHintDay = Color(0xFF5F6368);
 
-/// Discord's blurple and its composer greys.
+/// Discord's blurple and its composer greys (the mobile app's message field:
+/// its fill, its edge and its icons).
 const Color discordBlurple = Color(0xFF5865F2);
-const Color discordFieldNight = Color(0xFF2B2D31);
-const Color discordFieldDay = Color(0xFFEBEDEF);
+const Color discordFieldNight = Color(0xFF242429);
+const Color discordFieldDay = Color(0xFFEBEBED);
+const Color discordFieldEdgeNight = Color(0xFF28282D);
+const Color discordFieldEdgeDay = Color(0xFFDFE0E3);
+const Color discordIconNight = Color(0xFFABACB2);
+const Color discordIconDay = Color(0xFF4E5058);
 
 /// How the chat style's app draws a chat's header.
 @immutable
@@ -311,12 +317,19 @@ class ChatComposerLook {
   bool get sendInside =>
       style == ChatStyle.classic || style == ChatStyle.iphone;
 
+  /// Discord's mobile app: one field holding "+", the text, GIF, emoji and
+  /// the mic (the send button once there's text), at the bar's edges.
+  bool get allInside => style == ChatStyle.discord;
+
+  /// The icons inside an [allInside] field.
+  Color get iconInk => dark ? discordIconNight : discordIconDay;
+
   bool get alwaysCount => style == ChatStyle.classic;
 
   double get radius => switch (style) {
     ChatStyle.mirc => 0,
     ChatStyle.icq => 2,
-    ChatStyle.discord => 22,
+    ChatStyle.discord => 24,
     _ => 28,
   };
 
@@ -338,6 +351,7 @@ class ChatComposerLook {
       dark ? const Color(0xFF3A3A3C) : const Color(0xFFC6C6C8),
     ChatStyle.mirc => const Color(0xFF808080),
     ChatStyle.icq => dark ? const Color(0xFF6A6A6A) : const Color(0xFF7F9DB9),
+    ChatStyle.discord => dark ? discordFieldEdgeNight : discordFieldEdgeDay,
     _ => null,
   };
 

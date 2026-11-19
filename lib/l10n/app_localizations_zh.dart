@@ -2415,6 +2415,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chatSearch_tooltip => '搜索消息';
 
   @override
+  String get chat_addEmoji => 'Add emoji';
+
+  @override
   String get chatSearch_hint => '搜索消息';
 
   @override

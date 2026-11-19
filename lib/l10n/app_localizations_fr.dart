@@ -2550,6 +2550,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get chatSearch_tooltip => 'Rechercher des messages';
 
   @override
+  String get chat_addEmoji => 'Add emoji';
+
+  @override
   String get chatSearch_hint => 'Rechercher des messages';
 
   @override

@@ -4489,6 +4489,12 @@ abstract class AppLocalizations {
   /// **'Search messages'**
   String get chatSearch_tooltip;
 
+  /// No description provided for @chat_addEmoji.
+  ///
+  /// In en, this message translates to:
+  /// **'Add emoji'**
+  String get chat_addEmoji;
+
   /// No description provided for @chatSearch_hint.
   ///
   /// In en, this message translates to:

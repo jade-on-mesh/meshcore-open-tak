@@ -2440,6 +2440,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get chatSearch_tooltip => 'メッセージを検索';
 
   @override
+  String get chat_addEmoji => 'Add emoji';
+
+  @override
   String get chatSearch_hint => 'メッセージを検索';
 
   @override

@@ -2534,6 +2534,9 @@ class AppLocalizationsSl extends AppLocalizations {
   String get chatSearch_tooltip => 'Išči sporočila';
 
   @override
+  String get chat_addEmoji => 'Add emoji';
+
+  @override
   String get chatSearch_hint => 'Išči sporočila';
 
   @override
