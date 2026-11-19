@@ -3573,7 +3573,7 @@ class VoxVoiceService extends ChangeNotifier {
     final missing = req.missingIndices;
     if (answer != null && missing != null) {
       final pace = _paceFor(channel);
-      if (pace.feedback(answer, missing.toSet(), hops: hops)) {
+      if (pace.feedback(answer, missing.toSet(), who: req.requesterKey6)) {
         _savePace(channel, pace);
       }
     }
@@ -3866,7 +3866,7 @@ class VoxVoiceService extends ChangeNotifier {
         '${repeats > 0 ? ', $repeats sent twice' : ''}'
         '${zeroHopSent > 0 ? ' ($zeroHopSent zero-hop)' : ''}'
         '${burst.suppressed > 0 ? '; ${burst.suppressed} left out, heard from another node' : ''}'
-        '${zeroHopSent < sent ? ', ${pace.gapMs(burst.maxHops)} ms apart${pace.adaptiveNote(burst.maxHops)} after ${burst.pushing ? 0 : pace.settleMs(burst.maxHops)} ms' : ''}'
+        '${zeroHopSent < sent ? ', ${pace.gapMs(burst.maxHops)} ms apart${pace.adaptiveNote} after ${burst.pushing ? 0 : pace.settleMs(burst.maxHops)} ms' : ''}'
         '${markedSent > 0 ? ', marked' : ''}'
         '${sent > 0 ? '; radio took ~${confirmMs ~/ sent} ms a packet to accept, ${_packetAir().inMilliseconds} ms on air' : ''}'
         '${_burstTiming(burst, firstAt, startedAt, busyMs)}',
@@ -3876,7 +3876,6 @@ class VoxVoiceService extends ChangeNotifier {
       if (sentData.isNotEmpty && zeroHopSent < sent) {
         _floodAnswers[key] = VoxFloodAnswer(
           sentData,
-          maxHops: burst.maxHops,
           gapMs: pace.gapMs(burst.maxHops),
         );
       }
