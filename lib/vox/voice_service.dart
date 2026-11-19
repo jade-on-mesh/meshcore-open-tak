@@ -215,6 +215,9 @@ class _IncomingClip {
   DateTime? askedAt;
   bool answeredSinceAsk = false;
 
+  /// The "MediaMesh still busy" hold was logged since the last request.
+  bool busyHoldLogged = false;
+
   /// The clip's packets were still on the air when the last request went out
   /// (someone's push or answer): holders other than the sender then wait for
   /// quiet before answering (voxHolderAirWaitMaxMs).
@@ -1513,6 +1516,7 @@ class VoxVoiceService extends ChangeNotifier {
     clip.rxLast = null; // the next packet starts a new burst
     clip.askedAt = DateTime.now();
     clip.answeredSinceAsk = false;
+    clip.busyHoldLogged = false;
     final heard = _lastHeard(clip.envelope.sessionId);
     clip.airBusyAtAsk =
         heard != null &&
@@ -1771,6 +1775,40 @@ class VoxVoiceService extends ChangeNotifier {
           'holding the next request ${_secs(Duration(milliseconds: hold))}',
           clip.envelope.sessionId,
         );
+        clip.watchdog?.cancel();
+        clip.watchdog = Timer(
+          Duration(milliseconds: hold),
+          () => _onWatchdog(clip),
+        );
+        return;
+      }
+    }
+    // Fast MediaMesh: this transfer still on the air (the sender on another
+    // part of the clip, or this clip's repair or parity packets): wait for
+    // it to go quiet rather than flood another request through the
+    // repeaters. Other clips on the air don't hold it.
+    final anyHeard = _transferHeard(clip.envelope.sessionId);
+    if (_fastMediaMesh && asked != null && anyHeard != null) {
+      final now = DateTime.now();
+      final quiet = max(
+        max(voxAirQuietMs(_zeroHopGap().inMilliseconds), 4000),
+        _burstGap(clip).inMilliseconds * 3,
+      );
+      final hold = voxBusyAirHoldMs(
+        sinceHeardMs: now.difference(anyHeard).inMilliseconds,
+        sinceAskedMs: now.difference(asked).inMilliseconds,
+        quietMs: quiet,
+      );
+      if (hold != null) {
+        if (!clip.busyHoldLogged) {
+          clip.busyHoldLogged = true;
+          _logEvent(
+            'sender still on this transfer (a packet '
+            '${_secs(now.difference(anyHeard))} ago): waiting for it to go '
+            'quiet before asking again',
+            clip.envelope.sessionId,
+          );
+        }
         clip.watchdog?.cancel();
         clip.watchdog = Timer(
           Duration(milliseconds: hold),
@@ -2111,12 +2149,15 @@ class VoxVoiceService extends ChangeNotifier {
       await warmUp(p, sender: sender, channelIndex: channel);
     }
     if (!_wantedParts.contains(env.sessionId)) return;
+    var asked = false;
     for (final p in parts) {
       if (_bits.containsKey(p.sessionId)) continue;
       final c = _incoming[p.sessionId];
       if (c != null &&
           (c.status == VoxClipStatus.requesting ||
               c.status == VoxClipStatus.receiving)) {
+        // Fast MediaMesh: the others are asked for already (below).
+        if (_fastMediaMesh) continue;
         return;
       }
       _logEvent(
@@ -2125,9 +2166,18 @@ class VoxVoiceService extends ChangeNotifier {
         env.sessionId,
       );
       await requestClip(p, sender: sender, channelIndex: channel);
-      return;
+      asked = true;
+      // Fast MediaMesh: every part still to come is asked for now, one
+      // request after another, so the sender goes straight from one part to
+      // the next instead of waiting for a request to cross the mesh after
+      // each (a minute or more through repeaters). Each part's gaps are still
+      // asked for on their own; while another part is on the air a part
+      // waits rather than ask again (voxBusyAirHoldMs, voxSameTransfer).
+      if (!_fastMediaMesh) return;
     }
-    _wantedParts.remove(env.sessionId);
+    if (!asked && parts.every((p) => _bits.containsKey(p.sessionId))) {
+      _wantedParts.remove(env.sessionId);
+    }
   }
 
   /// Decoded clips, most recently used last (a few: they are big).
@@ -3134,6 +3184,19 @@ class VoxVoiceService extends ChangeNotifier {
   /// sending what someone else just sent (NACK suppression).
   final Map<String, Map<int, DateTime>> _heardIdx = {};
 
+  /// The last packet heard of [sid]'s transfer (voxSameTransfer: its data,
+  /// parity or repair packets, or another part of the clip).
+  DateTime? _transferHeard(String sid) {
+    DateTime? last;
+    for (final e in _heardIdx.entries) {
+      if (!voxSameTransfer(sid, e.key)) continue;
+      for (final t in e.value.values) {
+        if (last == null || t.isAfter(last)) last = t;
+      }
+    }
+    return last;
+  }
+
   /// Another node sent packet [index] of [sid]: note it, and if one of our
   /// channel bursts for that clip still has it to send, leave it out.
   void _noteHeard(String sid, int index, {required bool onChannel}) {
@@ -3143,6 +3206,7 @@ class VoxVoiceService extends ChangeNotifier {
     if (!onChannel) return;
     for (final b in _channelBursts.values) {
       if (b.sid == sid && !b.pushing && b.pending.remove(index)) {
+        b.noteData(index); // on the air all the same
         b.suppressed++;
       }
     }
@@ -3477,6 +3541,7 @@ class VoxVoiceService extends ChangeNotifier {
     if (answer != null && missing != null) {
       _paceFor(channel).feedback(answer, missing.toSet());
     }
+    final lossPct = _fastMediaMesh ? _paceFor(channel).lossPct : 0;
     final held = _heldPackets(req.sessionId);
     if (held == null) return;
     final total = held.total;
@@ -3487,30 +3552,42 @@ class VoxVoiceService extends ChangeNotifier {
       () => _ChannelBurst(req.sessionId, channel),
     );
     burst.askedAt ??= DateTime.now();
-    final wanted = req.missingIndices ?? List<int>.generate(total, (i) => i);
+    burst.lossPct = lossPct;
+    var wanted = req.missingIndices ?? List<int>.generate(total, (i) => i);
+    // Fast MediaMesh: a list as long as a request holds may stop short of
+    // all the listener lacks (it names the first 124). It gets the rest
+    // after the last one named too, as data: a listener missing most of a
+    // clip is quicker served with the clip than with repair packets, which
+    // only mend once there are as many as it lacks.
+    final listed = req.missingIndices;
+    final capped =
+        _fastMediaMesh &&
+        listed != null &&
+        listed.length >= voxFountainListCap &&
+        listed.last < total - 1;
+    if (capped) {
+      wanted = [...listed, for (var i = listed.last + 1; i < total; i++) i];
+    }
     final before = burst.pending.length;
     // Fast repair: a listener that rebuilds from repair packets
-    // and lacks some gets that many fresh ones (and a margin), which mend
+    // and lacks a few gets that many fresh ones (and a margin), which mend
     // whatever it lacks, and any other listener's gaps too. Only from the
-    // whole clip, and only with this phone's fast repair on.
+    // whole clip, and only with this phone's fast repair on. Data packets
+    // going out anyway (to a listener that can't use repair packets) count
+    // towards them (_ChannelBurst.repairs).
     final fountain = _fastMediaMesh && req.fountainOk && held.whole;
-    if (fountain && req.missingIndices != null) {
-      final need = voxFountainNeeded(wanted.length);
-      if (need > burst.repairs) burst.repairs = need;
-    } else {
+    if (fountain) {
+      burst.need(req.requesterKey6, wanted.where((i) => i >= 0 && i < total));
+    }
+    if (!fountain || listed == null || capped) {
       burst.pending.addAll(
         wanted.where((i) => i >= 0 && i < total && held.packets.containsKey(i)),
       );
     }
     // Everything asked for: the parity goes too, so whatever it misses of
     // this pass mends itself (fast repair: repair packets instead).
-    if (req.missingIndices == null && held.whole) {
-      if (fountain) {
-        final first = voxFountainFirstPass(total);
-        if (first > burst.repairs) burst.repairs = first;
-      } else {
-        burst.addParity(total, image: held.image);
-      }
+    if (listed == null && held.whole && !fountain) {
+      burst.addParity(total, image: held.image);
     }
     burst.sendTwice.addAll(twice);
     burst.saltOk = burst.saltOk && req.saltOk;
@@ -3520,7 +3597,8 @@ class VoxVoiceService extends ChangeNotifier {
       '${req.requesterKey6} asks for ${req.missingIndices == null ? 'all' : _indexList(wanted)} '
       '(${hops ?? '?'} hops)${held.whole ? '' : ', we hold ${held.packets.length}/$total'}: '
       '${burst.pending.length - before} added, ${burst.pending.length} pending'
-      '${burst.repairs > 0 ? ', ${burst.repairs} repair packets' : ''}',
+      '${burst.repairs > 0 ? ', ${burst.repairs} repair packets' : ''}'
+      '${burst.repairs > 0 && burst.lossPct > 0 ? ' (sized for ${burst.lossPct}% loss)' : ''}',
       req.sessionId,
     );
     if (burst.running) return;
@@ -3637,7 +3715,7 @@ class VoxVoiceService extends ChangeNotifier {
         if (burst.pending.isEmpty && burst.repairs > 0) {
           // Fast repair: a fresh repair packet.
           index = -1;
-          burst.repairs--;
+          burst.repairsSent++;
         } else if (burst.pending.isNotEmpty) {
           index = burst.pending.first;
           burst.pending.remove(index);
@@ -3727,6 +3805,9 @@ class VoxVoiceService extends ChangeNotifier {
           return;
         }
         sent++;
+        if (index >= 0 && index < _ChannelBurst.parityBase) {
+          burst.noteData(index);
+        }
         // Each packet once, for the pace's loss count.
         if (index < _ChannelBurst.parityBase && !sentData.contains(index)) {
           sentData.add(index);
@@ -4367,7 +4448,8 @@ class VoxVoiceService extends ChangeNotifier {
       if (air != null) {
         _logEvent(
           'photos and voice go on radio2: pacing for SF${air.spreadingFactor}'
-          '/${air.bandwidthKhz} kHz, ${_packetAir().inMilliseconds} ms a packet',
+          '/${air.bandwidthKhz} kHz, preamble ${air.preamble}, '
+          '${_packetAir().inMilliseconds} ms a packet',
         );
       }
     }();
@@ -4982,9 +5064,51 @@ class _ChannelBurst {
   /// parityBase + k (vox_fec.dart), sent after all the data.
   static const int parityBase = 1000;
 
-  /// Fresh repair packets to send after the data (vox_fountain.dart,
-  /// Fast MediaMesh): enough for the listener missing the most.
-  int repairs = 0;
+  /// Fast MediaMesh: each listener that rebuilds from repair packets
+  /// (vox_fountain.dart), by key, with what it lacked when it last asked.
+  final Map<String, _FountainNeed> needs = {};
+
+  /// Repair packets this burst has sent.
+  int repairsSent = 0;
+
+  /// The loss the channel's answers have seen lately (VoxFloodPace.lossPct),
+  /// which the repair packets are sized for.
+  int lossPct = 0;
+
+  /// A listener that rebuilds from repair packets lacks [missing] (its
+  /// latest request replaces its last).
+  void need(String who, Iterable<int> missing) {
+    needs[who] = _FountainNeed(missing.toSet(), repairsSent);
+  }
+
+  /// Data packet [index] went out (or another node sent it).
+  void noteData(int index) {
+    for (final n in needs.values) {
+      if (n.missing.contains(index)) n.sent.add(index);
+    }
+  }
+
+  /// Fresh repair packets still to send after the data, for the listener
+  /// owed the most: what it lacks that no data packet of this burst carries
+  /// (with a margin), a share for what one does, less those sent since it
+  /// asked (voxFountainOwed).
+  int get repairs {
+    var due = 0;
+    for (final n in needs.values) {
+      var covered = 0;
+      for (final i in n.missing) {
+        if (n.sent.contains(i) || pending.contains(i)) covered++;
+      }
+      final d = voxFountainOwed(
+        uncovered: n.missing.length - covered,
+        covered: covered,
+        sentSince: repairsSent - n.repairsAt,
+        lossPct: lossPct,
+      );
+      if (d > due) due = d;
+    }
+    return due;
+  }
 
   void addParity(int total, {required bool image}) {
     final n = voxFecTotalParity(total, image: image);
@@ -4992,6 +5116,16 @@ class _ChannelBurst {
       pending.add(parityBase + k);
     }
   }
+}
+
+/// What a listener that rebuilds from repair packets lacked when it asked,
+/// which of those have gone out as data since, and the burst's repair count
+/// then.
+class _FountainNeed {
+  _FountainNeed(this.missing, this.repairsAt);
+  final Set<int> missing;
+  final Set<int> sent = {};
+  final int repairsAt;
 }
 
 /// The packets of a clip this phone can send: all of them, or some of an

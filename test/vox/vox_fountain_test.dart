@@ -126,6 +126,77 @@ void main() {
     expect(voxFountainFirstPass(217), 23);
   });
 
+  test('repair packets owed: data going out anyway counts towards them', () {
+    // 18:00 field test: a listener lacking 221 of 226, all going out as
+    // data for a listener on an older app, was owed 144 repair packets.
+    expect(voxFountainOwed(uncovered: 0, covered: 221), 24);
+    expect(voxFountainOwed(uncovered: 4, covered: 0), voxFountainNeeded(4));
+    expect(voxFountainOwed(uncovered: 10, covered: 100, sentSince: 5), 19);
+    expect(voxFountainOwed(uncovered: 2, covered: 0, sentSince: 50), 0);
+    expect(voxFountainListCap, voxSaltedFetchIndices);
+  });
+
+  test('repair packets sized for the loss answers have seen lately', () {
+    // No loss seen: as before.
+    expect(voxFountainOwed(uncovered: 4, covered: 0, lossPct: 0), 6);
+    expect(voxFountainPassShare(226, 0), voxFountainFirstPass(226));
+    // A fifth lost: a pass of 226 ends with enough that the worst listener
+    // still gets as many as it lost (45 of 226, 52 of 65 repairs arrive).
+    expect(voxFountainPassShare(226, 20), 65);
+    expect(voxFountainNeededAt(50, 20), voxFountainNeeded(63));
+    // Capped: a listener on a link losing most of it asks again.
+    expect(voxFountainPassShare(100, 90), voxFountainPassShare(100, 40));
+  });
+
+  test(
+    'pace learns the loss of its answers: up at once, down by a quarter',
+    () {
+      final p = VoxFloodPace(338, fast: true);
+      final a = VoxFloodAnswer(List.generate(100, (i) => i));
+      p.feedback(a, {for (var i = 0; i < 20; i++) i * 5});
+      expect(p.lossPct, 20);
+      p.feedback(a, {for (var i = 0; i < 30; i++) i * 3});
+      expect(p.lossPct, 30);
+      final b = VoxFloodAnswer(List.generate(100, (i) => i));
+      p.feedback(b, {});
+      expect(p.lossPct, 22);
+      final c = VoxFloodAnswer(List.generate(10, (i) => i));
+      p.feedback(c, {for (var i = 0; i < 10; i++) i});
+      expect(p.lossPct, 40);
+    },
+  );
+
+  test('the same transfer: its parity, repair packets and other parts', () {
+    const sid = '1a2b3c4d';
+    expect(voxSameTransfer(sid, sid), isTrue);
+    expect(voxSameTransfer(sid, voxFecParitySid(sid)), isTrue);
+    expect(voxSameTransfer(sid, voxFountainSid(sid)), isTrue);
+    // Parts 1-3 of a SuperMax clip (video_codec.dart voxVideoPartSid), and
+    // each other's repair packets.
+    final p1 = voxSessionIdFromInt(int.parse(sid, radix: 16) ^ 0x7A010101);
+    final p2 = voxSessionIdFromInt(int.parse(sid, radix: 16) ^ 0x7A020202);
+    expect(voxSameTransfer(sid, p2), isTrue);
+    expect(voxSameTransfer(p1, p2), isTrue);
+    expect(voxSameTransfer(p2, voxFountainSid(p1)), isTrue);
+    expect(voxSameTransfer(sid, '1a2b3c4e'), isFalse);
+    expect(voxSameTransfer(sid, 'deadbeef'), isFalse);
+  });
+
+  test('a request waits while its transfer is on the air, up to 3 minutes', () {
+    expect(
+      voxBusyAirHoldMs(sinceHeardMs: 1000, sinceAskedMs: 30000, quietMs: 4000),
+      3000,
+    );
+    expect(
+      voxBusyAirHoldMs(sinceHeardMs: 5000, sinceAskedMs: 30000, quietMs: 4000),
+      isNull,
+    );
+    expect(
+      voxBusyAirHoldMs(sinceHeardMs: 0, sinceAskedMs: 181000, quietMs: 4000),
+      isNull,
+    );
+  });
+
   test('fast pace starts tighter and learns down only to its floor', () {
     const air = 338;
     final slow = VoxFloodPace(air);

@@ -21,6 +21,7 @@
 
 import 'dart:typed_data';
 
+import 'vox_fec.dart';
 import 'voice_wire.dart';
 
 /// A repair packet's session id is the clip's XOR this.
@@ -40,6 +41,83 @@ int voxFountainNeeded(int missing) =>
 
 /// Repair packets after a whole clip's first pass: about a tenth, at least 2.
 int voxFountainFirstPass(int total) => total < 2 ? 0 : (total + 9) ~/ 10 + 1;
+
+/// The most loss the repair packets are sized for (percent): a listener
+/// losing more is on a poor link of its own, and asks again.
+const int voxFountainMaxLossPct = 40;
+
+int _lossOf(int lossPct) => lossPct.clamp(0, voxFountainMaxLossPct);
+
+/// Repair packets for a listener missing [missing] when [lossPct]% of what
+/// is sent is lost on the way (voxFloodPace.lossPct): enough that as many
+/// as it lacks still arrive, and the margin.
+int voxFountainNeededAt(int missing, int lossPct) {
+  if (missing <= 0) return 0;
+  final keep = 100 - _lossOf(lossPct);
+  return voxFountainNeeded((missing * 100 + keep - 1) ~/ keep);
+}
+
+/// Repair packets after a pass of [count] data packets of which [lossPct]%
+/// are lost on the way: enough to mend what the worst-placed listener lost
+/// without asking again (each request round through repeaters costs a minute
+/// or more), and never under [voxFountainFirstPass].
+int voxFountainPassShare(int count, int lossPct) {
+  if (count < 2) return 0;
+  final l = _lossOf(lossPct);
+  final keep = 100 - l;
+  final sized = (count * l * 110 + 100 * keep - 1) ~/ (100 * keep) + 2;
+  final first = voxFountainFirstPass(count);
+  return sized > first ? sized : first;
+}
+
+/// Repair packets still owed a listener that rebuilds from them, with
+/// [uncovered] of the packets it lacks going out only as repair packets,
+/// [covered] of them going out (or gone out since it asked) as data packets
+/// anyway (for a listener that can't use repair packets, say), and
+/// [sentSince] repair packets sent since it asked. A covered packet is lost
+/// now and then like any other (radios scanning radio2 miss some while on the
+/// main mesh), so it costs a pass's share, not a repair packet each. Both are
+/// sized for the [lossPct] the channel's answers have seen lately.
+int voxFountainOwed({
+  required int uncovered,
+  required int covered,
+  int sentSince = 0,
+  int lossPct = 0,
+}) {
+  final owed =
+      voxFountainNeededAt(uncovered, lossPct) +
+      voxFountainPassShare(covered, lossPct) -
+      sentSince;
+  return owed < 0 ? 0 : owed;
+}
+
+/// A part's session id offset (video_codec.dart voxVideoPartSid: part k of
+/// a SuperMax clip is the first part's id XOR this; 0 for the first).
+int _partOffset(int k) => k == 0 ? 0 : 0x7A000000 + k * 0x00010101;
+
+/// Whether a packet of session [heard] belongs to the same transfer as
+/// [sid]: its data, parity (vox_fec.dart) or repair packets, or another part
+/// of the same SuperMax clip, or theirs. A listener waiting on these is
+/// waiting on its sender, who answers requests one after another: asking
+/// again would only queue behind them (voxBusyAirHoldMs).
+bool voxSameTransfer(String sid, String heard) {
+  final a = int.tryParse(sid, radix: 16);
+  final h = int.tryParse(heard, radix: 16);
+  if (a == null || h == null) return false;
+  for (final b in [h, h ^ voxFecSidXor, h ^ voxFountainSidXor]) {
+    final d = a ^ b;
+    for (var j = 0; j <= 3; j++) {
+      for (var k = 0; k <= 3; k++) {
+        if (d == (_partOffset(j) ^ _partOffset(k))) return true;
+      }
+    }
+  }
+  return false;
+}
+
+/// A request lists at most this many packets (voxSaltedFetchIndices): one
+/// that lists this many may lack more after the last it names.
+const int voxFountainListCap = voxSaltedFetchIndices;
 
 // ---------------------------------------------------------------- GF(256)
 
