@@ -2149,12 +2149,15 @@ class VoxVoiceService extends ChangeNotifier {
       await warmUp(p, sender: sender, channelIndex: channel);
     }
     if (!_wantedParts.contains(env.sessionId)) return;
+    var asked = false;
     for (final p in parts) {
       if (_bits.containsKey(p.sessionId)) continue;
       final c = _incoming[p.sessionId];
       if (c != null &&
           (c.status == VoxClipStatus.requesting ||
               c.status == VoxClipStatus.receiving)) {
+        // Fast MediaMesh: the others are asked for already (below).
+        if (_fastMediaMesh) continue;
         return;
       }
       _logEvent(
@@ -2163,9 +2166,18 @@ class VoxVoiceService extends ChangeNotifier {
         env.sessionId,
       );
       await requestClip(p, sender: sender, channelIndex: channel);
-      return;
+      asked = true;
+      // Fast MediaMesh: every part still to come is asked for now, one
+      // request after another, so the sender goes straight from one part to
+      // the next instead of waiting for a request to cross the mesh after
+      // each (a minute or more through repeaters). Each part's gaps are still
+      // asked for on their own; while another part is on the air a part
+      // waits rather than ask again (voxBusyAirHoldMs, voxSameTransfer).
+      if (!_fastMediaMesh) return;
     }
-    _wantedParts.remove(env.sessionId);
+    if (!asked && parts.every((p) => _bits.containsKey(p.sessionId))) {
+      _wantedParts.remove(env.sessionId);
+    }
   }
 
   /// Decoded clips, most recently used last (a few: they are big).
