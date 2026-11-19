@@ -176,6 +176,12 @@ const int voxVoicePacketSaltedMagic = 0x57; // 'W'
 /// by its data type (0x5643), whatever is in it.
 const int voxFetchFlagMarkOk = 0x08;
 
+/// VOX extension: the requester rebuilds packets from rateless
+/// repair packets (vox_fountain.dart), so a holder can answer "these are
+/// missing" with that many fresh repair packets, which mend every listener
+/// at once. Channel requests only, as [voxFetchFlagMarkOk].
+const int voxFetchFlagFountainOk = 0x10;
+
 /// VOX extension: a salted packet (0x57) whose trailing byte also counts
 /// down the answer it belongs to: `(resend << 6) | min(left, 63)`, `left`
 /// being how many of the answer's packets are still to come after this one
@@ -557,6 +563,10 @@ class VoxVoiceFetchRequest {
   /// ([voxFetchFlagMarkOk]).
   final bool markOk;
 
+  /// The requester rebuilds packets from repair packets
+  /// ([voxFetchFlagFountainOk]); channel requests only.
+  final bool fountainOk;
+
   const VoxVoiceFetchRequest({
     required this.sessionId,
     required this.requesterKey6,
@@ -564,18 +574,22 @@ class VoxVoiceFetchRequest {
     this.saltOk = false,
     this.requesterPath,
     this.markOk = false,
+    this.fountainOk = false,
   });
 
   /// The same request, saying the requester reads marked packets: for
-  /// sending on a channel only ([voxFetchFlagMarkOk]).
-  VoxVoiceFetchRequest forChannel() => VoxVoiceFetchRequest(
-    sessionId: sessionId,
-    requesterKey6: requesterKey6,
-    missingIndices: missingIndices,
-    saltOk: saltOk,
-    requesterPath: requesterPath,
-    markOk: true,
-  );
+  /// sending on a channel only ([voxFetchFlagMarkOk]); and, with
+  /// [fountain], repair packets ([voxFetchFlagFountainOk]).
+  VoxVoiceFetchRequest forChannel({bool fountain = false}) =>
+      VoxVoiceFetchRequest(
+        sessionId: sessionId,
+        requesterKey6: requesterKey6,
+        missingIndices: missingIndices,
+        saltOk: saltOk,
+        requesterPath: requesterPath,
+        markOk: true,
+        fountainOk: fountain,
+      );
 
   static VoxVoiceFetchRequest? tryParse(List<int> payload) {
     if (payload.length < minLength) return null;
@@ -607,6 +621,7 @@ class VoxVoiceFetchRequest {
       saltOk: (flags & voxFetchFlagSaltOk) != 0,
       requesterPath: path,
       markOk: (flags & voxFetchFlagMarkOk) != 0,
+      fountainOk: (flags & voxFetchFlagFountainOk) != 0,
     );
   }
 
@@ -645,7 +660,8 @@ class VoxVoiceFetchRequest {
         (missingIndices == null ? 0x00 : voxFetchFlagMissingOnly) |
         (saltOk ? voxFetchFlagSaltOk : 0x00) |
         (path != null ? voxFetchFlagHasPath : 0x00) |
-        (markOk ? voxFetchFlagMarkOk : 0x00);
+        (markOk ? voxFetchFlagMarkOk : 0x00) |
+        (fountainOk ? voxFetchFlagFountainOk : 0x00);
     for (var i = 0; i < 6; i++) {
       out[6 + i] = int.parse(
         requesterKey6.substring(i * 2, i * 2 + 2),
