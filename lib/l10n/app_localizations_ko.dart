@@ -9095,12 +9095,13 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String coverage_pointRepeaters(int count) {
-    return intl.Intl.pluralLogic(
+    String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
       other: '$count MediaMesh repeaters heard',
       one: '1 MediaMesh repeater heard',
     );
+    return '$_temp0';
   }
 
   @override
@@ -9114,7 +9115,8 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get coverage_pointHelp => 'SNR is measured on the main mesh, both ways. To spare: radio2\'s estimated margin over what it can decode, after its wider bandwidth.';
+  String get coverage_pointHelp =>
+      'SNR is measured on the main mesh, both ways. To spare: radio2\'s estimated margin over what it can decode, after its wider bandwidth.';
 
   @override
   String get coverage_none => 'None';
