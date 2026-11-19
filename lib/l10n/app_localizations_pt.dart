@@ -5985,6 +5985,53 @@ class AppLocalizationsPt extends AppLocalizations {
   String get contacts_zeroHopContactAdvertSent => 'Enviou contato por anúncio.';
 
   @override
+  String get coverage_share => 'Share coverage points';
+
+  @override
+  String get coverage_shareHelp => 'Sends what you record to the analyzer below, signed by your radio, so its coverage map is checked against real measurements. It shows them as 200 m squares, leaves out where each trip starts and ends, and never says whose they are. Off: nothing leaves your phone.';
+
+  @override
+  String get coverage_analyzer => 'Analyzer';
+
+  @override
+  String get coverage_analyzerHelp => 'Outside CascadiaMesh? Enter your area\'s CoreScope analyzer.';
+
+  @override
+  String get coverage_analyzerBad => 'That isn\'t a web address';
+
+  @override
+  String get coverage_sendNow => 'Send now';
+
+  @override
+  String get coverage_sending => 'Sending…';
+
+  @override
+  String coverage_sent(int count) {
+    return '{count, plural, =0{Nothing new to send} =1{1 point sent} other{$count points sent}}';
+  }
+
+  @override
+  String get coverage_shareNotConnected => 'Connect the radio that recorded them: points are signed by its key.';
+
+  @override
+  String coverage_shareError(String error) {
+    return 'Couldn\'t send: $error';
+  }
+
+  @override
+  String get coverage_removeMine => 'Remove my points from the analyzer';
+
+  @override
+  String coverage_removeConfirm(String analyzer) {
+    return 'Remove every coverage point this radio sent to $analyzer? Points on this phone stay.';
+  }
+
+  @override
+  String coverage_removed(int count) {
+    return '{count, plural, =0{The analyzer had no points from this radio} =1{1 point removed} other{$count points removed}}';
+  }
+
+  @override
   String get contacts_zeroHopContactAdvertFailed => 'Falha ao enviar contato.';
 
   @override

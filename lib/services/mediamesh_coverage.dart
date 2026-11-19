@@ -24,12 +24,31 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
+import 'mediamesh_coverage_share.dart';
+
+/// What the last send to the analyzer did: [error] (a message, or
+/// 'not-connected' / 'bad-address'), or [count] points sent or removed.
+class CoverageShareStatus {
+  final String? error;
+  final int count;
+  final bool removedPoints;
+  final DateTime? at;
+  const CoverageShareStatus._(this.error, this.count, this.removedPoints, this.at);
+  const CoverageShareStatus.error(String message)
+    : this._(message, 0, false, null);
+  const CoverageShareStatus.sent(int n, DateTime when)
+    : this._(null, n, false, when);
+  const CoverageShareStatus.removed(int n, DateTime when)
+    : this._(null, n, true, when);
+}
 
 /// The lowest SNR (dB) LoRa decodes at each spreading factor.
 double loraSnrFloor(int sf) => switch (sf) {
@@ -75,12 +94,15 @@ class CoverageRepeater {
   final double snr; // ours of its reply
   final double remoteSnr; // its of our ask
   final double margin;
+  final int bwHz, sf; // its radio2 setting (0: not known)
   const CoverageRepeater({
     required this.key,
     required this.name,
     required this.snr,
     required this.remoteSnr,
     required this.margin,
+    this.bwHz = 0,
+    this.sf = 0,
   });
 
   Map<String, Object> toJson() => {
@@ -89,17 +111,22 @@ class CoverageRepeater {
     's': snr,
     'r': remoteSnr,
     'm': double.parse(margin.toStringAsFixed(1)),
+    if (bwHz > 0) 'b': bwHz,
+    if (sf > 0) 'f': sf,
   };
   static CoverageRepeater? fromJson(Object? j) {
     if (j is! Map) return null;
     final k = j['k'], n = j['n'], s = j['s'], r = j['r'], m = j['m'];
     if (k is! String || s is! num || r is! num || m is! num) return null;
+    final b = j['b'], f = j['f'];
     return CoverageRepeater(
       key: k,
       name: n is String ? n : k,
       snr: s.toDouble(),
       remoteSnr: r.toDouble(),
       margin: m.toDouble(),
+      bwHz: b is int ? b : 0,
+      sf: f is int ? f : 0,
     );
   }
 }
@@ -108,11 +135,19 @@ class CoverageSample {
   final double lat, lon;
   final DateTime time;
   final List<CoverageRepeater> repeaters;
+
+  /// The radio that recorded it (its public key, hex; '' if not known),
+  /// how fast the phone was moving (m/s) and the fix's accuracy (m).
+  final String radio;
+  final double speed, accuracy;
   const CoverageSample({
     required this.lat,
     required this.lon,
     required this.time,
     required this.repeaters,
+    this.radio = '',
+    this.speed = 0,
+    this.accuracy = 0,
   });
 
   /// The best repeater's margin; null when none answered.
@@ -126,11 +161,15 @@ class CoverageSample {
     'o': double.parse(lon.toStringAsFixed(6)),
     't': time.millisecondsSinceEpoch ~/ 1000,
     'p': [for (final r in repeaters) r.toJson()],
+    if (radio.isNotEmpty) 'r': radio,
+    if (speed > 0) 'v': double.parse(speed.toStringAsFixed(1)),
+    if (accuracy > 0) 'c': double.parse(accuracy.toStringAsFixed(1)),
   };
   static CoverageSample? fromJson(Object? j) {
     if (j is! Map) return null;
     final a = j['a'], o = j['o'], t = j['t'], p = j['p'];
     if (a is! num || o is! num || t is! int) return null;
+    final r = j['r'], v = j['v'], c = j['c'];
     return CoverageSample(
       lat: a.toDouble(),
       lon: o.toDouble(),
@@ -139,6 +178,9 @@ class CoverageSample {
         for (final r in (p is List ? p : const []))
           if (CoverageRepeater.fromJson(r) case final x?) x,
       ],
+      radio: r is String ? r : '',
+      speed: v is num ? v.toDouble() : 0,
+      accuracy: c is num ? c.toDouble() : 0,
     );
   }
 }
@@ -212,6 +254,8 @@ class MediaMeshCoverageService extends ChangeNotifier {
     try {
       final p = await SharedPreferences.getInstance();
       _show = p.getBool(_kShow) ?? true;
+      _share = p.getBool(_kShare) ?? false;
+      _analyzer = p.getString(_kAnalyzer) ?? defaultCoverageAnalyzer;
       final f = await _file();
       if (f != null && await f.exists()) {
         final j = jsonDecode(await f.readAsString());
@@ -378,6 +422,8 @@ class MediaMeshCoverageService extends ChangeNotifier {
             radio2BwHz: p.bandwidthHz,
             radio2Sf: p.spreadingFactor,
           ),
+          bwHz: p.bandwidthHz,
+          sf: p.spreadingFactor,
         );
         final had = heard[key];
         if (had == null || rep.margin > had.margin) heard[key] = rep;
@@ -393,6 +439,11 @@ class MediaMeshCoverageService extends ChangeNotifier {
         lon: f.longitude,
         time: DateTime.now(),
         repeaters: list,
+        radio: _connector.selfPublicKey == null
+            ? ''
+            : _connector.selfPublicKeyHex.toLowerCase(),
+        speed: f.speed > 0 && f.speed.isFinite ? f.speed : 0,
+        accuracy: f.accuracy > 0 && f.accuracy.isFinite ? f.accuracy : 0,
       ),
     );
     if (_samples.length > maxSamples) _samples.removeAt(0);
@@ -400,11 +451,212 @@ class MediaMeshCoverageService extends ChangeNotifier {
     _asking = false;
     notifyListeners();
     await _save();
+    if (_share) _shareSoon();
+  }
+
+  // ---- Sharing with an analyzer (mediamesh_coverage_share.dart) ----
+
+  static const _kShare = 'mm_coverage_share';
+  static const _kAnalyzer = 'mm_coverage_analyzer';
+  static const _kSentPrefix = 'mm_coverage_sent:';
+
+  bool _share = false, _sending = false;
+  String _analyzer = defaultCoverageAnalyzer;
+  CoverageShareStatus? _shareStatus;
+  Timer? _shareTimer;
+  DateTime? _lastSend;
+
+  /// Factory for the HTTP client (tests swap it).
+  http.Client Function() httpClient = http.Client.new;
+
+  bool get share => _share;
+  bool get sending => _sending;
+  String get analyzer => _analyzer;
+  CoverageShareStatus? get shareStatus => _shareStatus;
+
+  String _sentKey(String radio) =>
+      '$_kSentPrefix${coverageEndpoint(_analyzer) ?? _analyzer}|$radio';
+
+  Future<void> setShare(bool on) async {
+    if (on == _share) return;
+    _share = on;
+    notifyListeners();
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setBool(_kShare, on);
+    } catch (_) {}
+    if (on) unawaited(sendNow());
+  }
+
+  /// Sets where points go; false when it isn't a web address.
+  Future<bool> setAnalyzer(String value) async {
+    final v = value.trim().isEmpty ? defaultCoverageAnalyzer : value.trim();
+    if (coverageEndpoint(v) == null) return false;
+    if (v == _analyzer) return true;
+    _analyzer = v;
+    _shareStatus = null;
+    notifyListeners();
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setString(_kAnalyzer, v);
+    } catch (_) {}
+    if (_share) unawaited(sendNow());
+    return true;
+  }
+
+  /// After a sample: send once ten are waiting, or five minutes after the
+  /// last send, whichever comes first.
+  void _shareSoon() {
+    final radio = _connector.selfPublicKey == null
+        ? ''
+        : _connector.selfPublicKeyHex.toLowerCase();
+    if (radio.isEmpty) return;
+    final waiting = _samples.where((s) => s.radio == radio).length;
+    final last = _lastSend;
+    if (last == null ||
+        waiting >= 10 ||
+        DateTime.now().difference(last) > const Duration(minutes: 5)) {
+      _shareTimer?.cancel();
+      _shareTimer = Timer(const Duration(seconds: 2), () => sendNow());
+    }
+  }
+
+  /// Sends the connected radio's points the analyzer doesn't have yet.
+  Future<void> sendNow() async {
+    if (_sending) return;
+    final endpoint = coverageEndpoint(_analyzer);
+    if (endpoint == null) {
+      _setShareStatus(CoverageShareStatus.error('bad-address'));
+      return;
+    }
+    if (!_connector.isConnected || _connector.selfPublicKey == null) {
+      _setShareStatus(CoverageShareStatus.error('not-connected'));
+      return;
+    }
+    final radio = _connector.selfPublicKeyHex.toLowerCase();
+    _sending = true;
+    _lastSend = DateTime.now();
+    notifyListeners();
+    final client = httpClient();
+    var sent = 0;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = _sentKey(radio);
+      var until = prefs.getInt(key) ?? 0;
+      final app = await _appName();
+      for (final batch in coverageBatches(_samples, radio, until)) {
+        final body = coverageBatchBody(
+          radioHex: radio,
+          samples: batch,
+          sent: DateTime.now(),
+          app: app,
+          mainBwHz: _connector.currentBwHz ?? 62500,
+        );
+        final sig = await _connector.signWithRadio(
+          Uint8List.fromList(coverageSignedMessage(coverageSignPrefix, body)),
+        );
+        final res = await client
+            .post(
+              endpoint,
+              headers: {
+                'Content-Type': 'application/json',
+                'X-MeshCore-Signature': pubKeyToHex(sig),
+              },
+              body: body,
+            )
+            .timeout(const Duration(seconds: 30));
+        if (res.statusCode != 200) {
+          _setShareStatus(
+            CoverageShareStatus.error(
+              coverageReplyError(res.body) ?? 'HTTP ${res.statusCode}',
+            ),
+          );
+          return;
+        }
+        sent += batch.length;
+        until = batch.last.time.millisecondsSinceEpoch ~/ 1000;
+        await prefs.setInt(key, until);
+      }
+      _setShareStatus(CoverageShareStatus.sent(sent, DateTime.now()));
+    } catch (e) {
+      _setShareStatus(CoverageShareStatus.error('$e'));
+    } finally {
+      client.close();
+      _sending = false;
+      notifyListeners();
+    }
+  }
+
+  /// Asks the analyzer to remove every point the connected radio sent.
+  /// The number removed, or null (see [shareStatus]).
+  Future<int?> removeMine() async {
+    final endpoint = coverageEndpoint(_analyzer);
+    if (endpoint == null ||
+        !_connector.isConnected ||
+        _connector.selfPublicKey == null) {
+      _setShareStatus(
+        CoverageShareStatus.error(
+          endpoint == null ? 'bad-address' : 'not-connected',
+        ),
+      );
+      return null;
+    }
+    final radio = _connector.selfPublicKeyHex.toLowerCase();
+    final client = httpClient();
+    try {
+      final body = coverageDeleteBody(radio, DateTime.now());
+      final sig = await _connector.signWithRadio(
+        Uint8List.fromList(coverageSignedMessage(coverageDeletePrefix, body)),
+      );
+      final req = http.Request('DELETE', endpoint)
+        ..headers['Content-Type'] = 'application/json'
+        ..headers['X-MeshCore-Signature'] = pubKeyToHex(sig)
+        ..bodyBytes = body;
+      final res = await http.Response.fromStream(
+        await client.send(req).timeout(const Duration(seconds: 30)),
+      );
+      if (res.statusCode != 200) {
+        _setShareStatus(
+          CoverageShareStatus.error(
+            coverageReplyError(res.body) ?? 'HTTP ${res.statusCode}',
+          ),
+        );
+        return null;
+      }
+      final j = jsonDecode(res.body);
+      final n = j is Map && j['removed'] is int ? j['removed'] as int : 0;
+      // so turning sharing on again sends them all again
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_sentKey(radio));
+      _setShareStatus(CoverageShareStatus.removed(n, DateTime.now()));
+      return n;
+    } catch (e) {
+      _setShareStatus(CoverageShareStatus.error('$e'));
+      return null;
+    } finally {
+      client.close();
+    }
+  }
+
+  void _setShareStatus(CoverageShareStatus s) {
+    _shareStatus = s;
+    notifyListeners();
+  }
+
+  static String? _appNameCache;
+  Future<String> _appName() async {
+    if (_appNameCache != null) return _appNameCache!;
+    var v = '';
+    try {
+      v = (await PackageInfo.fromPlatform()).version;
+    } catch (_) {}
+    return _appNameCache = 'MeshCore Open TAK${v.isEmpty ? '' : ' $v'}';
   }
 
   @override
   void dispose() {
     _tick?.cancel();
+    _shareTimer?.cancel();
     unawaited(_gps?.cancel());
     super.dispose();
   }
