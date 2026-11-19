@@ -67,10 +67,10 @@ void main() {
     }
   });
 
-  test('4x up to 512 px, 2x up to 1024 px, none above', () {
+  test('4x up to 1024 px (about 4K out), none above', () {
     expect(voxUpscaleScale(512, 384), 4);
-    expect(voxUpscaleScale(513, 100), 2);
-    expect(voxUpscaleScale(1024, 768), 2);
+    expect(voxUpscaleScale(513, 100), 4);
+    expect(voxUpscaleScale(1024, 768), 4);
     expect(voxUpscaleScale(1025, 10), 0);
     expect(voxUpscaleScale(0, 10), 0);
     expect(VoxUpscaler.canEnhance(768, 576), isTrue);

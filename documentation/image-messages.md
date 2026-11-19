@@ -138,8 +138,9 @@ voice restorer** downloaded, Codec2 clips play with the whole voice rebuilt, at
 ## Enhance (MeshCore Open TAK)
 
 In the full-screen viewer of a Mesh photo, the sparkle button shows the photo
-**enhanced** by an AI super-resolution model on the phone or computer: 4x up to
-512 pixels on the long side, 2x up to 1024 (every level up to Super Sharp).
+**enhanced** by an AI super-resolution model on the phone or computer: 4x, for
+every level up to Super Sharp, so a Super Sharp photo (1024 pixels on the long
+side) comes out about 4K (4096 pixels). Nothing more is sent over the mesh.
 Tap it again for the photo as sent.
 
 **Sharp and Super Sharp photos open enhanced** on their own (a photo of 50 or
@@ -158,9 +159,11 @@ open as sent; nothing is downloaded without asking.
   "AI-enhanced view: details may be invented": the model sharpens edges and
   textures, and small text, faces and numbers can come out wrong.
 - **How.** ONNX Runtime on the CPU, in 160-pixel tiles with 32 pixels of
-  overlap, so memory stays small and the tiles join without seams. Over 512
-  pixels the model's output is averaged down 2x (`output_x2`), keeping the
-  result within 2048 pixels; a Super Sharp photo takes some seconds.
+  overlap, so memory stays small and the tiles join without seams. Photos take the
+  model's full 4x output (`output`); the 2x output (`output_x2`, 2x2
+  averaged) is for video frames. The work is the same either way; a Super
+  Sharp photo takes some seconds and its 4K result about 50 MB of memory
+  while it's open.
 - **Where.** Android, Windows, macOS and Linux. Not on the web build.
 
 ## AI sketch HD (MeshCore Open TAK)

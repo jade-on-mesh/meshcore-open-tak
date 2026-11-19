@@ -41,12 +41,12 @@ class VoxUpscaleModel {
   static const scale = 4;
 }
 
-/// Photos up to this many pixels a side are enhanced 4x (up to 2048 px).
-const voxUpscaleMaxSide4x = 512;
+/// Photos up to this many pixels a side are enhanced 4x: every size up to
+/// Super Sharp (1024), so a Super Sharp photo comes out about 4K (4096 px).
+/// The 2x output ([voxUpscaleScale] 2) is left for video frames.
+const voxUpscaleMaxSide4x = 1024;
 
-/// Photos up to this many pixels a side can be enhanced: those over
-/// [voxUpscaleMaxSide4x] (Sharp is up to 768, Super Sharp 1024) 2x, from the
-/// model's averaged output, so the result stays within 2048 px.
+/// Photos up to this many pixels a side can be enhanced.
 const voxUpscaleMaxSide = 1024;
 
 /// How much a photo of this size is enlarged: 4, 2, or 0 (not at all).
