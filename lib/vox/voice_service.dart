@@ -215,6 +215,9 @@ class _IncomingClip {
   DateTime? askedAt;
   bool answeredSinceAsk = false;
 
+  /// The "MediaMesh still busy" hold was logged since the last request.
+  bool busyHoldLogged = false;
+
   /// The clip's packets were still on the air when the last request went out
   /// (someone's push or answer): holders other than the sender then wait for
   /// quiet before answering (voxHolderAirWaitMaxMs).
@@ -1513,6 +1516,7 @@ class VoxVoiceService extends ChangeNotifier {
     clip.rxLast = null; // the next packet starts a new burst
     clip.askedAt = DateTime.now();
     clip.answeredSinceAsk = false;
+    clip.busyHoldLogged = false;
     final heard = _lastHeard(clip.envelope.sessionId);
     clip.airBusyAtAsk =
         heard != null &&
@@ -1771,6 +1775,38 @@ class VoxVoiceService extends ChangeNotifier {
           'holding the next request ${_secs(Duration(milliseconds: hold))}',
           clip.envelope.sessionId,
         );
+        clip.watchdog?.cancel();
+        clip.watchdog = Timer(
+          Duration(milliseconds: hold),
+          () => _onWatchdog(clip),
+        );
+        return;
+      }
+    }
+    // Fast MediaMesh: MediaMesh still busy (the sender on another part or
+    // another listener's answer, or this clip's repair packets): wait for it
+    // to go quiet rather than flood another request through the repeaters.
+    final anyHeard = _mediaHeardAt;
+    if (_fastMediaMesh && asked != null && anyHeard != null) {
+      final now = DateTime.now();
+      final quiet = max(
+        max(voxAirQuietMs(_zeroHopGap().inMilliseconds), 4000),
+        _burstGap(clip).inMilliseconds * 3,
+      );
+      final hold = voxBusyAirHoldMs(
+        sinceHeardMs: now.difference(anyHeard).inMilliseconds,
+        sinceAskedMs: now.difference(asked).inMilliseconds,
+        quietMs: quiet,
+      );
+      if (hold != null) {
+        if (!clip.busyHoldLogged) {
+          clip.busyHoldLogged = true;
+          _logEvent(
+            'MediaMesh still busy (a packet ${_secs(now.difference(anyHeard))} '
+            'ago): waiting for it to go quiet before asking again',
+            clip.envelope.sessionId,
+          );
+        }
         clip.watchdog?.cancel();
         clip.watchdog = Timer(
           Duration(milliseconds: hold),
@@ -3134,10 +3170,15 @@ class VoxVoiceService extends ChangeNotifier {
   /// sending what someone else just sent (NACK suppression).
   final Map<String, Map<int, DateTime>> _heardIdx = {};
 
+  /// When a photo or voice packet of any clip (data, parity or repair) was
+  /// last heard: MediaMesh busy (voxBusyAirHoldMs).
+  DateTime? _mediaHeardAt;
+
   /// Another node sent packet [index] of [sid]: note it, and if one of our
   /// channel bursts for that clip still has it to send, leave it out.
   void _noteHeard(String sid, int index, {required bool onChannel}) {
     final now = DateTime.now();
+    _mediaHeardAt = now;
     (_heardIdx[sid] ??= {})[index] = now;
     if (_heardIdx.length > 48) _heardIdx.remove(_heardIdx.keys.first);
     if (!onChannel) return;
@@ -3478,6 +3519,7 @@ class VoxVoiceService extends ChangeNotifier {
     if (answer != null && missing != null) {
       _paceFor(channel).feedback(answer, missing.toSet());
     }
+    final lossPct = _fastMediaMesh ? _paceFor(channel).lossPct : 0;
     final held = _heldPackets(req.sessionId);
     if (held == null) return;
     final total = held.total;
@@ -3488,6 +3530,7 @@ class VoxVoiceService extends ChangeNotifier {
       () => _ChannelBurst(req.sessionId, channel),
     );
     burst.askedAt ??= DateTime.now();
+    burst.lossPct = lossPct;
     var wanted = req.missingIndices ?? List<int>.generate(total, (i) => i);
     // Fast MediaMesh: a list as long as a request holds may stop short of
     // all the listener lacks (it names the first 124). It gets the rest
@@ -3532,7 +3575,8 @@ class VoxVoiceService extends ChangeNotifier {
       '${req.requesterKey6} asks for ${req.missingIndices == null ? 'all' : _indexList(wanted)} '
       '(${hops ?? '?'} hops)${held.whole ? '' : ', we hold ${held.packets.length}/$total'}: '
       '${burst.pending.length - before} added, ${burst.pending.length} pending'
-      '${burst.repairs > 0 ? ', ${burst.repairs} repair packets' : ''}',
+      '${burst.repairs > 0 ? ', ${burst.repairs} repair packets' : ''}'
+      '${burst.repairs > 0 && burst.lossPct > 0 ? ' (sized for ${burst.lossPct}% loss)' : ''}',
       req.sessionId,
     );
     if (burst.running) return;
@@ -5005,6 +5049,10 @@ class _ChannelBurst {
   /// Repair packets this burst has sent.
   int repairsSent = 0;
 
+  /// The loss the channel's answers have seen lately (VoxFloodPace.lossPct),
+  /// which the repair packets are sized for.
+  int lossPct = 0;
+
   /// A listener that rebuilds from repair packets lacks [missing] (its
   /// latest request replaces its last).
   void need(String who, Iterable<int> missing) {
@@ -5033,6 +5081,7 @@ class _ChannelBurst {
         uncovered: n.missing.length - covered,
         covered: covered,
         sentSince: repairsSent - n.repairsAt,
+        lossPct: lossPct,
       );
       if (d > due) due = d;
     }

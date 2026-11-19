@@ -41,20 +41,52 @@ int voxFountainNeeded(int missing) =>
 /// Repair packets after a whole clip's first pass: about a tenth, at least 2.
 int voxFountainFirstPass(int total) => total < 2 ? 0 : (total + 9) ~/ 10 + 1;
 
+/// The most loss the repair packets are sized for (percent): a listener
+/// losing more is on a poor link of its own, and asks again.
+const int voxFountainMaxLossPct = 40;
+
+int _lossOf(int lossPct) => lossPct.clamp(0, voxFountainMaxLossPct);
+
+/// Repair packets for a listener missing [missing] when [lossPct]% of what
+/// is sent is lost on the way (voxFloodPace.lossPct): enough that as many
+/// as it lacks still arrive, and the margin.
+int voxFountainNeededAt(int missing, int lossPct) {
+  if (missing <= 0) return 0;
+  final keep = 100 - _lossOf(lossPct);
+  return voxFountainNeeded((missing * 100 + keep - 1) ~/ keep);
+}
+
+/// Repair packets after a pass of [count] data packets of which [lossPct]%
+/// are lost on the way: enough to mend what the worst-placed listener lost
+/// without asking again (each request round through repeaters costs a minute
+/// or more), and never under [voxFountainFirstPass].
+int voxFountainPassShare(int count, int lossPct) {
+  if (count < 2) return 0;
+  final l = _lossOf(lossPct);
+  final keep = 100 - l;
+  final sized = (count * l * 110 + 100 * keep - 1) ~/ (100 * keep) + 2;
+  final first = voxFountainFirstPass(count);
+  return sized > first ? sized : first;
+}
+
 /// Repair packets still owed a listener that rebuilds from them, with
 /// [uncovered] of the packets it lacks going out only as repair packets,
 /// [covered] of them going out (or gone out since it asked) as data packets
 /// anyway (for a listener that can't use repair packets, say), and
 /// [sentSince] repair packets sent since it asked. A covered packet is lost
 /// now and then like any other (radios scanning radio2 miss some while on the
-/// main mesh), so it costs a first pass's share, not a repair packet each.
+/// main mesh), so it costs a pass's share, not a repair packet each. Both are
+/// sized for the [lossPct] the channel's answers have seen lately.
 int voxFountainOwed({
   required int uncovered,
   required int covered,
   int sentSince = 0,
+  int lossPct = 0,
 }) {
   final owed =
-      voxFountainNeeded(uncovered) + voxFountainFirstPass(covered) - sentSince;
+      voxFountainNeededAt(uncovered, lossPct) +
+      voxFountainPassShare(covered, lossPct) -
+      sentSince;
   return owed < 0 ? 0 : owed;
 }
 

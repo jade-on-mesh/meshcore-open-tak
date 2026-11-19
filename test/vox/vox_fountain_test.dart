@@ -136,6 +136,49 @@ void main() {
     expect(voxFountainListCap, voxSaltedFetchIndices);
   });
 
+  test('repair packets sized for the loss answers have seen lately', () {
+    // No loss seen: as before.
+    expect(voxFountainOwed(uncovered: 4, covered: 0, lossPct: 0), 6);
+    expect(voxFountainPassShare(226, 0), voxFountainFirstPass(226));
+    // A fifth lost: a pass of 226 ends with enough that the worst listener
+    // still gets as many as it lost (45 of 226, 52 of 65 repairs arrive).
+    expect(voxFountainPassShare(226, 20), 65);
+    expect(voxFountainNeededAt(50, 20), voxFountainNeeded(63));
+    // Capped: a listener on a link losing most of it asks again.
+    expect(voxFountainPassShare(100, 90), voxFountainPassShare(100, 40));
+  });
+
+  test('pace learns the loss of its answers: up at once, down by a quarter',
+      () {
+    final p = VoxFloodPace(338, fast: true);
+    final a = VoxFloodAnswer(List.generate(100, (i) => i));
+    p.feedback(a, {for (var i = 0; i < 20; i++) i * 5});
+    expect(p.lossPct, 20);
+    p.feedback(a, {for (var i = 0; i < 30; i++) i * 3});
+    expect(p.lossPct, 30);
+    final b = VoxFloodAnswer(List.generate(100, (i) => i));
+    p.feedback(b, {});
+    expect(p.lossPct, 22);
+    final c = VoxFloodAnswer(List.generate(10, (i) => i));
+    p.feedback(c, {for (var i = 0; i < 10; i++) i});
+    expect(p.lossPct, 40);
+  });
+
+  test('a request waits while MediaMesh is busy, up to 3 minutes', () {
+    expect(
+      voxBusyAirHoldMs(sinceHeardMs: 1000, sinceAskedMs: 30000, quietMs: 4000),
+      3000,
+    );
+    expect(
+      voxBusyAirHoldMs(sinceHeardMs: 5000, sinceAskedMs: 30000, quietMs: 4000),
+      isNull,
+    );
+    expect(
+      voxBusyAirHoldMs(sinceHeardMs: 0, sinceAskedMs: 181000, quietMs: 4000),
+      isNull,
+    );
+  });
+
   test('fast pace starts tighter and learns down only to its floor', () {
     const air = 338;
     final slow = VoxFloodPace(air);

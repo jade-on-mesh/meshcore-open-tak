@@ -288,6 +288,13 @@ class VoxFloodPace {
   int _gapMs;
   int _extraRelays = 0;
 
+  /// Fast MediaMesh: the share of an answer's packets (percent, 0-40) that
+  /// the worst-placed listener reporting on it lost lately. Repair packets
+  /// are sized for it (voxFountainPassShare), so far listeners finish
+  /// without asking again. A report of more loss raises it at once; the
+  /// first report on each answer that saw less brings it a quarter down.
+  int lossPct = 0;
+
   /// Fast MediaMesh: start at [voxFloodFastBaseGapMs] and learn
   /// down to it, not the base gap. The losses that follow an answer still
   /// slow it (by half, up to the slow gap), and repair packets mend what a
@@ -321,6 +328,13 @@ class VoxFloodPace {
     final sent = answer.sent;
     if (sent.isEmpty) return;
     final lost = sent.where(missing.contains).length;
+    final pct = min(lost * 100 ~/ sent.length, 40);
+    if (pct > lossPct) {
+      lossPct = pct;
+    } else if (!answer._lossSeen) {
+      lossPct = (lossPct * 3 + pct) ~/ 4;
+    }
+    answer._lossSeen = true;
     if (lost * 10 < sent.length) {
       if (!answer._clean) {
         answer._clean = true;
@@ -357,7 +371,27 @@ class VoxFloodAnswer {
   bool _slowed = false;
   bool _firstCame = false;
   bool _settleUp = false;
+  bool _lossSeen = false;
 }
+
+/// Fast MediaMesh: a request timing out while MediaMesh is still busy (a
+/// packet of any photo or clip heard [sinceHeardMs] ago: the sender sending
+/// another part, answering another listener, or this one's repair packets)
+/// waits for the air to go quiet for [quietMs] rather than ask again. Each
+/// request floods the main mesh, and every repeater scanning radio2 misses
+/// radio2 packets while it relays one, on every hop. Null to ask now; never
+/// past [voxBusyAirHoldMaxMs] after asking.
+int? voxBusyAirHoldMs({
+  required int sinceHeardMs,
+  required int sinceAskedMs,
+  required int quietMs,
+}) {
+  if (sinceAskedMs > voxBusyAirHoldMaxMs) return null;
+  final wait = quietMs - sinceHeardMs;
+  return wait > 0 ? wait : null;
+}
+
+const int voxBusyAirHoldMaxMs = 180000;
 
 /// The longest a sender waits before answering a request that came [hops]
 /// repeaters (VoxFloodPace.settleMs with everything it can learn).
