@@ -1,13 +1,17 @@
 // MeshCore Open TAK - MediaMesh coverage on the map (mediamesh_coverage.dart):
 // a dot per sample, coloured by how well MediaMesh reaches there. The same
-// colours as Wadamesh TAK's coverage dots.
+// colours as Wadamesh TAK's coverage dots. Tapping a dot shows the MediaMesh
+// repeaters heard there.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/l10n.dart';
 import '../services/mediamesh_coverage.dart';
+import '../widgets/mesh_ui.dart';
 
 /// The colour for each reach (shared with Wadamesh TAK).
 Color coverageColor(MediaMeshReach r) => switch (r) {
@@ -20,6 +24,10 @@ Color coverageColor(MediaMeshReach r) => switch (r) {
 class MediaMeshCoverageLayer extends StatelessWidget {
   const MediaMeshCoverageLayer({super.key});
 
+  /// The dot's size, and the finger-sized area around it that takes a tap.
+  static const double _dot = 12;
+  static const double _hit = 28;
+
   @override
   Widget build(BuildContext context) {
     MediaMeshCoverageService cov;
@@ -29,17 +37,112 @@ class MediaMeshCoverageLayer extends StatelessWidget {
       return const SizedBox.shrink();
     }
     if (!cov.show || cov.samples.isEmpty) return const SizedBox.shrink();
-    return CircleLayer(
-      circles: [
+    return MarkerLayer(
+      markers: [
         for (final s in cov.samples)
-          CircleMarker(
+          Marker(
             point: LatLng(s.lat, s.lon),
-            radius: 6,
-            color: coverageColor(s.reach).withValues(alpha: 0.85),
-            borderColor: Colors.black54,
-            borderStrokeWidth: 1,
+            width: _hit,
+            height: _hit,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => showCoveragePoint(context, s),
+              child: Center(
+                child: Container(
+                  width: _dot,
+                  height: _dot,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: coverageColor(s.reach).withValues(alpha: 0.85),
+                    border: Border.all(color: Colors.black54),
+                  ),
+                ),
+              ),
+            ),
           ),
       ],
     );
   }
+}
+
+/// What was heard at one coverage point: when, and each MediaMesh repeater
+/// that answered there, best first, with its margin and SNRs.
+Future<void> showCoveragePoint(BuildContext context, CoverageSample s) {
+  return showMeshSheet<void>(
+    context,
+    builder: (ctx) {
+      final l10n = ctx.l10n;
+      final theme = Theme.of(ctx);
+      final scheme = theme.colorScheme;
+      final locale = Localizations.localeOf(ctx).toString();
+      final when = DateFormat.yMMMd(locale).add_jm().format(s.time.toLocal());
+      final reps = [...s.repeaters]
+        ..sort((a, b) => b.margin.compareTo(a.margin));
+      String db(double v) => v.toStringAsFixed(1);
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          BottomSheetHeader(
+            title: l10n.coverage_pointTitle,
+            subtitle: l10n.coverage_pointWhen(when),
+          ),
+          Flexible(
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              children: [
+                if (reps.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      l10n.coverage_pointNone,
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  )
+                else ...[
+                  Text(
+                    l10n.coverage_pointRepeaters(reps.length),
+                    style: theme.textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 4),
+                  for (final r in reps)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: coverageColor(mediaMeshReachFor(r.margin)),
+                          border: Border.all(color: Colors.black54),
+                        ),
+                      ),
+                      minLeadingWidth: 14,
+                      title: Text(
+                        r.name == r.key ? r.key : '${r.name} (${r.key})',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        '${l10n.coverage_pointMargin(db(r.margin))}\n'
+                        '${l10n.coverage_pointSnr(db(r.snr), db(r.remoteSnr))}',
+                      ),
+                      isThreeLine: true,
+                    ),
+                  const SizedBox(height: 4),
+                  Text(
+                    l10n.coverage_pointHelp,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      );
+    },
+  );
 }
