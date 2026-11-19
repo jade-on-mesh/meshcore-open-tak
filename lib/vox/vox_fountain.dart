@@ -21,6 +21,7 @@
 
 import 'dart:typed_data';
 
+import 'vox_fec.dart';
 import 'voice_wire.dart';
 
 /// A repair packet's session id is the clip's XOR this.
@@ -88,6 +89,30 @@ int voxFountainOwed({
       voxFountainPassShare(covered, lossPct) -
       sentSince;
   return owed < 0 ? 0 : owed;
+}
+
+/// A part's session id offset (video_codec.dart voxVideoPartSid: part k of
+/// a SuperMax clip is the first part's id XOR this; 0 for the first).
+int _partOffset(int k) => k == 0 ? 0 : 0x7A000000 + k * 0x00010101;
+
+/// Whether a packet of session [heard] belongs to the same transfer as
+/// [sid]: its data, parity (vox_fec.dart) or repair packets, or another part
+/// of the same SuperMax clip, or theirs. A listener waiting on these is
+/// waiting on its sender, who answers requests one after another: asking
+/// again would only queue behind them (voxBusyAirHoldMs).
+bool voxSameTransfer(String sid, String heard) {
+  final a = int.tryParse(sid, radix: 16);
+  final h = int.tryParse(heard, radix: 16);
+  if (a == null || h == null) return false;
+  for (final b in [h, h ^ voxFecSidXor, h ^ voxFountainSidXor]) {
+    final d = a ^ b;
+    for (var j = 0; j <= 3; j++) {
+      for (var k = 0; k <= 3; k++) {
+        if (d == (_partOffset(j) ^ _partOffset(k))) return true;
+      }
+    }
+  }
+  return false;
 }
 
 /// A request lists at most this many packets (voxSaltedFetchIndices): one

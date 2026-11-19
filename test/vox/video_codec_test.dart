@@ -6,6 +6,7 @@ import 'package:meshcore_open/vox/image_codec.dart';
 import 'package:meshcore_open/vox/video_codec.dart';
 import 'package:meshcore_open/vox/voice_wire.dart';
 import 'package:meshcore_open/vox/vox_fec.dart';
+import 'package:meshcore_open/vox/vox_fountain.dart';
 
 /// [seconds] of a moving gradient at [fps].
 VoxVideoFrames _clip(int w, int h, int fps, int seconds) {
@@ -248,6 +249,10 @@ void main() {
       const sid = '1a2b3c4d';
       final ids = {sid, for (var k = 1; k <= 3; k++) voxVideoPartSid(sid, k)};
       expect(ids, hasLength(4));
+      // Fast MediaMesh's voxSameTransfer knows them as one transfer.
+      for (final id in ids) {
+        expect(voxSameTransfer(sid, id), isTrue);
+      }
       for (final id in ids) {
         expect(ids.contains(voxFecParitySid(id)), isFalse);
       }

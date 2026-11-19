@@ -166,7 +166,23 @@ void main() {
     },
   );
 
-  test('a request waits while MediaMesh is busy, up to 3 minutes', () {
+  test('the same transfer: its parity, repair packets and other parts', () {
+    const sid = '1a2b3c4d';
+    expect(voxSameTransfer(sid, sid), isTrue);
+    expect(voxSameTransfer(sid, voxFecParitySid(sid)), isTrue);
+    expect(voxSameTransfer(sid, voxFountainSid(sid)), isTrue);
+    // Parts 1-3 of a SuperMax clip (video_codec.dart voxVideoPartSid), and
+    // each other's repair packets.
+    final p1 = voxSessionIdFromInt(int.parse(sid, radix: 16) ^ 0x7A010101);
+    final p2 = voxSessionIdFromInt(int.parse(sid, radix: 16) ^ 0x7A020202);
+    expect(voxSameTransfer(sid, p2), isTrue);
+    expect(voxSameTransfer(p1, p2), isTrue);
+    expect(voxSameTransfer(p2, voxFountainSid(p1)), isTrue);
+    expect(voxSameTransfer(sid, '1a2b3c4e'), isFalse);
+    expect(voxSameTransfer(sid, 'deadbeef'), isFalse);
+  });
+
+  test('a request waits while its transfer is on the air, up to 3 minutes', () {
     expect(
       voxBusyAirHoldMs(sinceHeardMs: 1000, sinceAskedMs: 30000, quietMs: 4000),
       3000,

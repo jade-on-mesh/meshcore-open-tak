@@ -374,12 +374,14 @@ class VoxFloodAnswer {
   bool _lossSeen = false;
 }
 
-/// Fast MediaMesh: a request timing out while MediaMesh is still busy (a
-/// packet of any photo or clip heard [sinceHeardMs] ago: the sender sending
-/// another part, answering another listener, or this one's repair packets)
-/// waits for the air to go quiet for [quietMs] rather than ask again. Each
-/// request floods the main mesh, and every repeater scanning radio2 misses
-/// radio2 packets while it relays one, on every hop. Null to ask now; never
+/// Fast MediaMesh: a request timing out while its own transfer is still on
+/// the air (a packet of it heard [sinceHeardMs] ago, voxSameTransfer: the
+/// sender sending another part of the clip to another listener, or this
+/// one's repair or parity packets) waits for it to go quiet for [quietMs]
+/// rather than ask again. The sender answers one request after another, so
+/// asking again would only queue; and each request floods the main mesh,
+/// where every repeater scanning radio2 misses radio2 packets while it
+/// relays one. Other clips on the air don't hold it. Null to ask now; never
 /// past [voxBusyAirHoldMaxMs] after asking.
 int? voxBusyAirHoldMs({
   required int sinceHeardMs,

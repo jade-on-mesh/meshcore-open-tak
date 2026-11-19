@@ -1783,10 +1783,11 @@ class VoxVoiceService extends ChangeNotifier {
         return;
       }
     }
-    // Fast MediaMesh: MediaMesh still busy (the sender on another part or
-    // another listener's answer, or this clip's repair packets): wait for it
-    // to go quiet rather than flood another request through the repeaters.
-    final anyHeard = _mediaHeardAt;
+    // Fast MediaMesh: this transfer still on the air (the sender on another
+    // part of the clip, or this clip's repair or parity packets): wait for
+    // it to go quiet rather than flood another request through the
+    // repeaters. Other clips on the air don't hold it.
+    final anyHeard = _transferHeard(clip.envelope.sessionId);
     if (_fastMediaMesh && asked != null && anyHeard != null) {
       final now = DateTime.now();
       final quiet = max(
@@ -1802,8 +1803,9 @@ class VoxVoiceService extends ChangeNotifier {
         if (!clip.busyHoldLogged) {
           clip.busyHoldLogged = true;
           _logEvent(
-            'MediaMesh still busy (a packet ${_secs(now.difference(anyHeard))} '
-            'ago): waiting for it to go quiet before asking again',
+            'sender still on this transfer (a packet '
+            '${_secs(now.difference(anyHeard))} ago): waiting for it to go '
+            'quiet before asking again',
             clip.envelope.sessionId,
           );
         }
@@ -3170,15 +3172,23 @@ class VoxVoiceService extends ChangeNotifier {
   /// sending what someone else just sent (NACK suppression).
   final Map<String, Map<int, DateTime>> _heardIdx = {};
 
-  /// When a photo or voice packet of any clip (data, parity or repair) was
-  /// last heard: MediaMesh busy (voxBusyAirHoldMs).
-  DateTime? _mediaHeardAt;
+  /// The last packet heard of [sid]'s transfer (voxSameTransfer: its data,
+  /// parity or repair packets, or another part of the clip).
+  DateTime? _transferHeard(String sid) {
+    DateTime? last;
+    for (final e in _heardIdx.entries) {
+      if (!voxSameTransfer(sid, e.key)) continue;
+      for (final t in e.value.values) {
+        if (last == null || t.isAfter(last)) last = t;
+      }
+    }
+    return last;
+  }
 
   /// Another node sent packet [index] of [sid]: note it, and if one of our
   /// channel bursts for that clip still has it to send, leave it out.
   void _noteHeard(String sid, int index, {required bool onChannel}) {
     final now = DateTime.now();
-    _mediaHeardAt = now;
     (_heardIdx[sid] ??= {})[index] = now;
     if (_heardIdx.length > 48) _heardIdx.remove(_heardIdx.keys.first);
     if (!onChannel) return;
