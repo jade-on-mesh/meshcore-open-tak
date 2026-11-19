@@ -804,7 +804,6 @@ class AppSettingsScreen extends StatelessWidget {
               onChanged: voice.setDataAudio,
             ),
           ),
-
         ],
       ],
     );
