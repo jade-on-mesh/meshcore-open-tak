@@ -585,6 +585,12 @@ class VoxVoiceService extends ChangeNotifier {
       _pushChannelClips = prefs.getBool(_kPushChannel) ?? true;
       _dataAudio = prefs.getBool(_kDataAudio) ?? false;
       _fastMediaMesh = prefs.getBool(_kFastMediaMesh) ?? true;
+      _adaptiveSpacing = prefs.getBool(_kAdaptiveSpacing) ?? true;
+      for (final e in prefs.getStringList(_kPaceSaved) ?? const <String>[]) {
+        final at = e.indexOf(':');
+        final ch = at > 0 ? int.tryParse(e.substring(0, at)) : null;
+        if (ch != null) _paceSaved[ch] = e.substring(at + 1);
+      }
       notifyListeners();
     } catch (_) {}
   }
@@ -2406,6 +2412,28 @@ class VoxVoiceService extends ChangeNotifier {
   /// (VoxFloodPace.fast). Off: as before, for comparing.
   bool get fastMediaMesh => _fastMediaMesh;
 
+  static const _kAdaptiveSpacing = 'vox_adaptive_spacing';
+  bool _adaptiveSpacing = true;
+
+  /// Adaptive spacing (with Fast MediaMesh): answers' packet spacing learns
+  /// down while the farthest listeners lose almost nothing and backs off as
+  /// soon as they lose more, separately for listeners 0-1 hops away and 2+
+  /// (VoxFloodPace.adaptive). Off: the spacing of 2026-11-18's field test
+  /// (branch mediamesh-gold-2026-11-18), for comparing or rolling back.
+  bool get adaptiveSpacing => _adaptiveSpacing;
+
+  Future<void> setAdaptiveSpacing(bool v) async {
+    _adaptiveSpacing = v;
+    for (final p in _floodPace.values) {
+      p.adaptive = v;
+    }
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kAdaptiveSpacing, v);
+    } catch (_) {}
+  }
+
   Future<void> setFastMediaMesh(bool v) async {
     _fastMediaMesh = v;
     notifyListeners();
@@ -3544,7 +3572,10 @@ class VoxVoiceService extends ChangeNotifier {
     final answer = _floodAnswers[key];
     final missing = req.missingIndices;
     if (answer != null && missing != null) {
-      _paceFor(channel).feedback(answer, missing.toSet());
+      final pace = _paceFor(channel);
+      if (pace.feedback(answer, missing.toSet(), hops: hops)) {
+        _savePace(channel, pace);
+      }
     }
     final lossPct = _fastMediaMesh ? _paceFor(channel).lossPct : 0;
     final held = _heldPackets(req.sessionId);
@@ -3835,7 +3866,7 @@ class VoxVoiceService extends ChangeNotifier {
         '${repeats > 0 ? ', $repeats sent twice' : ''}'
         '${zeroHopSent > 0 ? ' ($zeroHopSent zero-hop)' : ''}'
         '${burst.suppressed > 0 ? '; ${burst.suppressed} left out, heard from another node' : ''}'
-        '${zeroHopSent < sent ? ', ${pace.gapMs(burst.maxHops)} ms apart after ${burst.pushing ? 0 : pace.settleMs(burst.maxHops)} ms' : ''}'
+        '${zeroHopSent < sent ? ', ${pace.gapMs(burst.maxHops)} ms apart${pace.adaptiveNote(burst.maxHops)} after ${burst.pushing ? 0 : pace.settleMs(burst.maxHops)} ms' : ''}'
         '${markedSent > 0 ? ', marked' : ''}'
         '${sent > 0 ? '; radio took ~${confirmMs ~/ sent} ms a packet to accept, ${_packetAir().inMilliseconds} ms on air' : ''}'
         '${_burstTiming(burst, firstAt, startedAt, busyMs)}',
@@ -3843,7 +3874,11 @@ class VoxVoiceService extends ChangeNotifier {
       );
       // What listeners still lack after this tells the pace how it did.
       if (sentData.isNotEmpty && zeroHopSent < sent) {
-        _floodAnswers[key] = VoxFloodAnswer(sentData);
+        _floodAnswers[key] = VoxFloodAnswer(
+          sentData,
+          maxHops: burst.maxHops,
+          gapMs: pace.gapMs(burst.maxHops),
+        );
       }
     } finally {
       burst.running = false;
@@ -3915,11 +3950,30 @@ class VoxVoiceService extends ChangeNotifier {
     final air = _packetAir().inMilliseconds;
     final p = _floodPace.putIfAbsent(
       channel,
-      () => VoxFloodPace(air, fast: _fastMediaMesh),
+      () => VoxFloodPace(air, fast: _fastMediaMesh)
+        ..restoreAdaptive(_paceSaved[channel]),
     );
     p.airMs = air;
     p.fast = _fastMediaMesh;
+    p.adaptive = _adaptiveSpacing;
     return p;
+  }
+
+  /// Adaptive spacing's learnt gaps per channel (VoxFloodPace.saveAdaptive),
+  /// kept across restarts.
+  static const _kPaceSaved = 'vox_pace_adaptive';
+  final Map<int, String> _paceSaved = {};
+
+  void _savePace(int channel, VoxFloodPace pace) {
+    _paceSaved[channel] = pace.saveAdaptive();
+    unawaited(() async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setStringList(_kPaceSaved, [
+          for (final e in _paceSaved.entries) '${e.key}:${e.value}',
+        ]);
+      } catch (_) {}
+    }());
   }
 
   Duration _zeroHopGap() =>

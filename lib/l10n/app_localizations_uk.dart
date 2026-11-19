@@ -445,6 +445,12 @@ class AppLocalizationsUk extends AppLocalizations {
   String get voiceMute_unmutedNote => 'Voice unmuted in this channel';
 
   @override
+  String get vox_adaptiveSpacingTitle => 'Adaptive spacing';
+
+  @override
+  String get vox_adaptiveSpacingSubtitle => 'Packets learn to go closer together while the farthest listeners lose almost none, and back off as soon as they lose more. Needs Fast MediaMesh. Switch off for the spacing as it was.';
+
+  @override
   String get vox_dataAudioMediaSubtitle =>
       'Hear incoming photos and videos as a 2400 bps modem: it connects when one starts coming in, then you hear each packet\'s data as it arrives.';
 

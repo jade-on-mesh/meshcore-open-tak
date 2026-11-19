@@ -889,6 +889,18 @@ abstract class AppLocalizations {
   /// **'Voice unmuted in this channel'**
   String get voiceMute_unmutedNote;
 
+  /// No description provided for @vox_adaptiveSpacingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Adaptive spacing'**
+  String get vox_adaptiveSpacingTitle;
+
+  /// No description provided for @vox_adaptiveSpacingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Packets learn to go closer together while the farthest listeners lose almost none, and back off as soon as they lose more. Needs Fast MediaMesh. Switch off for the spacing as it was.'**
+  String get vox_adaptiveSpacingSubtitle;
+
   /// No description provided for @vox_dataAudioMediaSubtitle.
   ///
   /// In en, this message translates to:

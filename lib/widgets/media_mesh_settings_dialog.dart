@@ -621,6 +621,24 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
             );
           },
         ),
+        // Packet spacing that learns (Fast MediaMesh only); off is the
+        // spacing as it was.
+        ListenableBuilder(
+          listenable: context.read<VoxVoiceService>(),
+          builder: (context, _) {
+            final voice = context.read<VoxVoiceService>();
+            return SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              secondary: const Icon(Icons.tune),
+              title: Text(l10n.vox_adaptiveSpacingTitle),
+              subtitle: Text(l10n.vox_adaptiveSpacingSubtitle),
+              value: voice.fastMediaMesh && voice.adaptiveSpacing,
+              onChanged: voice.fastMediaMesh
+                  ? voice.setAdaptiveSpacing
+                  : null,
+            );
+          },
+        ),
         const SizedBox(height: 16),
         DropdownButtonFormField<LoRaBandwidth>(
           key: ValueKey('bw-${_settings.bandwidth.name}'),

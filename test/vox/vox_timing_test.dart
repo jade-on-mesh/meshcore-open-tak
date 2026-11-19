@@ -253,4 +253,90 @@ void main() {
       isNull,
     );
   });
+
+  group('adaptive spacing', () {
+    VoxFloodAnswer answer(int maxHops, int gap) => VoxFloodAnswer(
+      List<int>.generate(100, (i) => i),
+      maxHops: maxHops,
+      gapMs: gap,
+    );
+    Set<int> lose(int n) => {for (var i = 0; i < n; i++) i};
+
+    test('starts at the fast gap; off is the gap as it was', () {
+      final off = VoxFloodPace(153, fast: true);
+      final on = VoxFloodPace(153, fast: true)..adaptive = true;
+      expect(off.gapMs(0), 517);
+      expect(on.gapMs(0), 517);
+      expect(on.gapMs(2), 517);
+      // Off: clean answers never take it under the fast gap.
+      for (var k = 0; k < 5; k++) {
+        off.feedback(answer(1, 517), lose(0), hops: 1, nowMs: 0);
+      }
+      expect(off.gapMs(0), 517);
+    });
+
+    test('learns down a tenth at a time to the near floor', () {
+      final p = VoxFloodPace(153, fast: true)..adaptive = true;
+      expect(voxFloodAdaptiveNearFloorMs(153), 395);
+      expect(p.feedback(answer(1, 517), lose(2), hops: 1, nowMs: 0), isTrue);
+      expect(p.gapMs(1, nowMs: 0), 465);
+      for (var k = 0; k < 5; k++) {
+        p.feedback(answer(1, p.gapMs(1)), lose(1), hops: 1, nowMs: 0);
+      }
+      expect(p.gapMs(0, nowMs: 0), 395);
+      // Far answers keep their own gap, never under the fast gap.
+      p.feedback(answer(2, 517), lose(0), hops: 3, nowMs: 0);
+      expect(p.gapMs(2, nowMs: 0), 517);
+    });
+
+    test('a nearer listener does not move the gap of a farther answer', () {
+      final p = VoxFloodPace(153, fast: true)..adaptive = true;
+      expect(p.feedback(answer(1, 517), lose(0), hops: 0, nowMs: 0), isFalse);
+      expect(p.gapMs(1, nowMs: 0), 517);
+      // Hops not known: taken as far, so it counts.
+      expect(p.feedback(answer(1, 517), lose(0), nowMs: 0), isTrue);
+    });
+
+    test('backs off on loss and holds above the gap that lost', () {
+      final p = VoxFloodPace(153, fast: true)..adaptive = true;
+      for (var k = 0; k < 6; k++) {
+        p.feedback(answer(1, p.gapMs(1)), lose(0), hops: 1, nowMs: 0);
+      }
+      expect(p.gapMs(1, nowMs: 0), 395);
+      // 12% lost at 395: up a quarter, held 10% above 395 for 30 minutes.
+      p.feedback(answer(1, 395), lose(12), hops: 1, nowMs: 1000);
+      expect(p.gapMs(1, nowMs: 1000), 493);
+      for (var k = 0; k < 4; k++) {
+        p.feedback(answer(1, p.gapMs(1)), lose(0), hops: 1, nowMs: 2000);
+      }
+      expect(p.gapMs(1, nowMs: 2000), 434);
+      // After the hold, it may try lower again.
+      final later = 1000 + voxFloodAdaptiveHoldMs + 1;
+      p.feedback(answer(1, 434), lose(0), hops: 1, nowMs: later);
+      expect(p.gapMs(1, nowMs: later), 395);
+      // A third lost: up by half.
+      p.feedback(answer(1, 395), lose(40), hops: 1, nowMs: later);
+      expect(p.gapMs(1, nowMs: later), 592);
+      // A clean report after a lossy one on the same answer doesn't undo it.
+      final a = answer(1, 592);
+      p.feedback(a, lose(20), hops: 1, nowMs: later);
+      final after = p.gapMs(1, nowMs: later);
+      p.feedback(a, lose(0), hops: 1, nowMs: later);
+      expect(p.gapMs(1, nowMs: later), after);
+    });
+
+    test('learnt gaps are kept across restarts, per airtime', () {
+      final p = VoxFloodPace(153, fast: true)..adaptive = true;
+      p.feedback(answer(1, 517), lose(0), hops: 1, nowMs: 0);
+      final saved = p.saveAdaptive();
+      final q = VoxFloodPace(153, fast: true)
+        ..adaptive = true
+        ..restoreAdaptive(saved);
+      expect(q.gapMs(1, nowMs: 0), 465);
+      final other = VoxFloodPace(338, fast: true)
+        ..adaptive = true
+        ..restoreAdaptive(saved);
+      expect(other.gapMs(1, nowMs: 0), voxFloodFastBaseGapMs(338));
+    });
+  });
 }

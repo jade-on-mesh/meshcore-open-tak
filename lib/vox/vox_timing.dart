@@ -280,6 +280,29 @@ int voxFloodSlowGapMs(int airMs) => 2 * voxFloodBaseGapMs(airMs);
 /// more than any number who didn't: it speeds the pace up (undoing a slowing
 /// that answer caused), and after it no report slows it. Each answer moves
 /// the pace at most once each way.
+/// Adaptive spacing: the tightest an answer to listeners 0-1 hops away may
+/// learn (1.6 airtimes and a little, at least 300 ms). Those 2+ hops away
+/// keep [voxFloodFastBaseGapMs]: a chain of repeaters carries a packet about
+/// every three relay times however close they're sent.
+int voxFloodAdaptiveNearFloorMs(int airMs) =>
+    max(300, (airMs * 1.6).round() + 150);
+
+/// Adaptive spacing: after an answer at a gap lost packets, the gap stays
+/// 10% above it this long.
+const int voxFloodAdaptiveHoldMs = 30 * 60 * 1000;
+
+/// One distance's learnt gap (adaptive spacing): for answers whose farthest
+/// listener is 0-1 hops away, or 2+.
+class _PaceBand {
+  _PaceBand(this.gap);
+  int gap;
+
+  /// The gap an answer lost packets at, and until when the gap stays 10%
+  /// above it (ms since the epoch).
+  int failed = 0;
+  int holdUntil = 0;
+}
+
 class VoxFloodPace {
   VoxFloodPace(this.airMs, {this.fast = false})
     : _gapMs = fast ? voxFloodFastBaseGapMs(airMs) : voxFloodBaseGapMs(airMs);
@@ -304,6 +327,72 @@ class VoxFloodPace {
   int get _base =>
       fast ? voxFloodFastBaseGapMs(airMs) : voxFloodBaseGapMs(airMs);
 
+  /// Adaptive spacing (with [fast]): a gap learnt for each distance, near
+  /// (farthest listener 0-1 hops) and far (2+). Each starts at the fast base
+  /// gap. An answer whose farthest listener (or one farther) lost under 3%
+  /// takes its distance's gap down a tenth, near no lower than
+  /// [voxFloodAdaptiveNearFloorMs], far no lower than the fast base. One
+  /// that lost 10% puts it up a quarter, a third or more by half, and the
+  /// gap then stays 10% above the one that lost for
+  /// [voxFloodAdaptiveHoldMs]. Nearer listeners' reports don't move it: a
+  /// listener near the sender hardly ever loses a packet, while tighter
+  /// spacing costs the far ones first. Off: the single gap above, as before.
+  bool adaptive = false;
+
+  bool get _adaptiveOn => fast && adaptive;
+  int _bandAir = -1;
+  late _PaceBand _near;
+  late _PaceBand _far;
+
+  void _bands() {
+    if (_bandAir == airMs) return;
+    _bandAir = airMs;
+    _near = _PaceBand(_base);
+    _far = _PaceBand(_base);
+  }
+
+  int _floorFor(bool far, int nowMs) {
+    _bands();
+    final b = far ? _far : _near;
+    var floor = far ? _base : voxFloodAdaptiveNearFloorMs(airMs);
+    if (nowMs < b.holdUntil) floor = max(floor, b.failed * 11 ~/ 10);
+    return min(floor, voxFloodSlowGapMs(airMs));
+  }
+
+  /// The learnt gaps and holds, to keep across restarts (one line), and
+  /// back. A line saved at another airtime is ignored.
+  String saveAdaptive() {
+    _bands();
+    return [
+      airMs,
+      _near.gap,
+      _near.failed,
+      _near.holdUntil,
+      _far.gap,
+      _far.failed,
+      _far.holdUntil,
+    ].join(',');
+  }
+
+  void restoreAdaptive(String? line) {
+    final v = line?.split(',').map(int.tryParse).toList();
+    if (v == null || v.length != 7 || v.any((x) => x == null)) return;
+    if (v[0] != airMs) return;
+    _bands();
+    _near
+      ..gap = v[1]!
+      ..failed = v[2]!
+      ..holdUntil = v[3]!;
+    _far
+      ..gap = v[4]!
+      ..failed = v[5]!
+      ..holdUntil = v[6]!;
+  }
+
+  /// For the log: how the gap for [hops] was set.
+  String adaptiveNote(int hops) =>
+      _adaptiveOn ? ' (adaptive, ${hops >= 2 ? 'far' : 'near'})' : '';
+
   /// The base gap, or for a listener 2+ hops away the average time for our
   /// packet to clear the next two repeaters (three airtimes and two relay
   /// waits of 1.25 airtimes at 1.15), whichever is longer. Fast: the fast
@@ -313,8 +402,18 @@ class VoxFloodPace {
       : max(voxFloodBaseGapMs(airMs), (airMs * (3 + 2 * 1.25 * 1.15)).round());
 
   /// The gap now, for a listener [hops] away.
-  int gapMs(int hops) =>
-      _gapMs.clamp(fastGapMs(hops), voxFloodSlowGapMs(airMs));
+  int gapMs(int hops, {int? nowMs}) {
+    if (_adaptiveOn) {
+      _bands();
+      final far = hops >= 2;
+      final now = nowMs ?? DateTime.now().millisecondsSinceEpoch;
+      return (far ? _far : _near).gap.clamp(
+        _floorFor(far, now),
+        voxFloodSlowGapMs(airMs),
+      );
+    }
+    return _gapMs.clamp(fastGapMs(hops), voxFloodSlowGapMs(airMs));
+  }
 
   /// The wait before answering a request that came [hops] repeaters.
   /// (voxFloodSettleMaxMs is the longest it can be.)
@@ -323,11 +422,18 @@ class VoxFloodPace {
       : (min(hops, 2) + _extraRelays).clamp(0, 4) * voxRelayMs(airMs);
 
   /// A listener's request that followed [answer]: [missing] is what it still
-  /// lacks.
-  void feedback(VoxFloodAnswer answer, Set<int> missing) {
+  /// lacks; it came [hops] repeaters (null: not known, taken as far).
+  /// True when it moved an adaptive gap (worth saving).
+  bool feedback(
+    VoxFloodAnswer answer,
+    Set<int> missing, {
+    int? hops,
+    int? nowMs,
+  }) {
     final sent = answer.sent;
-    if (sent.isEmpty) return;
+    if (sent.isEmpty) return false;
     final lost = sent.where(missing.contains).length;
+    final moved = _adaptiveOn && _adapt(answer, lost, hops, nowMs);
     final pct = min(lost * 100 ~/ sent.length, 40);
     if (pct > lossPct) {
       lossPct = pct;
@@ -359,14 +465,53 @@ class VoxFloodPace {
       answer._settleUp = true;
       _extraRelays = min(_extraRelays + 1, 2);
     }
+    return moved;
+  }
+
+  /// Adaptive spacing: [lost] of [answer]'s packets were missing for a
+  /// listener [hops] away. Only a listener as far as the answer's farthest
+  /// (or farther) moves its distance's gap, at most once each way.
+  bool _adapt(VoxFloodAnswer answer, int lost, int? hops, int? nowMs) {
+    _bands();
+    final from = hops ?? 3;
+    if (from < answer.maxHops) return false;
+    final far = answer.maxHops >= 2;
+    final b = far ? _far : _near;
+    final now = nowMs ?? DateTime.now().millisecondsSinceEpoch;
+    final n = answer.sent.length;
+    if (lost * 10 >= n) {
+      if (answer._adaptUp) return false;
+      answer._adaptUp = true;
+      final at = answer.gapMs > 0 ? answer.gapMs : b.gap;
+      b.failed = now < b.holdUntil ? max(b.failed, at) : at;
+      b.holdUntil = now + voxFloodAdaptiveHoldMs;
+      final up = lost * 3 >= n ? b.gap * 3 ~/ 2 : b.gap * 5 ~/ 4;
+      b.gap = min(max(up, _floorFor(far, now)), voxFloodSlowGapMs(airMs));
+      return true;
+    }
+    if (lost * 100 < n * 3 && !answer._adaptDown && !answer._adaptUp) {
+      answer._adaptDown = true;
+      final down = max(b.gap * 9 ~/ 10, _floorFor(far, now));
+      if (down == b.gap) return false;
+      b.gap = down;
+      return true;
+    }
+    return false;
   }
 }
 
 /// One answer on a channel: the data packets it sent, in order, and what
 /// listeners' requests after it have done to the pace (VoxFloodPace).
 class VoxFloodAnswer {
-  VoxFloodAnswer(this.sent);
+  VoxFloodAnswer(this.sent, {this.maxHops = 3, this.gapMs = 0});
   final List<int> sent;
+
+  /// Its farthest listener's hops, and the gap it was sent at (adaptive
+  /// spacing).
+  final int maxHops;
+  final int gapMs;
+  bool _adaptDown = false;
+  bool _adaptUp = false;
   bool _clean = false;
   bool _slowed = false;
   bool _firstCame = false;

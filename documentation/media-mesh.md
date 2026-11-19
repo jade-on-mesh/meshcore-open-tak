@@ -185,6 +185,14 @@ A listener missing packets asks for them, and the photo's sender answers with ju
 
 Wadamesh TAK standalones do the same (**Settings → MediaMesh → Fast MediaMesh**). Older apps and standalones still get every packet itself: they don't ask for repair packets, and they ignore any they hear.
 
+**Adaptive spacing** (**Settings → MediaMesh Settings**, under Fast MediaMesh; on by default, needs Fast MediaMesh). The gap between an answer's packets learns from the requests that follow it, separately for answers whose farthest listener is 0-1 hops away and for those 2+ hops away. Both start at the fast gap (2.4 airtimes and 150 ms: 517 ms at 153 ms a packet).
+- An answer whose farthest listener (or one farther) lost under 3% takes its gap down a tenth: for 0-1 hops no lower than 1.6 airtimes and 150 ms (395 ms at 153 ms a packet), for 2+ hops no lower than the fast gap, since a chain of repeaters carries a packet only about every three relay times however close they're sent.
+- One that lost 10% puts it up a quarter, a third or more by half, and the gap then stays 10% above the one that lost for 30 minutes.
+- A nearer listener's report doesn't move it: a listener near the sender hardly ever loses a packet, while tighter spacing costs the far ones first.
+- The learnt gaps are kept across restarts, per channel, and start again when the radio2 settings change. The sender's log line says "N ms apart (adaptive, near)" or "(adaptive, far)".
+
+Switch it off for the spacing of the 2026-11-18 field test (a 3-part SuperMax in 10.0 minutes), kept as the branch `mediamesh-gold-2026-11-18` in this repo and in Wadamesh TAK.
+
 **Rolling back.** Switch Fast MediaMesh off, on one phone or standalone or on all of them, and transfers work exactly as they did before. That covers the requests, the answers and the spacing. Phones and standalones with it on and off still work together. To take it out of the app altogether, revert the pull request that added it (and its Wadamesh TAK counterpart).
 
 ## Transfer test
