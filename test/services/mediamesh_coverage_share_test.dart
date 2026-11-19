@@ -42,6 +42,17 @@ void main() {
       coverageEndpoint('http://192.168.1.5:3000/corescope/?x=1#y').toString(),
       'http://192.168.1.5:3000/corescope/api/mediamesh/coverage-points',
     );
+    // the full address, as it is (not the path twice)
+    expect(
+      coverageEndpoint(
+        'https://analyzer.cascadiamesh.org/api/mediamesh/coverage-points/',
+      ).toString(),
+      'https://analyzer.cascadiamesh.org/api/mediamesh/coverage-points',
+    );
+    expect(
+      coverageEndpoint('https://analyzer.cascadiamesh.org').toString(),
+      defaultCoverageAnalyzer,
+    );
     expect(coverageEndpoint(''), isNull);
     expect(coverageEndpoint('ftp://example.org'), isNull);
     expect(coverageEndpoint('not an address'), isNull);

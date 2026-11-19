@@ -5922,7 +5922,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get coverage_analyzer => 'Analyzer';
 
   @override
-  String get coverage_analyzerHelp => 'Outside CascadiaMesh? Enter your area\'s CoreScope analyzer.';
+  String get coverage_analyzerHelp => 'Where the points go. Outside CascadiaMesh? Enter your area\'s analyzer: its upload address, or just its address.';
 
   @override
   String get coverage_analyzerBad => 'That isn\'t a web address';

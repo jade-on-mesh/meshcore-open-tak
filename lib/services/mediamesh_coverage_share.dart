@@ -16,8 +16,10 @@ import 'package:crypto/crypto.dart' as crypto;
 
 import 'mediamesh_coverage.dart';
 
-/// Where points go unless changed: the CascadiaMesh analyzer.
-const String defaultCoverageAnalyzer = 'https://analyzer.cascadiamesh.org';
+/// Where points go unless changed: the CascadiaMesh analyzer's upload address.
+const String defaultCoverageAnalyzer =
+    'https://analyzer.cascadiamesh.org/api/mediamesh/coverage-points';
+const String _coveragePath = '/api/mediamesh/coverage-points';
 
 /// The most points in one batch (the analyzer's limit).
 const int coverageBatchMax = 500;
@@ -25,9 +27,11 @@ const int coverageBatchMax = 500;
 const String coverageSignPrefix = 'corescope-coverage:';
 const String coverageDeletePrefix = 'corescope-coverage-delete:';
 
-/// The upload address for what someone typed as the analyzer: "analyzer.
-/// example.org", "https://analyzer.example.org/", or with a path (kept, so an
-/// analyzer under a sub-path works). null when it isn't a web address.
+/// The upload address for what someone typed as the analyzer: the full
+/// address the points go to ("https://analyzer.example.org/api/mediamesh/
+/// coverage-points"), kept as it is, or just the analyzer ("analyzer.
+/// example.org", "https://host/sub-path/"), which gets the upload path added.
+/// null when it isn't a web address.
 Uri? coverageEndpoint(String analyzer) {
   var s = analyzer.trim();
   if (s.isEmpty || RegExp(r'\s').hasMatch(s)) return null;
@@ -43,12 +47,13 @@ Uri? coverageEndpoint(String analyzer) {
   while (path.endsWith('/')) {
     path = path.substring(0, path.length - 1);
   }
+  if (!path.endsWith(_coveragePath)) path = '$path$_coveragePath';
   // a new Uri: replace() keeps a query and fragment it is given null for
   return Uri(
     scheme: u.scheme,
     host: u.host,
     port: u.hasPort ? u.port : null,
-    path: '$path/api/mediamesh/coverage-points',
+    path: path,
   );
 }
 

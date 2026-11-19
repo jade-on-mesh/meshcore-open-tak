@@ -3229,7 +3229,7 @@
   "coverage_share": "Share coverage points",
   "coverage_shareHelp": "Sends what you record to the analyzer below, signed by your radio, so its coverage map is checked against real measurements. It shows them as 200 m squares, leaves out where each trip starts and ends, and never says whose they are. Off: nothing leaves your phone.",
   "coverage_analyzer": "Analyzer",
-  "coverage_analyzerHelp": "Outside CascadiaMesh? Enter your area's CoreScope analyzer.",
+  "coverage_analyzerHelp": "Where the points go. Outside CascadiaMesh? Enter your area's analyzer: its upload address, or just its address.",
   "coverage_analyzerBad": "That isn't a web address",
   "coverage_sendNow": "Send now",
   "coverage_sending": "Sending…",

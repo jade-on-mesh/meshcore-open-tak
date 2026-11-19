@@ -10226,7 +10226,7 @@ abstract class AppLocalizations {
   /// No description provided for @coverage_analyzerHelp.
   ///
   /// In en, this message translates to:
-  /// **'Outside CascadiaMesh? Enter your area\'s CoreScope analyzer.'**
+  /// **'Where the points go. Outside CascadiaMesh? Enter your area\'s analyzer: its upload address, or just its address.'**
   String get coverage_analyzerHelp;
 
   /// No description provided for @coverage_analyzerBad.
