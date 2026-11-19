@@ -148,21 +148,23 @@ void main() {
     expect(voxFountainPassShare(100, 90), voxFountainPassShare(100, 40));
   });
 
-  test('pace learns the loss of its answers: up at once, down by a quarter',
-      () {
-    final p = VoxFloodPace(338, fast: true);
-    final a = VoxFloodAnswer(List.generate(100, (i) => i));
-    p.feedback(a, {for (var i = 0; i < 20; i++) i * 5});
-    expect(p.lossPct, 20);
-    p.feedback(a, {for (var i = 0; i < 30; i++) i * 3});
-    expect(p.lossPct, 30);
-    final b = VoxFloodAnswer(List.generate(100, (i) => i));
-    p.feedback(b, {});
-    expect(p.lossPct, 22);
-    final c = VoxFloodAnswer(List.generate(10, (i) => i));
-    p.feedback(c, {for (var i = 0; i < 10; i++) i});
-    expect(p.lossPct, 40);
-  });
+  test(
+    'pace learns the loss of its answers: up at once, down by a quarter',
+    () {
+      final p = VoxFloodPace(338, fast: true);
+      final a = VoxFloodAnswer(List.generate(100, (i) => i));
+      p.feedback(a, {for (var i = 0; i < 20; i++) i * 5});
+      expect(p.lossPct, 20);
+      p.feedback(a, {for (var i = 0; i < 30; i++) i * 3});
+      expect(p.lossPct, 30);
+      final b = VoxFloodAnswer(List.generate(100, (i) => i));
+      p.feedback(b, {});
+      expect(p.lossPct, 22);
+      final c = VoxFloodAnswer(List.generate(10, (i) => i));
+      p.feedback(c, {for (var i = 0; i < 10; i++) i});
+      expect(p.lossPct, 40);
+    },
+  );
 
   test('a request waits while MediaMesh is busy, up to 3 minutes', () {
     expect(
