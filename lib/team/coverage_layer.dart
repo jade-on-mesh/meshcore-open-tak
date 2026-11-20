@@ -21,12 +21,47 @@ Color coverageColor(MediaMeshReach r) => switch (r) {
   MediaMeshReach.none => const Color(0xFF6B7280),
 };
 
+/// On a coverage dot, a long press that drops a pin, opens SALUTE and the
+/// rest of the map's press menu has to be held this long (counted from the
+/// touch): there a shorter press means the dot. Elsewhere the map's usual
+/// long press stands.
+const Duration coverageDropHold = Duration(milliseconds: 1200);
+
+/// The coverage dot under [point] (on screen, relative to the map) for
+/// [camera], nearest first, or null: none shown there.
+CoverageSample? coverageSampleAt(
+  BuildContext context,
+  MapCamera camera,
+  Offset point,
+) {
+  MediaMeshCoverageService cov;
+  try {
+    cov = context.read<MediaMeshCoverageService>();
+  } on ProviderNotFoundException {
+    return null;
+  }
+  if (!cov.show) return null;
+  const reach = MediaMeshCoverageLayer.hitRadius;
+  CoverageSample? best;
+  var bestD = reach * reach;
+  for (final s in cov.samples) {
+    final at = camera.latLngToScreenOffset(LatLng(s.lat, s.lon));
+    final d = (at - point).distanceSquared;
+    if (d <= bestD) {
+      bestD = d;
+      best = s;
+    }
+  }
+  return best;
+}
+
 class MediaMeshCoverageLayer extends StatelessWidget {
   const MediaMeshCoverageLayer({super.key});
 
   /// The dot's size, and the finger-sized area around it that takes a tap.
   static const double _dot = 12;
   static const double _hit = 28;
+  static const double hitRadius = _hit / 2;
 
   @override
   Widget build(BuildContext context) {
