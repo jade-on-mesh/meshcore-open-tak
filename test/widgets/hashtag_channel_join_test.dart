@@ -3,13 +3,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meshcore_open/models/channel.dart';
 import 'package:meshcore_open/widgets/hashtag_channel_join.dart';
 
-List<String> tags(String text) => [
-  for (final e in linkify(
-    text,
-    linkifiers: const [UrlLinkifier(), HashtagLinkifier()],
-  ))
-    if (e is LinkableElement && e.url.startsWith(hashtagLinkScheme)) e.text,
-];
+List<String> tags(String text) {
+  const options = LinkifyOptions();
+  var elements = <LinkifyElement>[TextElement(text)];
+  for (final l in const <Linkifier>[UrlLinkifier(), HashtagLinkifier()]) {
+    elements = l.parse(elements, options);
+  }
+  return [
+    for (final e in elements)
+      if (e is LinkableElement && e.url.startsWith(hashtagLinkScheme)) e.text,
+  ];
+}
 
 void main() {
   // Every expectation here is what Wadamesh TAK's ChatHashtag::span finds in
