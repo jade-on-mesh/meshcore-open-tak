@@ -123,8 +123,7 @@ class Contact {
     // while the phone was away.
     DateTime? best = phone;
     if (radio != null &&
-        (best == null ||
-            radio.isAfter(best.add(const Duration(minutes: 2))))) {
+        (best == null || radio.isAfter(best.add(const Duration(minutes: 2))))) {
       best = radio;
     }
     best ??= usable(lastSeen) ?? heardNever;
