@@ -159,6 +159,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _handleMapContextPress(context, connector, at);
     });
   }
+
   final MapMarkerService _markerService = MapMarkerService();
   final NetworkMapOnlineController _online = NetworkMapOnlineController();
   final Set<String> _hiddenMarkerIds = {};
@@ -1077,205 +1078,211 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                   onPointerUp: _onMapPointerUp,
                   onPointerCancel: (_) => _cancelPress(),
                   child: FlutterMap(
-                  mapController: _mapController,
-                  options: MapOptions(
-                    initialCenter: center,
-                    initialZoom: initialZoom,
-                    minZoom: _mapMinZoom,
-                    maxZoom: _mapMaxZoom,
-                    interactionOptions: InteractionOptions(
-                      flags: _tak.interactionFlags(~InteractiveFlag.rotate),
-                      scrollWheelVelocity: isDesktop ? 0.012 : 0.005,
-                      cursorKeyboardRotationOptions:
-                          CursorKeyboardRotationOptions.disabled(),
-                      keyboardOptions: isDesktop
-                          ? const KeyboardOptions(
-                              enableArrowKeysPanning: true,
-                              enableWASDPanning: true,
-                              enableRFZooming: true,
-                            )
-                          : const KeyboardOptions.disabled(),
-                    ),
-                    onTap: (_, latLng) {
-                      if (_tak.onTap(latLng)) return;
-                      if (_isSelectingPoi) {
-                        setState(() {
-                          _isSelectingPoi = false;
-                        });
-                        _shareMarker(
-                          context: context,
-                          connector: connector,
-                          position: latLng,
-                          defaultLabel: context.l10n.map_pointOfInterest,
-                          flags: 'poi',
-                        );
-                        return;
-                      }
-                      // Tapping empty map dismisses selection + search.
-                      if (_selectedKey != null || _searchQuery.isNotEmpty) {
-                        setState(() {
-                          _selectedKey = null;
-                          _selectedGuessPos = null;
-                          _searchQuery = '';
-                          _searchController.clear();
-                          _searchFocus.unfocus();
-                        });
-                      }
-                    },
-                    onLongPress: (tap, latLng) {
-                      if (_tak.drawing) return;
-                      // On a MediaMesh coverage dot, the press menu (drop a
-                      // pin, SALUTE, ...) needs a longer hold; let go
-                      // before it and the dot opens instead.
-                      final dot = coverageSampleAt(
-                        context,
-                        _mapController.camera,
-                        tap.relative ?? Offset.zero,
-                      );
-                      if (dot != null && tap.relative != null) {
-                        _holdForDrop(context, connector, latLng, dot);
-                        return;
-                      }
-                      _handleMapContextPress(context, connector, latLng);
-                    },
-                    onSecondaryTap: (_, latLng) {
-                      _handleMapContextPress(context, connector, latLng);
-                    },
-                    onMapReady: () {
-                      if (showOnline) _requestOnlineData();
-                    },
-                    onMapEvent: (event) {
-                      if (event is MapEventMoveEnd ||
-                          event is MapEventFlingAnimationEnd ||
-                          event is MapEventScrollWheelZoom ||
-                          event is MapEventDoubleTapZoomEnd) {
-                        _scheduleCameraSave();
-                        if (showOnline) _requestOnlineData();
-                      }
-                    },
-                    onPositionChanged: (camera, hasGesture) {
-                      _scheduleCameraSave();
-                      // Track zoom in half-step buckets so cluster/marker
-                      // detail levels update without rebuilding every frame.
-                      final bucket = (camera.zoom * 2).roundToDouble() / 2;
-                      final shouldShow = camera.zoom >= _labelZoomThreshold;
-                      if ((bucket != _zoom || shouldShow != _showNodeLabels) &&
-                          mounted) {
-                        setState(() {
-                          _zoom = bucket;
-                          _showNodeLabels = shouldShow;
-                        });
-                      }
-                    },
-                  ),
-                  children: [
-                    tileCache.buildTileLayer(context),
-                    if (_polylines.isNotEmpty && _isBuildingPathTrace)
-                      PolylineLayer(polylines: _polylines),
-                    if (sharedMarkerPolylines.isNotEmpty)
-                      PolylineLayer(polylines: sharedMarkerPolylines),
-                    ..._tak.layers(
-                      onGoToTap: (p) =>
-                          _handleMapContextPress(context, connector, p),
-                    ),
-                    if (showOnline)
-                      ...buildNetworkMapOnlineLayers(
-                        controller: _online,
-                        repeaters: visibleOnlineRepeaters,
-                        showLinks: settings.mapShowOnlineLinks,
-                        localMarkerKeys: showLocal
-                            ? {for (final c in visibleContacts) c.publicKeyHex}
-                            : const {},
-                        onTap: (repeater) =>
-                            _showOnlineRepeater(context, connector, repeater),
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter: center,
+                      initialZoom: initialZoom,
+                      minZoom: _mapMinZoom,
+                      maxZoom: _mapMaxZoom,
+                      interactionOptions: InteractionOptions(
+                        flags: _tak.interactionFlags(~InteractiveFlag.rotate),
+                        scrollWheelVelocity: isDesktop ? 0.012 : 0.005,
+                        cursorKeyboardRotationOptions:
+                            CursorKeyboardRotationOptions.disabled(),
+                        keyboardOptions: isDesktop
+                            ? const KeyboardOptions(
+                                enableArrowKeysPanning: true,
+                                enableWASDPanning: true,
+                                enableRFZooming: true,
+                              )
+                            : const KeyboardOptions.disabled(),
                       ),
-                    MarkerLayer(
-                      markers: [
-                        if (highlightPosition != null)
-                          Marker(
-                            point: highlightPosition,
-                            width: 44,
-                            height: 44,
-                            child: IgnorePointer(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: MapPalette.batteryLow,
-                                  border: Border.all(
-                                    color: MapPalette.markerOutline,
-                                    width: 3,
-                                  ),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: MapPalette.markerShadow,
-                                      blurRadius: 8,
-                                      offset: Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(
-                                  Icons.location_on,
-                                  color: MapPalette.markerOutline,
-                                  size: 25,
-                                ),
-                              ),
-                            ),
-                          ),
-                        if (showLocal &&
-                            !settings.mapShowOverlaps &&
-                            (_zoom >= _guessedZoomThreshold ||
-                                _isBuildingPathTrace))
-                          ..._buildGuessedMarker(
-                            guessedLocations,
-                            showLabels: _showNodeLabels,
-                          ),
-                        if (showLocal)
-                          ..._buildNodeMarkersCached(
-                            visibleContacts,
-                            settings,
-                            connectorSnapshot.contactsSignature,
-                            connectorSnapshot.batterySignature,
-                            _freshness,
-                            settings.mapTimeFilterHours,
-                            settings.mapKeyPrefixEnabled,
-                            settings.mapKeyPrefix,
-                            settings.mapShowDiscoveryContacts,
-                            Object.hashAllUnordered(
-                              settings.batteryChemistryByRepeaterId.entries.map(
-                                (entry) => Object.hash(entry.key, entry.value),
-                              ),
-                            ),
-                            showLabels: _showNodeLabels,
-                            selectedContact: selectedContact,
-                          ),
-                        ..._buildPoiAndSelfMarkers(
-                          sharedMarkers,
-                          selfPosition:
-                              connector.selfLatitude != null &&
-                                  connector.selfLongitude != null
-                              ? LatLng(
-                                  connector.selfLatitude!,
-                                  connector.selfLongitude!,
-                                )
-                              : null,
-                          clusterPois:
-                              !settings.mapShowOverlaps &&
-                              !_isBuildingPathTrace,
-                        ),
-                        if (_showNodeLabels &&
-                            connector.selfLatitude != null &&
-                            connector.selfLongitude != null)
-                          _buildNodeLabelMarker(
-                            point: LatLng(
-                              connector.selfLatitude!,
-                              connector.selfLongitude!,
-                            ),
-                            label: context.l10n.pathTrace_you,
-                          ),
-                      ],
+                      onTap: (_, latLng) {
+                        if (_tak.onTap(latLng)) return;
+                        if (_isSelectingPoi) {
+                          setState(() {
+                            _isSelectingPoi = false;
+                          });
+                          _shareMarker(
+                            context: context,
+                            connector: connector,
+                            position: latLng,
+                            defaultLabel: context.l10n.map_pointOfInterest,
+                            flags: 'poi',
+                          );
+                          return;
+                        }
+                        // Tapping empty map dismisses selection + search.
+                        if (_selectedKey != null || _searchQuery.isNotEmpty) {
+                          setState(() {
+                            _selectedKey = null;
+                            _selectedGuessPos = null;
+                            _searchQuery = '';
+                            _searchController.clear();
+                            _searchFocus.unfocus();
+                          });
+                        }
+                      },
+                      onLongPress: (tap, latLng) {
+                        if (_tak.drawing) return;
+                        // On a MediaMesh coverage dot, the press menu (drop a
+                        // pin, SALUTE, ...) needs a longer hold; let go
+                        // before it and the dot opens instead.
+                        final dot = coverageSampleAt(
+                          context,
+                          _mapController.camera,
+                          tap.relative ?? Offset.zero,
+                        );
+                        if (dot != null && tap.relative != null) {
+                          _holdForDrop(context, connector, latLng, dot);
+                          return;
+                        }
+                        _handleMapContextPress(context, connector, latLng);
+                      },
+                      onSecondaryTap: (_, latLng) {
+                        _handleMapContextPress(context, connector, latLng);
+                      },
+                      onMapReady: () {
+                        if (showOnline) _requestOnlineData();
+                      },
+                      onMapEvent: (event) {
+                        if (event is MapEventMoveEnd ||
+                            event is MapEventFlingAnimationEnd ||
+                            event is MapEventScrollWheelZoom ||
+                            event is MapEventDoubleTapZoomEnd) {
+                          _scheduleCameraSave();
+                          if (showOnline) _requestOnlineData();
+                        }
+                      },
+                      onPositionChanged: (camera, hasGesture) {
+                        _scheduleCameraSave();
+                        // Track zoom in half-step buckets so cluster/marker
+                        // detail levels update without rebuilding every frame.
+                        final bucket = (camera.zoom * 2).roundToDouble() / 2;
+                        final shouldShow = camera.zoom >= _labelZoomThreshold;
+                        if ((bucket != _zoom ||
+                                shouldShow != _showNodeLabels) &&
+                            mounted) {
+                          setState(() {
+                            _zoom = bucket;
+                            _showNodeLabels = shouldShow;
+                          });
+                        }
+                      },
                     ),
-                  ],
-                ),
+                    children: [
+                      tileCache.buildTileLayer(context),
+                      if (_polylines.isNotEmpty && _isBuildingPathTrace)
+                        PolylineLayer(polylines: _polylines),
+                      if (sharedMarkerPolylines.isNotEmpty)
+                        PolylineLayer(polylines: sharedMarkerPolylines),
+                      ..._tak.layers(
+                        onGoToTap: (p) =>
+                            _handleMapContextPress(context, connector, p),
+                      ),
+                      if (showOnline)
+                        ...buildNetworkMapOnlineLayers(
+                          controller: _online,
+                          repeaters: visibleOnlineRepeaters,
+                          showLinks: settings.mapShowOnlineLinks,
+                          localMarkerKeys: showLocal
+                              ? {
+                                  for (final c in visibleContacts)
+                                    c.publicKeyHex,
+                                }
+                              : const {},
+                          onTap: (repeater) =>
+                              _showOnlineRepeater(context, connector, repeater),
+                        ),
+                      MarkerLayer(
+                        markers: [
+                          if (highlightPosition != null)
+                            Marker(
+                              point: highlightPosition,
+                              width: 44,
+                              height: 44,
+                              child: IgnorePointer(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: MapPalette.batteryLow,
+                                    border: Border.all(
+                                      color: MapPalette.markerOutline,
+                                      width: 3,
+                                    ),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: MapPalette.markerShadow,
+                                        blurRadius: 8,
+                                        offset: Offset(0, 3),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(
+                                    Icons.location_on,
+                                    color: MapPalette.markerOutline,
+                                    size: 25,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          if (showLocal &&
+                              !settings.mapShowOverlaps &&
+                              (_zoom >= _guessedZoomThreshold ||
+                                  _isBuildingPathTrace))
+                            ..._buildGuessedMarker(
+                              guessedLocations,
+                              showLabels: _showNodeLabels,
+                            ),
+                          if (showLocal)
+                            ..._buildNodeMarkersCached(
+                              visibleContacts,
+                              settings,
+                              connectorSnapshot.contactsSignature,
+                              connectorSnapshot.batterySignature,
+                              _freshness,
+                              settings.mapTimeFilterHours,
+                              settings.mapKeyPrefixEnabled,
+                              settings.mapKeyPrefix,
+                              settings.mapShowDiscoveryContacts,
+                              Object.hashAllUnordered(
+                                settings.batteryChemistryByRepeaterId.entries
+                                    .map(
+                                      (entry) =>
+                                          Object.hash(entry.key, entry.value),
+                                    ),
+                              ),
+                              showLabels: _showNodeLabels,
+                              selectedContact: selectedContact,
+                            ),
+                          ..._buildPoiAndSelfMarkers(
+                            sharedMarkers,
+                            selfPosition:
+                                connector.selfLatitude != null &&
+                                    connector.selfLongitude != null
+                                ? LatLng(
+                                    connector.selfLatitude!,
+                                    connector.selfLongitude!,
+                                  )
+                                : null,
+                            clusterPois:
+                                !settings.mapShowOverlaps &&
+                                !_isBuildingPathTrace,
+                          ),
+                          if (_showNodeLabels &&
+                              connector.selfLatitude != null &&
+                              connector.selfLongitude != null)
+                            _buildNodeLabelMarker(
+                              point: LatLng(
+                                connector.selfLatitude!,
+                                connector.selfLongitude!,
+                              ),
+                              label: context.l10n.pathTrace_you,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
                 if (selectedContact == null)
                   _buildControlRail(
