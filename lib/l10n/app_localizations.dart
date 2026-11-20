@@ -10205,6 +10205,84 @@ abstract class AppLocalizations {
   /// **'Sent contact by advert.'**
   String get contacts_zeroHopContactAdvertSent;
 
+  /// No description provided for @coverage_share.
+  ///
+  /// In en, this message translates to:
+  /// **'Share coverage points'**
+  String get coverage_share;
+
+  /// No description provided for @coverage_shareHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Sends what you record to the analyzer below, signed by your radio, so its coverage map is checked against real measurements. It shows them as 200 m squares, leaves out where each trip starts and ends, and never says whose they are. Off: nothing leaves your phone.'**
+  String get coverage_shareHelp;
+
+  /// No description provided for @coverage_analyzer.
+  ///
+  /// In en, this message translates to:
+  /// **'Analyzer'**
+  String get coverage_analyzer;
+
+  /// No description provided for @coverage_analyzerHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Where the points go. Outside CascadiaMesh? Enter your area\'s analyzer: its upload address, or just its address.'**
+  String get coverage_analyzerHelp;
+
+  /// No description provided for @coverage_analyzerBad.
+  ///
+  /// In en, this message translates to:
+  /// **'That isn\'t a web address'**
+  String get coverage_analyzerBad;
+
+  /// No description provided for @coverage_sendNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Send now'**
+  String get coverage_sendNow;
+
+  /// No description provided for @coverage_sending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending…'**
+  String get coverage_sending;
+
+  /// No description provided for @coverage_sent.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Nothing new to send} =1{1 point sent} other{{count} points sent}}'**
+  String coverage_sent(int count);
+
+  /// No description provided for @coverage_shareNotConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect the radio that recorded them: points are signed by its key.'**
+  String get coverage_shareNotConnected;
+
+  /// No description provided for @coverage_shareError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send: {error}'**
+  String coverage_shareError(String error);
+
+  /// No description provided for @coverage_removeMine.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove my points from the analyzer'**
+  String get coverage_removeMine;
+
+  /// No description provided for @coverage_removeConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove every coverage point this radio sent to {analyzer}? Points on this phone stay, and sharing switches off.'**
+  String coverage_removeConfirm(String analyzer);
+
+  /// No description provided for @coverage_removed.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{The analyzer had no points from this radio} =1{1 point removed} other{{count} points removed}}'**
+  String coverage_removed(int count);
+
   /// No description provided for @contacts_zeroHopContactAdvertFailed.
   ///
   /// In en, this message translates to:

@@ -204,6 +204,11 @@ const int cmdSendStatusReq = 27;
 const int cmdGetContactByKey = 30;
 const int cmdGetChannel = 31;
 const int cmdSetChannel = 32;
+// Sign data with the radio's own identity key (CMD_SIGN_*): MediaMesh
+// coverage points sent to an analyzer.
+const int cmdSignStart = 33;
+const int cmdSignData = 34;
+const int cmdSignFinish = 35;
 const int cmdSendTracePath = 36;
 const int cmdSetOtherParams = 38;
 const int cmdSendTelemetryReq = 39;
@@ -279,6 +284,8 @@ const int respCodeDisabled = 15;
 const int respCodeContactMsgRecvV3 = 16;
 const int respCodeChannelMsgRecvV3 = 17;
 const int respCodeChannelInfo = 18;
+const int respCodeSignStart = 19; // reply to CMD_SIGN_START: max data length
+const int respCodeSignature = 20; // reply to CMD_SIGN_FINISH: 64-byte signature
 const int respCodeCustomVars = 21;
 const int respCodeAutoAddConfig = 25;
 const int respCodeAllowedRepeatFreq = 26;
@@ -1198,6 +1205,10 @@ Uint8List buildTraceReq(int tag, int auth, int flag, {Uint8List? payload}) {
   }
   return writer.toBytes();
 }
+
+/// CMD_SIGN_DATA: [chunk] of what the radio is to sign.
+Uint8List buildSignDataFrame(List<int> chunk) =>
+    Uint8List.fromList([cmdSignData, ...chunk]);
 
 Uint8List buildExportPrivateKeyFrame() =>
     Uint8List.fromList([cmdExportPrivateKey]);

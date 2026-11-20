@@ -119,6 +119,17 @@ keeps a history: schedules (`radioat2`, `tempradioat2`), `tempradio`,
 
 On Android a notification shows while it's recording, so it keeps going with the screen off. Wadamesh TAK standalones record the same (Settings › MediaMesh › Map coverage), with the same colours.
 
+#### Sharing coverage points
+
+**Share coverage points** (under the coverage map's buttons, off by default) sends what you record to a CoreScope analyzer, where the MediaMesh coverage estimate is checked against it: the whole estimate for people on the ground moves up or down to match, a repeater with enough points of its own gets its own correction, and drives set what a car costs. The analyzer draws them as 200 m squares (green, amber, red and grey, as here), leaves out the first and last 300 m of every trip so nobody's home shows, and never says whose they are.
+
+- **Analyzer** is the address the points are sent to: `https://analyzer.cascadiamesh.org/api/mediamesh/coverage-points` unless you enter your own area's (any CoreScope with the CascadiaMesh fork's coverage points). Its upload address, or just the analyzer's address (the upload path is added).
+- Points go out about every 10 samples or 5 minutes while recording, and all that are waiting when you switch it on or tap **Send now**. Only points the connected radio recorded are sent, at most 500 at a time, each batch signed by the radio's key (`CMD_SIGN_START`/`_DATA`/`_FINISH`) over `corescope-coverage:` and the SHA-256 of the batch. The analyzer only takes radios it has heard, so send an advert first if it says it hasn't.
+- What goes: each point's time, position, GPS accuracy and speed (so the analyzer can tell a walk from a drive), and each MediaMesh repeater that answered with its key, SNR both ways and the estimated margin.
+- **Remove my points from the analyzer** asks it to delete every point that radio sent, and switches sharing off. The points on the phone stay.
+
+The analyzer side is documented in CoreScope's `docs/mediamesh-coverage-points.md`.
+
 ### Per contact and per channel
 
 Long-press a contact or channel and pick **Send on…**: *Auto* (follow the

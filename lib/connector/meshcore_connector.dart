@@ -7904,6 +7904,54 @@ class MeshCoreConnector extends ChangeNotifier {
     }
   }
 
+  /// Signs [data] with the radio's identity key (CMD_SIGN_START, _DATA,
+  /// _FINISH): the 64-byte Ed25519 signature. Throws when the radio refuses
+  /// or doesn't answer.
+  Future<Uint8List> signWithRadio(Uint8List data) async {
+    if (!isConnected) throw StateError('Not connected to a MeshCore device');
+    final started = Completer<int>();
+    final signature = Completer<Uint8List>();
+    final subscription = receivedFrames.listen((frame) {
+      if (frame.isEmpty) return;
+      if (frame[0] == respCodeSignStart && !started.isCompleted) {
+        started.complete(
+          frame.length >= 6
+              ? ByteData.sublistView(frame, 2, 6).getUint32(0, Endian.little)
+              : 0,
+        );
+      } else if (frame[0] == respCodeSignature && !signature.isCompleted) {
+        signature.complete(Uint8List.fromList(frame));
+      } else if (frame[0] == respCodeErr) {
+        if (!started.isCompleted) {
+          started.completeError(StateError('The radio refused to sign'));
+        } else if (!signature.isCompleted) {
+          signature.completeError(StateError('The radio refused to sign'));
+        }
+      }
+    });
+    try {
+      await sendFrame(Uint8List.fromList([cmdSignStart]));
+      final maxLen = await started.future.timeout(const Duration(seconds: 3));
+      if (maxLen > 0 && data.length > maxLen) {
+        throw StateError('Too much to sign (${data.length} of $maxLen bytes)');
+      }
+      for (var i = 0; i < data.length; i += 128) {
+        await sendFrame(
+          buildSignDataFrame(data.sublist(i, math.min(data.length, i + 128))),
+          waitForGenericAck: true,
+        );
+      }
+      await sendFrame(Uint8List.fromList([cmdSignFinish]));
+      final frame = await signature.future.timeout(const Duration(seconds: 3));
+      if (frame.length < 65) {
+        throw const FormatException('The radio sent a short signature');
+      }
+      return Uint8List.fromList(frame.sublist(1, 65));
+    } finally {
+      await subscription.cancel();
+    }
+  }
+
   Future<void> importPrivateKey(Uint8List keyData) async {
     if (!isConnected) throw StateError('Not connected to a MeshCore device');
     await sendFrame(
@@ -10462,6 +10510,9 @@ class MeshCoreConnector extends ChangeNotifier {
       case respCodeStats:
         _handleStatsFrame(frame);
         break;
+      case respCodeSignStart:
+      case respCodeSignature:
+        break; // signWithRadio listens for these itself
       case respCodeCustomVars:
         _handleCustomVars(frame);
         break;
