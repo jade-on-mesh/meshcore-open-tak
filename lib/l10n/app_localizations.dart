@@ -583,6 +583,12 @@ abstract class AppLocalizations {
   /// **'MeshCore Open TAK'**
   String get scanner_title;
 
+  /// No description provided for @scanner_windowsLinkFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows couldn\'t open a Bluetooth link to {name}. Make sure it\'s in range and not connected to a phone or another app, then try again. If your radio uses a PIN, pair it first in Windows Settings > Bluetooth & devices.'**
+  String scanner_windowsLinkFailed(String name);
+
   /// No description provided for @connectionChoiceUsbLabel.
   ///
   /// In en, this message translates to:

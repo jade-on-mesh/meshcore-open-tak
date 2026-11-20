@@ -120,6 +120,8 @@
   "common_autoRefresh": "Autorefresh",
   "common_interval": "Interval",
   "scanner_title": "MeshCore Open TAK",
+  "scanner_windowsLinkFailed": "Windows couldn't open a Bluetooth link to {name}. Make sure it's in range and not connected to a phone or another app, then try again. If your radio uses a PIN, pair it first in Windows Settings > Bluetooth & devices.",
+  "@scanner_windowsLinkFailed": {"placeholders": {"name": {"type": "String"}}},
   "connectionChoiceUsbLabel": "USB",
   "contactPhoto_set": "Set photo",
   "contactPhoto_change": "Change photo",

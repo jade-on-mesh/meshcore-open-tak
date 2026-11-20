@@ -35,6 +35,7 @@ import '../services/otp_sync_service.dart';
 import '../services/passphrase_lock_service.dart';
 import '../services/ble_debug_log_service.dart';
 import '../services/linux_ble_error_classifier.dart';
+import '../services/windows_ble_link_error.dart';
 import '../services/linux_ble_pairing_service_stub.dart'
     if (dart.library.io) '../services/linux_ble_pairing_service.dart';
 import '../services/image_chunk_transport.dart'
@@ -6603,12 +6604,18 @@ class MeshCoreConnector extends ChangeNotifier {
           }
         }
       } else {
-        Future<void> attemptConnect() {
-          return device.connect(
+        Future<void> attemptConnect() async {
+          await device.connect(
             timeout: connectTimeout,
             mtu: null,
             license: License.nonprofit,
           );
+          // Windows reports a link that failed to open by returning, not
+          // throwing (WindowsBleLinkException): check it here so it is
+          // retried, rather than failing later in discoverServices.
+          if (PlatformInfo.isWindows && !device.isConnected) {
+            throw const WindowsBleLinkException();
+          }
         }
 
         // A previous app session (e.g. killed from the iOS app switcher) can
@@ -6641,32 +6648,41 @@ class MeshCoreConnector extends ChangeNotifier {
             rethrow;
           }
           // Fast (non-timeout) failures are usually a stale connection left by
-          // a previous session; clean up and retry once before surfacing.
-          _appDebugLogService?.warn(
-            'Retrying connect once after clearing possible stale connection',
-            tag: 'BLE Connect',
-          );
-          try {
-            await device.disconnect(queue: false);
-          } catch (cleanupError) {
+          // a previous session; clean up and retry before surfacing. Windows
+          // often needs a second try, and a little longer to let go of the
+          // half-open device, so it gets two retries 1.5 s apart.
+          final retries = PlatformInfo.isWindows ? 2 : 1;
+          final retryDelay = PlatformInfo.isWindows
+              ? const Duration(milliseconds: 1500)
+              : const Duration(milliseconds: 500);
+          for (var attempt = 1; ; attempt++) {
             _appDebugLogService?.warn(
-              'Pre-retry cleanup disconnect failed (continuing): $cleanupError',
+              'Retrying connect ($attempt of $retries) after clearing possible stale connection',
               tag: 'BLE Connect',
             );
-          }
-          await Future<void>.delayed(const Duration(milliseconds: 500));
-          try {
-            await attemptConnect();
-            _appDebugLogService?.info(
-              'Retry connect succeeded after stale-connection cleanup',
-              tag: 'BLE Connect',
-            );
-          } catch (retryError) {
-            _appDebugLogService?.error(
-              'device.connect() retry failure: $retryError',
-              tag: 'BLE Connect',
-            );
-            rethrow;
+            try {
+              await device.disconnect(queue: false);
+            } catch (cleanupError) {
+              _appDebugLogService?.warn(
+                'Pre-retry cleanup disconnect failed (continuing): $cleanupError',
+                tag: 'BLE Connect',
+              );
+            }
+            await Future<void>.delayed(retryDelay);
+            try {
+              await attemptConnect();
+              _appDebugLogService?.info(
+                'Retry connect succeeded after stale-connection cleanup',
+                tag: 'BLE Connect',
+              );
+              break;
+            } catch (retryError) {
+              _appDebugLogService?.error(
+                'device.connect() retry failure: $retryError',
+                tag: 'BLE Connect',
+              );
+              if (attempt >= retries) rethrow;
+            }
           }
         }
       }
