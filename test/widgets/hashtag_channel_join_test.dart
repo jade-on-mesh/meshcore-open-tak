@@ -27,18 +27,21 @@ void main() {
     expect(tags('#${'a' * 30}'), ['#${'a' * 30}']);
   });
 
-  test('not a hashtag: numbers, colours, mid-word, URLs, doubles, too long', () {
-    expect(tags('route #40'), isEmpty);
-    expect(tags('color #FF8800 ok'), isEmpty);
-    expect(tags('#1a2b3c ok'), isEmpty);
-    expect(tags('Face #DEADBE'), isEmpty);
-    expect(tags('abc#def'), isEmpty);
-    expect(tags('see https://example.com/page#section'), isEmpty);
-    expect(tags('##x'), isEmpty);
-    expect(tags('#_no #-no'), isEmpty);
-    expect(tags('#${'a' * 31}'), isEmpty);
-    expect(tags('#tag😀'), isEmpty);
-  });
+  test(
+    'not a hashtag: numbers, colours, mid-word, URLs, doubles, too long',
+    () {
+      expect(tags('route #40'), isEmpty);
+      expect(tags('color #FF8800 ok'), isEmpty);
+      expect(tags('#1a2b3c ok'), isEmpty);
+      expect(tags('Face #DEADBE'), isEmpty);
+      expect(tags('abc#def'), isEmpty);
+      expect(tags('see https://example.com/page#section'), isEmpty);
+      expect(tags('##x'), isEmpty);
+      expect(tags('#_no #-no'), isEmpty);
+      expect(tags('#${'a' * 31}'), isEmpty);
+      expect(tags('#tag😀'), isEmpty);
+    },
+  );
 
   test('a hashtag names its channel as Wadamesh does', () {
     expect(hashtagChannelName('MediaMesh'), '#mediamesh');

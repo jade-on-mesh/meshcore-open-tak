@@ -103,8 +103,7 @@ List<(int, int)> hashtagSpans(String text) {
     final first = name[0];
     final startsWithDigit = first >= 0x30 && first <= 0x39;
     final nonHexLetter = name.any(
-      (c) =>
-          ((c >= 0x67 && c <= 0x7A) || (c >= 0x47 && c <= 0x5A)),
+      (c) => ((c >= 0x67 && c <= 0x7A) || (c >= 0x47 && c <= 0x5A)),
     );
     final malformedSixDigitHex = bytes == 7 && nonHexLetter;
     if (bytes >= 32 ||
@@ -214,15 +213,15 @@ Future<void> openOrJoinHashtagChannel(BuildContext context, String tag) async {
   final slot = await connector.freeChannelSlotWhenKnown();
   if (!context.mounted) return;
   if (slot == null) {
-    showDismissibleSnackBar(
-      context,
-      content: Text(l10n.channels_noFreeSlots),
-    );
+    showDismissibleSnackBar(context, content: Text(l10n.channels_noFreeSlots));
     return;
   }
   await connector.setChannel(slot, name, psk);
   if (!context.mounted) return;
-  showDismissibleSnackBar(context, content: Text(l10n.chat_hashtagJoined(name)));
+  showDismissibleSnackBar(
+    context,
+    content: Text(l10n.chat_hashtagJoined(name)),
+  );
   // The radio's channel list catches up shortly after: open it when it does.
   for (var i = 0; i < 25; i++) {
     final c = find();
