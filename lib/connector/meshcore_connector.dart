@@ -10385,10 +10385,14 @@ class MeshCoreConnector extends ChangeNotifier {
         if (frame.length >= 1 + pubKeySize) {
           // Heard now: the refreshed contact that follows carries this time
           // (Contact.heardAt), so lists sorted by "heard recently" move it up.
-          _advertHeardAt[pubKeyToHex(
-                Uint8List.fromList(frame.sublist(1, 1 + pubKeySize)),
-              )] =
-              DateTime.now();
+          final heardKey = pubKeyToHex(
+            Uint8List.fromList(frame.sublist(1, 1 + pubKeySize)),
+          );
+          _advertHeardAt[heardKey] = DateTime.now();
+          _appDebugLogService?.info(
+            'Advert heard from ${heardKey.substring(0, 12)}: refreshing it',
+            tag: 'Contacts',
+          );
           unawaited(
             getContactByKey(
               Uint8List.fromList(frame.sublist(1, 1 + pubKeySize)),
@@ -11155,6 +11159,11 @@ class MeshCoreConnector extends ChangeNotifier {
     }
     // Heard now, by the phone's clock (Contact.heardAt).
     final contact = parsed.copyWith(heardAt: DateTime.now());
+    _appDebugLogService?.info(
+      'New advert heard from ${contact.name} '
+      '(${contact.publicKeyHex.substring(0, 12)})',
+      tag: 'Contacts',
+    );
     _heardAtByKey[contact.publicKeyHex] = contact.heardAt!;
     _handleDiscovery(contact, frame);
     notifyListeners();
