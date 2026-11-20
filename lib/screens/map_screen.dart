@@ -11,6 +11,7 @@ import 'package:meshcore_open/screens/path_trace_map.dart';
 import 'package:meshcore_open/widgets/app_bar.dart';
 import 'package:provider/provider.dart';
 
+import '../team/coverage_layer.dart';
 import '../team/map_screen_tak.dart';
 import '../team/watch_auto_zoom.dart';
 import '../connector/meshcore_connector.dart';
@@ -25,6 +26,7 @@ import '../l10n/contact_localization.dart';
 import '../services/app_settings_service.dart';
 import '../services/path_history_service.dart';
 import '../services/map_marker_service.dart';
+import '../services/mediamesh_coverage.dart';
 import '../services/mediamesh_repeaters.dart';
 import '../services/map_tile_cache_service.dart';
 import '../services/telemetry_location_request.dart';
@@ -100,6 +102,63 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const double _mapMaxZoom = 18.0;
 
   final MapController _mapController = MapController();
+
+  // A press on a MediaMesh coverage dot (coverageDropHold): where and when
+  // the finger went down, whether it's still down there, and the dot it
+  // opens if let go before the hold is up.
+  DateTime? _pressDownAt;
+  Offset? _pressDownPos;
+  bool _pressHeld = false;
+  Timer? _dropHold;
+  CoverageSample? _dropHoldDot;
+
+  void _onMapPointerDown(PointerDownEvent e) {
+    _pressDownAt = DateTime.now();
+    _pressDownPos = e.position;
+    _pressHeld = true;
+  }
+
+  void _onMapPointerMove(PointerMoveEvent e) {
+    final at = _pressDownPos;
+    if (at != null && (e.position - at).distance > 18) _cancelPress();
+  }
+
+  void _onMapPointerUp(PointerUpEvent e) {
+    final dot = _dropHoldDot;
+    final waiting = _dropHold?.isActive ?? false;
+    _cancelPress();
+    // Let go on a dot before the hold was up: it meant the dot.
+    if (waiting && dot != null && mounted) {
+      unawaited(showCoveragePoint(context, dot));
+    }
+  }
+
+  void _cancelPress() {
+    _pressHeld = false;
+    _dropHold?.cancel();
+    _dropHold = null;
+    _dropHoldDot = null;
+  }
+
+  /// The map's long press landed on a coverage dot: open the press menu
+  /// only if the finger stays down until [coverageDropHold].
+  void _holdForDrop(
+    BuildContext context,
+    MeshCoreConnector connector,
+    LatLng at,
+    CoverageSample dot,
+  ) {
+    final since = DateTime.now().difference(_pressDownAt ?? DateTime.now());
+    final left = coverageDropHold - since;
+    _dropHold?.cancel();
+    _dropHoldDot = dot;
+    _dropHold = Timer(left.isNegative ? Duration.zero : left, () {
+      _dropHoldDot = null;
+      if (!_pressHeld || !mounted) return;
+      HapticFeedback.mediumImpact();
+      _handleMapContextPress(context, connector, at);
+    });
+  }
   final MapMarkerService _markerService = MapMarkerService();
   final NetworkMapOnlineController _online = NetworkMapOnlineController();
   final Set<String> _hiddenMarkerIds = {};
@@ -270,6 +329,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _ageTimer?.cancel();
+    _dropHold?.cancel();
     _online.removeListener(_onOnlineChanged);
     MediaMeshRepeaters.instance.removeListener(_onMediaMeshChanged);
     _online.dispose();
@@ -1011,7 +1071,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             ),
             body: Stack(
               children: [
-                FlutterMap(
+                Listener(
+                  onPointerDown: _onMapPointerDown,
+                  onPointerMove: _onMapPointerMove,
+                  onPointerUp: _onMapPointerUp,
+                  onPointerCancel: (_) => _cancelPress(),
+                  child: FlutterMap(
                   mapController: _mapController,
                   options: MapOptions(
                     initialCenter: center,
@@ -1057,8 +1122,20 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         });
                       }
                     },
-                    onLongPress: (_, latLng) {
+                    onLongPress: (tap, latLng) {
                       if (_tak.drawing) return;
+                      // On a MediaMesh coverage dot, the press menu (drop a
+                      // pin, SALUTE, ...) needs a longer hold; let go
+                      // before it and the dot opens instead.
+                      final dot = coverageSampleAt(
+                        context,
+                        _mapController.camera,
+                        tap.relative ?? Offset.zero,
+                      );
+                      if (dot != null && tap.relative != null) {
+                        _holdForDrop(context, connector, latLng, dot);
+                        return;
+                      }
                       _handleMapContextPress(context, connector, latLng);
                     },
                     onSecondaryTap: (_, latLng) {
@@ -1198,6 +1275,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       ],
                     ),
                   ],
+                ),
                 ),
                 if (selectedContact == null)
                   _buildControlRail(
