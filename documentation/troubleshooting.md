@@ -6,6 +6,16 @@ Confirm that Bluetooth is enabled, the app has Bluetooth permissions, and the ra
 
 On Linux, check that BlueZ is running and the adapter is enabled. Pairing may fall back to `bluetoothctl`; complete the system pairing prompt when requested. Include the pairing error and app log in a bug report.
 
+## Windows: Bluetooth connect fails
+
+The app tries a Windows connect three times, 1.5 s apart, because Windows often fails the first try. If all three fail, it says Windows couldn't open a Bluetooth link to the radio. Before this check, the same failure showed up as `discoverServices | fbp-code: 6 | device is not connected`: the Windows Bluetooth plugin reports a link that didn't open by returning instead of failing, so the app only noticed one step later. To fix it:
+
+- **One connection at a time.** A companion radio accepts one Bluetooth connection, so disconnect your phone (or any other app) from it first.
+- **Range.** Keep the radio close to the PC.
+- **PIN.** If your radio uses a PIN, pair it first in Windows Settings > Bluetooth & devices > Add device, then connect from the app.
+- **Stale pairing.** If the radio was paired before a firmware update or a PIN change, remove it in Windows Settings and pair it again.
+- **Fallback.** USB works from Windows too.
+
 ## USB connection fails
 
 Use a data-capable cable and a supported companion serial firmware. Close terminal programs or other apps using the port. On Linux, check port ownership and the serial-access group required by your distribution. For missing devices, check drivers and OS enumeration. For permission denied, busy, or detached errors, fix the reported cause and refresh the port list.

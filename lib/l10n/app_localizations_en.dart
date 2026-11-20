@@ -268,6 +268,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scanner_title => 'MeshCore Open TAK';
 
   @override
+  String scanner_windowsLinkFailed(String name) {
+    return 'Windows couldn\'t open a Bluetooth link to $name. Make sure it\'s in range and not connected to a phone or another app, then try again. If your radio uses a PIN, pair it first in Windows Settings > Bluetooth & devices.';
+  }
+
+  @override
   String get connectionChoiceUsbLabel => 'USB';
 
   @override
