@@ -1293,6 +1293,7 @@ class MeshCoreConnector extends ChangeNotifier {
         : incoming.lastMessageAt;
     final base = incoming.copyWith(
       lastMessageAt: mergedLastMessageAt,
+      heardAt: _laterOf(incoming.heardAt, existing.heardAt),
       pathOverride: existing.pathOverride, // Preserve user's path choice
       pathOverrideBytes: existing.pathOverrideBytes,
       latitude: keepLocationWhenMissing
@@ -1305,6 +1306,20 @@ class MeshCoreConnector extends ChangeNotifier {
     );
     return _withTelemetryFix(existing, base) ?? base;
   }
+
+  static DateTime? _laterOf(DateTime? a, DateTime? b) {
+    if (a == null) return b;
+    if (b == null) return a;
+    return a.isAfter(b) ? a : b;
+  }
+
+  /// When a stored contact's advert was last heard (pushCodeAdvert), until
+  /// its refreshed frame comes back to carry it.
+  final Map<String, DateTime> _advertHeardAt = {};
+
+  /// The last time each node's advert was heard by this phone, kept across a
+  /// full contact sync (which clears the list before the radio resends it).
+  final Map<String, DateTime> _heardAtByKey = {};
 
   /// Telemetry fixes held across a full contact sync, which clears the list
   /// before the radio resends it.
@@ -5140,6 +5155,13 @@ class MeshCoreConnector extends ChangeNotifier {
       ..clear()
       ..addAll(cached);
     for (final contact in cached) {
+      final heard = contact.heardAt;
+      if (heard != null) {
+        _heardAtByKey[contact.publicKeyHex] = _laterOf(
+          heard,
+          _heardAtByKey[contact.publicKeyHex],
+        )!;
+      }
       _ensureContactSmazSettingLoaded(contact.publicKeyHex);
       _ensureContactCyr2LatSettingLoaded(contact.publicKeyHex);
       _ensureContactUrlImagesSettingLoaded(contact.publicKeyHex);
@@ -8166,6 +8188,7 @@ class MeshCoreConnector extends ChangeNotifier {
       rawPacket: tmp.rawPacket,
       latitude: hasDeviceLocation ? contact.latitude : tmp.latitude,
       longitude: hasDeviceLocation ? contact.longitude : tmp.longitude,
+      heardAt: _laterOf(contact.heardAt, tmp.heardAt),
     );
   }
 
@@ -10360,6 +10383,12 @@ class MeshCoreConnector extends ChangeNotifier {
       case pushCodeAdvert:
         // A stored contact advertised (or was just auto-added): pub key only.
         if (frame.length >= 1 + pubKeySize) {
+          // Heard now: the refreshed contact that follows carries this time
+          // (Contact.heardAt), so lists sorted by "heard recently" move it up.
+          _advertHeardAt[pubKeyToHex(
+                Uint8List.fromList(frame.sublist(1, 1 + pubKeySize)),
+              )] =
+              DateTime.now();
           unawaited(
             getContactByKey(
               Uint8List.fromList(frame.sublist(1, 1 + pubKeySize)),
@@ -11120,10 +11149,13 @@ class MeshCoreConnector extends ChangeNotifier {
   /// (type not auto-added, beyond autoadd_max_hops, or storage full;
   /// BaseChatMesh::onAdvertRecv), so it only feeds the discovered list.
   void _handleNewAdvert(Uint8List frame) {
-    final contact = Contact.fromFrame(frame);
-    if (contact == null || listEquals(contact.publicKey, _selfPublicKey)) {
+    final parsed = Contact.fromFrame(frame);
+    if (parsed == null || listEquals(parsed.publicKey, _selfPublicKey)) {
       return;
     }
+    // Heard now, by the phone's clock (Contact.heardAt).
+    final contact = parsed.copyWith(heardAt: DateTime.now());
+    _heardAtByKey[contact.publicKeyHex] = contact.heardAt!;
     _handleDiscovery(contact, frame);
     notifyListeners();
   }
@@ -11169,7 +11201,17 @@ class MeshCoreConnector extends ChangeNotifier {
         );
         return;
       }
-      final contact = getFromDiscovered(contactTmp);
+      var contact = getFromDiscovered(contactTmp);
+      // Its advert was just heard (pushCodeAdvert), or earlier: carry when.
+      final justHeard = _advertHeardAt.remove(contact.publicKeyHex);
+      if (justHeard != null) _heardAtByKey[contact.publicKeyHex] = justHeard;
+      final heard = _laterOf(
+        contact.heardAt,
+        _heardAtByKey[contact.publicKeyHex],
+      );
+      if (heard != null && heard != contact.heardAt) {
+        contact = contact.copyWith(heardAt: heard);
+      }
       _handleDiscovery(contact, frame, noNotify: true, addActive: true);
 
       if (contact.type == advTypeRepeater) {
@@ -14263,6 +14305,8 @@ class MeshCoreConnector extends ChangeNotifier {
         latitude: contact.latitude,
         longitude: contact.longitude,
         lastSeen: contact.lastSeen,
+        lastModified: contact.lastModified,
+        heardAt: contact.heardAt,
         flags: 0,
         isActive: addActive,
       );
@@ -14282,6 +14326,8 @@ class MeshCoreConnector extends ChangeNotifier {
       latitude: contact.latitude,
       longitude: contact.longitude,
       lastSeen: contact.lastSeen,
+      lastModified: contact.lastModified,
+      heardAt: contact.heardAt,
       lastMessageAt: contact.lastMessageAt,
       isActive: addActive,
       flags: 0,
@@ -14314,8 +14360,8 @@ class MeshCoreConnector extends ChangeNotifier {
     if (_discoveredContacts.isEmpty) return;
     var stalestIndex = 0;
     for (int i = 1; i < _discoveredContacts.length; i++) {
-      if (_discoveredContacts[i].lastSeen.isBefore(
-        _discoveredContacts[stalestIndex].lastSeen,
+      if (_discoveredContacts[i].advertHeardAt.isBefore(
+        _discoveredContacts[stalestIndex].advertHeardAt,
       )) {
         stalestIndex = i;
       }

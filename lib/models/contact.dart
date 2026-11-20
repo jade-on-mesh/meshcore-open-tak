@@ -28,6 +28,10 @@ class Contact {
   /// the same advert keeps the fix and a newer advert replaces it.
   final DateTime? telemetryFixAt;
 
+  /// When this phone saw the node's advert arrive (its own clock), or null
+  /// when it hasn't since the contact came from the radio or a backup.
+  final DateTime? heardAt;
+
   Contact({
     required this.publicKey,
     required this.name,
@@ -46,6 +50,7 @@ class Contact {
     this.isActive = true,
     this.rawPacket,
     this.telemetryFixAt,
+    this.heardAt,
   }) : lastMessageAt = lastMessageAt ?? lastSeen;
 
   /// Cached: it backs ==, hashCode and the per-frame contact lookups, and
@@ -92,10 +97,30 @@ class Contact {
         lon <= 180.0;
   }
 
+  /// When our radio last heard the node's advert, by our own clocks: the
+  /// phone's ([heardAt]) or the radio's (its lastmod, [lastModified]),
+  /// whichever is later. [lastSeen] is the node's own advert timestamp, its
+  /// clock, often wrong: a node set ahead showed "recently" and sorted first
+  /// for as long as it was ahead, and one set behind sank. That's only the
+  /// fallback. Never later than now.
+  DateTime get advertHeardAt {
+    final now = DateTime.now();
+    final mod = lastModified;
+    final phone = heardAt;
+    DateTime t;
+    if (phone != null && mod != null) {
+      t = mod.isAfter(phone) && !mod.isAfter(now) ? mod : phone;
+    } else {
+      t = phone ?? mod ?? lastSeen;
+    }
+    return t.isAfter(now) ? now : t;
+  }
+
   /// The latest time we heard from the node: its advert or a telemetry fix.
   DateTime get lastHeard {
     final fixAt = telemetryFixAt;
-    return fixAt != null && fixAt.isAfter(lastSeen) ? fixAt : lastSeen;
+    final advert = advertHeardAt;
+    return fixAt != null && fixAt.isAfter(advert) ? fixAt : advert;
   }
 
   bool get isFavorite => (flags & contactFlagFavorite) != 0;
@@ -120,6 +145,7 @@ class Contact {
     Uint8List? rawPacket,
     DateTime? telemetryFixAt,
     bool clearTelemetryFix = false,
+    DateTime? heardAt,
   }) {
     return Contact(
       publicKey: publicKey ?? this.publicKey,
@@ -145,6 +171,7 @@ class Contact {
       telemetryFixAt: clearTelemetryFix
           ? null
           : (telemetryFixAt ?? this.telemetryFixAt),
+      heardAt: heardAt ?? this.heardAt,
     );
   }
 

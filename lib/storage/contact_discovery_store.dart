@@ -158,6 +158,7 @@ class ContactDiscoveryStore {
       'longitude': contact.longitude,
       'lastSeen': contact.lastSeen.millisecondsSinceEpoch,
       'lastModified': contact.lastModified?.millisecondsSinceEpoch,
+      'heardAt': contact.heardAt?.millisecondsSinceEpoch,
       'lastMessageAt': contact.lastMessageAt.millisecondsSinceEpoch,
       'isActive': contact.isActive,
       'rawPacket': contact.rawPacket != null
@@ -234,6 +235,11 @@ class ContactDiscoveryStore {
       lastModified: lastModifiedMs == null
           ? null
           : DateTime.fromMillisecondsSinceEpoch(lastModifiedMs),
+      heardAt: clampMs((json['heardAt'] as num?)?.toInt()) == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(
+              clampMs((json['heardAt'] as num?)?.toInt())!,
+            ),
       lastMessageAt: DateTime.fromMillisecondsSinceEpoch(
         lastMessageMs ?? lastSeenMs,
       ),

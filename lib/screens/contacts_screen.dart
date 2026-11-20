@@ -123,7 +123,14 @@ class _ContactsScreenState extends State<ContactsScreen> {
     _loadGroups();
     _setupFrameListener();
     _clearAdvertNotifications();
+    // "Last heard" labels ("recently", "5 mins ago") age while the list is
+    // open; adverts heard rebuild it at once (the connector notifies).
+    _ageTicker = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
   }
+
+  Timer? _ageTicker;
 
   void _clearAdvertNotifications() {
     final connector = context.read<MeshCoreConnector>();
@@ -145,6 +152,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
   @override
   void dispose() {
+    _ageTicker?.cancel();
     _searchDebounce?.cancel();
     _searchController.dispose();
     _frameSubscription?.cancel();
