@@ -1313,6 +1313,32 @@ class MeshCoreConnector extends ChangeNotifier {
     return a.isAfter(b) ? a : b;
   }
 
+  /// An advert heard on the air (the radio's raw receive log), whoever's it
+  /// is: its node was heard now (Contact.heardAt). The radio itself reports
+  /// an advert only when it's newer than the last it stored for that node, so
+  /// a node whose clock went back (a reboot without the time) and every
+  /// relayed copy after the first never reached the lists, which then left
+  /// the node where it was; heard here, it moves to the top.
+  void _noteAdvertHeard(Uint8List pubKey) {
+    if (listEquals(pubKey, _selfPublicKey)) return;
+    final hex = pubKeyToHex(pubKey);
+    final now = DateTime.now();
+    _heardAtByKey[hex] = now;
+    var changed = false;
+    final i = _contacts.indexWhere((c) => c.publicKeyHex == hex);
+    if (i >= 0) {
+      _contacts[i] = _contacts[i].copyWith(heardAt: now);
+      changed = true;
+    }
+    final d = _discoveredContacts.indexWhere((c) => c.publicKeyHex == hex);
+    if (d >= 0) {
+      _discoveredContacts[d] = _discoveredContacts[d].copyWith(heardAt: now);
+      _scheduleDiscoveredContactsPersist();
+      changed = true;
+    }
+    if (changed) notifyListeners();
+  }
+
   /// When a stored contact's advert was last heard (pushCodeAdvert), until
   /// its refreshed frame comes back to carry it.
   final Map<String, DateTime> _advertHeardAt = {};
@@ -12184,6 +12210,14 @@ class MeshCoreConnector extends ChangeNotifier {
 
       final raw = reader.readRemainingBytes();
       final packet = _parseRawPacket(raw);
+      if (packet != null &&
+          packet.payloadType == _payloadTypeAdvert &&
+          packet.payload.length >= pubKeySize) {
+        _noteAdvertHeard(
+          Uint8List.fromList(packet.payload.sublist(0, pubKeySize)),
+        );
+        return;
+      }
       if (packet == null || packet.payloadType != _payloadTypeGroupText) return;
 
       final payload = BufferReader(packet.payload);
@@ -14422,6 +14456,7 @@ const int _routeFlood = 0x01;
 const int _routeTransportDirect = 0x03;
 
 const int _payloadTypeGroupText = 0x05;
+const int _payloadTypeAdvert = 0x04;
 const int _cipherMacSize = 2;
 
 bool _isPathLenValidForMode(

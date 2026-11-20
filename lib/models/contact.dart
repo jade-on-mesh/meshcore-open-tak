@@ -116,8 +116,16 @@ class Contact {
         t != null && t.isAfter(heardNever) && !t.isAfter(limit) ? t : null;
     final phone = usable(heardAt);
     final radio = usable(lastModified);
+    // The phone's time first: the radio's lastmod also moves when the radio
+    // rewrites the contact for other reasons (a path learnt), and its clock
+    // can run a little ahead, which put nodes heard earlier above one just
+    // heard. The radio's counts when it's well past the phone's: heard
+    // while the phone was away.
     DateTime? best = phone;
-    if (radio != null && (best == null || radio.isAfter(best))) best = radio;
+    if (radio != null &&
+        (best == null || radio.isAfter(best.add(const Duration(minutes: 2))))) {
+      best = radio;
+    }
     best ??= usable(lastSeen) ?? heardNever;
     return best.isAfter(now) ? now : best;
   }

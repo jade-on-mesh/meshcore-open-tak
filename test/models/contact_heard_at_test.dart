@@ -44,6 +44,17 @@ void main() {
     );
   });
 
+  test("the phone's time wins over a radio time just after it", () {
+    // Heard by the phone 5 min ago; the radio rewrote the contact 4 min ago
+    // (a path learnt): still the phone's time.
+    final phone = now.subtract(const Duration(minutes: 5));
+    final radio = now.subtract(const Duration(minutes: 4));
+    expect(
+      _node(advertClock: radio, radioHeard: radio, phoneHeard: phone).lastHeard,
+      phone,
+    );
+  });
+
   test('only the node clock: used, but never later than now', () {
     final past = now.subtract(const Duration(days: 3));
     expect(_node(advertClock: past).lastHeard, past);
