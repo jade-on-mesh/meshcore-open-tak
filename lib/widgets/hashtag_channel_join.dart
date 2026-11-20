@@ -47,7 +47,8 @@ class HashtagLinkifier extends Linkifier {
       }
       var last = 0;
       for (final m in hashtagInText.allMatches(e.text)) {
-        if (m.start > last) out.add(TextElement(e.text.substring(last, m.start)));
+        if (m.start > last)
+          out.add(TextElement(e.text.substring(last, m.start)));
         final tag = m[0]!;
         out.add(LinkableElement(tag, '$hashtagLinkScheme${tag.substring(1)}'));
         last = m.end;
@@ -105,15 +106,15 @@ Future<void> openOrJoinHashtagChannel(BuildContext context, String tag) async {
   final slot = await connector.freeChannelSlotWhenKnown();
   if (!context.mounted) return;
   if (slot == null) {
-    showDismissibleSnackBar(
-      context,
-      content: Text(l10n.channels_noFreeSlots),
-    );
+    showDismissibleSnackBar(context, content: Text(l10n.channels_noFreeSlots));
     return;
   }
   await connector.setChannel(slot, name, psk);
   if (!context.mounted) return;
-  showDismissibleSnackBar(context, content: Text(l10n.chat_hashtagJoined(name)));
+  showDismissibleSnackBar(
+    context,
+    content: Text(l10n.chat_hashtagJoined(name)),
+  );
   // The radio's channel list catches up shortly after: open it when it does.
   for (var i = 0; i < 25; i++) {
     final c = find();

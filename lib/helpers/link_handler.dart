@@ -51,6 +51,7 @@ class LinkHandler {
       }
       handleLinkTap(context, link.url);
     }
+
     final textScaleFactor = systemTextScaleFactor(context, style);
 
     if (PlatformInfo.isDesktop) {

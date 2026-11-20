@@ -3,10 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meshcore_open/widgets/hashtag_channel_join.dart';
 
 List<String> tags(String text) => [
-  for (final e in linkify(text, linkifiers: const [
-    UrlLinkifier(),
-    HashtagLinkifier(),
-  ]))
+  for (final e in linkify(
+    text,
+    linkifiers: const [UrlLinkifier(), HashtagLinkifier()],
+  ))
     if (e is LinkableElement && e.url.startsWith(hashtagLinkScheme)) e.text,
 ];
 

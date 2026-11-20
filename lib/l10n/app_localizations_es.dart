@@ -2631,7 +2631,8 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get chat_hashtagJoinBody => 'This adds the hashtag channel to your radio. Anyone who knows its name can read and post in it.';
+  String get chat_hashtagJoinBody =>
+      'This adds the hashtag channel to your radio. Anyone who knows its name can read and post in it.';
 
   @override
   String get chat_hashtagJoin => 'Add channel';
