@@ -40,6 +40,18 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
   final DerivedListCache<Contact> _filteredCache = DerivedListCache<Contact>();
   ScaffoldMessengerState? _messenger;
 
+  /// "Last heard" labels age while the list is open; adverts heard rebuild
+  /// it at once (the connector notifies).
+  Timer? _ageTicker;
+
+  @override
+  void initState() {
+    super.initState();
+    _ageTicker = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -48,6 +60,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
 
   @override
   void dispose() {
+    _ageTicker?.cancel();
     _messenger?.hideCurrentSnackBar();
     _searchController.dispose();
     _searchDebounce?.cancel();
@@ -669,7 +682,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
 
     switch (sortOption) {
       case ContactSortOption.lastSeen:
-        filtered.sort((a, b) => b.lastSeen.compareTo(a.lastSeen));
+        // When our radio heard each advert (Contact.lastHeard), newest
+        // first, not the nodes' own advert clocks.
+        filtered.sort((a, b) => b.lastHeard.compareTo(a.lastHeard));
         break;
       case ContactSortOption.name:
         filtered.sort(
