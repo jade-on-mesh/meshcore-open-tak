@@ -23,6 +23,7 @@ import '../utils/radio_guard.dart';
 import '../widgets/app_update_ui.dart';
 import '../widgets/channel_notification_mode_sheet.dart';
 import '../widgets/connect_sheet.dart';
+import '../widgets/hashtag_channel_join.dart';
 import '../widgets/list_filter_widget.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/mesh_ui.dart';
@@ -842,6 +843,8 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
     int? selectedOption;
     bool addPublicChannel = true;
     bool isRegularHashtag = true;
+    // A scanned hashtag channel keeps the radio's spelling: its key matched it.
+    String? scannedTag;
     Community? selectedCommunity;
 
     _communityStore.setPublicKeyHex = connector.storageKeyHex;
@@ -1232,6 +1235,7 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
                                   isRegularHashtag = match.community == null;
                                   selectedCommunity = match.community;
                                   hashtagController.text = match.tag;
+                                  scannedTag = match.tag;
                                 });
                               },
                             ),
@@ -1416,6 +1420,15 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
 
                                     final Uint8List psk;
                                     if (isRegularHashtag) {
+                                      // Named as Wadamesh TAK names it (A-Z
+                                      // lowercased), so a phone and a
+                                      // standalone typing #MediaMesh join
+                                      // the same channel.
+                                      if (hashtag != scannedTag) {
+                                        hashtag = hashtagChannelName(
+                                          hashtag,
+                                        ).substring(1);
+                                      }
                                       channelName = '#$hashtag';
                                       // Regular hashtag - public derivation using SHA256
                                       psk = Channel.derivePskFromHashtag(

@@ -4615,6 +4615,30 @@ abstract class AppLocalizations {
   /// **'This message\'s time is in the future, so the sender\'s clock may be wrong. It is shown in the order it arrived.'**
   String get chat_futureTimestampWarning;
 
+  /// No description provided for @chat_hashtagJoinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add {name}?'**
+  String chat_hashtagJoinTitle(String name);
+
+  /// No description provided for @chat_hashtagJoinBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This adds the hashtag channel to your radio. Anyone who knows its name can read and post in it.'**
+  String get chat_hashtagJoinBody;
+
+  /// No description provided for @chat_hashtagJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Add channel'**
+  String get chat_hashtagJoin;
+
+  /// No description provided for @chat_hashtagJoined.
+  ///
+  /// In en, this message translates to:
+  /// **'Added {name}'**
+  String chat_hashtagJoined(String name);
+
   /// No description provided for @chat_messageTooLong.
   ///
   /// In en, this message translates to:

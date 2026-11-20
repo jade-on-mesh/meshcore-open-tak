@@ -1234,6 +1234,12 @@
   "chat_location": "Location",
   "chat_typeMessage": "Type a message...",
   "chat_futureTimestampWarning": "This message's time is in the future, so the sender's clock may be wrong. It is shown in the order it arrived.",
+  "chat_hashtagJoinTitle": "Add {name}?",
+  "@chat_hashtagJoinTitle": {"placeholders": {"name": {"type": "String"}}},
+  "chat_hashtagJoinBody": "This adds the hashtag channel to your radio. Anyone who knows its name can read and post in it.",
+  "chat_hashtagJoin": "Add channel",
+  "chat_hashtagJoined": "Added {name}",
+  "@chat_hashtagJoined": {"placeholders": {"name": {"type": "String"}}},
   "chat_messageTooLong": "Message too long (max {maxBytes} bytes).",
   "@chat_messageTooLong": {
     "placeholders": {
