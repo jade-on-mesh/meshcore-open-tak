@@ -51,7 +51,7 @@ Tap the "+" FAB to open a dialog with six options:
 1. **Create Private Channel** — Enter a name (max 31 bytes of UTF-8, so fewer characters for accented letters, Cyrillic, or emoji); a random PSK is generated
 2. **Join Private Channel** — Enter a name and a 32-hex PSK (non-hex characters like spaces and dashes are silently stripped, so pasted keys with formatting are accepted)
 3. **Join Public Channel** — One tap; uses the well-known public PSK (only shown if no public channel exists)
-4. **Join Hashtag Channel** — Enter a hashtag name; PSK is derived from the name. If communities exist, choose between regular hashtag (SHA-256) or community hashtag (HMAC)
+4. **Join Hashtag Channel** — Enter a hashtag name; PSK is derived from the name. A regular hashtag's A–Z are lowercased first, as Wadamesh TAK standalones do, so `#MediaMesh` typed on either joins the same `#mediamesh` (a channel picked from a scan keeps the radio's spelling, which its key already matches). If communities exist, choose between regular hashtag (SHA-256) or community hashtag (HMAC)
 5. **Scan a QR Code** — Opens the QR scanner to join a community, or to add a channel from an official MeshCore channel QR code (`meshcore://channel/add?name=…&secret=…`, as shared by the official app and community sites)
 6. **Create Community** — Enter a name; generates a random 32-byte secret; optionally adds a community public channel; shows QR code for sharing
 
