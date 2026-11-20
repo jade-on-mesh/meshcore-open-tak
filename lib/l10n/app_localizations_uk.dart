@@ -2621,6 +2621,22 @@ class AppLocalizationsUk extends AppLocalizations {
       'Час цього повідомлення в майбутньому, тож годинник відправника може бути неточним. Повідомлення показано в порядку отримання.';
 
   @override
+  String chat_hashtagJoinTitle(String name) {
+    return 'Add $name?';
+  }
+
+  @override
+  String get chat_hashtagJoinBody => 'This adds the hashtag channel to your radio. Anyone who knows its name can read and post in it.';
+
+  @override
+  String get chat_hashtagJoin => 'Add channel';
+
+  @override
+  String chat_hashtagJoined(String name) {
+    return 'Added $name';
+  }
+
+  @override
   String chat_messageTooLong(int maxBytes) {
     return 'Повідомлення занадто довге (макс. $maxBytes байт).';
   }

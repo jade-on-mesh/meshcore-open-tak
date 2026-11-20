@@ -2492,6 +2492,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chat_futureTimestampWarning => '此消息的时间在未来，发送方的时钟可能有误。已按到达顺序显示。';
 
   @override
+  String chat_hashtagJoinTitle(String name) {
+    return 'Add $name?';
+  }
+
+  @override
+  String get chat_hashtagJoinBody => 'This adds the hashtag channel to your radio. Anyone who knows its name can read and post in it.';
+
+  @override
+  String get chat_hashtagJoin => 'Add channel';
+
+  @override
+  String chat_hashtagJoined(String name) {
+    return 'Added $name';
+  }
+
+  @override
   String chat_messageTooLong(int maxBytes) {
     return '消息过长（最多 $maxBytes 字节）';
   }

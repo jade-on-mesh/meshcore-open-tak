@@ -2625,6 +2625,22 @@ class AppLocalizationsPt extends AppLocalizations {
       'O horário desta mensagem está no futuro, então o relógio do remetente pode estar errado. Ela é exibida na ordem em que chegou.';
 
   @override
+  String chat_hashtagJoinTitle(String name) {
+    return 'Add $name?';
+  }
+
+  @override
+  String get chat_hashtagJoinBody => 'This adds the hashtag channel to your radio. Anyone who knows its name can read and post in it.';
+
+  @override
+  String get chat_hashtagJoin => 'Add channel';
+
+  @override
+  String chat_hashtagJoined(String name) {
+    return 'Added $name';
+  }
+
+  @override
   String chat_messageTooLong(int maxBytes) {
     return 'Mensagem muito longa (máximo $maxBytes bytes).';
   }

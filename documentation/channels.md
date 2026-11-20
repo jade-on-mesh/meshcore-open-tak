@@ -55,6 +55,8 @@ Tap the "+" FAB to open a dialog with six options:
 5. **Scan a QR Code** — Opens the QR scanner to join a community, or to add a channel from an official MeshCore channel QR code (`meshcore://channel/add?name=…&secret=…`, as shared by the official app and community sites)
 6. **Create Community** — Enter a name; generates a random 32-byte secret; optionally adds a community public channel; shows QR code for sharing
 
+**From a message.** A `#hashtag` someone typed in a chat (a direct message or a channel) is a link. Tap it: if the radio has that channel (same name, any case, or the same key), it opens; otherwise the app asks, adds it as a hashtag channel in the first free slot (named in lowercase, so `#MediaMesh` is the `#mediamesh` everyone uses) and opens it. A hashtag needs a letter (`#40` stays text), and a URL's `#part` stays part of the URL. Wadamesh TAK standalones do the same.
+
 Name limits count the `#` and any community prefix, so the name stored on the radio matches what you typed and others derive the same key. Adding a channel is blocked until the channel list has finished syncing from the radio (a snackbar says the channels are still loading), and the free slot is picked when you confirm, so an existing channel is never overwritten.
 
 ## Channel Actions (Long-Press / Right-Click)

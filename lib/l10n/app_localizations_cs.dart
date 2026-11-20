@@ -2616,6 +2616,22 @@ class AppLocalizationsCs extends AppLocalizations {
       'Čas této zprávy je v budoucnosti, takže hodiny odesílatele mohou být špatně. Zpráva je zobrazena v pořadí, v jakém dorazila.';
 
   @override
+  String chat_hashtagJoinTitle(String name) {
+    return 'Add $name?';
+  }
+
+  @override
+  String get chat_hashtagJoinBody => 'This adds the hashtag channel to your radio. Anyone who knows its name can read and post in it.';
+
+  @override
+  String get chat_hashtagJoin => 'Add channel';
+
+  @override
+  String chat_hashtagJoined(String name) {
+    return 'Added $name';
+  }
+
+  @override
   String chat_messageTooLong(int maxBytes) {
     return 'Zpráva je příliš dlouhá (max. $maxBytes bajtů).';
   }

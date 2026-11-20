@@ -2615,6 +2615,22 @@ class AppLocalizationsNl extends AppLocalizations {
       'De tijd van dit bericht ligt in de toekomst, dus de klok van de afzender klopt mogelijk niet. Het wordt getoond in de volgorde van ontvangst.';
 
   @override
+  String chat_hashtagJoinTitle(String name) {
+    return 'Add $name?';
+  }
+
+  @override
+  String get chat_hashtagJoinBody => 'This adds the hashtag channel to your radio. Anyone who knows its name can read and post in it.';
+
+  @override
+  String get chat_hashtagJoin => 'Add channel';
+
+  @override
+  String chat_hashtagJoined(String name) {
+    return 'Added $name';
+  }
+
+  @override
   String chat_messageTooLong(int maxBytes) {
     return 'Bericht is te lang (max $maxBytes bytes).';
   }

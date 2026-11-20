@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../l10n/l10n.dart';
 import '../utils/platform_info.dart';
 import '../helpers/snack_bar_builder.dart';
+import '../widgets/hashtag_channel_join.dart';
 
 class LinkHandler {
   static TextStyle defaultLinkStyle(BuildContext context, TextStyle base) {
@@ -38,8 +39,18 @@ class LinkHandler {
   }) {
     final effectiveLinkStyle = linkStyle ?? defaultLinkStyle(context, style);
     const options = LinkifyOptions(humanize: false, defaultToHttps: false);
-    const linkifiers = [UrlLinkifier(), EmailLinkifier()];
-    void onOpen(LinkableElement link) => handleLinkTap(context, link.url);
+    // A #hashtag opens (or adds) that hashtag channel.
+    const linkifiers = [UrlLinkifier(), EmailLinkifier(), HashtagLinkifier()];
+    void onOpen(LinkableElement link) {
+      if (link.url.startsWith(hashtagLinkScheme)) {
+        openOrJoinHashtagChannel(
+          context,
+          link.url.substring(hashtagLinkScheme.length),
+        );
+        return;
+      }
+      handleLinkTap(context, link.url);
+    }
     final textScaleFactor = systemTextScaleFactor(context, style);
 
     if (PlatformInfo.isDesktop) {
