@@ -133,7 +133,9 @@ class MediaMeshCoverageTile extends StatelessWidget {
             TextButton.icon(
               icon: const Icon(Icons.person_remove_outlined),
               label: Text(l10n.coverage_removeMine),
-              onPressed: cov.sending ? null : () => _confirmRemove(context, cov),
+              onPressed: cov.sending
+                  ? null
+                  : () => _confirmRemove(context, cov),
             ),
           ],
         ),

@@ -147,10 +147,7 @@ class ByteCountedTextField extends StatelessWidget {
           style: style,
           inputFormatters: [
             ...extraFormatters,
-            Utf8LengthLimitingTextInputFormatter(
-              maxBytes,
-              encoder: encoder,
-            ),
+            Utf8LengthLimitingTextInputFormatter(maxBytes, encoder: encoder),
           ],
           textCapitalization: textCapitalization,
           decoration:

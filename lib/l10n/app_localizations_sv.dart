@@ -5946,13 +5946,15 @@ class AppLocalizationsSv extends AppLocalizations {
   String get coverage_share => 'Share coverage points';
 
   @override
-  String get coverage_shareHelp => 'Sends what you record to the analyzer below, signed by your radio, so its coverage map is checked against real measurements. It shows them as 200 m squares, leaves out where each trip starts and ends, and never says whose they are. Off: nothing leaves your phone.';
+  String get coverage_shareHelp =>
+      'Sends what you record to the analyzer below, signed by your radio, so its coverage map is checked against real measurements. It shows them as 200 m squares, leaves out where each trip starts and ends, and never says whose they are. Off: nothing leaves your phone.';
 
   @override
   String get coverage_analyzer => 'Analyzer';
 
   @override
-  String get coverage_analyzerHelp => 'Where the points go. Outside CascadiaMesh? Enter your area\'s analyzer: its upload address, or just its address.';
+  String get coverage_analyzerHelp =>
+      'Where the points go. Outside CascadiaMesh? Enter your area\'s analyzer: its upload address, or just its address.';
 
   @override
   String get coverage_analyzerBad => 'That isn\'t a web address';
@@ -5965,11 +5967,19 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String coverage_sent(int count) {
-    return '{count, plural, =0{Nothing new to send} =1{1 point sent} other{$count points sent}}';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count points sent',
+      one: '1 point sent',
+      zero: 'Nothing new to send',
+    );
+    return '$_temp0';
   }
 
   @override
-  String get coverage_shareNotConnected => 'Connect the radio that recorded them: points are signed by its key.';
+  String get coverage_shareNotConnected =>
+      'Connect the radio that recorded them: points are signed by its key.';
 
   @override
   String coverage_shareError(String error) {
@@ -5986,7 +5996,14 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String coverage_removed(int count) {
-    return '{count, plural, =0{The analyzer had no points from this radio} =1{1 point removed} other{$count points removed}}';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count points removed',
+      one: '1 point removed',
+      zero: 'The analyzer had no points from this radio',
+    );
+    return '$_temp0';
   }
 
   @override
