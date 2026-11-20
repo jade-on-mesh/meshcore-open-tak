@@ -196,7 +196,8 @@ class AppSettings {
   final bool holidayAnimationsEnabled;
 
   /// Show each holiday's theme automatically in the days before it (see
-  /// `activeHolidayFor`), without changing [activeThemeId].
+  /// `activeHolidayFor`), without changing [activeThemeId]. Off unless the
+  /// user turns it on (Settings > Themes > Holidays).
   final bool holidayAutoSwitch;
 
   /// Occurrence key (`ActiveHoliday.occurrenceKey`) of the holiday whose
@@ -365,7 +366,7 @@ class AppSettings {
     this.customThemes = const [],
     this.activeThemeId,
     this.holidayAnimationsEnabled = true,
-    this.holidayAutoSwitch = true,
+    this.holidayAutoSwitch = false,
     this.holidayThemeDismissed,
     this.languageOverride,
     this.appDebugLogEnabled = false,
@@ -478,7 +479,7 @@ class AppSettings {
       'custom_themes': customThemes.map((t) => t.toJson()).toList(),
       'active_theme_id': activeThemeId,
       'holiday_animations_enabled': holidayAnimationsEnabled,
-      'holiday_auto_switch': holidayAutoSwitch,
+      'holiday_themes_auto': holidayAutoSwitch,
       'holiday_theme_dismissed': holidayThemeDismissed,
       'language_override': languageOverride,
       'app_debug_log_enabled': appDebugLogEnabled,
@@ -670,7 +671,9 @@ class AppSettings {
       activeThemeId: json['active_theme_id'] as String?,
       holidayAnimationsEnabled:
           json['holiday_animations_enabled'] as bool? ?? true,
-      holidayAutoSwitch: json['holiday_auto_switch'] as bool? ?? true,
+      // A new key: the old 'holiday_auto_switch' was saved as true for
+      // everyone while it defaulted on, so it starts off for all once.
+      holidayAutoSwitch: json['holiday_themes_auto'] as bool? ?? false,
       holidayThemeDismissed: json['holiday_theme_dismissed'] as String?,
       languageOverride: json['language_override'] as String?,
       appDebugLogEnabled: json['app_debug_log_enabled'] as bool? ?? false,
