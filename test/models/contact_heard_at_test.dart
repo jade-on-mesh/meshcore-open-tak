@@ -48,7 +48,25 @@ void main() {
     final past = now.subtract(const Duration(days: 3));
     expect(_node(advertClock: past).lastHeard, past);
     final ahead = _node(advertClock: now.add(const Duration(days: 9)));
-    expect(ahead.lastHeard.isAfter(DateTime.now()), isFalse);
+    expect(ahead.lastHeard, Contact.heardNever);
+  });
+
+  test('a clock set ahead is passed over, not taken as heard now', () {
+    // The radio's clock ahead, no phone time yet: not "recently".
+    final ahead = _node(
+      advertClock: now.add(const Duration(days: 2)),
+      radioHeard: now.add(const Duration(hours: 3)),
+    );
+    expect(ahead.lastHeard, Contact.heardNever);
+    // So one whose advert just came in sorts above it.
+    final fresh = _node(
+      advertClock: now.add(const Duration(days: 2)),
+      radioHeard: now.add(const Duration(hours: 3)),
+      phoneHeard: now.subtract(const Duration(seconds: 5)),
+    );
+    final list = [ahead, fresh]
+      ..sort((a, b) => b.lastHeard.compareTo(a.lastHeard));
+    expect(identical(list.first, fresh), isTrue);
   });
 
   test('sorted by heard time, the most recently heard comes first', () {

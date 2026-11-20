@@ -103,18 +103,27 @@ class Contact {
   /// clock, often wrong: a node set ahead showed "recently" and sorted first
   /// for as long as it was ahead, and one set behind sank. That's only the
   /// fallback. Never later than now.
+  ///
+  /// A time in the future (a radio or node clock set ahead) isn't a time we
+  /// heard anything, so it's passed over, not taken as "now": taken as now,
+  /// every such node read "recently" and tied at the top, and a node whose
+  /// advert had just come in couldn't rise above them. With no usable time
+  /// at all it's [heardNever], so it sorts last.
   DateTime get advertHeardAt {
     final now = DateTime.now();
-    final mod = lastModified;
-    final phone = heardAt;
-    DateTime t;
-    if (phone != null && mod != null) {
-      t = mod.isAfter(phone) && !mod.isAfter(now) ? mod : phone;
-    } else {
-      t = phone ?? mod ?? lastSeen;
-    }
-    return t.isAfter(now) ? now : t;
+    final limit = now.add(const Duration(minutes: 1));
+    DateTime? usable(DateTime? t) =>
+        t != null && t.isAfter(heardNever) && !t.isAfter(limit) ? t : null;
+    final phone = usable(heardAt);
+    final radio = usable(lastModified);
+    DateTime? best = phone;
+    if (radio != null && (best == null || radio.isAfter(best))) best = radio;
+    best ??= usable(lastSeen) ?? heardNever;
+    return best.isAfter(now) ? now : best;
   }
+
+  /// No usable heard time (Contact.advertHeardAt).
+  static final DateTime heardNever = DateTime.utc(2001);
 
   /// The latest time we heard from the node: its advert or a telemetry fix.
   DateTime get lastHeard {
