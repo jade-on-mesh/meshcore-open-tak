@@ -7,27 +7,31 @@ import 'package:meshcore_open/services/mediamesh_coverage_share.dart';
 // What CoreScope's POST /api/mediamesh/coverage-points expects
 // (cmd/server/mediamesh_coverage_points.go in the CascadiaMesh fork).
 void main() {
-  const radio = 'AB01cd23ef45ab01cd23ef45ab01cd23ef45ab01cd23ef45ab01cd23ef45ab01';
-  CoverageSample sample(int t, {String r = 'ab01cd23ef45ab01cd23ef45ab01cd23ef45ab01cd23ef45ab01cd23ef45ab01'}) =>
-      CoverageSample(
-        lat: 47.6101234567,
-        lon: -122.3249,
-        time: DateTime.fromMillisecondsSinceEpoch(t * 1000),
-        radio: r,
-        speed: 1.34,
-        accuracy: 6.0,
-        repeaters: const [
-          CoverageRepeater(
-            key: '1ea5e195',
-            name: 'First Hill',
-            snr: 4.25,
-            remoteSnr: 2.5,
-            margin: 4.02,
-            bwHz: 250000,
-            sf: 7,
-          ),
-        ],
-      );
+  const radio =
+      'AB01cd23ef45ab01cd23ef45ab01cd23ef45ab01cd23ef45ab01cd23ef45ab01';
+  CoverageSample sample(
+    int t, {
+    String r =
+        'ab01cd23ef45ab01cd23ef45ab01cd23ef45ab01cd23ef45ab01cd23ef45ab01',
+  }) => CoverageSample(
+    lat: 47.6101234567,
+    lon: -122.3249,
+    time: DateTime.fromMillisecondsSinceEpoch(t * 1000),
+    radio: r,
+    speed: 1.34,
+    accuracy: 6.0,
+    repeaters: const [
+      CoverageRepeater(
+        key: '1ea5e195',
+        name: 'First Hill',
+        snr: 4.25,
+        remoteSnr: 2.5,
+        margin: 4.02,
+        bwHz: 250000,
+        sf: 7,
+      ),
+    ],
+  );
 
   test('the analyzer address becomes its upload address', () {
     expect(
@@ -64,7 +68,9 @@ void main() {
       'corescope-coverage:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a',
     );
     expect(
-      utf8.decode(coverageSignedMessage(coverageDeletePrefix, utf8.encode('{}'))),
+      utf8.decode(
+        coverageSignedMessage(coverageDeletePrefix, utf8.encode('{}')),
+      ),
       startsWith('corescope-coverage-delete:'),
     );
   });
@@ -113,22 +119,38 @@ void main() {
       {'key': '1ea5e195', 'snr': 4.25, 'remote_snr': 2.5, 'margin': 4.0},
     ]);
     expect(
-      jsonDecode(utf8.decode(coverageDeleteBody(radio, DateTime.fromMillisecondsSinceEpoch(5000)))),
+      jsonDecode(
+        utf8.decode(
+          coverageDeleteBody(radio, DateTime.fromMillisecondsSinceEpoch(5000)),
+        ),
+      ),
       {'radio': radio.toLowerCase(), 'sent': 5},
     );
-    expect(coverageReplyError('{"error":"this analyzer hasn\'t heard this radio yet"}'), contains('heard'));
+    expect(
+      coverageReplyError(
+        '{"error":"this analyzer hasn\'t heard this radio yet"}',
+      ),
+      contains('heard'),
+    );
     expect(coverageReplyError('<html>'), isNull);
   });
 
   test('samples keep their radio, speed and accuracy', () {
-    final s = CoverageSample.fromJson(jsonDecode(jsonEncode(sample(10).toJson())))!;
+    final s = CoverageSample.fromJson(
+      jsonDecode(jsonEncode(sample(10).toJson())),
+    )!;
     expect(s.radio, startsWith('ab01'));
     expect(s.speed, 1.3);
     expect(s.accuracy, 6.0);
     expect(s.repeaters.single.bwHz, 250000);
     expect(s.repeaters.single.sf, 7);
     // a sample saved before these existed
-    final old = CoverageSample.fromJson({'a': 47.6, 'o': -122.3, 't': 1, 'p': []})!;
+    final old = CoverageSample.fromJson({
+      'a': 47.6,
+      'o': -122.3,
+      't': 1,
+      'p': [],
+    })!;
     expect(old.radio, '');
     expect(old.speed, 0);
   });

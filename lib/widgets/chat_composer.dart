@@ -281,66 +281,38 @@ class ChatComposer extends StatelessWidget {
         if (gifId != null) return _buildGifPreview(context, gifId, scheme);
         final hasText = value.text.trim().isNotEmpty;
         final idle = idleTrailing;
-        final Widget last = !hasText && idle != null
-            ? Theme(
-                // The mic in the field's grey, at the other icons' size.
-                data: Theme.of(context).copyWith(
-                  iconButtonTheme: IconButtonThemeData(
-                    style: IconButton.styleFrom(
-                      foregroundColor: ink,
-                      iconSize: 26,
-                    ),
-                  ),
-                ),
-                child: idle,
-              )
-            : Padding(
-                padding: const EdgeInsets.only(left: 2),
-                child: IconButton.filled(
-                  icon: const Icon(Icons.send, size: 18, color: Colors.white),
-                  tooltip: sendTooltip,
-                  style: IconButton.styleFrom(
-                    backgroundColor: discordBlurple,
-                    disabledBackgroundColor: discordBlurple.withValues(
-                      alpha: 0.4,
-                    ),
-                    minimumSize: const Size.square(36),
-                    maximumSize: const Size.square(36),
-                    padding: EdgeInsets.zero,
-                    shape: const CircleBorder(),
-                  ),
-                  onPressed: hasText
-                      ? () {
-                          HapticFeedback.lightImpact();
-                          onSend();
-                        }
-                      : null,
-                ),
-              );
-        return _buildTextField(
-          context,
-          scheme,
-          look: look,
-          prefix: Builder(
-            builder: (buttonContext) => Padding(
-              padding: const EdgeInsets.only(left: 8, right: 4),
-              child: icon(
-                Icons.add,
-                context.l10n.chat_selectSendAction,
-                () => _openActionMenu(buttonContext),
-              ),
+        // As Discord's app: with text typed, the GIF button and the mic make
+        // way for the send button, so the text has the field's width, and
+        // the buttons sit by the last line as the text grows.
+        Widget frame(Widget text) => DecoratedBox(
+          decoration: BoxDecoration(
+            color: look.fill,
+            borderRadius: BorderRadius.circular(look.radius),
+            border: Border.all(
+              color: look.border ?? Colors.transparent,
+              width: 1,
             ),
           ),
-          suffix: Padding(
-            padding: const EdgeInsets.only(right: 8),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(6, 6, 8, 6),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                icon(
-                  Icons.gif_box_outlined,
-                  context.l10n.chat_sendGif,
-                  () => showChatGifPicker(context, controller),
+                Builder(
+                  builder: (buttonContext) => icon(
+                    Icons.add,
+                    context.l10n.chat_selectSendAction,
+                    () => _openActionMenu(buttonContext),
+                  ),
                 ),
+                const SizedBox(width: 6),
+                Expanded(child: text),
+                if (!hasText)
+                  icon(
+                    Icons.gif_box_outlined,
+                    context.l10n.chat_sendGif,
+                    () => showChatGifPicker(context, controller),
+                  ),
                 icon(
                   Icons.sentiment_satisfied_alt,
                   context.l10n.chat_addEmoji,
@@ -349,11 +321,50 @@ class ChatComposer extends StatelessWidget {
                     builder: (_) => EmojiPicker(onEmojiSelected: _insert),
                   ),
                 ),
-                last,
+                if (hasText)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4, bottom: 3),
+                    child: IconButton.filled(
+                      icon: const Icon(
+                        Icons.send,
+                        size: 20,
+                        color: Colors.white,
+                      ),
+                      tooltip: sendTooltip,
+                      style: IconButton.styleFrom(
+                        backgroundColor: discordBlurple,
+                        minimumSize: const Size.square(36),
+                        maximumSize: const Size.square(36),
+                        padding: EdgeInsets.zero,
+                        // Discord's send button: a rounded square.
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        onSend();
+                      },
+                    ),
+                  )
+                else if (idle != null)
+                  Theme(
+                    // The mic in the field's grey, at the other icons' size.
+                    data: Theme.of(context).copyWith(
+                      iconButtonTheme: IconButtonThemeData(
+                        style: IconButton.styleFrom(
+                          foregroundColor: ink,
+                          iconSize: 26,
+                        ),
+                      ),
+                    ),
+                    child: idle,
+                  ),
               ],
             ),
           ),
         );
+        return _buildTextField(context, scheme, look: look, frame: frame);
       },
     );
     return Container(
@@ -364,7 +375,7 @@ class ChatComposer extends StatelessWidget {
           children: [
             ...header,
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
               child: field,
             ),
           ],
@@ -590,6 +601,7 @@ class ChatComposer extends StatelessWidget {
     ChatComposerLook? look,
     Widget? prefix,
     Widget? suffix,
+    Widget Function(Widget field)? frame,
   }) {
     OutlineInputBorder border(Color color, [double width = 1]) =>
         OutlineInputBorder(
@@ -609,6 +621,48 @@ class ChatComposer extends StatelessWidget {
             : BorderSide(color: edge, width: width),
       );
       final hint = _hintFor(context, look);
+      if (look.allInside) {
+        // Discord's field: no box of its own (frame draws it round the
+        // buttons too), its 16 pt text with no extra letter spacing, so a
+        // line wraps where Discord's does.
+        return ByteCountedTextField(
+          maxBytes: maxBytes,
+          maxLines: lines,
+          softLimitBytes: softLimitBytes,
+          softLimitNote: softLimitNote,
+          controller: controller,
+          focusNode: focusNode,
+          hintText: hint,
+          onSubmitted: (_) => onSend(),
+          encoder: encoder,
+          counterTextBuilder: counterTextBuilder,
+          counterColorBuilder: counterColorBuilder,
+          hideCounterWhenEmpty: true,
+          fieldFrame: frame,
+          style: TextStyle(
+            fontSize: 16,
+            height: 1.3,
+            letterSpacing: 0,
+            color: look.dark ? discordInkNight : discordInkDay,
+          ),
+          decoration: InputDecoration(
+            hintText: hint.isEmpty ? null : hint,
+            hintMaxLines: 1,
+            hintStyle: TextStyle(
+              color: look.hint,
+              fontSize: 16,
+              height: 1.3,
+              letterSpacing: 0,
+            ),
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            filled: false,
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(vertical: 11),
+          ),
+        );
+      }
       return ByteCountedTextField(
         maxBytes: maxBytes,
         maxLines: lines,
@@ -641,12 +695,9 @@ class ChatComposer extends StatelessWidget {
             minWidth: 36,
             minHeight: 36,
           ),
-          prefixIconConstraints: look.allInside
-              ? const BoxConstraints(minWidth: 40, minHeight: 42)
-              : null,
           contentPadding: EdgeInsets.symmetric(
             horizontal: prefix == null ? 16 : 4,
-            vertical: look.buttonsInside || look.allInside ? 16 : 11,
+            vertical: look.buttonsInside ? 16 : 11,
           ),
         ),
       );

@@ -41,7 +41,12 @@ class CoverageShareStatus {
   final int count;
   final bool removedPoints;
   final DateTime? at;
-  const CoverageShareStatus._(this.error, this.count, this.removedPoints, this.at);
+  const CoverageShareStatus._(
+    this.error,
+    this.count,
+    this.removedPoints,
+    this.at,
+  );
   const CoverageShareStatus.error(String message)
     : this._(message, 0, false, null);
   const CoverageShareStatus.sent(int n, DateTime when)
