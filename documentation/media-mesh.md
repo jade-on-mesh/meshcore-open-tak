@@ -36,6 +36,19 @@ switching between them, so you keep hearing the main mesh.
 The dialog also shows, every few seconds while it is open: packets received and
 sent on each profile, the measured switch time, and the radio's timing warnings.
 
+### Photos and voice on this phone
+
+The top of **MediaMesh Settings** holds the phone's own photo and voice settings. They take effect as soon as you tap them (Save is only for radio2), and the dialog opens with no radio connected so you can change them offline:
+
+- **Route photos and voice via** chosen repeaters
+- **Fast MediaMesh** and **Adaptive spacing** (see below)
+- **Auto-play voice, auto-show photos**, and under it **Also auto-download in channels** (off by default: a channel photo or clip only downloads when you tap it, or when it reaches you anyway)
+- **Send channel photos and voice right away**
+- **Mimi voice model** / **Send voice with Mimi**, **AI voice restorer**, **Codec2 quality**
+- **Diagnostics and tests**: the transfer log, link test and transfer test
+
+The same switches are also on the diagnostics sheet, opened from the ⓘ under a photo, voice or video message or from **Voice settings** in the recorder.
+
 ### Find MediaMesh
 
 **Off-Grid Repeat** (Radio Settings) sets radio2 while it's on, on any radio: beside the off-grid channel in the US band (918.800 MHz, 250 kHz, photos and voice on it), off elsewhere, and puts it back when it's turned off; see [Radio Settings](settings.md#radio-settings).
