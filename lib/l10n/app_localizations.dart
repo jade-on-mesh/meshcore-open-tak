@@ -14770,6 +14770,42 @@ abstract class AppLocalizations {
   /// **'Conflicts with {name}'**
   String mediaMesh_conflictsWith(String name);
 
+  /// No description provided for @mediaMesh_phoneSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos and voice on this phone'**
+  String get mediaMesh_phoneSection;
+
+  /// No description provided for @mediaMesh_phoneSectionHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'These change as soon as you tap them, with or without a radio connected. Save is only for the radio2 settings below.'**
+  String get mediaMesh_phoneSectionHelp;
+
+  /// No description provided for @mediaMesh_radioSection.
+  ///
+  /// In en, this message translates to:
+  /// **'radio2 on your radio'**
+  String get mediaMesh_radioSection;
+
+  /// No description provided for @mediaMesh_connectForRadio2.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect a radio to set radio2.'**
+  String get mediaMesh_connectForRadio2;
+
+  /// No description provided for @mediaMesh_diagnostics.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostics and tests'**
+  String get mediaMesh_diagnostics;
+
+  /// No description provided for @mediaMesh_diagnosticsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The transfer log, link test and transfer test.'**
+  String get mediaMesh_diagnosticsSubtitle;
+
   /// No description provided for @mediaMeshNearby_heardNow.
   ///
   /// In en, this message translates to:
