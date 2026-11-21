@@ -1,0 +1,26 @@
+name: preview web (temporary)
+# Temporary: builds the web app from this branch so a screenshot can be taken.
+# Lives only on the preview-mediamesh-settings branch; never merged.
+on:
+  push:
+    branches: [preview-mediamesh-settings]
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: fv
+        shell: bash
+        run: echo "v=$(tr -d '[:space:]' < .flutter-version)" >> "$GITHUB_OUTPUT"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.fv.outputs.v }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build web --release --no-wasm-dry-run
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web
+          path: build/web
+          retention-days: 2
