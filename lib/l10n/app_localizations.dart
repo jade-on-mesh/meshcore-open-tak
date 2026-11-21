@@ -14779,7 +14779,7 @@ abstract class AppLocalizations {
   /// No description provided for @mediaMesh_phoneSectionHelp.
   ///
   /// In en, this message translates to:
-  /// **'These change as soon as you tap them, with or without a radio connected. Save is only for the radio2 settings below.'**
+  /// **'These change as soon as you tap them, with or without a radio connected. Save is only for the radio2 settings above.'**
   String get mediaMesh_phoneSectionHelp;
 
   /// No description provided for @mediaMesh_radioSection.

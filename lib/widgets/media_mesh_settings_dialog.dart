@@ -418,8 +418,6 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildPhoneSettings(context),
-            _section(context, l10n.mediaMesh_radioSection),
             if (!connected)
               Text(l10n.mediaMesh_connectForRadio2)
             else
@@ -450,13 +448,19 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
                       ],
                     )
                   : _buildForm(context, state),
+            _section(context, l10n.mediaMesh_phoneSection),
+            _buildPhoneSettings(context),
           ],
         ),
       ),
       actions: [
         TextButton(
           onPressed: _saving ? null : () => Navigator.pop(context),
-          child: Text(l10n.common_cancel),
+          // Nothing to save offline or without radio2: the phone settings
+          // below apply as they're tapped, so this just closes.
+          child: Text(
+            usable && connected ? l10n.common_cancel : l10n.common_close,
+          ),
         ),
         if (usable && connected)
           FilledButton(
@@ -473,8 +477,8 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
     );
   }
 
-  /// The phone's own photo and voice settings: they take effect as they
-  /// change (Save is for radio2), work with no radio connected, and are also
+  /// The phone's own photo and voice settings, under the radio's: they take
+  /// effect as they change (Save is for radio2 above), work with no radio connected, and are also
   /// on the voice diagnostics sheet (the ⓘ under a photo or voice clip).
   Widget _buildPhoneSettings(BuildContext context) {
     final l10n = context.l10n;
@@ -536,6 +540,17 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
             title: Text(l10n.mediaMesh_diagnostics),
             subtitle: Text(l10n.mediaMesh_diagnosticsSubtitle),
             onTap: () => showVoxVoiceLog(context, voice),
+          ),
+          // Data Audio (lib/vox/modem_sound.dart): also in App Settings.
+          ListenableBuilder(
+            listenable: voice,
+            builder: (context, _) => SwitchListTile(
+              secondary: const Icon(Icons.settings_input_antenna),
+              title: Text(l10n.vox_dataAudioTitle),
+              subtitle: Text(l10n.vox_dataAudioMediaSubtitle),
+              value: voice.dataAudio,
+              onChanged: voice.setDataAudio,
+            ),
           ),
         ],
       ),

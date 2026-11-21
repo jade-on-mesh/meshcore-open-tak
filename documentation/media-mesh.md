@@ -38,7 +38,7 @@ sent on each profile, the measured switch time, and the radio's timing warnings.
 
 ### Photos and voice on this phone
 
-The top of **MediaMesh Settings** holds the phone's own photo and voice settings. They take effect as soon as you tap them (Save is only for radio2), and the dialog opens with no radio connected so you can change them offline:
+Under the radio2 settings, **MediaMesh Settings** holds the phone's own photo and voice settings. They take effect as soon as you tap them (Save is only for radio2), and the dialog opens with no radio connected so you can change them offline:
 
 - **Route photos and voice via** chosen repeaters
 - **Fast MediaMesh** and **Adaptive spacing** (see below)
@@ -46,6 +46,7 @@ The top of **MediaMesh Settings** holds the phone's own photo and voice settings
 - **Send channel photos and voice right away**
 - **Mimi voice model** / **Send voice with Mimi**, **AI voice restorer**, **Codec2 quality**
 - **Diagnostics and tests**: the transfer log, link test and transfer test
+- **Data Audio**, last (also in App Settings)
 
 The same switches are also on the diagnostics sheet, opened from the ⓘ under a photo, voice or video message or from **Voice settings** in the recorder.
 
