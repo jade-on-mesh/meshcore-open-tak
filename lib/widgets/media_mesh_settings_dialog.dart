@@ -418,8 +418,6 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildPhoneSettings(context),
-            _section(context, l10n.mediaMesh_radioSection),
             if (!connected)
               Text(l10n.mediaMesh_connectForRadio2)
             else
@@ -450,6 +448,8 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
                       ],
                     )
                   : _buildForm(context, state),
+            _section(context, l10n.mediaMesh_phoneSection),
+            _buildPhoneSettings(context),
           ],
         ),
       ),
@@ -457,7 +457,7 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
         TextButton(
           onPressed: _saving ? null : () => Navigator.pop(context),
           // Nothing to save offline or without radio2: the phone settings
-          // above apply as they're tapped, so this just closes.
+          // below apply as they're tapped, so this just closes.
           child: Text(
             usable && connected ? l10n.common_cancel : l10n.common_close,
           ),
@@ -477,8 +477,8 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
     );
   }
 
-  /// The phone's own photo and voice settings: they take effect as they
-  /// change (Save is for radio2), work with no radio connected, and are also
+  /// The phone's own photo and voice settings, under the radio's: they take
+  /// effect as they change (Save is for radio2 above), work with no radio connected, and are also
   /// on the voice diagnostics sheet (the ⓘ under a photo or voice clip).
   Widget _buildPhoneSettings(BuildContext context) {
     final l10n = context.l10n;

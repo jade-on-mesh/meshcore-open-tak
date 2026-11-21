@@ -38,7 +38,7 @@ sent on each profile, the measured switch time, and the radio's timing warnings.
 
 ### Photos and voice on this phone
 
-The top of **MediaMesh Settings** holds the phone's own photo and voice settings. They take effect as soon as you tap them (Save is only for radio2), and the dialog opens with no radio connected so you can change them offline:
+Under the radio2 settings, **MediaMesh Settings** holds the phone's own photo and voice settings. They take effect as soon as you tap them (Save is only for radio2), and the dialog opens with no radio connected so you can change them offline:
 
 - **Route photos and voice via** chosen repeaters
 - **Fast MediaMesh** and **Adaptive spacing** (see below)

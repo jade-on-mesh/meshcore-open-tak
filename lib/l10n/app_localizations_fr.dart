@@ -8881,7 +8881,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get mediaMesh_phoneSectionHelp =>
-      'These change as soon as you tap them, with or without a radio connected. Save is only for the radio2 settings below.';
+      'These change as soon as you tap them, with or without a radio connected. Save is only for the radio2 settings above.';
 
   @override
   String get mediaMesh_radioSection => 'radio2 on your radio';

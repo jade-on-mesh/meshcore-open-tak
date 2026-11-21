@@ -75,7 +75,7 @@ Below Radio Settings. Sends and receives photos and voice clips on a second freq
 
 Open TAK's photos and voice only send when the radio puts them on radio2 alone.
 
-The dialog's top part, **Photos and voice on this phone**, holds the phone's own photo and voice settings: Fast MediaMesh, Adaptive spacing, repeater routing, auto-play and auto-download (including **Also auto-download in channels**), sending right away, the Mimi and voice-restorer models, Codec2 quality, and diagnostics. These apply as you tap them and work with no radio connected; see [Photos and voice on this phone](media-mesh.md#photos-and-voice-on-this-phone).
+Under the radio2 settings, **Photos and voice on this phone** holds the phone's own photo and voice settings: Fast MediaMesh, Adaptive spacing, repeater routing, auto-play and auto-download (including **Also auto-download in channels**), sending right away, the Mimi and voice-restorer models, Codec2 quality, and diagnostics. These apply as you tap them and work with no radio connected; see [Photos and voice on this phone](media-mesh.md#photos-and-voice-on-this-phone).
 
 Needs radio firmware with MediaMesh (Wadamesh, or MeshCore with `radio2` and `tx.media`). See [MediaMesh](media-mesh.md).
 
