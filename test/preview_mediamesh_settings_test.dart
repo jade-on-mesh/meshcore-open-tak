@@ -26,7 +26,23 @@ Future<void> _font(String family, List<String> paths) async {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  final tempDir = Directory.systemTemp.createTempSync('preview_mms');
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(
+        const MethodChannel('plugins.flutter.io/path_provider'),
+        (call) async => tempDir.path,
+      );
   setUpAll(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      ..setMockMethodCallHandler(
+        const MethodChannel('dev.fluttercommunity.plus/connectivity'),
+        (call) async => <String>['wifi'],
+      )
+      ..setMockStreamHandler(
+        const EventChannel('dev.fluttercommunity.plus/connectivity_status'),
+        MockStreamHandler.inline(onListen: (arguments, events) {}),
+      );
     final root = Platform.environment['FLUTTER_ROOT']!;
     final mf = '$root/bin/cache/artifacts/material_fonts';
     await _font('Inter', ['assets/fonts/Inter.ttf']);

@@ -4,6 +4,8 @@ name: preview web (temporary)
 on:
   push:
     branches: [preview-mediamesh-settings]
+permissions:
+  contents: write
 jobs:
   shot:
     runs-on: ubuntu-latest
@@ -19,9 +21,11 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter test test/preview_mediamesh_settings_test.dart --update-goldens
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: shots
-          path: test/preview
-          retention-days: 2
+      # Artifacts can't be fetched from the sandbox; commit the PNGs instead.
+      - if: always()
+        run: |
+          [ -d test/preview ] || exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f test/preview
+          git commit -m "preview PNGs [skip ci]" && git push origin HEAD:preview-mediamesh-settings
