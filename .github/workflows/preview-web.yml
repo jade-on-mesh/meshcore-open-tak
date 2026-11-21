@@ -1,11 +1,11 @@
 name: preview web (temporary)
-# Temporary: builds the web app from this branch so a screenshot can be taken.
+# Temporary: renders MediaMesh Settings to PNGs for a screenshot.
 # Lives only on the preview-mediamesh-settings branch; never merged.
 on:
   push:
     branches: [preview-mediamesh-settings]
 jobs:
-  web:
+  shot:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,9 +18,10 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build web --release --no-wasm-dry-run
+      - run: flutter test test/preview_mediamesh_settings_test.dart --update-goldens
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: web
-          path: build/web
+          name: shots
+          path: test/preview
           retention-days: 2
