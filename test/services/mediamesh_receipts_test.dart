@@ -6,7 +6,8 @@ import 'package:meshcore_open/services/mediamesh_receipts.dart';
 // What CoreScope's POST /api/mediamesh/receipts expects
 // (cmd/server/mediamesh_receipts.go in the CascadiaMesh fork).
 void main() {
-  const radio = 'AB01cd23ef45ab01cd23ef45ab01cd23ef45ab01cd23ef45ab01cd23ef45ab01';
+  const radio =
+      'AB01cd23ef45ab01cd23ef45ab01cd23ef45ab01cd23ef45ab01cd23ef45ab01';
   final r = MediaReceipt(
     sid: '1a2b3c4d',
     kind: 'photo',
@@ -20,7 +21,9 @@ void main() {
 
   test('receipts go next to the coverage points', () {
     expect(
-      receiptsEndpoint('https://analyzer.cascadiamesh.org/api/mediamesh/coverage-points').toString(),
+      receiptsEndpoint(
+        'https://analyzer.cascadiamesh.org/api/mediamesh/coverage-points',
+      ).toString(),
       'https://analyzer.cascadiamesh.org/api/mediamesh/receipts',
     );
     expect(
@@ -54,7 +57,16 @@ void main() {
     expect(j['radio'], radio.toLowerCase());
     expect(j['sent'], 1795300100);
     expect(j['receipts'], [
-      {'sid': '1a2b3c4d', 'kind': 'photo', 'at': 1795300000, 'total': 17, 'got': 16, 'asked': 1, 'rebuilt': 0, 'whole': true},
+      {
+        'sid': '1a2b3c4d',
+        'kind': 'photo',
+        'at': 1795300000,
+        'total': 17,
+        'got': 16,
+        'asked': 1,
+        'rebuilt': 0,
+        'whole': true,
+      },
     ]);
     expect(j.keys.toSet(), {'v', 'radio', 'sent', 'app', 'receipts'});
   });

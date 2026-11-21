@@ -99,7 +99,8 @@ Uri? receiptsEndpoint(String analyzer) {
   final u = coverageEndpoint(analyzer);
   if (u == null) return null;
   final path = u.path.endsWith(_coveragePath)
-      ? u.path.substring(0, u.path.length - _coveragePath.length) + _receiptsPath
+      ? u.path.substring(0, u.path.length - _coveragePath.length) +
+            _receiptsPath
       : u.path + _receiptsPath;
   return Uri(
     scheme: u.scheme,

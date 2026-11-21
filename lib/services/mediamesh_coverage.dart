@@ -42,7 +42,12 @@ class CoverageShareStatus {
   final int count;
   final bool removedPoints;
   final DateTime? at;
-  const CoverageShareStatus._(this.error, this.count, this.removedPoints, this.at);
+  const CoverageShareStatus._(
+    this.error,
+    this.count,
+    this.removedPoints,
+    this.at,
+  );
   const CoverageShareStatus.error(String message)
     : this._(message, 0, false, null);
   const CoverageShareStatus.sent(int n, DateTime when)
@@ -695,7 +700,10 @@ class MediaMeshCoverageService extends ChangeNotifier {
     if (!_receipts) return;
     _receiptsWaiting.add(r);
     if (_receiptsWaiting.length > receiptsKeptMax) {
-      _receiptsWaiting.removeRange(0, _receiptsWaiting.length - receiptsKeptMax);
+      _receiptsWaiting.removeRange(
+        0,
+        _receiptsWaiting.length - receiptsKeptMax,
+      );
     }
     notifyListeners();
     unawaited(SharedPreferences.getInstance().then(_saveReceipts));
