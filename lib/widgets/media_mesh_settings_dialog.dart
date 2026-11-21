@@ -11,7 +11,14 @@ import '../models/radio_settings.dart';
 import '../screens/radio_console_screen.dart';
 import '../services/media_mesh.dart';
 import '../services/media_mesh_find.dart';
-import '../vox/voice_message_bubble.dart' show VoxForcedRouteTile;
+import '../vox/voice_message_bubble.dart'
+    show
+        VoxAutoPlayTile,
+        VoxCodec2QualityTile,
+        VoxEnhanceVoiceTile,
+        VoxForcedRouteTile,
+        VoxMimiTile,
+        showVoxVoiceLog;
 import '../vox/voice_service.dart';
 import 'mediamesh_coverage_tile.dart';
 
@@ -50,7 +57,8 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
   @override
   void initState() {
     super.initState();
-    _load();
+    // The phone's own settings work offline; radio2 needs the radio.
+    if (widget.connector.isConnected) _load();
   }
 
   @override
@@ -402,10 +410,20 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
     final l10n = context.l10n;
     final state = _state;
     final usable = state != null && state.support != MediaMeshSupport.none;
+    final connected = widget.connector.isConnected;
     return AlertDialog(
       title: Text(l10n.mediaMesh_title),
       content: SingleChildScrollView(
-        child: state == null
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildPhoneSettings(context),
+            _section(context, l10n.mediaMesh_radioSection),
+            if (!connected)
+              Text(l10n.mediaMesh_connectForRadio2)
+            else
+              state == null
             ? const Padding(
                 padding: EdgeInsets.all(24),
                 child: Center(child: CircularProgressIndicator()),
@@ -432,13 +450,15 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
                 ],
               )
             : _buildForm(context, state),
+          ],
+        ),
       ),
       actions: [
         TextButton(
           onPressed: _saving ? null : () => Navigator.pop(context),
           child: Text(l10n.common_cancel),
         ),
-        if (usable)
+        if (usable && connected)
           FilledButton(
             onPressed: _saving || !_profileValid ? null : _save,
             child: _saving
@@ -450,6 +470,70 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
                 : Text(l10n.common_save),
           ),
       ],
+    );
+  }
+
+  /// The phone's own photo and voice settings: they take effect as they
+  /// change (Save is for radio2), work with no radio connected, and are also
+  /// on the voice diagnostics sheet (the ⓘ under a photo or voice clip).
+  Widget _buildPhoneSettings(BuildContext context) {
+    final l10n = context.l10n;
+    final small = Theme.of(context).textTheme.bodySmall;
+    final voice = context.read<VoxVoiceService>();
+    return ListTileTheme.merge(
+      contentPadding: EdgeInsets.zero,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.mediaMesh_phoneSection, style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 4),
+          Text(l10n.mediaMesh_phoneSectionHelp, style: small),
+          const SizedBox(height: 8),
+          // Photo and voice transfers through chosen repeaters.
+          VoxForcedRouteTile(service: voice, contentPadding: EdgeInsets.zero),
+          // Repair packets and closer spacing for transfers (Fast MediaMesh);
+          // off goes back to the way transfers worked before.
+          ListenableBuilder(
+            listenable: voice,
+            builder: (context, _) {
+              return SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                secondary: const Icon(Icons.speed),
+                title: Text(l10n.vox_fastMediaMeshTitle),
+                subtitle: Text(l10n.vox_fastMediaMeshSubtitle),
+                value: voice.fastMediaMesh,
+                onChanged: voice.setFastMediaMesh,
+              );
+            },
+          ),
+          // Packet spacing that learns (Fast MediaMesh only); off is the
+          // spacing as it was.
+          ListenableBuilder(
+            listenable: voice,
+            builder: (context, _) {
+              return SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                secondary: const Icon(Icons.tune),
+                title: Text(l10n.vox_adaptiveSpacingTitle),
+                subtitle: Text(l10n.vox_adaptiveSpacingSubtitle),
+                value: voice.fastMediaMesh && voice.adaptiveSpacing,
+                onChanged: voice.fastMediaMesh ? voice.setAdaptiveSpacing : null,
+              );
+            },
+          ),
+          VoxAutoPlayTile(service: voice),
+          VoxMimiTile(service: voice),
+          VoxEnhanceVoiceTile(service: voice),
+          VoxCodec2QualityTile(service: voice),
+          ListTile(
+            leading: const Icon(Icons.receipt_long_outlined),
+            title: Text(l10n.mediaMesh_diagnostics),
+            subtitle: Text(l10n.mediaMesh_diagnosticsSubtitle),
+            onTap: () => showVoxVoiceLog(context, voice),
+          ),
+        ],
+      ),
     );
   }
 
@@ -599,44 +683,6 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
         // Where the MediaMesh repeaters reach, as you move.
         const MediaMeshCoverageTile(),
         const SizedBox(height: 8),
-        // Photo and voice transfers through chosen repeaters (also on the
-        // voice diagnostics sheet).
-        VoxForcedRouteTile(
-          service: context.read<VoxVoiceService>(),
-          contentPadding: EdgeInsets.zero,
-        ),
-        // Repair packets and closer spacing for transfers (Fast MediaMesh);
-        // off goes back to the way transfers worked before.
-        ListenableBuilder(
-          listenable: context.read<VoxVoiceService>(),
-          builder: (context, _) {
-            final voice = context.read<VoxVoiceService>();
-            return SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              secondary: const Icon(Icons.speed),
-              title: Text(l10n.vox_fastMediaMeshTitle),
-              subtitle: Text(l10n.vox_fastMediaMeshSubtitle),
-              value: voice.fastMediaMesh,
-              onChanged: voice.setFastMediaMesh,
-            );
-          },
-        ),
-        // Packet spacing that learns (Fast MediaMesh only); off is the
-        // spacing as it was.
-        ListenableBuilder(
-          listenable: context.read<VoxVoiceService>(),
-          builder: (context, _) {
-            final voice = context.read<VoxVoiceService>();
-            return SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              secondary: const Icon(Icons.tune),
-              title: Text(l10n.vox_adaptiveSpacingTitle),
-              subtitle: Text(l10n.vox_adaptiveSpacingSubtitle),
-              value: voice.fastMediaMesh && voice.adaptiveSpacing,
-              onChanged: voice.fastMediaMesh ? voice.setAdaptiveSpacing : null,
-            );
-          },
-        ),
         const SizedBox(height: 16),
         DropdownButtonFormField<LoRaBandwidth>(
           key: ValueKey('bw-${_settings.bandwidth.name}'),

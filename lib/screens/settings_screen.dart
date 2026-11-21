@@ -680,14 +680,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         MeshNavTile(
           icon: Icons.perm_media_outlined,
           title: l10n.mediaMesh_title,
-          subtitle: connected ? l10n.mediaMesh_settingsSubtitle : offline,
-          onTap: connected
-              ? () => showDialog(
-                  context: context,
-                  builder: (context) =>
-                      MediaMeshSettingsDialog(connector: connector),
-                )
-              : null,
+          // Opens offline too: the phone's photo and voice settings are in
+          // it; radio2 waits for a radio.
+          subtitle: l10n.mediaMesh_settingsSubtitle,
+          onTap: () => showDialog(
+            context: context,
+            builder: (context) => MediaMeshSettingsDialog(connector: connector),
+          ),
         ),
         const Divider(height: 1, indent: 16),
         MeshNavTile(
