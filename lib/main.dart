@@ -582,6 +582,8 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
       _voxVoiceService,
     );
     MapHighlights.instance.attach(_teamService, _watchFeed);
+    // Delivery receipts: each clip received goes to the analyzer, if shared.
+    _voxVoiceService.onReceipt = _coverage.addReceipt;
     WidgetsBinding.instance.addObserver(this);
     _startModelDownloads();
     _notificationNavigator.attach();

@@ -27,6 +27,7 @@ import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
 import '../models/channel.dart';
 import '../models/contact.dart';
+import '../services/mediamesh_receipts.dart';
 import '../services/media_lockdown.dart';
 import '../services/otp_service.dart';
 import '../services/media_mesh.dart'
@@ -174,6 +175,15 @@ class _IncomingClip {
 
   /// Packets rebuilt from parity rather than received.
   int rebuilt = 0;
+
+  /// Packets that came after this phone asked again for missing ones, and
+  /// whether the latest request was such a repair (for delivery receipts).
+  int askedGot = 0;
+  bool repairing = false;
+
+  /// A delivery receipt went out for it whole / in part (mediamesh_receipts).
+  bool receiptWhole = false;
+  bool receiptPart = false;
 
   /// Fewest hops any of its channel packets came over (99: none seen).
   int minHops = 99;
@@ -1561,6 +1571,7 @@ class VoxVoiceService extends ChangeNotifier {
       return;
     }
     clip.attempts++;
+    clip.repairing = clip.packets.isNotEmpty;
     clip.lastMethod = method;
     clip.rxLast = null; // the next packet starts a new burst
     clip.askedAt = DateTime.now();
@@ -1933,6 +1944,8 @@ class VoxVoiceService extends ChangeNotifier {
     clip.status = VoxClipStatus.unavailable;
     clip.message = message;
     _reportTransfer(clip);
+    // given up on after asking: arrived in part (or not at all)
+    if (clip.attempts > 0) _emitReceipt(clip, whole: false);
     notifyListeners();
   }
 
@@ -3196,6 +3209,7 @@ class VoxVoiceService extends ChangeNotifier {
     // listener's answer) says nothing about our request. It must not restart
     // the wait: a trickle of them held off asking again for over 2 minutes.
     if (!fresh) return;
+    if (clip.repairing) clip.askedGot++;
     final sid = clip.envelope.sessionId;
     if (clip.envelope.isMedia) _dataAudioFor(sid, data);
     if (clip.isComplete) {
@@ -3205,6 +3219,7 @@ class VoxVoiceService extends ChangeNotifier {
       if (_viaMask.containsKey(sid)) unawaited(_saveReceivedVia());
       _onClipComplete(clip.envelope);
       _reportTransfer(clip);
+      _emitReceipt(clip, whole: true);
     } else if (clip.status == VoxClipStatus.requesting ||
         clip.status == VoxClipStatus.receiving) {
       clip.status = VoxClipStatus.receiving;
@@ -4943,6 +4958,42 @@ class VoxVoiceService extends ChangeNotifier {
   }
 
   /// A test photo we were fetching is done (or given up on): tell its sender.
+  /// Delivery receipts (services/mediamesh_receipts.dart): the app sets this
+  /// to hear of each clip received whole, or given up on after asking for
+  /// it. Only the clip's id and piece counts: never what was in it.
+  void Function(MediaReceipt receipt)? onReceipt;
+
+  void _emitReceipt(_IncomingClip clip, {required bool whole}) {
+    final cb = onReceipt;
+    final sid = receiptSid(clip.envelope.sessionId);
+    if (cb == null || sid == null) return;
+    if (whole ? clip.receiptWhole : clip.receiptPart) return;
+    if (whole) {
+      clip.receiptWhole = true;
+    } else {
+      clip.receiptPart = true;
+    }
+    final mode = clip.envelope.mode;
+    final rebuilt = clip.rebuilt;
+    final got = clip.packets.length - rebuilt;
+    cb(
+      MediaReceipt(
+        sid: sid,
+        kind: mode.isImage
+            ? 'photo'
+            : mode.isVideo
+            ? 'video'
+            : 'voice',
+        at: DateTime.now(),
+        total: clip.envelope.totalPackets,
+        got: got < 0 ? 0 : got,
+        asked: clip.askedGot,
+        rebuilt: rebuilt,
+        whole: whole,
+      ),
+    );
+  }
+
   void _reportTransfer(_IncomingClip clip) {
     final sid = clip.envelope.sessionId;
     final w = _testWatch.remove(sid);

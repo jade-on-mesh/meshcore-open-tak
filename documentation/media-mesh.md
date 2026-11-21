@@ -130,6 +130,16 @@ On Android a notification shows while it's recording, so it keeps going with the
 
 The analyzer side is documented in CoreScope's `docs/mediamesh-coverage-points.md`.
 
+#### Sharing delivery receipts
+
+Observers only hear the pieces of a clip that pass near them, so an analyzer can't tell from them whether a photo, video or voice clip arrived. **Share delivery receipts** (under Share coverage points, off by default) lets this phone tell it.
+
+- For each clip received whole, and each one given up on after asking for it, the app keeps a receipt: the clip's session id (already on the air in every piece), its kind, how many pieces it has, how many came over the air, how many came after asking again for missing ones, how many were rebuilt from parity, and whether it ended up whole. Never what was in it, who sent it, the channel, or where the phone was.
+- They go to the same analyzer as coverage points (its `/api/mediamesh/receipts`), a minute after the last one, signed by the connected radio over `corescope-receipt:` and the SHA-256 of the batch. Up to 1,000 wait while the radio is disconnected. Switching receipts off drops any still waiting.
+- **Remove my receipts from the analyzer** asks it to delete every receipt this radio sent, and switches receipts off.
+
+The analyzer shows them as **Did it arrive?** on its MediaMesh tab (CoreScope's `docs/mediamesh-receipts.md`).
+
 ### Per contact and per channel
 
 Long-press a contact or channel and pick **Send on…**: *Auto* (follow the

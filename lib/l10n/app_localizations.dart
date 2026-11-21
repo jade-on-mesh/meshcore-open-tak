@@ -15844,6 +15844,48 @@ abstract class AppLocalizations {
   /// **'{count} points'**
   String coverage_points(int count);
 
+  /// No description provided for @coverage_shareReceipts.
+  ///
+  /// In en, this message translates to:
+  /// **'Share delivery receipts'**
+  String get coverage_shareReceipts;
+
+  /// No description provided for @coverage_shareReceiptsHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'For each photo, video or voice clip this phone receives, tells the analyzer above its ID, how many pieces came and whether it was whole, signed by your radio, so it can show whether MediaMesh delivers. Never what was in it, who sent it, or where you were. Off: nothing leaves your phone.'**
+  String get coverage_shareReceiptsHelp;
+
+  /// No description provided for @coverage_receiptsSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipts sent: {count}'**
+  String coverage_receiptsSent(int count);
+
+  /// No description provided for @coverage_receiptsWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipts waiting to send: {count}'**
+  String coverage_receiptsWaiting(int count);
+
+  /// No description provided for @coverage_receiptsRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove my receipts from the analyzer'**
+  String get coverage_receiptsRemove;
+
+  /// No description provided for @coverage_receiptsRemoveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove every delivery receipt this radio sent to {analyzer}? Sharing receipts switches off.'**
+  String coverage_receiptsRemoveConfirm(String analyzer);
+
+  /// No description provided for @coverage_receiptsRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipts removed: {count}'**
+  String coverage_receiptsRemoved(int count);
+
   /// No description provided for @coverage_good.
   ///
   /// In en, this message translates to:

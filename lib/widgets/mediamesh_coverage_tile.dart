@@ -137,8 +137,81 @@ class MediaMeshCoverageTile extends StatelessWidget {
             ),
           ],
         ),
+        const Divider(),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          secondary: Icon(
+            cov.shareReceipts ? Icons.mark_email_read_outlined : Icons.mail_outline,
+          ),
+          title: Text(l10n.coverage_shareReceipts),
+          subtitle: Text(
+            _receiptsLine(context, cov) ?? l10n.coverage_shareReceiptsHelp,
+          ),
+          value: cov.shareReceipts,
+          onChanged: (v) => unawaited(cov.setShareReceipts(v)),
+        ),
+        Wrap(
+          spacing: 4,
+          children: [
+            TextButton.icon(
+              icon: const Icon(Icons.person_remove_outlined),
+              label: Text(l10n.coverage_receiptsRemove),
+              onPressed: cov.sendingReceipts
+                  ? null
+                  : () => _confirmRemoveReceipts(context, cov),
+            ),
+          ],
+        ),
       ],
     );
+  }
+
+  /// The last receipts send, or how many are waiting; null: the help text.
+  String? _receiptsLine(BuildContext context, MediaMeshCoverageService cov) {
+    final l10n = context.l10n;
+    final s = cov.receiptsStatus;
+    if (s == null) {
+      return cov.shareReceipts && cov.receiptsWaiting > 0
+          ? l10n.coverage_receiptsWaiting(cov.receiptsWaiting)
+          : null;
+    }
+    final e = s.error;
+    if (e == 'not-connected') return l10n.coverage_shareNotConnected;
+    if (e == 'bad-address') return l10n.coverage_analyzerBad;
+    if (e != null) return l10n.coverage_shareError(e);
+    final when = s.at == null
+        ? ''
+        : ' · ${TimeOfDay.fromDateTime(s.at!).format(context)}';
+    return (s.removedPoints
+            ? l10n.coverage_receiptsRemoved(s.count)
+            : l10n.coverage_receiptsSent(s.count)) +
+        when;
+  }
+
+  Future<void> _confirmRemoveReceipts(
+    BuildContext context,
+    MediaMeshCoverageService cov,
+  ) async {
+    final l10n = context.l10n;
+    final host = coverageEndpoint(cov.analyzer)?.host ?? cov.analyzer;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.coverage_receiptsRemove),
+        content: Text(l10n.coverage_receiptsRemoveConfirm(host)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.common_cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.common_remove),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) await cov.removeMyReceipts();
   }
 
   /// The last send's result, or null (the help text then).
