@@ -531,6 +531,17 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
           VoxMimiTile(service: voice),
           VoxEnhanceVoiceTile(service: voice),
           VoxCodec2QualityTile(service: voice),
+          // Data Audio (lib/vox/modem_sound.dart): also in App Settings.
+          ListenableBuilder(
+            listenable: voice,
+            builder: (context, _) => SwitchListTile(
+              secondary: const Icon(Icons.settings_input_antenna),
+              title: Text(l10n.vox_dataAudioTitle),
+              subtitle: Text(l10n.vox_dataAudioMediaSubtitle),
+              value: voice.dataAudio,
+              onChanged: voice.setDataAudio,
+            ),
+          ),
           ListTile(
             leading: const Icon(Icons.receipt_long_outlined),
             title: Text(l10n.mediaMesh_diagnostics),
