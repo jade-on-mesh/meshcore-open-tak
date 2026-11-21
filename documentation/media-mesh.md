@@ -45,8 +45,8 @@ The top of **MediaMesh Settings** holds the phone's own photo and voice settings
 - **Auto-play voice, auto-show photos**, and under it **Also auto-download in channels** (off by default: a channel photo or clip only downloads when you tap it, or when it reaches you anyway)
 - **Send channel photos and voice right away**
 - **Mimi voice model** / **Send voice with Mimi**, **AI voice restorer**, **Codec2 quality**
-- **Data Audio** (also in App Settings)
 - **Diagnostics and tests**: the transfer log, link test and transfer test
+- **Data Audio**, last (also in App Settings)
 
 The same switches are also on the diagnostics sheet, opened from the ⓘ under a photo, voice or video message or from **Voice settings** in the recorder.
 
