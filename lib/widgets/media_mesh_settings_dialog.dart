@@ -456,7 +456,11 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
       actions: [
         TextButton(
           onPressed: _saving ? null : () => Navigator.pop(context),
-          child: Text(l10n.common_cancel),
+          // Nothing to save offline or without radio2: the phone settings
+          // above apply as they're tapped, so this just closes.
+          child: Text(
+            usable && connected ? l10n.common_cancel : l10n.common_close,
+          ),
         ),
         if (usable && connected)
           FilledButton(
