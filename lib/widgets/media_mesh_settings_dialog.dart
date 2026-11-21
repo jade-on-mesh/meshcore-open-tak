@@ -424,32 +424,32 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
               Text(l10n.mediaMesh_connectForRadio2)
             else
               state == null
-            ? const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            : !usable
-            ? Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    state.detail != null
-                        ? l10n.mediaMesh_cantRun
-                        : l10n.mediaMesh_noFirmware,
-                  ),
-                  // What the radio actually said to `get radio2`, so a radio
-                  // that has radio2 but didn't answer can be told apart.
-                  if (state.radio2Answer case final said?) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      l10n.mediaMesh_radio2Answer(said),
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ],
-              )
-            : _buildForm(context, state),
+                  ? const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : !usable
+                  ? Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          state.detail != null
+                              ? l10n.mediaMesh_cantRun
+                              : l10n.mediaMesh_noFirmware,
+                        ),
+                        // What the radio actually said to `get radio2`, so a radio
+                        // that has radio2 but didn't answer can be told apart.
+                        if (state.radio2Answer case final said?) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            l10n.mediaMesh_radio2Answer(said),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ],
+                    )
+                  : _buildForm(context, state),
           ],
         ),
       ),
@@ -486,7 +486,10 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(l10n.mediaMesh_phoneSection, style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            l10n.mediaMesh_phoneSection,
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           const SizedBox(height: 4),
           Text(l10n.mediaMesh_phoneSectionHelp, style: small),
           const SizedBox(height: 8),
@@ -518,7 +521,9 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
                 title: Text(l10n.vox_adaptiveSpacingTitle),
                 subtitle: Text(l10n.vox_adaptiveSpacingSubtitle),
                 value: voice.fastMediaMesh && voice.adaptiveSpacing,
-                onChanged: voice.fastMediaMesh ? voice.setAdaptiveSpacing : null,
+                onChanged: voice.fastMediaMesh
+                    ? voice.setAdaptiveSpacing
+                    : null,
               );
             },
           ),

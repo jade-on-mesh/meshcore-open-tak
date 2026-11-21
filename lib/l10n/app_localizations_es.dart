@@ -8854,7 +8854,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mediaMesh_phoneSection => 'Photos and voice on this phone';
 
   @override
-  String get mediaMesh_phoneSectionHelp => 'These change as soon as you tap them, with or without a radio connected. Save is only for the radio2 settings below.';
+  String get mediaMesh_phoneSectionHelp =>
+      'These change as soon as you tap them, with or without a radio connected. Save is only for the radio2 settings below.';
 
   @override
   String get mediaMesh_radioSection => 'radio2 on your radio';
@@ -8866,7 +8867,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mediaMesh_diagnostics => 'Diagnostics and tests';
 
   @override
-  String get mediaMesh_diagnosticsSubtitle => 'The transfer log, link test and transfer test.';
+  String get mediaMesh_diagnosticsSubtitle =>
+      'The transfer log, link test and transfer test.';
 
   @override
   String get mediaMeshNearby_heardNow => 'MediaMesh nearby: heard just now';
