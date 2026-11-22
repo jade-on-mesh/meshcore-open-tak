@@ -6014,7 +6014,7 @@ class AppLocalizationsBg extends AppLocalizations {
 
   @override
   String get coverage_shareHelp =>
-      'Sends what you record to the analyzer below, signed by your radio, so its coverage map is checked against real measurements. It shows them as 200 m squares, leaves out where each trip starts and ends, and never says whose they are. Off: nothing leaves your phone.';
+      'Sends what you record to the analyzer below, signed by your radio, so its coverage map is checked against real measurements. It shows them as 500 m hexagons, leaves out where each trip starts and ends, and never says whose they are. On unless you switch it off; off, nothing leaves your phone.';
 
   @override
   String get coverage_analyzer => 'Analyzer';
@@ -9533,7 +9533,7 @@ class AppLocalizationsBg extends AppLocalizations {
 
   @override
   String get coverage_shareReceiptsHelp =>
-      'For each photo, video or voice clip this phone receives, tells the analyzer above its ID, how many pieces came and whether it was whole, signed by your radio, so it can show whether MediaMesh delivers. Never what was in it, who sent it, or where you were. Off: nothing leaves your phone.';
+      'For each photo, video or voice clip this phone receives, tells the analyzer above its ID, how many pieces came and whether it was whole, signed by your radio, so it can show whether MediaMesh delivers. Never what was in it, who sent it, or where you were. On unless you switch it off; off, nothing leaves your phone.';
 
   @override
   String coverage_receiptsSent(int count) {
