@@ -583,6 +583,12 @@ abstract class AppLocalizations {
   /// **'MeshCore Open TAK'**
   String get scanner_title;
 
+  /// No description provided for @scanner_windowsLinkFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows couldn\'t open a Bluetooth link to {name}. Make sure it\'s in range and not connected to a phone or another app, then try again. If your radio uses a PIN, pair it first in Windows Settings > Bluetooth & devices.'**
+  String scanner_windowsLinkFailed(String name);
+
   /// No description provided for @connectionChoiceUsbLabel.
   ///
   /// In en, this message translates to:
@@ -4614,6 +4620,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This message\'s time is in the future, so the sender\'s clock may be wrong. It is shown in the order it arrived.'**
   String get chat_futureTimestampWarning;
+
+  /// No description provided for @chat_hashtagJoinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add {name}?'**
+  String chat_hashtagJoinTitle(String name);
+
+  /// No description provided for @chat_hashtagJoinBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This adds the hashtag channel to your radio. Anyone who knows its name can read and post in it.'**
+  String get chat_hashtagJoinBody;
+
+  /// No description provided for @chat_hashtagJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Add channel'**
+  String get chat_hashtagJoin;
+
+  /// No description provided for @chat_hashtagJoined.
+  ///
+  /// In en, this message translates to:
+  /// **'Added {name}'**
+  String chat_hashtagJoined(String name);
 
   /// No description provided for @chat_messageTooLong.
   ///
@@ -14745,6 +14775,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Conflicts with {name}'**
   String mediaMesh_conflictsWith(String name);
+
+  /// No description provided for @mediaMesh_phoneSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos and voice on this phone'**
+  String get mediaMesh_phoneSection;
+
+  /// No description provided for @mediaMesh_phoneSectionHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'These change as soon as you tap them, with or without a radio connected. Save is only for the radio2 settings above.'**
+  String get mediaMesh_phoneSectionHelp;
+
+  /// No description provided for @mediaMesh_radioSection.
+  ///
+  /// In en, this message translates to:
+  /// **'radio2 on your radio'**
+  String get mediaMesh_radioSection;
+
+  /// No description provided for @mediaMesh_connectForRadio2.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect a radio to set radio2.'**
+  String get mediaMesh_connectForRadio2;
+
+  /// No description provided for @mediaMesh_diagnostics.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostics and tests'**
+  String get mediaMesh_diagnostics;
+
+  /// No description provided for @mediaMesh_diagnosticsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The transfer log, link test and transfer test.'**
+  String get mediaMesh_diagnosticsSubtitle;
 
   /// No description provided for @mediaMeshNearby_heardNow.
   ///

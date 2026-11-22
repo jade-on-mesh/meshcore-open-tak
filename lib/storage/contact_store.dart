@@ -78,6 +78,7 @@ class ContactStore {
       'longitude': contact.longitude,
       'lastSeen': contact.lastSeen.millisecondsSinceEpoch,
       'lastModified': contact.lastModified?.millisecondsSinceEpoch,
+      'heardAt': contact.heardAt?.millisecondsSinceEpoch,
       'lastMessageAt': contact.lastMessageAt.millisecondsSinceEpoch,
       'isActive': contact.isActive,
       'rawPacket': contact.rawPacket != null
@@ -153,6 +154,11 @@ class ContactStore {
       telemetryFixAt: telemetryFixMs == null
           ? null
           : DateTime.fromMillisecondsSinceEpoch(telemetryFixMs),
+      heardAt: (json['heardAt'] as num?) == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(
+              (json['heardAt'] as num).toInt(),
+            ),
     );
   }
 }

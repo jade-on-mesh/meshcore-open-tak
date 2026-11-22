@@ -115,6 +115,9 @@ If the node doesn't answer before the request times out, the app says there was 
 A telemetry position stays on the map until the node sends a newer advert, which then replaces it. Refreshing or re-syncing the contact list from the radio keeps it.
 
 ### Long-Press on Empty Map Area
+
+On a MediaMesh coverage dot (see [MediaMesh](media-mesh.md#coverage-map)), hold for 1.2 s: a shorter press opens the dot.
+
 Shows a bottom sheet with:
 - **Share marker here**: Prompts for a label (default: "Point of interest"), then pick a DM contact or channel to send the location to. Wire format: `m:<lat>,<lon>|<label>|poi`; a `|` in the label is replaced with `/` and line breaks with spaces. The label field shows a live byte counter so the whole pin fits in one message, and a hint that reusing a previous label updates that marker for MeshCore Open recipients. To share your radio's own position, use **Share my location** from the ⊕ menu in chat (see [Chat & Messaging](chat-and-messaging.md#input-bar))
 - **Set as my location**: Updates your device's advertised location

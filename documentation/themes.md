@@ -67,7 +67,7 @@ Halloween, Thanksgiving, Christmas, and New Year's themes, each with its own col
 
 ## Automatic Holiday Themes
 
-**Switch automatically** is **on by default**, including for people who already chose a theme before updating. While it is on, each holiday's theme is shown in place of your own theme from **17 days before the holiday until the end of the holiday itself**:
+**Switch automatically** is **off by default**; turn it on to get holiday themes. (It used to be on by default; updating turns it off once for everyone, so if you want it, turn it on again.) While it is on, each holiday's theme is shown in place of your own theme from **17 days before the holiday until the end of the holiday itself**:
 
 | Holiday | Date | Automatic theme starts |
 |---|---|---|

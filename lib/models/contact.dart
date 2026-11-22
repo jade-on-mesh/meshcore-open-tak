@@ -28,6 +28,10 @@ class Contact {
   /// the same advert keeps the fix and a newer advert replaces it.
   final DateTime? telemetryFixAt;
 
+  /// When this phone saw the node's advert arrive (its own clock), or null
+  /// when it hasn't since the contact came from the radio or a backup.
+  final DateTime? heardAt;
+
   Contact({
     required this.publicKey,
     required this.name,
@@ -46,6 +50,7 @@ class Contact {
     this.isActive = true,
     this.rawPacket,
     this.telemetryFixAt,
+    this.heardAt,
   }) : lastMessageAt = lastMessageAt ?? lastSeen;
 
   /// Cached: it backs ==, hashCode and the per-frame contact lookups, and
@@ -92,10 +97,47 @@ class Contact {
         lon <= 180.0;
   }
 
+  /// When our radio last heard the node's advert, by our own clocks: the
+  /// phone's ([heardAt]) or the radio's (its lastmod, [lastModified]),
+  /// whichever is later. [lastSeen] is the node's own advert timestamp, its
+  /// clock, often wrong: a node set ahead showed "recently" and sorted first
+  /// for as long as it was ahead, and one set behind sank. That's only the
+  /// fallback. Never later than now.
+  ///
+  /// A time in the future (a radio or node clock set ahead) isn't a time we
+  /// heard anything, so it's passed over, not taken as "now": taken as now,
+  /// every such node read "recently" and tied at the top, and a node whose
+  /// advert had just come in couldn't rise above them. With no usable time
+  /// at all it's [heardNever], so it sorts last.
+  DateTime get advertHeardAt {
+    final now = DateTime.now();
+    final limit = now.add(const Duration(minutes: 1));
+    DateTime? usable(DateTime? t) =>
+        t != null && t.isAfter(heardNever) && !t.isAfter(limit) ? t : null;
+    final phone = usable(heardAt);
+    final radio = usable(lastModified);
+    // The phone's time first: the radio's lastmod also moves when the radio
+    // rewrites the contact for other reasons (a path learnt), and its clock
+    // can run a little ahead, which put nodes heard earlier above one just
+    // heard. The radio's counts when it's well past the phone's: heard
+    // while the phone was away.
+    DateTime? best = phone;
+    if (radio != null &&
+        (best == null || radio.isAfter(best.add(const Duration(minutes: 2))))) {
+      best = radio;
+    }
+    best ??= usable(lastSeen) ?? heardNever;
+    return best.isAfter(now) ? now : best;
+  }
+
+  /// No usable heard time (Contact.advertHeardAt).
+  static final DateTime heardNever = DateTime.utc(2001);
+
   /// The latest time we heard from the node: its advert or a telemetry fix.
   DateTime get lastHeard {
     final fixAt = telemetryFixAt;
-    return fixAt != null && fixAt.isAfter(lastSeen) ? fixAt : lastSeen;
+    final advert = advertHeardAt;
+    return fixAt != null && fixAt.isAfter(advert) ? fixAt : advert;
   }
 
   bool get isFavorite => (flags & contactFlagFavorite) != 0;
@@ -120,6 +162,7 @@ class Contact {
     Uint8List? rawPacket,
     DateTime? telemetryFixAt,
     bool clearTelemetryFix = false,
+    DateTime? heardAt,
   }) {
     return Contact(
       publicKey: publicKey ?? this.publicKey,
@@ -145,6 +188,7 @@ class Contact {
       telemetryFixAt: clearTelemetryFix
           ? null
           : (telemetryFixAt ?? this.telemetryFixAt),
+      heardAt: heardAt ?? this.heardAt,
     );
   }
 

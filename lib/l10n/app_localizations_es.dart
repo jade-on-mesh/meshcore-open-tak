@@ -269,6 +269,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get scanner_title => 'MeshCore Open TAK';
 
   @override
+  String scanner_windowsLinkFailed(String name) {
+    return 'Windows couldn\'t open a Bluetooth link to $name. Make sure it\'s in range and not connected to a phone or another app, then try again. If your radio uses a PIN, pair it first in Windows Settings > Bluetooth & devices.';
+  }
+
+  @override
   String get connectionChoiceUsbLabel => 'USB';
 
   @override
@@ -2624,6 +2629,23 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get chat_futureTimestampWarning =>
       'La hora de este mensaje está en el futuro, por lo que el reloj del remitente puede estar mal. Se muestra en el orden en que llegó.';
+
+  @override
+  String chat_hashtagJoinTitle(String name) {
+    return 'Add $name?';
+  }
+
+  @override
+  String get chat_hashtagJoinBody =>
+      'This adds the hashtag channel to your radio. Anyone who knows its name can read and post in it.';
+
+  @override
+  String get chat_hashtagJoin => 'Add channel';
+
+  @override
+  String chat_hashtagJoined(String name) {
+    return 'Added $name';
+  }
 
   @override
   String chat_messageTooLong(int maxBytes) {
@@ -6031,8 +6053,6 @@ class AppLocalizationsEs extends AppLocalizations {
     );
     return '$_temp0';
   }
-
-  @override
   String get coverage_shareNotConnected =>
       'Connect the radio that recorded them: points are signed by its key.';
 
@@ -8839,6 +8859,26 @@ class AppLocalizationsEs extends AppLocalizations {
   String mediaMesh_conflictsWith(String name) {
     return 'Conflicts with $name';
   }
+
+  @override
+  String get mediaMesh_phoneSection => 'Photos and voice on this phone';
+
+  @override
+  String get mediaMesh_phoneSectionHelp =>
+      'These change as soon as you tap them, with or without a radio connected. Save is only for the radio2 settings above.';
+
+  @override
+  String get mediaMesh_radioSection => 'radio2 on your radio';
+
+  @override
+  String get mediaMesh_connectForRadio2 => 'Connect a radio to set radio2.';
+
+  @override
+  String get mediaMesh_diagnostics => 'Diagnostics and tests';
+
+  @override
+  String get mediaMesh_diagnosticsSubtitle =>
+      'The transfer log, link test and transfer test.';
 
   @override
   String get mediaMeshNearby_heardNow => 'MediaMesh nearby: heard just now';

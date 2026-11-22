@@ -35,6 +35,7 @@ import '../services/otp_sync_service.dart';
 import '../services/passphrase_lock_service.dart';
 import '../services/ble_debug_log_service.dart';
 import '../services/linux_ble_error_classifier.dart';
+import '../services/windows_ble_link_error.dart';
 import '../services/linux_ble_pairing_service_stub.dart'
     if (dart.library.io) '../services/linux_ble_pairing_service.dart';
 import '../services/image_chunk_transport.dart'
@@ -1293,6 +1294,7 @@ class MeshCoreConnector extends ChangeNotifier {
         : incoming.lastMessageAt;
     final base = incoming.copyWith(
       lastMessageAt: mergedLastMessageAt,
+      heardAt: _laterOf(incoming.heardAt, existing.heardAt),
       pathOverride: existing.pathOverride, // Preserve user's path choice
       pathOverrideBytes: existing.pathOverrideBytes,
       latitude: keepLocationWhenMissing
@@ -1305,6 +1307,46 @@ class MeshCoreConnector extends ChangeNotifier {
     );
     return _withTelemetryFix(existing, base) ?? base;
   }
+
+  static DateTime? _laterOf(DateTime? a, DateTime? b) {
+    if (a == null) return b;
+    if (b == null) return a;
+    return a.isAfter(b) ? a : b;
+  }
+
+  /// An advert heard on the air (the radio's raw receive log), whoever's it
+  /// is: its node was heard now (Contact.heardAt). The radio itself reports
+  /// an advert only when it's newer than the last it stored for that node, so
+  /// a node whose clock went back (a reboot without the time) and every
+  /// relayed copy after the first never reached the lists, which then left
+  /// the node where it was; heard here, it moves to the top.
+  void _noteAdvertHeard(Uint8List pubKey) {
+    if (listEquals(pubKey, _selfPublicKey)) return;
+    final hex = pubKeyToHex(pubKey);
+    final now = DateTime.now();
+    _heardAtByKey[hex] = now;
+    var changed = false;
+    final i = _contacts.indexWhere((c) => c.publicKeyHex == hex);
+    if (i >= 0) {
+      _contacts[i] = _contacts[i].copyWith(heardAt: now);
+      changed = true;
+    }
+    final d = _discoveredContacts.indexWhere((c) => c.publicKeyHex == hex);
+    if (d >= 0) {
+      _discoveredContacts[d] = _discoveredContacts[d].copyWith(heardAt: now);
+      _scheduleDiscoveredContactsPersist();
+      changed = true;
+    }
+    if (changed) notifyListeners();
+  }
+
+  /// When a stored contact's advert was last heard (pushCodeAdvert), until
+  /// its refreshed frame comes back to carry it.
+  final Map<String, DateTime> _advertHeardAt = {};
+
+  /// The last time each node's advert was heard by this phone, kept across a
+  /// full contact sync (which clears the list before the radio resends it).
+  final Map<String, DateTime> _heardAtByKey = {};
 
   /// Telemetry fixes held across a full contact sync, which clears the list
   /// before the radio resends it.
@@ -1579,6 +1621,36 @@ class MeshCoreConnector extends ChangeNotifier {
 
   List<ChannelMessage> getChannelMessages(Channel channel) {
     return _channelMessages[_canonicalSlot(channel.index)] ?? [];
+  }
+
+  /// Everyone who has written in [channel], newest first, from its whole
+  /// stored history (up to ChannelMessageStore.maxStoredMessages) and the
+  /// messages in memory: for the composer's @ picker. Not this radio's own
+  /// messages; a name used again keeps its latest time.
+  Future<List<String>> channelSenderNames(Channel channel) async {
+    final slot = _canonicalSlot(channel.index);
+    final last = <String, DateTime>{};
+    void note(ChannelMessage m) {
+      final name = m.senderName.trim();
+      if (m.isOutgoing || name.isEmpty) return;
+      final at = last[name];
+      if (at == null || m.timestamp.isAfter(at)) last[name] = m.timestamp;
+    }
+
+    final channelId = _slotChannelIds[slot];
+    if (channelId != null) {
+      for (final m in await _channelMessageStore.loadChannelMessages(
+        channelId,
+      )) {
+        note(m);
+      }
+    }
+    for (final m in _channelMessages[slot] ?? const <ChannelMessage>[]) {
+      note(m);
+    }
+    final names = last.keys.toList()
+      ..sort((a, b) => last[b]!.compareTo(last[a]!));
+    return names;
   }
 
   Future<void> deleteChannelMessage(ChannelMessage message) =>
@@ -5140,6 +5212,13 @@ class MeshCoreConnector extends ChangeNotifier {
       ..clear()
       ..addAll(cached);
     for (final contact in cached) {
+      final heard = contact.heardAt;
+      if (heard != null) {
+        _heardAtByKey[contact.publicKeyHex] = _laterOf(
+          heard,
+          _heardAtByKey[contact.publicKeyHex],
+        )!;
+      }
       _ensureContactSmazSettingLoaded(contact.publicKeyHex);
       _ensureContactCyr2LatSettingLoaded(contact.publicKeyHex);
       _ensureContactUrlImagesSettingLoaded(contact.publicKeyHex);
@@ -6555,12 +6634,18 @@ class MeshCoreConnector extends ChangeNotifier {
           }
         }
       } else {
-        Future<void> attemptConnect() {
-          return device.connect(
+        Future<void> attemptConnect() async {
+          await device.connect(
             timeout: connectTimeout,
             mtu: null,
             license: License.nonprofit,
           );
+          // Windows reports a link that failed to open by returning, not
+          // throwing (WindowsBleLinkException): check it here so it is
+          // retried, rather than failing later in discoverServices.
+          if (PlatformInfo.isWindows && !device.isConnected) {
+            throw const WindowsBleLinkException();
+          }
         }
 
         // A previous app session (e.g. killed from the iOS app switcher) can
@@ -6593,32 +6678,41 @@ class MeshCoreConnector extends ChangeNotifier {
             rethrow;
           }
           // Fast (non-timeout) failures are usually a stale connection left by
-          // a previous session; clean up and retry once before surfacing.
-          _appDebugLogService?.warn(
-            'Retrying connect once after clearing possible stale connection',
-            tag: 'BLE Connect',
-          );
-          try {
-            await device.disconnect(queue: false);
-          } catch (cleanupError) {
+          // a previous session; clean up and retry before surfacing. Windows
+          // often needs a second try, and a little longer to let go of the
+          // half-open device, so it gets two retries 1.5 s apart.
+          final retries = PlatformInfo.isWindows ? 2 : 1;
+          final retryDelay = PlatformInfo.isWindows
+              ? const Duration(milliseconds: 1500)
+              : const Duration(milliseconds: 500);
+          for (var attempt = 1; ; attempt++) {
             _appDebugLogService?.warn(
-              'Pre-retry cleanup disconnect failed (continuing): $cleanupError',
+              'Retrying connect ($attempt of $retries) after clearing possible stale connection',
               tag: 'BLE Connect',
             );
-          }
-          await Future<void>.delayed(const Duration(milliseconds: 500));
-          try {
-            await attemptConnect();
-            _appDebugLogService?.info(
-              'Retry connect succeeded after stale-connection cleanup',
-              tag: 'BLE Connect',
-            );
-          } catch (retryError) {
-            _appDebugLogService?.error(
-              'device.connect() retry failure: $retryError',
-              tag: 'BLE Connect',
-            );
-            rethrow;
+            try {
+              await device.disconnect(queue: false);
+            } catch (cleanupError) {
+              _appDebugLogService?.warn(
+                'Pre-retry cleanup disconnect failed (continuing): $cleanupError',
+                tag: 'BLE Connect',
+              );
+            }
+            await Future<void>.delayed(retryDelay);
+            try {
+              await attemptConnect();
+              _appDebugLogService?.info(
+                'Retry connect succeeded after stale-connection cleanup',
+                tag: 'BLE Connect',
+              );
+              break;
+            } catch (retryError) {
+              _appDebugLogService?.error(
+                'device.connect() retry failure: $retryError',
+                tag: 'BLE Connect',
+              );
+              if (attempt >= retries) rethrow;
+            }
           }
         }
       }
@@ -8166,6 +8260,7 @@ class MeshCoreConnector extends ChangeNotifier {
       rawPacket: tmp.rawPacket,
       latitude: hasDeviceLocation ? contact.latitude : tmp.latitude,
       longitude: hasDeviceLocation ? contact.longitude : tmp.longitude,
+      heardAt: _laterOf(contact.heardAt, tmp.heardAt),
     );
   }
 
@@ -10360,6 +10455,16 @@ class MeshCoreConnector extends ChangeNotifier {
       case pushCodeAdvert:
         // A stored contact advertised (or was just auto-added): pub key only.
         if (frame.length >= 1 + pubKeySize) {
+          // Heard now: the refreshed contact that follows carries this time
+          // (Contact.heardAt), so lists sorted by "heard recently" move it up.
+          final heardKey = pubKeyToHex(
+            Uint8List.fromList(frame.sublist(1, 1 + pubKeySize)),
+          );
+          _advertHeardAt[heardKey] = DateTime.now();
+          _appDebugLogService?.info(
+            'Advert heard from ${heardKey.substring(0, 12)}: refreshing it',
+            tag: 'Contacts',
+          );
           unawaited(
             getContactByKey(
               Uint8List.fromList(frame.sublist(1, 1 + pubKeySize)),
@@ -11120,10 +11225,18 @@ class MeshCoreConnector extends ChangeNotifier {
   /// (type not auto-added, beyond autoadd_max_hops, or storage full;
   /// BaseChatMesh::onAdvertRecv), so it only feeds the discovered list.
   void _handleNewAdvert(Uint8List frame) {
-    final contact = Contact.fromFrame(frame);
-    if (contact == null || listEquals(contact.publicKey, _selfPublicKey)) {
+    final parsed = Contact.fromFrame(frame);
+    if (parsed == null || listEquals(parsed.publicKey, _selfPublicKey)) {
       return;
     }
+    // Heard now, by the phone's clock (Contact.heardAt).
+    final contact = parsed.copyWith(heardAt: DateTime.now());
+    _appDebugLogService?.info(
+      'New advert heard from ${contact.name} '
+      '(${contact.publicKeyHex.substring(0, 12)})',
+      tag: 'Contacts',
+    );
+    _heardAtByKey[contact.publicKeyHex] = contact.heardAt!;
     _handleDiscovery(contact, frame);
     notifyListeners();
   }
@@ -11169,7 +11282,17 @@ class MeshCoreConnector extends ChangeNotifier {
         );
         return;
       }
-      final contact = getFromDiscovered(contactTmp);
+      var contact = getFromDiscovered(contactTmp);
+      // Its advert was just heard (pushCodeAdvert), or earlier: carry when.
+      final justHeard = _advertHeardAt.remove(contact.publicKeyHex);
+      if (justHeard != null) _heardAtByKey[contact.publicKeyHex] = justHeard;
+      final heard = _laterOf(
+        contact.heardAt,
+        _heardAtByKey[contact.publicKeyHex],
+      );
+      if (heard != null && heard != contact.heardAt) {
+        contact = contact.copyWith(heardAt: heard);
+      }
       _handleDiscovery(contact, frame, noNotify: true, addActive: true);
 
       if (contact.type == advTypeRepeater) {
@@ -12133,6 +12256,14 @@ class MeshCoreConnector extends ChangeNotifier {
 
       final raw = reader.readRemainingBytes();
       final packet = _parseRawPacket(raw);
+      if (packet != null &&
+          packet.payloadType == _payloadTypeAdvert &&
+          packet.payload.length >= pubKeySize) {
+        _noteAdvertHeard(
+          Uint8List.fromList(packet.payload.sublist(0, pubKeySize)),
+        );
+        return;
+      }
       if (packet == null || packet.payloadType != _payloadTypeGroupText) return;
 
       final payload = BufferReader(packet.payload);
@@ -14263,6 +14394,8 @@ class MeshCoreConnector extends ChangeNotifier {
         latitude: contact.latitude,
         longitude: contact.longitude,
         lastSeen: contact.lastSeen,
+        lastModified: contact.lastModified,
+        heardAt: contact.heardAt,
         flags: 0,
         isActive: addActive,
       );
@@ -14282,6 +14415,8 @@ class MeshCoreConnector extends ChangeNotifier {
       latitude: contact.latitude,
       longitude: contact.longitude,
       lastSeen: contact.lastSeen,
+      lastModified: contact.lastModified,
+      heardAt: contact.heardAt,
       lastMessageAt: contact.lastMessageAt,
       isActive: addActive,
       flags: 0,
@@ -14314,8 +14449,8 @@ class MeshCoreConnector extends ChangeNotifier {
     if (_discoveredContacts.isEmpty) return;
     var stalestIndex = 0;
     for (int i = 1; i < _discoveredContacts.length; i++) {
-      if (_discoveredContacts[i].lastSeen.isBefore(
-        _discoveredContacts[stalestIndex].lastSeen,
+      if (_discoveredContacts[i].advertHeardAt.isBefore(
+        _discoveredContacts[stalestIndex].advertHeardAt,
       )) {
         stalestIndex = i;
       }
@@ -14367,6 +14502,7 @@ const int _routeFlood = 0x01;
 const int _routeTransportDirect = 0x03;
 
 const int _payloadTypeGroupText = 0x05;
+const int _payloadTypeAdvert = 0x04;
 const int _cipherMacSize = 2;
 
 bool _isPathLenValidForMode(

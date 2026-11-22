@@ -51,9 +51,11 @@ Tap the "+" FAB to open a dialog with six options:
 1. **Create Private Channel** — Enter a name (max 31 bytes of UTF-8, so fewer characters for accented letters, Cyrillic, or emoji); a random PSK is generated
 2. **Join Private Channel** — Enter a name and a 32-hex PSK (non-hex characters like spaces and dashes are silently stripped, so pasted keys with formatting are accepted)
 3. **Join Public Channel** — One tap; uses the well-known public PSK (only shown if no public channel exists)
-4. **Join Hashtag Channel** — Enter a hashtag name; PSK is derived from the name. If communities exist, choose between regular hashtag (SHA-256) or community hashtag (HMAC)
+4. **Join Hashtag Channel** — Enter a hashtag name; PSK is derived from the name. A regular hashtag's A–Z are lowercased first, as Wadamesh TAK standalones do, so `#MediaMesh` typed on either joins the same `#mediamesh` (a channel picked from a scan keeps the radio's spelling, which its key already matches). If communities exist, choose between regular hashtag (SHA-256) or community hashtag (HMAC)
 5. **Scan a QR Code** — Opens the QR scanner to join a community, or to add a channel from an official MeshCore channel QR code (`meshcore://channel/add?name=…&secret=…`, as shared by the official app and community sites)
 6. **Create Community** — Enter a name; generates a random 32-byte secret; optionally adds a community public channel; shows QR code for sharing
+
+**From a message.** A `#hashtag` someone typed in a chat (a direct message or a channel) is a link. Tap it: if the radio has that channel (same name, any case, or the same key), it opens; otherwise the app asks, adds it as a hashtag channel in the first free slot (named in lowercase, so `#MediaMesh` is the `#mediamesh` everyone uses) and opens it. Which words count is the same as on Wadamesh TAK standalones (`src/ui-touch/ChatHashtag.h`), which do the same on tap: letters (accented Latin ones too), digits, `-` and `_`, under 32 bytes with the `#`; not starting with a digit (`#40` stays text), `-` or `_`; not a colour code (`#FF8800`); trailing `-`/`_` dropped; and a URL's `#part` stays part of the URL. Only A–Z are lowercased, as Wadamesh does, so both make the same key.
 
 Name limits count the `#` and any community prefix, so the name stored on the radio matches what you typed and others derive the same key. Adding a channel is blocked until the channel list has finished syncing from the radio (a snackbar says the channels are still loading), and the free slot is picked when you confirm, so an existing channel is never overwritten.
 
@@ -116,6 +118,10 @@ The app bar overflow menu (⋮) has **Filter messages in this channel** (shown w
 - A known original region is selected for the reply by default. Tap the region chip to cross it out and use the channel’s effective region instead. This temporary choice does not change channel settings; see [reply regions](regions.md#reply-using-the-original-region).
 - Sent replies are prefixed `@[{senderName}] {text}`
 - Received replies show a bordered quote block inside the bubble; tapping scrolls to the original. Reply previews render GIF thumbnails and location pin icons, not just text.
+
+### Mentions (Channel Chat Only)
+
+Type `@` in a channel's composer and a list comes up above it: everyone who has written in that channel, from its whole stored history (the last 1,000 messages), the most recent writer first. Keep typing to narrow it: names that start with what you typed come first, then names that contain it, ignoring case. Names with spaces still match (`@tae's t1`). Tap a name to put `@[name] ` in the message, the mention format other MeshCore apps and Wadamesh TAK standalones show as a mention. The list hides when nothing matches, after a finished `@[name]`, or for an `@` inside a word (an email address).
 
 ### Resend
 

@@ -90,9 +90,14 @@ void main() {
   });
 
   group('settings JSON', () {
-    test('auto switch defaults to true', () {
-      expect(AppSettings().holidayAutoSwitch, isTrue);
-      expect(AppSettings.fromJson({}).holidayAutoSwitch, isTrue);
+    test('auto switch defaults to off', () {
+      expect(AppSettings().holidayAutoSwitch, isFalse);
+      expect(AppSettings.fromJson({}).holidayAutoSwitch, isFalse);
+      // Saved while it defaulted on: starts off once.
+      expect(
+        AppSettings.fromJson({'holiday_auto_switch': true}).holidayAutoSwitch,
+        isFalse,
+      );
       expect(AppSettings().holidayThemeDismissed, isNull);
     });
 
@@ -106,7 +111,7 @@ void main() {
       );
       expect(decoded.holidayAutoSwitch, isFalse);
       expect(decoded.holidayThemeDismissed, 'preset:christmas@2026-12-25');
-      expect(settings.toJson()['holiday_auto_switch'], isFalse);
+      expect(settings.toJson()['holiday_themes_auto'], isFalse);
     });
 
     test('copyWith can clear the dismissal', () {
@@ -130,6 +135,8 @@ void main() {
       now = DateTime(2026, 7, 1, 12);
       service = AppSettingsService(clock: () => now);
       await service.loadSettings();
+      // Off by default: these tests are about how it behaves when on.
+      await service.setHolidayAutoSwitch(true);
     });
 
     tearDown(() => service.dispose());

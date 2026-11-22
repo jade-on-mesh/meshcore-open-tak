@@ -2872,9 +2872,10 @@ class VoxVoiceService extends ChangeNotifier {
         );
         await _connector.sendChannelDataBlobs(
           [
-            req
-                .forChannel(fountain: _fastMediaMesh)
-                .encode(salt: clip.salts.next()),
+            // Never fountain: the thumbnail is in packets 0 and 1 themselves,
+            // and repair packets only mend a listener that holds nearly all
+            // of the photo, which a probe's listener doesn't.
+            req.forChannel(fountain: false).encode(salt: clip.salts.next()),
           ],
           channelIndex: ch,
           dataType: voxChannelDataType,
@@ -3665,10 +3666,19 @@ class VoxVoiceService extends ChangeNotifier {
     // going out anyway (to a listener that can't use repair packets) count
     // towards them (_ChannelBurst.repairs).
     final fountain = _fastMediaMesh && req.fountainOk && held.whole;
-    if (fountain) {
+    // A thumbnail probe (only the first voxThumbPackets) gets those packets
+    // as data, not repair packets, even when it says it rebuilds from repair
+    // packets, as older apps' probes did: it holds little of the photo, so
+    // repair packets can't give it the thumbnail. Mirrored in Wadamesh
+    // (VoxServe, thumbAsk).
+    final thumbAsk =
+        listed != null &&
+        listed.isNotEmpty &&
+        listed.every((i) => i >= 0 && i < voxThumbPackets);
+    if (fountain && !thumbAsk) {
       burst.need(req.requesterKey6, wanted.where((i) => i >= 0 && i < total));
     }
-    if (!fountain || listed == null || capped) {
+    if (!fountain || listed == null || capped || thumbAsk) {
       burst.pending.addAll(
         wanted.where((i) => i >= 0 && i < total && held.packets.containsKey(i)),
       );

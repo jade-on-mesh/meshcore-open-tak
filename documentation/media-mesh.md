@@ -36,6 +36,20 @@ switching between them, so you keep hearing the main mesh.
 The dialog also shows, every few seconds while it is open: packets received and
 sent on each profile, the measured switch time, and the radio's timing warnings.
 
+### Photos and voice on this phone
+
+Under the radio2 settings, **MediaMesh Settings** holds the phone's own photo and voice settings. They take effect as soon as you tap them (Save is only for radio2), and the dialog opens with no radio connected so you can change them offline:
+
+- **Route photos and voice via** chosen repeaters
+- **Fast MediaMesh** and **Adaptive spacing** (see below)
+- **Auto-play voice, auto-show photos**, and under it **Also auto-download in channels** (off by default: a channel photo or clip only downloads when you tap it, or when it reaches you anyway)
+- **Send channel photos and voice right away**
+- **Mimi voice model** / **Send voice with Mimi**, **AI voice restorer**, **Codec2 quality**
+- **Diagnostics and tests**: the transfer log, link test and transfer test
+- **Data Audio**, last (also in App Settings)
+
+The same switches are also on the diagnostics sheet, opened from the ⓘ under a photo, voice or video message or from **Voice settings** in the recorder.
+
 ### Find MediaMesh
 
 **Off-Grid Repeat** (Radio Settings) sets radio2 while it's on, on any radio: beside the off-grid channel in the US band (918.800 MHz, 250 kHz, photos and voice on it), off elsewhere, and puts it back when it's turned off; see [Radio Settings](settings.md#radio-settings).
@@ -115,7 +129,7 @@ keeps a history: schedules (`radioat2`, `tempradioat2`), `tempradio`,
 - Each time you've moved 150 m (at most every 40 seconds, because repeaters answer four discovery requests every two minutes), the app asks the repeaters in direct range, as Find MediaMesh does, and marks the spot.
 - The dot's colour is the best MediaMesh repeater's margin on radio2: **Good** (green, 5 dB or more to spare), **Marginal** (amber, 0-5 dB), **Out** (red, heard but radio2 wouldn't reach), **None** (grey, no MediaMesh repeater answered).
 - The ask goes out on the main mesh, and the radio doesn't say which radio an answer came in on, so radio2's reach is estimated: the weaker direction's SNR (ours of the answer, the repeater's of the ask), less the extra noise radio2's wider bandwidth hears (10·log10 of radio2's bandwidth over the main mesh's: 6 dB from 62.5 to 250 kHz), against the lowest SNR radio2's spreading factor decodes (SF7: −7.5 dB, 2.5 dB lower each step).
-- **Show on the map** puts the dots on the Tactical map. Tap a dot to see when it was measured and each MediaMesh repeater heard there, best first: its name and key, its margin on radio2 (in the dot's colours) and the SNR both ways. **Export** shares them as GeoJSON (each point with its time, reach and the repeaters heard, their SNR and margin), for a coverage map on a website. **Clear** starts over. The points are kept across restarts (the latest 3,000).
+- **Show on the map** puts the dots on the Tactical map. Tap a dot to see when it was measured and each MediaMesh repeater heard there, best first: its name and key, its margin on radio2 (in the dot's colours) and the SNR both ways. On a dot, the map's long press (drop a pin, SALUTE and the rest) needs a longer hold, 1.2 s: let go before that and the dot opens instead, so the two don't get mixed up. Everywhere else the long press is as before. **Export** shares them as GeoJSON (each point with its time, reach and the repeaters heard, their SNR and margin), for a coverage map on a website. **Clear** starts over. The points are kept across restarts (the latest 3,000).
 
 On Android a notification shows while it's recording, so it keeps going with the screen off. Wadamesh TAK standalones record the same (Settings › MediaMesh › Map coverage), with the same colours.
 
@@ -196,6 +210,7 @@ A listener missing packets asks for them, and the photo's sender answers with ju
 - **Repair packets.** A repair packet is a mix of all of a photo's or clip's packets, so any listener missing *m* packets rebuilds them from any *m* repair packets (practically always *m* + 1). A request on the channel says the listener takes them. Whoever answers then sends that many fresh repair packets, plus a margin, instead of the specific packets. One answer mends every listener's gaps at once, whichever packets each one lacks, with far fewer requests on the air. A whole photo sent at once ends with about a tenth repair packets instead of the block parity.
 - **Repair packets in a mixed group.** Data packets going out anyway, to a listener on an older app or standalone that asked for them, count towards the repair packets a listener with Fast MediaMesh is owed: it gets repair packets only for what no data packet carries, plus about a tenth of the rest, since a radio scanning radio2 misses some while it's on the main mesh. (In a field test, a listener lacking 221 packets that were all going out as data anyway got 144 repair packets on top; now it gets 24.)
 - **Listeners missing most of a clip.** A request names at most 124 packets. A listener with Fast MediaMesh naming that many may lack more after the last one, so it gets those as data too, not repair packets: repair packets only mend once there are as many as it lacks.
+- **Thumbnails come as the packets themselves.** A photo nobody has tapped yet still asks for its first two packets, which hold the thumbnail. That ask never takes repair packets: a repair packet only mends a listener that holds nearly all of the photo, and this one holds almost none of it. Before, the ask said it took repair packets, the sender answered with repair packets, and the thumbnail never came, three asks in a row. A sender also answers an ask for only those two packets with the packets themselves, whatever the ask says, so thumbnails come for listeners still on the older app too.
 - **Repair packets sized for the losses.** The sender learns from listeners' requests how much of its last answers the worst-placed listener lost (up to 40%), and sizes repair packets for it: a whole pass ends with enough that listeners several hops away finish without asking again (each request round through repeaters costs a minute or more). With no loss seen, a pass ends with about a tenth, as before; a fifth lost, about 29%. The "asks for" log line says what loss they were sized for.
 - **No asking again while the transfer is on the air.** A listener whose request times out while it still hears packets of the same transfer (another part of the same clip being sent to another listener, or this clip's repair or parity packets) waits for them to stop, up to 3 minutes after asking, before asking again. The sender answers one request after another, so asking again would only queue behind them; and every request floods the main mesh, where every repeater scanning radio2 misses radio2 packets while it relays one. Other photos and clips on the air don't hold a request. The log says "sender still on this transfer".
 - **SuperMax parts asked for together.** Once a SuperMax clip's first part is in, the listener asks for every part still to come at once, so the sender goes straight from one part to the next instead of waiting for a request to cross the mesh after each (a minute or more through repeaters). Each part's gaps are still asked for on their own, and a part waiting while another is on the air holds its next request (above). Wadamesh TAK standalones don't fetch SuperMax clips, so this is the app's alone.

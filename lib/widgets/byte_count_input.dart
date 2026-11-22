@@ -53,6 +53,10 @@ class ByteCountedTextField extends StatelessWidget {
   /// Whether to hide the counter when the field is empty (default `true`).
   final bool hideCounterWhenEmpty;
 
+  /// Wraps the text field alone (not the counter under it): a composer that
+  /// draws its own box round the field and its buttons (the Discord style).
+  final Widget Function(Widget field)? fieldFrame;
+
   /// The text's style, forwarded to the inner [TextField].
   final TextStyle? style;
 
@@ -97,6 +101,7 @@ class ByteCountedTextField extends StatelessWidget {
     this.softLimitBytes,
     this.softLimitNote,
     this.counterTextBuilder,
+    this.fieldFrame,
     this.counterColorBuilder,
     this.maxLines,
   });
@@ -133,38 +138,37 @@ class ByteCountedTextField extends StatelessWidget {
             counterTextBuilder?.call(usedBytes, maxBytes) ??
             '$usedBytes / $maxBytes';
 
+        final textField = TextField(
+          minLines: 1,
+          maxLines: maxLines,
+          controller: controller,
+          focusNode: focusNode,
+          autofocus: autofocus,
+          style: style,
+          inputFormatters: [
+            ...extraFormatters,
+            Utf8LengthLimitingTextInputFormatter(maxBytes, encoder: encoder),
+          ],
+          textCapitalization: textCapitalization,
+          decoration:
+              decoration ??
+              InputDecoration(
+                hintText: hintText,
+                border: const OutlineInputBorder(),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+              ),
+          textInputAction: textInputAction,
+          onSubmitted: onSubmitted,
+        );
+
         return Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(
-              minLines: 1,
-              maxLines: maxLines,
-              controller: controller,
-              focusNode: focusNode,
-              autofocus: autofocus,
-              style: style,
-              inputFormatters: [
-                ...extraFormatters,
-                Utf8LengthLimitingTextInputFormatter(
-                  maxBytes,
-                  encoder: encoder,
-                ),
-              ],
-              textCapitalization: textCapitalization,
-              decoration:
-                  decoration ??
-                  InputDecoration(
-                    hintText: hintText,
-                    border: const OutlineInputBorder(),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                  ),
-              textInputAction: textInputAction,
-              onSubmitted: onSubmitted,
-            ),
+            fieldFrame?.call(textField) ?? textField,
             Opacity(
               opacity: showCounter ? 1 : 0,
               child: Padding(
