@@ -6015,7 +6015,14 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String coverage_sentAlready(int count, int already) {
-    return '{count, plural, =0{Nothing new: the analyzer has all $already} =1{1 point sent, $already it already had} other{$count points sent, $already it already had}}';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count points sent, $already it already had',
+      one: '1 point sent, $already it already had',
+      zero: 'Nothing new: the analyzer has all $already',
+    );
+    return '$_temp0';
   }
 
   @override

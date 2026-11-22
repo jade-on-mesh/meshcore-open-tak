@@ -91,13 +91,16 @@ void main() {
     expect(coverageBatches(all, '', 0), isEmpty);
   });
 
-  test('Send now: points that don\'t say their radio go too, from the start', () {
-    final all = [sample(300), sample(100, r: ''), sample(200, r: 'ff' * 32)];
-    expect(coverageBatches(all, radio, 0).single.length, 1);
-    final b = coverageBatches(all, radio, 0, unknownToo: true).single;
-    expect(b.map((s) => s.time.millisecondsSinceEpoch ~/ 1000), [100, 300]);
-    expect(coverageBatches(all, '', 0, unknownToo: true), isEmpty);
-  });
+  test(
+    'Send now: points that don\'t say their radio go too, from the start',
+    () {
+      final all = [sample(300), sample(100, r: ''), sample(200, r: 'ff' * 32)];
+      expect(coverageBatches(all, radio, 0).single.length, 1);
+      final b = coverageBatches(all, radio, 0, unknownToo: true).single;
+      expect(b.map((s) => s.time.millisecondsSinceEpoch ~/ 1000), [100, 300]);
+      expect(coverageBatches(all, '', 0, unknownToo: true), isEmpty);
+    },
+  );
 
   test('the analyzer\'s reply: new and already had', () {
     expect(coverageReplyCounts('{"accepted":3,"duplicates":137}'), (3, 137));

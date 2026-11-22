@@ -160,7 +160,10 @@ List<int> coverageDeleteBody(String radioHex, DateTime sent) => utf8.encode(
   try {
     final j = jsonDecode(body);
     if (j is Map && j['accepted'] is int) {
-      return (j['accepted'] as int, j['duplicates'] is int ? j['duplicates'] as int : 0);
+      return (
+        j['accepted'] as int,
+        j['duplicates'] is int ? j['duplicates'] as int : 0,
+      );
     }
   } catch (_) {}
   return null;
