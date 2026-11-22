@@ -6024,7 +6024,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get coverage_shareHelp =>
-      'Sends what you record to the analyzer below, signed by your radio, so its coverage map is checked against real measurements. It shows them as 500 m hexagons, leaves out where each trip starts and ends, and never says whose they are. On unless you switch it off; off, nothing leaves your phone.';
+      'Sends what you record to the analyzer below, signed by your radio, so its coverage map is checked against real measurements. It shows them as 500 m hexagons, leaves out where each trip starts and ends, and never says whose they are. Off: nothing leaves your phone.';
 
   @override
   String get coverage_analyzer => 'Analyzer';
