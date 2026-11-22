@@ -262,9 +262,20 @@ class MediaMeshCoverageService extends ChangeNotifier {
     try {
       final p = await SharedPreferences.getInstance();
       _show = p.getBool(_kShow) ?? true;
-      _share = p.getBool(_kShare) ?? false;
+      // both on unless switched off: points and receipts help the whole mesh
+      final chosen = p.getBool(_kShare);
+      _share = chosen ?? true;
+      if (chosen == null) {
+        // Sharing used to be off until switched on: points recorded before
+        // it came on by itself stay on the phone unless sent on purpose
+        // (Send now, or switching sharing off and on again).
+        _shareSince =
+            p.getInt(_kShareSince) ??
+            DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        await p.setInt(_kShareSince, _shareSince);
+      }
       _analyzer = p.getString(_kAnalyzer) ?? defaultCoverageAnalyzer;
-      _receipts = p.getBool(_kReceipts) ?? false;
+      _receipts = p.getBool(_kReceipts) ?? true;
       final waiting = p.getString(_kReceiptsWaiting);
       if (waiting != null) {
         final j = jsonDecode(waiting);
@@ -475,10 +486,15 @@ class MediaMeshCoverageService extends ChangeNotifier {
   // ---- Sharing with an analyzer (mediamesh_coverage_share.dart) ----
 
   static const _kShare = 'mm_coverage_share';
+  static const _kShareSince = 'mm_coverage_share_since';
+
+  /// Sharing came on by default at this time (unix seconds): points before
+  /// it go only when sent on purpose. 0 when sharing was chosen.
+  int _shareSince = 0;
   static const _kAnalyzer = 'mm_coverage_analyzer';
   static const _kSentPrefix = 'mm_coverage_sent:';
 
-  bool _share = false, _sending = false;
+  bool _share = true, _sending = false;
   String _analyzer = defaultCoverageAnalyzer;
   CoverageShareStatus? _shareStatus;
   Timer? _shareTimer;
@@ -498,10 +514,12 @@ class MediaMeshCoverageService extends ChangeNotifier {
   Future<void> setShare(bool on) async {
     if (on == _share) return;
     _share = on;
+    _shareSince = 0;
     notifyListeners();
     try {
       final p = await SharedPreferences.getInstance();
       await p.setBool(_kShare, on);
+      await p.remove(_kShareSince);
     } catch (_) {}
     if (on) unawaited(sendNow());
   }
@@ -534,7 +552,7 @@ class MediaMeshCoverageService extends ChangeNotifier {
         ? ''
         : _connector.selfPublicKeyHex.toLowerCase();
     if (radio.isEmpty) return;
-    final until = _sentUntil[radio] ?? 0;
+    final until = coverageAutoFrom(_sentUntil[radio] ?? 0, _shareSince);
     final waiting = _samples
         .where(
           (s) =>
@@ -575,7 +593,7 @@ class MediaMeshCoverageService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final key = _sentKey(radio);
       final had = prefs.getInt(key) ?? 0;
-      var until = all ? 0 : had;
+      var until = all ? 0 : coverageAutoFrom(had, _shareSince);
       final app = await _appName();
       for (final batch in coverageBatches(
         _samples,
@@ -694,7 +712,7 @@ class MediaMeshCoverageService extends ChangeNotifier {
   static const _kReceipts = 'mm_receipts_share';
   static const _kReceiptsWaiting = 'mm_receipts_waiting';
 
-  bool _receipts = false, _sendingReceipts = false;
+  bool _receipts = true, _sendingReceipts = false;
   final List<MediaReceipt> _receiptsWaiting = [];
   CoverageShareStatus? _receiptsStatus;
   Timer? _receiptsTimer;
