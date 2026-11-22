@@ -10283,6 +10283,12 @@ abstract class AppLocalizations {
   /// **'{count, plural, =0{Nothing new to send} =1{1 point sent} other{{count} points sent}}'**
   String coverage_sent(int count);
 
+  /// No description provided for @coverage_sentAlready.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Nothing new: the analyzer has all {already}} =1{1 point sent, {already} it already had} other{{count} points sent, {already} it already had}}'**
+  String coverage_sentAlready(int count, int already);
+
   /// No description provided for @coverage_shareNotConnected.
   ///
   /// In en, this message translates to:
@@ -15909,6 +15915,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} points'**
   String coverage_points(int count);
+
+  /// No description provided for @coverage_shareReceipts.
+  ///
+  /// In en, this message translates to:
+  /// **'Share delivery receipts'**
+  String get coverage_shareReceipts;
+
+  /// No description provided for @coverage_shareReceiptsHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'For each photo, video or voice clip this phone receives, tells the analyzer above its ID, how many pieces came and whether it was whole, signed by your radio, so it can show whether MediaMesh delivers. Never what was in it, who sent it, or where you were. Off: nothing leaves your phone.'**
+  String get coverage_shareReceiptsHelp;
+
+  /// No description provided for @coverage_receiptsSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipts sent: {count}'**
+  String coverage_receiptsSent(int count);
+
+  /// No description provided for @coverage_receiptsWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipts waiting to send: {count}'**
+  String coverage_receiptsWaiting(int count);
+
+  /// No description provided for @coverage_receiptsRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove my receipts from the analyzer'**
+  String get coverage_receiptsRemove;
+
+  /// No description provided for @coverage_receiptsRemoveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove every delivery receipt this radio sent to {analyzer}? Sharing receipts switches off.'**
+  String coverage_receiptsRemoveConfirm(String analyzer);
+
+  /// No description provided for @coverage_receiptsRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipts removed: {count}'**
+  String coverage_receiptsRemoved(int count);
 
   /// No description provided for @coverage_good.
   ///

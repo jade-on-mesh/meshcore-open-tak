@@ -33,24 +33,27 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
 import 'mediamesh_coverage_share.dart';
+import 'mediamesh_receipts.dart';
 
 /// What the last send to the analyzer did: [error] (a message, or
-/// 'not-connected' / 'bad-address'), or [count] points sent or removed.
+/// 'not-connected' / 'bad-address'), or [count] points sent or removed;
+/// [already]: points sent that the analyzer already had.
 class CoverageShareStatus {
   final String? error;
-  final int count;
+  final int count, already;
   final bool removedPoints;
   final DateTime? at;
   const CoverageShareStatus._(
     this.error,
     this.count,
     this.removedPoints,
-    this.at,
-  );
+    this.at, [
+    this.already = 0,
+  ]);
   const CoverageShareStatus.error(String message)
     : this._(message, 0, false, null);
-  const CoverageShareStatus.sent(int n, DateTime when)
-    : this._(null, n, false, when);
+  const CoverageShareStatus.sent(int n, DateTime when, {int already = 0})
+    : this._(null, n, false, when, already);
   const CoverageShareStatus.removed(int n, DateTime when)
     : this._(null, n, true, when);
 }
@@ -261,6 +264,16 @@ class MediaMeshCoverageService extends ChangeNotifier {
       _show = p.getBool(_kShow) ?? true;
       _share = p.getBool(_kShare) ?? false;
       _analyzer = p.getString(_kAnalyzer) ?? defaultCoverageAnalyzer;
+      _receipts = p.getBool(_kReceipts) ?? false;
+      final waiting = p.getString(_kReceiptsWaiting);
+      if (waiting != null) {
+        final j = jsonDecode(waiting);
+        if (j is List) {
+          _receiptsWaiting
+            ..clear()
+            ..addAll(j.map(MediaReceipt.fromJson).whereType<MediaReceipt>());
+        }
+      }
       final f = await _file();
       if (f != null && await f.exists()) {
         final j = jsonDecode(await f.readAsString());
@@ -509,14 +522,25 @@ class MediaMeshCoverageService extends ChangeNotifier {
     return true;
   }
 
+  /// Up to when (unix seconds) each radio's points have gone, as far as
+  /// this run of the app knows.
+  final Map<String, int> _sentUntil = {};
+
   /// After a sample: send once ten are waiting, or five minutes after the
-  /// last send, whichever comes first.
+  /// last send, whichever comes first. (Every sample would be a send
+  /// otherwise, and the analyzer takes 30 an hour from a radio.)
   void _shareSoon() {
     final radio = _connector.selfPublicKey == null
         ? ''
         : _connector.selfPublicKeyHex.toLowerCase();
     if (radio.isEmpty) return;
-    final waiting = _samples.where((s) => s.radio == radio).length;
+    final until = _sentUntil[radio] ?? 0;
+    final waiting = _samples
+        .where(
+          (s) =>
+              s.radio == radio && s.time.millisecondsSinceEpoch ~/ 1000 > until,
+        )
+        .length;
     final last = _lastSend;
     if (last == null ||
         waiting >= 10 ||
@@ -527,7 +551,10 @@ class MediaMeshCoverageService extends ChangeNotifier {
   }
 
   /// Sends the connected radio's points the analyzer doesn't have yet.
-  Future<void> sendNow() async {
+  /// [all] (the Send now button): every point this phone holds for it,
+  /// including those that don't say which radio recorded them, whatever was
+  /// sent before; the analyzer keeps one of each, so nothing doubles.
+  Future<void> sendNow({bool all = false}) async {
     if (_sending) return;
     final endpoint = coverageEndpoint(_analyzer);
     if (endpoint == null) {
@@ -543,13 +570,19 @@ class MediaMeshCoverageService extends ChangeNotifier {
     _lastSend = DateTime.now();
     notifyListeners();
     final client = httpClient();
-    var sent = 0;
+    var sent = 0, already = 0;
     try {
       final prefs = await SharedPreferences.getInstance();
       final key = _sentKey(radio);
-      var until = prefs.getInt(key) ?? 0;
+      final had = prefs.getInt(key) ?? 0;
+      var until = all ? 0 : had;
       final app = await _appName();
-      for (final batch in coverageBatches(_samples, radio, until)) {
+      for (final batch in coverageBatches(
+        _samples,
+        radio,
+        until,
+        unknownToo: all,
+      )) {
         final body = coverageBatchBody(
           radioHex: radio,
           samples: batch,
@@ -578,11 +611,16 @@ class MediaMeshCoverageService extends ChangeNotifier {
           );
           return;
         }
-        sent += batch.length;
+        final counts = coverageReplyCounts(res.body);
+        sent += counts?.$1 ?? batch.length;
+        already += counts?.$2 ?? 0;
         until = batch.last.time.millisecondsSinceEpoch ~/ 1000;
-        await prefs.setInt(key, until);
+        if (until > had) await prefs.setInt(key, until);
+        _sentUntil[radio] = until > had ? until : had;
       }
-      _setShareStatus(CoverageShareStatus.sent(sent, DateTime.now()));
+      _setShareStatus(
+        CoverageShareStatus.sent(sent, DateTime.now(), already: already),
+      );
     } catch (e) {
       _setShareStatus(CoverageShareStatus.error('$e'));
     } finally {
@@ -651,6 +689,182 @@ class MediaMeshCoverageService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ---- Delivery receipts (mediamesh_receipts.dart) ----
+
+  static const _kReceipts = 'mm_receipts_share';
+  static const _kReceiptsWaiting = 'mm_receipts_waiting';
+
+  bool _receipts = false, _sendingReceipts = false;
+  final List<MediaReceipt> _receiptsWaiting = [];
+  CoverageShareStatus? _receiptsStatus;
+  Timer? _receiptsTimer;
+
+  bool get shareReceipts => _receipts;
+  bool get sendingReceipts => _sendingReceipts;
+  int get receiptsWaiting => _receiptsWaiting.length;
+  CoverageShareStatus? get receiptsStatus => _receiptsStatus;
+
+  Future<void> setShareReceipts(bool on) async {
+    if (on == _receipts) return;
+    _receipts = on;
+    if (!on) {
+      // off: nothing more leaves the phone, and what was waiting is dropped
+      _receiptsWaiting.clear();
+      _receiptsTimer?.cancel();
+    }
+    notifyListeners();
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setBool(_kReceipts, on);
+      await _saveReceipts(p);
+    } catch (_) {}
+  }
+
+  /// A clip this phone received, or gave up on: kept for the analyzer when
+  /// receipts are shared (nothing otherwise), and sent a minute later, with
+  /// any that come in the meantime.
+  void addReceipt(MediaReceipt r) {
+    if (!_receipts) return;
+    _receiptsWaiting.add(r);
+    if (_receiptsWaiting.length > receiptsKeptMax) {
+      _receiptsWaiting.removeRange(
+        0,
+        _receiptsWaiting.length - receiptsKeptMax,
+      );
+    }
+    notifyListeners();
+    unawaited(SharedPreferences.getInstance().then(_saveReceipts));
+    _receiptsTimer?.cancel();
+    _receiptsTimer = Timer(const Duration(minutes: 1), () => sendReceiptsNow());
+  }
+
+  Future<void> _saveReceipts(SharedPreferences p) async {
+    try {
+      await p.setString(
+        _kReceiptsWaiting,
+        jsonEncode([for (final r in _receiptsWaiting) r.toJson()]),
+      );
+    } catch (_) {}
+  }
+
+  void _setReceiptsStatus(CoverageShareStatus s) {
+    _receiptsStatus = s;
+    notifyListeners();
+  }
+
+  /// Sends the waiting receipts, signed by the connected radio (the one that
+  /// received the clips).
+  Future<void> sendReceiptsNow() async {
+    if (_sendingReceipts || !_receipts || _receiptsWaiting.isEmpty) return;
+    final endpoint = receiptsEndpoint(_analyzer);
+    if (endpoint == null) {
+      _setReceiptsStatus(CoverageShareStatus.error('bad-address'));
+      return;
+    }
+    if (!_connector.isConnected || _connector.selfPublicKey == null) {
+      _setReceiptsStatus(CoverageShareStatus.error('not-connected'));
+      return;
+    }
+    final radio = _connector.selfPublicKeyHex.toLowerCase();
+    _sendingReceipts = true;
+    notifyListeners();
+    final client = httpClient();
+    var sent = 0;
+    try {
+      final app = await _appName();
+      while (_receiptsWaiting.isNotEmpty) {
+        final batch = _receiptsWaiting.take(receiptBatchMax).toList();
+        final body = receiptsBatchBody(
+          radioHex: radio,
+          receipts: batch,
+          sent: DateTime.now(),
+          app: app,
+        );
+        final sig = await _connector.signWithRadio(
+          Uint8List.fromList(coverageSignedMessage(receiptSignPrefix, body)),
+        );
+        final res = await client
+            .post(
+              endpoint,
+              headers: {
+                'Content-Type': 'application/json',
+                'X-MeshCore-Signature': pubKeyToHex(sig),
+              },
+              body: body,
+            )
+            .timeout(const Duration(seconds: 30));
+        if (res.statusCode != 200) {
+          _setReceiptsStatus(
+            CoverageShareStatus.error(
+              coverageReplyError(res.body) ?? 'HTTP ${res.statusCode}',
+            ),
+          );
+          return;
+        }
+        _receiptsWaiting.removeRange(0, batch.length);
+        sent += batch.length;
+        await _saveReceipts(await SharedPreferences.getInstance());
+      }
+      _setReceiptsStatus(CoverageShareStatus.sent(sent, DateTime.now()));
+    } catch (e) {
+      _setReceiptsStatus(CoverageShareStatus.error('$e'));
+    } finally {
+      client.close();
+      _sendingReceipts = false;
+      notifyListeners();
+    }
+  }
+
+  /// Asks the analyzer to remove every receipt the connected radio sent, and
+  /// switches receipts off. The number removed, or null (see
+  /// [receiptsStatus]).
+  Future<int?> removeMyReceipts() async {
+    final endpoint = receiptsEndpoint(_analyzer);
+    if (endpoint == null ||
+        !_connector.isConnected ||
+        _connector.selfPublicKey == null) {
+      _setReceiptsStatus(
+        CoverageShareStatus.error(
+          endpoint == null ? 'bad-address' : 'not-connected',
+        ),
+      );
+      return null;
+    }
+    final radio = _connector.selfPublicKeyHex.toLowerCase();
+    final client = httpClient();
+    try {
+      final body = coverageDeleteBody(radio, DateTime.now());
+      final sig = await _connector.signWithRadio(
+        Uint8List.fromList(coverageSignedMessage(receiptDeletePrefix, body)),
+      );
+      final req = http.Request('DELETE', endpoint)
+        ..headers['Content-Type'] = 'application/json'
+        ..headers['X-MeshCore-Signature'] = pubKeyToHex(sig)
+        ..bodyBytes = body;
+      final res = await http.Response.fromStream(
+        await client.send(req).timeout(const Duration(seconds: 30)),
+      );
+      if (res.statusCode != 200) {
+        _setReceiptsStatus(
+          CoverageShareStatus.error(
+            coverageReplyError(res.body) ?? 'HTTP ${res.statusCode}',
+          ),
+        );
+        return null;
+      }
+      final j = jsonDecode(res.body);
+      final n = j is Map && j['removed'] is int ? j['removed'] as int : 0;
+      await setShareReceipts(false);
+      _setReceiptsStatus(CoverageShareStatus.removed(n, DateTime.now()));
+      return n;
+    } catch (e) {
+      _setReceiptsStatus(CoverageShareStatus.error('$e'));
+      return null;
+    } finally {
+      client.close();
+    }
+  }
+
   static String? _appNameCache;
   Future<String> _appName() async {
     if (_appNameCache != null) return _appNameCache!;
@@ -665,6 +879,7 @@ class MediaMeshCoverageService extends ChangeNotifier {
   void dispose() {
     _tick?.cancel();
     _shareTimer?.cancel();
+    _receiptsTimer?.cancel();
     unawaited(_gps?.cancel());
     super.dispose();
   }

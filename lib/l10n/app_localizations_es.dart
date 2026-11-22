@@ -6043,6 +6043,18 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String coverage_sentAlready(int count, int already) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count points sent, $already it already had',
+      one: '1 point sent, $already it already had',
+      zero: 'Nothing new: the analyzer has all $already',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get coverage_shareNotConnected =>
       'Connect the radio that recorded them: points are signed by its key.';
 
@@ -9509,6 +9521,36 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String coverage_points(int count) {
     return '$count points';
+  }
+
+  @override
+  String get coverage_shareReceipts => 'Share delivery receipts';
+
+  @override
+  String get coverage_shareReceiptsHelp =>
+      'For each photo, video or voice clip this phone receives, tells the analyzer above its ID, how many pieces came and whether it was whole, signed by your radio, so it can show whether MediaMesh delivers. Never what was in it, who sent it, or where you were. Off: nothing leaves your phone.';
+
+  @override
+  String coverage_receiptsSent(int count) {
+    return 'Receipts sent: $count';
+  }
+
+  @override
+  String coverage_receiptsWaiting(int count) {
+    return 'Receipts waiting to send: $count';
+  }
+
+  @override
+  String get coverage_receiptsRemove => 'Remove my receipts from the analyzer';
+
+  @override
+  String coverage_receiptsRemoveConfirm(String analyzer) {
+    return 'Remove every delivery receipt this radio sent to $analyzer? Sharing receipts switches off.';
+  }
+
+  @override
+  String coverage_receiptsRemoved(int count) {
+    return 'Receipts removed: $count';
   }
 
   @override

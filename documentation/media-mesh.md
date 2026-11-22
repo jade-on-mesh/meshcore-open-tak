@@ -138,11 +138,21 @@ On Android a notification shows while it's recording, so it keeps going with the
 **Share coverage points** (under the coverage map's buttons, off by default) sends what you record to a CoreScope analyzer, where the MediaMesh coverage estimate is checked against it: the whole estimate for people on the ground moves up or down to match, a repeater with enough points of its own gets its own correction, and drives set what a car costs. The analyzer draws them as 200 m squares (green, amber, red and grey, as here), leaves out the first and last 300 m of every trip so nobody's home shows, and never says whose they are.
 
 - **Analyzer** is the address the points are sent to: `https://analyzer.cascadiamesh.org/api/mediamesh/coverage-points` unless you enter your own area's (any CoreScope with the CascadiaMesh fork's coverage points). Its upload address, or just the analyzer's address (the upload path is added).
-- Points go out about every 10 samples or 5 minutes while recording, and all that are waiting when you switch it on or tap **Send now**. Only points the connected radio recorded are sent, at most 500 at a time, each batch signed by the radio's key (`CMD_SIGN_START`/`_DATA`/`_FINISH`) over `corescope-coverage:` and the SHA-256 of the batch. The analyzer only takes radios it has heard, so send an advert first if it says it hasn't.
+- Points go out about every 10 new samples or 5 minutes while recording, and all that are waiting when you switch it on. **Send now** sends every point the phone holds for the connected radio again, including points kept by app versions that didn't yet write down which radio recorded them (taken as the connected radio's); the analyzer keeps one of each, and the line under the switch says how many were new and how many it already had. Only points the connected radio recorded are sent otherwise, at most 500 at a time, each batch signed by the radio's key (`CMD_SIGN_START`/`_DATA`/`_FINISH`) over `corescope-coverage:` and the SHA-256 of the batch. The analyzer only takes radios it has heard, so send an advert first if it says it hasn't.
 - What goes: each point's time, position, GPS accuracy and speed (so the analyzer can tell a walk from a drive), and each MediaMesh repeater that answered with its key, SNR both ways and the estimated margin.
 - **Remove my points from the analyzer** asks it to delete every point that radio sent, and switches sharing off. The points on the phone stay.
 
 The analyzer side is documented in CoreScope's `docs/mediamesh-coverage-points.md`.
+
+#### Sharing delivery receipts
+
+Observers only hear the pieces of a clip that pass near them, so an analyzer can't tell from them whether a photo, video or voice clip arrived. **Share delivery receipts** (under Share coverage points, off by default) lets this phone tell it.
+
+- For each clip received whole, and each one given up on after asking for it, the app keeps a receipt: the clip's session id (already on the air in every piece), its kind, how many pieces it has, how many came over the air, how many came after asking again for missing ones, how many were rebuilt from parity, and whether it ended up whole. Never what was in it, who sent it, the channel, or where the phone was.
+- They go to the same analyzer as coverage points (its `/api/mediamesh/receipts`), a minute after the last one, signed by the connected radio over `corescope-receipt:` and the SHA-256 of the batch. Up to 1,000 wait while the radio is disconnected. Switching receipts off drops any still waiting.
+- **Remove my receipts from the analyzer** asks it to delete every receipt this radio sent, and switches receipts off.
+
+The analyzer shows them as **Did it arrive?** on its MediaMesh tab (CoreScope's `docs/mediamesh-receipts.md`).
 
 ### Per contact and per channel
 
