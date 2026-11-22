@@ -102,14 +102,6 @@ void main() {
     },
   );
 
-  test('sharing on by default: points from before it came on stay', () {
-    // chosen (shareSince 0): from what has gone
-    expect(coverageAutoFrom(500, 0), 500);
-    // on by itself at 1000: nothing from before, then from what has gone
-    expect(coverageAutoFrom(0, 1000), 1000);
-    expect(coverageAutoFrom(1200, 1000), 1200);
-  });
-
   test('the analyzer\'s reply: new and already had', () {
     expect(coverageReplyCounts('{"accepted":3,"duplicates":137}'), (3, 137));
     expect(coverageReplyCounts('{"accepted":5}'), (5, 0));

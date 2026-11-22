@@ -61,14 +61,6 @@ Uri? coverageEndpoint(String analyzer) {
 List<int> coverageSignedMessage(String prefix, List<int> body) =>
     utf8.encode(prefix + crypto.sha256.convert(body).toString());
 
-/// Where automatic sending starts (unix seconds): after what has gone
-/// already ([sentUntil]) and, when sharing came on by itself rather than
-/// being chosen, after the time it did ([shareSince]), so points recorded
-/// while it was still off by default stay on the phone unless sent on
-/// purpose.
-int coverageAutoFrom(int sentUntil, int shareSince) =>
-    sentUntil > shareSince ? sentUntil : shareSince;
-
 /// The samples still to send from radio [radioHex]: recorded by it, after
 /// [sentUntil] (unix seconds), oldest first, in batches of at most [max].
 /// [unknownToo]: also those that don't say which radio recorded them (kept
