@@ -27,11 +27,7 @@ void main() {
 
   test('matches: names starting with it first, then anywhere, in order', () {
     final names = ['Bob', "Tae's Tag", 'Mittens', "tae's t-deck", 'Stae'];
-    expect(mentionMatches(names, 'tae'), [
-      "Tae's Tag",
-      "tae's t-deck",
-      'Stae',
-    ]);
+    expect(mentionMatches(names, 'tae'), ["Tae's Tag", "tae's t-deck", 'Stae']);
     expect(mentionMatches(names, ''), names);
     expect(mentionMatches(names, 'zzz'), isEmpty);
   });

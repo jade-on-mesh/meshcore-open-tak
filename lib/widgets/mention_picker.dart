@@ -64,9 +64,7 @@ TextEditingValue applyMention(
       (rest.startsWith(' ') ? rest.substring(1) : rest);
   return TextEditingValue(
     text: next,
-    selection: TextSelection.collapsed(
-      offset: mention.start + inserted.length,
-    ),
+    selection: TextSelection.collapsed(offset: mention.start + inserted.length),
   );
 }
 
