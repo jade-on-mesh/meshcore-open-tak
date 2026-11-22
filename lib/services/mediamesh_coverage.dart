@@ -264,7 +264,8 @@ class MediaMeshCoverageService extends ChangeNotifier {
       _show = p.getBool(_kShow) ?? true;
       _share = p.getBool(_kShare) ?? false;
       _analyzer = p.getString(_kAnalyzer) ?? defaultCoverageAnalyzer;
-      _receipts = p.getBool(_kReceipts) ?? false;
+      // on unless switched off: receipts help show whether MediaMesh delivers
+      _receipts = p.getBool(_kReceipts) ?? true;
       final waiting = p.getString(_kReceiptsWaiting);
       if (waiting != null) {
         final j = jsonDecode(waiting);
@@ -694,7 +695,7 @@ class MediaMeshCoverageService extends ChangeNotifier {
   static const _kReceipts = 'mm_receipts_share';
   static const _kReceiptsWaiting = 'mm_receipts_waiting';
 
-  bool _receipts = false, _sendingReceipts = false;
+  bool _receipts = true, _sendingReceipts = false;
   final List<MediaReceipt> _receiptsWaiting = [];
   CoverageShareStatus? _receiptsStatus;
   Timer? _receiptsTimer;

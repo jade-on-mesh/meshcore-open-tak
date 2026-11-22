@@ -49,7 +49,7 @@ These permissions are used solely to discover and communicate with MeshCore hard
 ### Location Permission
 - **ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION**
 
-Required by Android for BLE scanning on Android 11 and below. MeshCore Open does not use the phone's GPS to determine your location. Location data shown in the App comes from MeshCore devices and mesh advertisements. Location data may also be optionally shared over the mesh network if you choose to enable location sharing features.
+Required by Android for BLE scanning on Android 11 and below. MeshCore Open does not use the phone's GPS to determine your location, except while you record MediaMesh coverage (see below). Location data shown in the App comes from MeshCore devices and mesh advertisements. Location data may also be optionally shared over the mesh network if you choose to enable location sharing features.
 
 ### Internet Permission
 - **INTERNET**
@@ -102,6 +102,31 @@ Uploaded records are not linked to an account, name or device identity, so the p
 Repeater and room server owners can remove their node from the map by putting the 🚫 emoji anywhere in its name and sending a flood advert. Its name and location are then removed from the map, and the packet viewer shows it only as an anonymous repeater with its public key. Location traces tied to it, such as which areas heard it, are deleted too. To show it again, remove the emoji; it reappears with its first advert after 7 days without one.
 
 See the map's [privacy page](https://map.meshcoreopen.org/privacy) for more detail.
+
+## MediaMesh Coverage Points and Delivery Receipts
+
+### Coverage points
+**Map MediaMesh coverage** is off until you start it. While it records, the App uses the phone's GPS to note where the MediaMesh repeaters answered. **Share coverage points** is off by default. You can switch it on, and off again, at any time in MediaMesh Settings.
+
+While sharing is on, recorded points are sent to a CoreScope analyzer: `analyzer.cascadiamesh.org` unless you enter another. Each point carries:
+- its time, position, GPS accuracy and speed;
+- each MediaMesh repeater that answered, with the signal both ways.
+
+Each batch is signed by your radio's key. The analyzer:
+- shows the points publicly only as 500 m hexagons;
+- leaves out the first and last 300 m of every trip;
+- never shows whose they are.
+
+**Remove my points from the analyzer** asks it to delete every point your radio sent.
+
+### Delivery receipts
+**Share delivery receipts** is on by default. For each photo, video or voice clip the phone receives, it tells the same analyzer:
+- the clip's session id, which is already on the air;
+- its kind;
+- how many pieces came, and how;
+- whether the clip arrived whole.
+
+It never sends what was in the clip, who sent it, the channel, or where you were. Receipts are signed by your radio's key. **Remove my receipts from the analyzer** deletes them. Switching receipts off drops any still waiting to be sent.
 
 ## Third-Party Services
 
@@ -164,4 +189,4 @@ If you have questions about this Privacy Policy or the App's privacy practices, 
 
 ---
 
-**Summary**: MeshCore Open does not use the phone's GPS for location, does not include analytics, and does not collect personal information for the developer. If you opt in, the App uploads anonymized packet headers, repeater adverts and ~2 km rounded locations to the MeshCore Open network map; the server does not store IP addresses and deletes raw records after 7 days. Some optional features communicate with third-party services, including map tile providers, Open-Meteo for LOS elevation lookups, Hugging Face for model downloads, Giphy for GIF search/display, and image hosts/gateways for enabled URL previews.
+**Summary**: MeshCore Open does not use the phone's GPS for location except while you record MediaMesh coverage, does not include analytics, and does not collect personal information for the developer. If you opt in, the App uploads anonymized packet headers, repeater adverts and ~2 km rounded locations to the MeshCore Open network map; the server does not store IP addresses and deletes raw records after 7 days. If you switch on sharing, MediaMesh coverage points you record go to a CoreScope analyzer. Unless you switch them off, delivery receipts go there too. Both are signed by your radio. Some optional features communicate with third-party services, including map tile providers, Open-Meteo for LOS elevation lookups, Hugging Face for model downloads, Giphy for GIF search/display, and image hosts/gateways for enabled URL previews.

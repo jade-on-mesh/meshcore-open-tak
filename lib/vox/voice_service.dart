@@ -588,7 +588,7 @@ class VoxVoiceService extends ChangeNotifier {
         await prefs.remove(k);
       }
       _autoPlay = prefs.getBool(_kAutoPlay) ?? true;
-      _autoDownloadChannels = prefs.getBool(_kAutoChannels) ?? false;
+      _autoDownloadChannels = prefs.getBool(_kAutoChannels) ?? true;
       _ownMimi
         ..clear()
         ..addAll(prefs.getStringList(_kOwnMimi) ?? const []);
@@ -2548,7 +2548,7 @@ class VoxVoiceService extends ChangeNotifier {
   }
 
   bool _autoPlay = true;
-  bool _autoDownloadChannels = false;
+  bool _autoDownloadChannels = true;
 
   /// Whether voice is muted in a channel (WalkieService): its voice messages
   /// don't auto-play there.
@@ -2557,10 +2557,10 @@ class VoxVoiceService extends ChangeNotifier {
   /// Download and play incoming voice DMs as soon as they arrive.
   bool get autoPlay => _autoPlay;
 
-  /// With [autoPlay], also download channel clips on arrival. Off by
-  /// default: every listener pulls its own copy, which adds airtime on a busy
-  /// channel. Channel clips that arrive anyway (someone else's channel
-  /// transfer) still auto-play.
+  /// With [autoPlay], also download channel clips on arrival. On by
+  /// default; every listener pulls its own copy, which adds airtime on a
+  /// busy channel, so it can be switched off. Off, channel clips that arrive
+  /// anyway (someone else's channel transfer) still auto-play.
   bool get autoDownloadChannels => _autoDownloadChannels;
 
   Future<void> setAutoPlay(bool v) async {
