@@ -63,18 +63,22 @@ List<int> coverageSignedMessage(String prefix, List<int> body) =>
 
 /// The samples still to send from radio [radioHex]: recorded by it, after
 /// [sentUntil] (unix seconds), oldest first, in batches of at most [max].
+/// [unknownToo]: also those that don't say which radio recorded them (kept
+/// by app versions before the radio was written down), taken as this one's.
 List<List<CoverageSample>> coverageBatches(
   List<CoverageSample> samples,
   String radioHex,
   int sentUntil, {
   int max = coverageBatchMax,
+  bool unknownToo = false,
 }) {
   final key = radioHex.toLowerCase();
+  if (key.isEmpty) return const [];
   final todo =
       samples
           .where(
             (s) =>
-                s.radio == key &&
+                (s.radio == key || (unknownToo && s.radio.isEmpty)) &&
                 s.time.millisecondsSinceEpoch ~/ 1000 > sentUntil,
           )
           .toList()
@@ -149,6 +153,18 @@ List<int> coverageDeleteBody(String radioHex, DateTime sent) => utf8.encode(
     'sent': sent.millisecondsSinceEpoch ~/ 1000,
   }),
 );
+
+/// How many points the analyzer took as new, and how many it already had,
+/// from an upload's reply; null when the reply doesn't say.
+(int, int)? coverageReplyCounts(String body) {
+  try {
+    final j = jsonDecode(body);
+    if (j is Map && j['accepted'] is int) {
+      return (j['accepted'] as int, j['duplicates'] is int ? j['duplicates'] as int : 0);
+    }
+  } catch (_) {}
+  return null;
+}
 
 /// The analyzer's error message in a reply body, if it gave one.
 String? coverageReplyError(String body) {

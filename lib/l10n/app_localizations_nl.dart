@@ -5998,6 +5998,11 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
+  String coverage_sentAlready(int count, int already) {
+    return '{count, plural, =0{Nothing new: the analyzer has all $already} =1{1 point sent, $already it already had} other{$count points sent, $already it already had}}';
+  }
+
+  @override
   String get coverage_shareNotConnected =>
       'Connect the radio that recorded them: points are signed by its key.';
 

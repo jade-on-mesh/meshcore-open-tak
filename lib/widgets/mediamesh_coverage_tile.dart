@@ -128,7 +128,7 @@ class MediaMeshCoverageTile extends StatelessWidget {
               ),
               onPressed: !cov.share || cov.sending
                   ? null
-                  : () => unawaited(cov.sendNow()),
+                  : () => unawaited(cov.sendNow(all: true)),
             ),
             TextButton.icon(
               icon: const Icon(Icons.person_remove_outlined),
@@ -232,6 +232,8 @@ class MediaMeshCoverageTile extends StatelessWidget {
         : ' · ${TimeOfDay.fromDateTime(s.at!).format(context)}';
     return (s.removedPoints
             ? l10n.coverage_removed(s.count)
+            : s.already > 0
+            ? l10n.coverage_sentAlready(s.count, s.already)
             : l10n.coverage_sent(s.count)) +
         when;
   }

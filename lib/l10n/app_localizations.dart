@@ -10253,6 +10253,12 @@ abstract class AppLocalizations {
   /// **'{count, plural, =0{Nothing new to send} =1{1 point sent} other{{count} points sent}}'**
   String coverage_sent(int count);
 
+  /// No description provided for @coverage_sentAlready.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Nothing new: the analyzer has all {already}} =1{1 point sent, {already} it already had} other{{count} points sent, {already} it already had}}'**
+  String coverage_sentAlready(int count, int already);
+
   /// No description provided for @coverage_shareNotConnected.
   ///
   /// In en, this message translates to:

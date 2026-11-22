@@ -36,22 +36,24 @@ import 'mediamesh_coverage_share.dart';
 import 'mediamesh_receipts.dart';
 
 /// What the last send to the analyzer did: [error] (a message, or
-/// 'not-connected' / 'bad-address'), or [count] points sent or removed.
+/// 'not-connected' / 'bad-address'), or [count] points sent or removed;
+/// [already]: points sent that the analyzer already had.
 class CoverageShareStatus {
   final String? error;
-  final int count;
+  final int count, already;
   final bool removedPoints;
   final DateTime? at;
   const CoverageShareStatus._(
     this.error,
     this.count,
     this.removedPoints,
-    this.at,
-  );
+    this.at, [
+    this.already = 0,
+  ]);
   const CoverageShareStatus.error(String message)
     : this._(message, 0, false, null);
-  const CoverageShareStatus.sent(int n, DateTime when)
-    : this._(null, n, false, when);
+  const CoverageShareStatus.sent(int n, DateTime when, {int already = 0})
+    : this._(null, n, false, when, already);
   const CoverageShareStatus.removed(int n, DateTime when)
     : this._(null, n, true, when);
 }
@@ -520,14 +522,25 @@ class MediaMeshCoverageService extends ChangeNotifier {
     return true;
   }
 
+  /// Up to when (unix seconds) each radio's points have gone, as far as
+  /// this run of the app knows.
+  final Map<String, int> _sentUntil = {};
+
   /// After a sample: send once ten are waiting, or five minutes after the
-  /// last send, whichever comes first.
+  /// last send, whichever comes first. (Every sample would be a send
+  /// otherwise, and the analyzer takes 30 an hour from a radio.)
   void _shareSoon() {
     final radio = _connector.selfPublicKey == null
         ? ''
         : _connector.selfPublicKeyHex.toLowerCase();
     if (radio.isEmpty) return;
-    final waiting = _samples.where((s) => s.radio == radio).length;
+    final until = _sentUntil[radio] ?? 0;
+    final waiting = _samples
+        .where(
+          (s) =>
+              s.radio == radio && s.time.millisecondsSinceEpoch ~/ 1000 > until,
+        )
+        .length;
     final last = _lastSend;
     if (last == null ||
         waiting >= 10 ||
@@ -538,7 +551,10 @@ class MediaMeshCoverageService extends ChangeNotifier {
   }
 
   /// Sends the connected radio's points the analyzer doesn't have yet.
-  Future<void> sendNow() async {
+  /// [all] (the Send now button): every point this phone holds for it,
+  /// including those that don't say which radio recorded them, whatever was
+  /// sent before; the analyzer keeps one of each, so nothing doubles.
+  Future<void> sendNow({bool all = false}) async {
     if (_sending) return;
     final endpoint = coverageEndpoint(_analyzer);
     if (endpoint == null) {
@@ -554,13 +570,19 @@ class MediaMeshCoverageService extends ChangeNotifier {
     _lastSend = DateTime.now();
     notifyListeners();
     final client = httpClient();
-    var sent = 0;
+    var sent = 0, already = 0;
     try {
       final prefs = await SharedPreferences.getInstance();
       final key = _sentKey(radio);
-      var until = prefs.getInt(key) ?? 0;
+      final had = prefs.getInt(key) ?? 0;
+      var until = all ? 0 : had;
       final app = await _appName();
-      for (final batch in coverageBatches(_samples, radio, until)) {
+      for (final batch in coverageBatches(
+        _samples,
+        radio,
+        until,
+        unknownToo: all,
+      )) {
         final body = coverageBatchBody(
           radioHex: radio,
           samples: batch,
@@ -589,11 +611,16 @@ class MediaMeshCoverageService extends ChangeNotifier {
           );
           return;
         }
-        sent += batch.length;
+        final counts = coverageReplyCounts(res.body);
+        sent += counts?.$1 ?? batch.length;
+        already += counts?.$2 ?? 0;
         until = batch.last.time.millisecondsSinceEpoch ~/ 1000;
-        await prefs.setInt(key, until);
+        if (until > had) await prefs.setInt(key, until);
+        _sentUntil[radio] = until > had ? until : had;
       }
-      _setShareStatus(CoverageShareStatus.sent(sent, DateTime.now()));
+      _setShareStatus(
+        CoverageShareStatus.sent(sent, DateTime.now(), already: already),
+      );
     } catch (e) {
       _setShareStatus(CoverageShareStatus.error('$e'));
     } finally {
