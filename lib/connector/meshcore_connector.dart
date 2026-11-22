@@ -1623,6 +1623,36 @@ class MeshCoreConnector extends ChangeNotifier {
     return _channelMessages[_canonicalSlot(channel.index)] ?? [];
   }
 
+  /// Everyone who has written in [channel], newest first, from its whole
+  /// stored history (up to ChannelMessageStore.maxStoredMessages) and the
+  /// messages in memory: for the composer's @ picker. Not this radio's own
+  /// messages; a name used again keeps its latest time.
+  Future<List<String>> channelSenderNames(Channel channel) async {
+    final slot = _canonicalSlot(channel.index);
+    final last = <String, DateTime>{};
+    void note(ChannelMessage m) {
+      final name = m.senderName.trim();
+      if (m.isOutgoing || name.isEmpty) return;
+      final at = last[name];
+      if (at == null || m.timestamp.isAfter(at)) last[name] = m.timestamp;
+    }
+
+    final channelId = _slotChannelIds[slot];
+    if (channelId != null) {
+      for (final m in await _channelMessageStore.loadChannelMessages(
+        channelId,
+      )) {
+        note(m);
+      }
+    }
+    for (final m in _channelMessages[slot] ?? const <ChannelMessage>[]) {
+      note(m);
+    }
+    final names = last.keys.toList()
+      ..sort((a, b) => last[b]!.compareTo(last[a]!));
+    return names;
+  }
+
   Future<void> deleteChannelMessage(ChannelMessage message) =>
       deleteChannelMessages([message]);
 
