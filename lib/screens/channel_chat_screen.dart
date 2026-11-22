@@ -53,6 +53,7 @@ import '../utils/image_save.dart';
 import 'otp_pad_screen.dart';
 import '../utils/lora_airtime.dart';
 import '../utils/radio_guard.dart';
+import '../widgets/mention_picker.dart';
 import '../widgets/public_media_switch.dart';
 import '../widgets/marker_label_dialog.dart';
 import '../widgets/aeic_hd_resume_controls.dart';
@@ -135,6 +136,10 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   final TextEditingController _textController = TextEditingController();
   final ChatScrollController _scrollController = ChatScrollController();
   final FocusNode _textFieldFocusNode = FocusNode();
+
+  /// Everyone who has written in this channel's stored history, newest
+  /// first, for the @ picker (channelSenderNames).
+  List<String> _storedSenders = const [];
   ChannelMessage? _replyingToMessage;
   bool _useReplyRegion = false;
   final CommunityStore _communityStore = CommunityStore();
@@ -224,6 +229,11 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       final unread = widget.initialUnreadCount;
       final messages = connector.getChannelMessages(widget.channel);
       _loadCommunities();
+      unawaited(
+        connector.channelSenderNames(widget.channel).then((names) {
+          if (mounted) setState(() => _storedSenders = names);
+        }),
+      );
       ChannelMessage? anchor;
       if (unread > 0) {
         anchor = _findOldestUnreadChannelAnchor(messages, unread);
@@ -3773,6 +3783,21 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     );
   }
 
+  /// The @ picker's names: who wrote in the messages on screen, newest
+  /// first, then the rest of the stored history.
+  List<String> _mentionNames() {
+    final names = <String>{};
+    final messages = context.read<MeshCoreConnector>().getChannelMessages(
+      widget.channel,
+    );
+    for (final m in messages.reversed) {
+      final name = m.senderName.trim();
+      if (!m.isOutgoing && name.isNotEmpty) names.add(name);
+    }
+    names.addAll(_storedSenders);
+    return names.toList();
+  }
+
   /// The `@[name] ` prefix a reply prepends to the outgoing text.
   static String _replyPrefix(ChannelMessage replyTo) =>
       '@[${replyTo.senderName}] ';
@@ -3857,6 +3882,12 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         ),
       ),
       header: [
+        // Type "@": everyone who has written here, narrowed as you type.
+        MentionPicker(
+          controller: _textController,
+          names: _mentionNames,
+          avatarBuilder: (name) => _buildAvatar(name, 1.0, size: 36),
+        ),
         if (replyTo != null)
           Builder(
             builder: (context) {

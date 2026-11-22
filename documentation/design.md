@@ -150,6 +150,7 @@ Icon sizes in use: 24 for tile and banner icons, 20 for menu icons and small act
 | Sync progress | `SyncProgressAppBarBottom` as the app bar `bottom` | 3px bar |
 | Toast message | `showDismissibleSnackBar(context, content: Text(...))` | Tap to dismiss, replaces the current snackbar, safe after an async gap |
 | List item entrance | `ListEntrance(index:)` | Optional |
+| Suggestions while typing in a composer | `MentionPicker` (`lib/widgets/mention_picker.dart`) in `ChatComposer.header` | A rounded `surfaceContainer` card with an `outlineVariant` edge, at most about eight rows tall then it scrolls; each row is the chat's avatar and the name in `onSurface`. Renders nothing when there is nothing to suggest |
 
 **Buttons.** Theme shapes are all pill-shaped. In use:
 

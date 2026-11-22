@@ -119,6 +119,10 @@ The app bar overflow menu (⋮) has **Filter messages in this channel** (shown w
 - Sent replies are prefixed `@[{senderName}] {text}`
 - Received replies show a bordered quote block inside the bubble; tapping scrolls to the original. Reply previews render GIF thumbnails and location pin icons, not just text.
 
+### Mentions (Channel Chat Only)
+
+Type `@` in a channel's composer and a list comes up above it: everyone who has written in that channel, from its whole stored history (the last 1,000 messages), the most recent writer first. Keep typing to narrow it: names that start with what you typed come first, then names that contain it, ignoring case. Names with spaces still match (`@tae's t1`). Tap a name to put `@[name] ` in the message, the mention format other MeshCore apps and Wadamesh TAK standalones show as a mention. The list hides when nothing matches, after a finished `@[name]`, or for an `@` inside a word (an email address).
+
 ### Resend
 
 - **All platforms**: Long-press (or right-click on desktop) one of your own messages → **Resend**
