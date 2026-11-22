@@ -6055,6 +6055,8 @@ class AppLocalizationsBg extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
   String get coverage_shareNotConnected =>
       'Connect the radio that recorded them: points are signed by its key.';
 
