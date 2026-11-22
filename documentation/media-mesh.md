@@ -42,7 +42,7 @@ Under the radio2 settings, **MediaMesh Settings** holds the phone's own photo an
 
 - **Route photos and voice via** chosen repeaters
 - **Fast MediaMesh** and **Adaptive spacing** (see below)
-- **Auto-play voice, auto-show photos**, and under it **Also auto-download in channels** (off by default: a channel photo or clip only downloads when you tap it, or when it reaches you anyway)
+- **Auto-play voice, auto-show photos**, and under it **Also auto-download in channels** (both on by default; with channel auto-download off, a channel photo or clip only downloads when you tap it, or when it reaches you anyway)
 - **Send channel photos and voice right away**
 - **Mimi voice model** / **Send voice with Mimi**, **AI voice restorer**, **Codec2 quality**
 - **Diagnostics and tests**: the transfer log, link test and transfer test
