@@ -34,7 +34,9 @@ Future<void> openMediaMeshSettings(
   MeshCoreConnector connector,
 ) => Navigator.push(
   context,
-  MaterialPageRoute(builder: (_) => MediaMeshSettingsScreen(connector: connector)),
+  MaterialPageRoute(
+    builder: (_) => MediaMeshSettingsScreen(connector: connector),
+  ),
 );
 
 /// MediaMesh Settings: one page, every setting on show, under six headings
@@ -114,7 +116,8 @@ class _MediaMeshSettingsScreenState extends State<MediaMeshSettingsScreen> {
       final box = _keys[s]!.currentContext?.findRenderObject() as RenderBox?;
       if (box == null || !box.attached) continue;
       final top = box.localToGlobal(Offset.zero).dy;
-      final listTop = (_listKey.currentContext?.findRenderObject() as RenderBox?)
+      final listTop =
+          (_listKey.currentContext?.findRenderObject() as RenderBox?)
               ?.localToGlobal(Offset.zero)
               .dy ??
           0;
@@ -549,98 +552,98 @@ class _MediaMeshSettingsScreenState extends State<MediaMeshSettingsScreen> {
                   child: ListTileTheme.merge(
                     contentPadding: EdgeInsets.zero,
                     child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _header(_Section.radio2, l10n.mediaMesh_mode),
-                      if (!connected)
-                        Text(l10n.mediaMesh_connectForRadio2)
-                      else if (state == null)
-                        const Padding(
-                          padding: EdgeInsets.all(24),
-                          child: Center(child: CircularProgressIndicator()),
-                        )
-                      else if (!usable)
-                        _buildNoRadio2(context, state)
-                      else
-                        _buildForm(context, state),
-                      _header(_Section.mapping, l10n.mediaMesh_mapping),
-                      // Where the MediaMesh repeaters reach, as you move,
-                      // and sharing points and receipts with an analyzer.
-                      const MediaMeshCoverageTile(showTitle: false),
-                      _header(_Section.autoplay, l10n.mediaMesh_autoplay),
-                      VoxAutoPlayTile(service: voice, showPush: false),
-                      _header(_Section.speed, l10n.mediaMesh_speedRouting),
-                      VoxPushChannelTile(service: voice),
-                      // Repair packets and closer spacing for transfers
-                      // (Fast MediaMesh); off goes back to the way transfers
-                      // worked before.
-                      ListenableBuilder(
-                        listenable: voice,
-                        builder: (context, _) => SwitchListTile(
-                          secondary: const Icon(Icons.speed),
-                          title: Text(l10n.vox_fastMediaMeshTitle),
-                          subtitle: Text(l10n.vox_fastMediaMeshSubtitle),
-                          value: voice.fastMediaMesh,
-                          onChanged: voice.setFastMediaMesh,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _header(_Section.radio2, l10n.mediaMesh_mode),
+                        if (!connected)
+                          Text(l10n.mediaMesh_connectForRadio2)
+                        else if (state == null)
+                          const Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                        else if (!usable)
+                          _buildNoRadio2(context, state)
+                        else
+                          _buildForm(context, state),
+                        _header(_Section.mapping, l10n.mediaMesh_mapping),
+                        // Where the MediaMesh repeaters reach, as you move,
+                        // and sharing points and receipts with an analyzer.
+                        const MediaMeshCoverageTile(showTitle: false),
+                        _header(_Section.autoplay, l10n.mediaMesh_autoplay),
+                        VoxAutoPlayTile(service: voice, showPush: false),
+                        _header(_Section.speed, l10n.mediaMesh_speedRouting),
+                        VoxPushChannelTile(service: voice),
+                        // Repair packets and closer spacing for transfers
+                        // (Fast MediaMesh); off goes back to the way transfers
+                        // worked before.
+                        ListenableBuilder(
+                          listenable: voice,
+                          builder: (context, _) => SwitchListTile(
+                            secondary: const Icon(Icons.speed),
+                            title: Text(l10n.vox_fastMediaMeshTitle),
+                            subtitle: Text(l10n.vox_fastMediaMeshSubtitle),
+                            value: voice.fastMediaMesh,
+                            onChanged: voice.setFastMediaMesh,
+                          ),
                         ),
-                      ),
-                      // Packet spacing that learns (Fast MediaMesh only); off
-                      // is the spacing as it was.
-                      ListenableBuilder(
-                        listenable: voice,
-                        builder: (context, _) => SwitchListTile(
-                          secondary: const Icon(Icons.tune),
-                          title: Text(l10n.vox_adaptiveSpacingTitle),
-                          subtitle: Text(l10n.vox_adaptiveSpacingSubtitle),
-                          value: voice.fastMediaMesh && voice.adaptiveSpacing,
-                          onChanged: voice.fastMediaMesh
-                              ? voice.setAdaptiveSpacing
-                              : null,
+                        // Packet spacing that learns (Fast MediaMesh only); off
+                        // is the spacing as it was.
+                        ListenableBuilder(
+                          listenable: voice,
+                          builder: (context, _) => SwitchListTile(
+                            secondary: const Icon(Icons.tune),
+                            title: Text(l10n.vox_adaptiveSpacingTitle),
+                            subtitle: Text(l10n.vox_adaptiveSpacingSubtitle),
+                            value: voice.fastMediaMesh && voice.adaptiveSpacing,
+                            onChanged: voice.fastMediaMesh
+                                ? voice.setAdaptiveSpacing
+                                : null,
+                          ),
                         ),
-                      ),
-                      // Photo and voice transfers through chosen repeaters.
-                      VoxForcedRouteTile(service: voice),
-                      _header(_Section.voice, l10n.mediaMesh_voiceQuality),
-                      VoxMimiTile(service: voice),
-                      VoxEnhanceVoiceTile(service: voice),
-                      VoxCodec2QualityTile(service: voice),
-                      _header(_Section.tools, l10n.mediaMesh_tools),
-                      if (radioReady) ..._buildTemporary(context),
-                      if (radioReady)
-                        ListTile(
-                          leading: const Icon(Icons.terminal),
-                          title: Text(l10n.mediaMesh_openConsole),
-                          subtitle: Text(l10n.mediaMesh_openConsoleSubtitle),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => RadioConsoleScreen(
-                                connector: widget.connector,
+                        // Photo and voice transfers through chosen repeaters.
+                        VoxForcedRouteTile(service: voice),
+                        _header(_Section.voice, l10n.mediaMesh_voiceQuality),
+                        VoxMimiTile(service: voice),
+                        VoxEnhanceVoiceTile(service: voice),
+                        VoxCodec2QualityTile(service: voice),
+                        _header(_Section.tools, l10n.mediaMesh_tools),
+                        if (radioReady) ..._buildTemporary(context),
+                        if (radioReady)
+                          ListTile(
+                            leading: const Icon(Icons.terminal),
+                            title: Text(l10n.mediaMesh_openConsole),
+                            subtitle: Text(l10n.mediaMesh_openConsoleSubtitle),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => RadioConsoleScreen(
+                                  connector: widget.connector,
+                                ),
                               ),
                             ),
                           ),
+                        ListTile(
+                          leading: const Icon(Icons.receipt_long_outlined),
+                          title: Text(l10n.mediaMesh_diagnostics),
+                          subtitle: Text(l10n.mediaMesh_diagnosticsSubtitle),
+                          onTap: () => showVoxVoiceLog(context, voice),
                         ),
-                      ListTile(
-                        leading: const Icon(Icons.receipt_long_outlined),
-                        title: Text(l10n.mediaMesh_diagnostics),
-                        subtitle: Text(l10n.mediaMesh_diagnosticsSubtitle),
-                        onTap: () => showVoxVoiceLog(context, voice),
-                      ),
-                      // Data Audio (lib/vox/modem_sound.dart): also in App
-                      // Settings.
-                      ListenableBuilder(
-                        listenable: voice,
-                        builder: (context, _) => SwitchListTile(
-                          secondary: const Icon(Icons.settings_input_antenna),
-                          title: Text(l10n.vox_dataAudioTitle),
-                          subtitle: Text(l10n.vox_dataAudioMediaSubtitle),
-                          value: voice.dataAudio,
-                          onChanged: voice.setDataAudio,
+                        // Data Audio (lib/vox/modem_sound.dart): also in App
+                        // Settings.
+                        ListenableBuilder(
+                          listenable: voice,
+                          builder: (context, _) => SwitchListTile(
+                            secondary: const Icon(Icons.settings_input_antenna),
+                            title: Text(l10n.vox_dataAudioTitle),
+                            subtitle: Text(l10n.vox_dataAudioMediaSubtitle),
+                            value: voice.dataAudio,
+                            onChanged: voice.setDataAudio,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -741,7 +744,10 @@ class _MediaMeshSettingsScreenState extends State<MediaMeshSettingsScreen> {
     final l10n = context.l10n;
     final small = Theme.of(context).textTheme.bodySmall;
     return [
-      Text(l10n.mediaMesh_temporary, style: Theme.of(context).textTheme.titleSmall),
+      Text(
+        l10n.mediaMesh_temporary,
+        style: Theme.of(context).textTheme.titleSmall,
+      ),
       const SizedBox(height: 4),
       Text(l10n.mediaMesh_temporaryHelp, style: small),
       const SizedBox(height: 8),

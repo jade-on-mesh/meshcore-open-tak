@@ -8911,7 +8911,8 @@ class AppLocalizationsHu extends AppLocalizations {
   String get mediaMesh_saveRadio2 => 'Save radio2';
 
   @override
-  String get mediaMesh_unsavedMessage => 'Your radio2 changes haven\'t been saved to the radio.';
+  String get mediaMesh_unsavedMessage =>
+      'Your radio2 changes haven\'t been saved to the radio.';
 
   @override
   String get mapHighlight_title => 'Highlight new map points';
