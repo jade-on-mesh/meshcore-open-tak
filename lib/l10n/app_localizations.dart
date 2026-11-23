@@ -3475,6 +3475,18 @@ abstract class AppLocalizations {
   /// **'Offline Map Cache'**
   String get appSettings_offlineMapCache;
 
+  /// No description provided for @appSettings_openLinksDirectly.
+  ///
+  /// In en, this message translates to:
+  /// **'Open web links without asking'**
+  String get appSettings_openLinksDirectly;
+
+  /// No description provided for @appSettings_openLinksDirectlySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tapping a link written out in full (http:// or https://) opens it straight away. Anything that could be disguised, like an address without http://, an unusual or look-alike name, or a hidden username, still asks first.'**
+  String get appSettings_openLinksDirectlySubtitle;
+
   /// No description provided for @appSettings_unitsTitle.
   ///
   /// In en, this message translates to:

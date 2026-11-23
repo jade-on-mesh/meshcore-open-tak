@@ -607,6 +607,11 @@ class AppSettingsService extends ChangeNotifier {
     await updateSettings(_settings.copyWith(linkedImagesOnWifi: value));
   }
 
+  /// See [AppSettings.openObviousLinksDirectly].
+  Future<void> setOpenObviousLinksDirectly(bool value) async {
+    await updateSettings(_settings.copyWith(openObviousLinksDirectly: value));
+  }
+
   /// See [AppSettings.channelParticipantStripEnabled].
   Future<void> setChannelParticipantStripEnabled(bool value) async {
     await updateSettings(

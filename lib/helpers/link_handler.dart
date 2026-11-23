@@ -1,10 +1,12 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../l10n/l10n.dart';
 import '../utils/platform_info.dart';
 import '../helpers/snack_bar_builder.dart';
+import '../services/app_settings_service.dart';
 import '../widgets/hashtag_channel_join.dart';
 
 class LinkHandler {
@@ -49,7 +51,7 @@ class LinkHandler {
         );
         return;
       }
-      handleLinkTap(context, link.url);
+      handleLinkTap(context, link.url, text: link.text);
     }
 
     final textScaleFactor = systemTextScaleFactor(context, style);
@@ -84,7 +86,44 @@ class LinkHandler {
     );
   }
 
-  static Future<void> handleLinkTap(BuildContext context, String url) async {
+  /// An obvious web link: written out in full with http:// or https://, to
+  /// an ordinary host name (ASCII letters, digits, dots and dashes, with a
+  /// dot, no punycode "xn--" look-alike) and no "user@" part that could hide
+  /// where it really goes. [text] is what the message showed; [url] what
+  /// opens. App Settings > Messaging > "Open web links without asking" opens
+  /// these straight away; everything else (bare names like example.com,
+  /// email, other schemes) still asks.
+  static bool isObviousWebLink(String text, String url) {
+    final shown = text.trim().toLowerCase();
+    if (!shown.startsWith('http://') && !shown.startsWith('https://')) {
+      return false;
+    }
+    final Uri uri;
+    try {
+      uri = Uri.parse(url);
+    } catch (_) {
+      return false;
+    }
+    if (uri.scheme != 'http' && uri.scheme != 'https') return false;
+    if (uri.userInfo.isNotEmpty) return false;
+    final host = uri.host.toLowerCase();
+    if (!RegExp(r'^[a-z0-9-]+(\.[a-z0-9-]+)+$').hasMatch(host)) return false;
+    if (host.split('.').any((label) => label.startsWith('xn--'))) return false;
+    return true;
+  }
+
+  static Future<void> handleLinkTap(
+    BuildContext context,
+    String url, {
+    String? text,
+  }) async {
+    final direct =
+        context.read<AppSettingsService?>()?.settings.openObviousLinksDirectly ??
+        false;
+    if (direct && isObviousWebLink(text ?? url, url)) {
+      await _launch(context, url);
+      return;
+    }
     // Show confirmation dialog
     final shouldOpen = await showDialog<bool>(
       context: context,
@@ -127,8 +166,11 @@ class LinkHandler {
     );
 
     if (shouldOpen != true) return;
+    if (!context.mounted) return;
+    await _launch(context, url);
+  }
 
-    // Launch URL
+  static Future<void> _launch(BuildContext context, String url) async {
     try {
       final uri = Uri.parse(url);
       if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
