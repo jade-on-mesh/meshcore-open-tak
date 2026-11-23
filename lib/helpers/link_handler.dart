@@ -118,7 +118,10 @@ class LinkHandler {
     String? text,
   }) async {
     final direct =
-        context.read<AppSettingsService?>()?.settings.openObviousLinksDirectly ??
+        context
+            .read<AppSettingsService?>()
+            ?.settings
+            .openObviousLinksDirectly ??
         false;
     if (direct && isObviousWebLink(text ?? url, url)) {
       await _launch(context, url);

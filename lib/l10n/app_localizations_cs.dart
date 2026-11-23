@@ -1947,7 +1947,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get appSettings_openLinksDirectly => 'Open web links without asking';
 
   @override
-  String get appSettings_openLinksDirectlySubtitle => 'Tapping a link written out in full (http:// or https://) opens it straight away. Anything that could be disguised, like an address without http://, an unusual or look-alike name, or a hidden username, still asks first.';
+  String get appSettings_openLinksDirectlySubtitle =>
+      'Tapping a link written out in full (http:// or https://) opens it straight away. Anything that could be disguised, like an address without http://, an unusual or look-alike name, or a hidden username, still asks first.';
 
   @override
   String get appSettings_unitsTitle => 'Jednotky';
