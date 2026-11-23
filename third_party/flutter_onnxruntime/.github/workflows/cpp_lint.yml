@@ -1,0 +1,57 @@
+name: C++ Lint
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'linux/**/*.cc'
+      - 'linux/**/*.h'
+      - 'linux/**/*.cpp'
+      - 'linux/**/*.hpp'
+      - 'windows/**/*.cc'
+      - 'windows/**/*.h'
+      - 'windows/**/*.cpp'
+      - 'windows/**/*.hpp'
+      # Add paths for other C++ files if needed, e.g.:
+      # - 'cpp/**/*.cc'
+      # - 'cpp/**/*.h'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'linux/**/*.cc'
+      - 'linux/**/*.h'
+      - 'linux/**/*.cpp'
+      - 'linux/**/*.hpp'
+      - 'windows/**/*.cc'
+      - 'windows/**/*.h'
+      - 'windows/**/*.cpp'
+      - 'windows/**/*.hpp'
+      # - 'cpp/**/*.cc'
+      # - 'cpp/**/*.h'
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install clang-format
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-format
+    
+    - name: Run clang-format
+      run: |
+        find linux windows -name "*.cc" -o -name "*.h" -o -name "*.cpp" -o -name "*.hpp" | \
+        grep -v "example/linux/flutter/" | \
+        xargs clang-format -i --style=file
+        
+        # Check if any files were modified
+        if ! git diff --quiet; then
+          echo "C++ files were automatically formatted. Please run 'git add' and commit the changes."
+          git diff
+          exit 1
+        fi

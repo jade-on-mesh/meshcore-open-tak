@@ -94,7 +94,11 @@ dependencies:
   # decoder (lib/services/image_codec_backend.dart). arm64-only on Android — see
   # the abiFilters note in android/app/build.gradle.kts; a universal APK pays
   # ~56 MB for ORT instead of ~18 MB.
-  flutter_onnxruntime: ^1.9.0
+  # Vendored (third_party/flutter_onnxruntime/VENDORED.md): 1.9.0 with its
+  # iOS/macOS Swift package local and without ONNX Runtime Extensions, whose
+  # download server's certificate broke every Apple build (November 2026).
+  flutter_onnxruntime:
+    path: third_party/flutter_onnxruntime
   geolocator: ^14.0.0     # VOX team: phone GPS for position sharing
   xml: ^7.0.0            # VOX TAK: Cursor-on-Target XML
   archive: ^4.0.0        # VOX TAK: import ATAK connection data packages

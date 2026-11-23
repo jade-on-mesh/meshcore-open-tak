@@ -1,0 +1,45 @@
+name: Kotlin Lint
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'android/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'android/**'
+
+jobs:
+  ktlint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+    
+    - name: Install ktlint
+      run: |
+        curl -sSLO https://github.com/pinterest/ktlint/releases/download/1.0.0/ktlint
+        chmod a+x ktlint
+        sudo mv ktlint /usr/local/bin/
+    
+    - name: Run ktlint
+      run: ktlint "android/**/*.kt" "android/**/*.kts" --reporter=checkstyle > ktlint-report.xml || true
+    
+    - name: Upload ktlint report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: ktlint-report
+        path: ktlint-report.xml
+    
+    - name: Check ktlint results
+      run: ktlint "android/**/*.kt" "android/**/*.kts"

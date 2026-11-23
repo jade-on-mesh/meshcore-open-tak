@@ -1,0 +1,45 @@
+name: Flutter Unit Tests
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'lib/**'
+      - 'test/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'lib/**'
+      - 'test/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    # Setup Flutter
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        channel: 'stable'
+        flutter-version: '3.38.9'
+
+    # Install dependencies
+    - name: Install Dependencies
+      run: flutter pub get
+
+    # Run Dart format
+    - name: Verify Formatting
+      run: dart format --output=none --set-exit-if-changed --line-length 120 $(find . -name "*.dart")
+
+    # Analyze Dart code
+    - name: Analyze
+      run: flutter analyze
+
+    - name: Run Unit Tests
+      run: flutter test test/unit/
+
