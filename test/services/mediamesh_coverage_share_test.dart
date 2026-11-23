@@ -136,6 +136,52 @@ void main() {
     expect(p['reps'], [
       {'key': '1ea5e195', 'snr': 4.25, 'remote_snr': 2.5, 'margin': 4.0},
     ]);
+    expect(p.containsKey('silent'), isFalse);
+    // RSSI, an answer on radio2 and the repeaters asked on radio2 that didn't
+    final more =
+        jsonDecode(
+              utf8.decode(
+                coverageBatchBody(
+                  radioHex: radio,
+                  samples: [
+                    CoverageSample(
+                      lat: 47.6,
+                      lon: -122.3,
+                      time: DateTime.fromMillisecondsSinceEpoch(1795000000000),
+                      repeaters: const [
+                        CoverageRepeater(
+                          key: '1ea5e195',
+                          name: 'x',
+                          snr: 11,
+                          remoteSnr: 12,
+                          margin: 12.5,
+                          rssi: -71,
+                        ),
+                        CoverageRepeater(
+                          key: '5491c13d',
+                          name: 'y',
+                          snr: 1,
+                          remoteSnr: 2,
+                          margin: 2.5,
+                          onRadio2: true,
+                        ),
+                      ],
+                      radio: radio.toLowerCase(),
+                      silent: const ['fba9fe12'],
+                    ),
+                  ],
+                  sent: DateTime.fromMillisecondsSinceEpoch(1795000100000),
+                  app: 'MeshCore Open TAK 1.0',
+                  mainBwHz: 62500,
+                ),
+              ),
+            )
+            as Map;
+    final q = (more['points'] as List).single as Map;
+    expect((q['reps'] as List)[0]['rssi'], -71);
+    expect((q['reps'] as List)[0].containsKey('via'), isFalse);
+    expect((q['reps'] as List)[1]['via'], 'radio2');
+    expect(q['silent'], ['fba9fe12']);
     expect(
       jsonDecode(
         utf8.decode(
