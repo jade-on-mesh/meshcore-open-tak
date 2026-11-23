@@ -14836,6 +14836,48 @@ abstract class AppLocalizations {
   /// **'MediaMesh is off on this radio. Tap to set it up.'**
   String get mediaMeshNearby_off;
 
+  /// No description provided for @mediaMesh_mapping.
+  ///
+  /// In en, this message translates to:
+  /// **'Mapping'**
+  String get mediaMesh_mapping;
+
+  /// No description provided for @mediaMesh_autoplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Autoplay'**
+  String get mediaMesh_autoplay;
+
+  /// No description provided for @mediaMesh_speedRouting.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed & Routing'**
+  String get mediaMesh_speedRouting;
+
+  /// No description provided for @mediaMesh_voiceQuality.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice Quality'**
+  String get mediaMesh_voiceQuality;
+
+  /// No description provided for @mediaMesh_tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Tools'**
+  String get mediaMesh_tools;
+
+  /// No description provided for @mediaMesh_saveRadio2.
+  ///
+  /// In en, this message translates to:
+  /// **'Save radio2'**
+  String get mediaMesh_saveRadio2;
+
+  /// No description provided for @mediaMesh_unsavedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your radio2 changes haven\'t been saved to the radio.'**
+  String get mediaMesh_unsavedMessage;
+
   /// No description provided for @mapHighlight_title.
   ///
   /// In en, this message translates to:

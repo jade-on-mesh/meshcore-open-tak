@@ -766,7 +766,16 @@ Future<void> _showTransferProgress(
 /// Auto-play settings: play new voice DMs as they arrive.
 class VoxAutoPlayTile extends StatelessWidget {
   final VoxVoiceService service;
-  const VoxAutoPlayTile({super.key, required this.service});
+
+  /// Whether to include "Send channel photos and voice right away"
+  /// ([VoxPushChannelTile]); MediaMesh Settings shows it under Speed &
+  /// Routing instead.
+  final bool showPush;
+  const VoxAutoPlayTile({
+    super.key,
+    required this.service,
+    this.showPush = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -797,18 +806,32 @@ class VoxAutoPlayTile extends StatelessWidget {
               value: service.autoDownloadChannels,
               onChanged: service.setAutoDownloadChannels,
             ),
-          SwitchListTile(
-            secondary: const Icon(Icons.bolt_outlined),
-            title: const Text('Send channel photos and voice right away'),
-            subtitle: const Text(
-              'Your photos and voice clips go straight to the radios in '
-              'range (not relayed), so they are there when opened. '
-              'Listeners further away still ask for them.',
-            ),
-            value: service.pushChannelClips,
-            onChanged: service.setPushChannelClips,
-          ),
+          if (showPush) VoxPushChannelTile(service: service),
         ],
+      ),
+    );
+  }
+}
+
+/// Sends your channel photos and voice straight to the radios in range.
+class VoxPushChannelTile extends StatelessWidget {
+  final VoxVoiceService service;
+  const VoxPushChannelTile({super.key, required this.service});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: service,
+      builder: (context, _) => SwitchListTile(
+        secondary: const Icon(Icons.bolt_outlined),
+        title: const Text('Send channel photos and voice right away'),
+        subtitle: const Text(
+          'Your photos and voice clips go straight to the radios in '
+          'range (not relayed), so they are there when opened. '
+          'Listeners further away still ask for them.',
+        ),
+        value: service.pushChannelClips,
+        onChanged: service.setPushChannelClips,
       ),
     );
   }

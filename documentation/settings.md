@@ -67,7 +67,7 @@ Opens a dialog pre-populated with the device's current radio settings. Contains:
   - Save is blocked with a warning if the frequency isn't one the radio allows for repeating.
 
 ### MediaMesh Settings
-Below Radio Settings. Sends and receives photos and voice clips on a second frequency of the same radio (its `radio2` profile), while text stays on the main mesh:
+Below Radio Settings. One page, with two rows of buttons at the top that jump to its six headings: radio2, Mapping, Autoplay, Speed & Routing, Voice Quality and Tools. Sends and receives photos and voice clips on a second frequency of the same radio (its `radio2` profile), while text stays on the main mesh:
 - **radio2**: Off or On (listen and send)
 - **Sent on radio2**: Photos & voice (text stays on the main mesh)
 - **Preset**: *250 kHz · fast* (SF7, CR 4/5); picking it leaves the frequency alone
@@ -75,7 +75,9 @@ Below Radio Settings. Sends and receives photos and voice clips on a second freq
 
 Open TAK's photos and voice only send when the radio puts them on radio2 alone.
 
-Under the radio2 settings, **Photos and voice on this phone** holds the phone's own photo and voice settings: Fast MediaMesh, Adaptive spacing, repeater routing, auto-play and auto-download (including **Also auto-download in channels**), sending right away, the Mimi and voice-restorer models, Codec2 quality, diagnostics, and Data Audio. These apply as you tap them and work with no radio connected; see [Photos and voice on this phone](media-mesh.md#photos-and-voice-on-this-phone).
+**Save radio2** (beside Find MediaMesh) saves these to the radio; leaving with unsaved changes asks first.
+
+The other headings hold the phone's own settings: **Mapping** (coverage mapping and sharing), **Autoplay** (auto-play and **Also auto-download in channels**), **Speed & Routing** (sending right away, Fast MediaMesh, Adaptive spacing, repeater routing), **Voice Quality** (the Mimi and voice-restorer models, Codec2 quality) and **Tools** (temporary radio2, radio console, diagnostics, Data Audio). These apply as you tap them and work with no radio connected; see [Photos and voice on this phone](media-mesh.md#photos-and-voice-on-this-phone).
 
 Needs radio firmware with MediaMesh (Wadamesh, or MeshCore with `radio2` and `tx.media`). See [MediaMesh](media-mesh.md).
 

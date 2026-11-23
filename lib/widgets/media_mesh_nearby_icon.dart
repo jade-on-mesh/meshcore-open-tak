@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import '../connector/meshcore_connector.dart';
 import '../l10n/l10n.dart';
 import '../services/media_mesh_nearby.dart';
-import 'media_mesh_settings_dialog.dart';
+import '../screens/media_mesh_settings_screen.dart';
 
 /// A small antenna: lit when a MediaMesh was heard here in the last two
 /// hours, dim while the radio's radio2 listens, hidden otherwise.
@@ -46,10 +46,7 @@ class _MediaMeshNearbyIconState extends State<MediaMeshNearbyIcon> {
   void _open() {
     final connector = context.read<MeshCoreConnector>();
     if (!connector.isConnected) return;
-    showDialog<void>(
-      context: context,
-      builder: (_) => MediaMeshSettingsDialog(connector: connector),
-    );
+    unawaited(openMediaMeshSettings(context, connector));
   }
 
   @override

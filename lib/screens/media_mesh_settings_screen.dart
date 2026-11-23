@@ -8,7 +8,6 @@ import '../connector/meshcore_protocol.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../l10n/l10n.dart';
 import '../models/radio_settings.dart';
-import '../screens/radio_console_screen.dart';
 import '../services/media_mesh.dart';
 import '../services/media_mesh_find.dart';
 import '../vox/voice_message_bubble.dart'
@@ -18,24 +17,42 @@ import '../vox/voice_message_bubble.dart'
         VoxEnhanceVoiceTile,
         VoxForcedRouteTile,
         VoxMimiTile,
+        VoxPushChannelTile,
         showVoxVoiceLog;
 import '../vox/voice_service.dart';
-import 'mediamesh_coverage_tile.dart';
+import '../widgets/mediamesh_coverage_tile.dart';
+import '../widgets/mesh_nav_tile.dart';
+import '../widgets/mesh_ui.dart';
+import 'radio_console_screen.dart';
 
-/// MediaMesh Settings: the connected radio's second LoRa profile (`radio2`),
-/// what goes on it, a temporary profile, and live figures. Under the normal
-/// Radio Settings. See documentation/media-mesh.md.
-class MediaMeshSettingsDialog extends StatefulWidget {
+/// The page's sections, in order, as the jump buttons at the top list them.
+enum _Section { radio2, mapping, autoplay, speed, voice, tools }
+
+/// Opens MediaMesh Settings.
+Future<void> openMediaMeshSettings(
+  BuildContext context,
+  MeshCoreConnector connector,
+) => Navigator.push(
+  context,
+  MaterialPageRoute(builder: (_) => MediaMeshSettingsScreen(connector: connector)),
+);
+
+/// MediaMesh Settings: one page, every setting on show, under six headings
+/// that two rows of buttons at the top jump to. radio2 is the connected
+/// radio's second LoRa profile and saves to the radio (Save radio2); the rest
+/// are this phone's and apply as they change, with no radio connected too.
+/// See documentation/media-mesh.md.
+class MediaMeshSettingsScreen extends StatefulWidget {
   final MeshCoreConnector connector;
 
-  const MediaMeshSettingsDialog({super.key, required this.connector});
+  const MediaMeshSettingsScreen({super.key, required this.connector});
 
   @override
-  State<MediaMeshSettingsDialog> createState() =>
-      _MediaMeshSettingsDialogState();
+  State<MediaMeshSettingsScreen> createState() =>
+      _MediaMeshSettingsScreenState();
 }
 
-class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
+class _MediaMeshSettingsScreenState extends State<MediaMeshSettingsScreen> {
   static const _refreshEvery = Duration(seconds: 3);
 
   late final MediaMeshController _controller = MediaMeshController(
@@ -44,6 +61,11 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
   final _frequencyController = TextEditingController();
   MediaMeshState? _state;
   MediaMeshSettings _settings = MediaMeshSettings.defaults;
+  // What the radio has, to tell unsaved radio2 changes.
+  MediaMeshSettings? _saved;
+  final _scroll = ScrollController();
+  final _keys = {for (final s in _Section.values) s: GlobalKey()};
+  _Section _current = _Section.radio2;
   Radio2Status? _status;
   TempRadio2? _temp;
   bool _frequencyInvalid = false;
@@ -57,6 +79,7 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
   @override
   void initState() {
     super.initState();
+    _scroll.addListener(_onScroll);
     // The phone's own settings work offline; radio2 needs the radio.
     if (widget.connector.isConnected) _load();
   }
@@ -64,8 +87,96 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
   @override
   void dispose() {
     _timer?.cancel();
+    _scroll.dispose();
     _frequencyController.dispose();
     super.dispose();
+  }
+
+  static bool _sameProfile(MediaMeshSettings a, MediaMeshSettings b) =>
+      a.mode == b.mode &&
+      a.media == b.media &&
+      (a.frequencyMHz - b.frequencyMHz).abs() < 0.0005 &&
+      a.bandwidth == b.bandwidth &&
+      a.spreadingFactor == b.spreadingFactor &&
+      a.codingRate == b.codingRate;
+
+  bool get _dirty {
+    final saved = _saved;
+    if (saved == null || _saving) return false;
+    return !_sameProfile(_settings, saved) ||
+        double.tryParse(_frequencyController.text.trim()) == null;
+  }
+
+  /// The section whose heading was passed last, for the jump buttons.
+  void _onScroll() {
+    var current = _Section.radio2;
+    for (final s in _Section.values) {
+      final box = _keys[s]!.currentContext?.findRenderObject() as RenderBox?;
+      if (box == null || !box.attached) continue;
+      final top = box.localToGlobal(Offset.zero).dy;
+      final listTop = (_listKey.currentContext?.findRenderObject() as RenderBox?)
+              ?.localToGlobal(Offset.zero)
+              .dy ??
+          0;
+      if (top - listTop <= 24) current = s;
+    }
+    // At the very end, the last heading may never reach the top.
+    if (_scroll.hasClients &&
+        _scroll.position.pixels >= _scroll.position.maxScrollExtent - 4) {
+      current = _Section.values.last;
+    }
+    if (current != _current) setState(() => _current = current);
+  }
+
+  final _listKey = GlobalKey();
+
+  Future<void> _jump(_Section s) async {
+    final ctx = _keys[s]!.currentContext;
+    if (ctx == null) return;
+    setState(() => _current = s);
+    await Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  Future<void> _confirmDiscard() async {
+    final l10n = context.l10n;
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.repeater_unsavedChangesTitle),
+        content: Text(l10n.mediaMesh_unsavedMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(l10n.common_cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, 'discard'),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(dialogContext).colorScheme.error,
+            ),
+            child: Text(l10n.repeater_discardChanges),
+          ),
+          FilledButton(
+            onPressed: _profileValid
+                ? () => Navigator.pop(dialogContext, 'save')
+                : null,
+            child: Text(l10n.common_save),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || choice == null) return;
+    if (choice == 'save') {
+      await _save();
+      if (!mounted || _dirty) return;
+    } else {
+      setState(() => _saved = null);
+    }
+    if (mounted) Navigator.of(context).pop();
   }
 
   Future<void> _load() async {
@@ -74,6 +185,7 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
     setState(() {
       _state = state;
       _settings = state.settings;
+      _saved = state.settings;
       _status = state.status;
       _temp = state.temp;
       _frequencyController.text = _settings.frequencyMHz.toStringAsFixed(3);
@@ -148,6 +260,10 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
             : _settings,
       );
       if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _saved = _settings;
+      });
       showDismissibleSnackBar(
         context,
         content: Text(
@@ -156,7 +272,6 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
               : context.l10n.mediaMesh_turnedOff,
         ),
       );
-      Navigator.pop(context);
     } on MediaMeshException catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
@@ -411,150 +526,258 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
     final state = _state;
     final usable = state != null && state.support != MediaMeshSupport.none;
     final connected = widget.connector.isConnected;
-    return AlertDialog(
-      title: Text(l10n.mediaMesh_title),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (!connected)
-              Text(l10n.mediaMesh_connectForRadio2)
-            else
-              state == null
-                  ? const Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  : !usable
-                  ? Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          state.detail != null
-                              ? l10n.mediaMesh_cantRun
-                              : l10n.mediaMesh_noFirmware,
+    final voice = context.read<VoxVoiceService>();
+    final radioReady = usable && connected;
+    return PopScope(
+      canPop: !_dirty,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _confirmDiscard();
+      },
+      child: Scaffold(
+        appBar: AppBar(title: Text(l10n.mediaMesh_title), centerTitle: true),
+        body: MeshSettingsTileTheme(
+          child: Column(
+            children: [
+              _buildJumpButtons(context),
+              const Divider(height: 1),
+              Expanded(
+                child: SingleChildScrollView(
+                  key: _listKey,
+                  controller: _scroll,
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                  // The rows line up with the headings and fields.
+                  child: ListTileTheme.merge(
+                    contentPadding: EdgeInsets.zero,
+                    child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _header(_Section.radio2, l10n.mediaMesh_mode),
+                      if (!connected)
+                        Text(l10n.mediaMesh_connectForRadio2)
+                      else if (state == null)
+                        const Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else if (!usable)
+                        _buildNoRadio2(context, state)
+                      else
+                        _buildForm(context, state),
+                      _header(_Section.mapping, l10n.mediaMesh_mapping),
+                      // Where the MediaMesh repeaters reach, as you move,
+                      // and sharing points and receipts with an analyzer.
+                      const MediaMeshCoverageTile(showTitle: false),
+                      _header(_Section.autoplay, l10n.mediaMesh_autoplay),
+                      VoxAutoPlayTile(service: voice, showPush: false),
+                      _header(_Section.speed, l10n.mediaMesh_speedRouting),
+                      VoxPushChannelTile(service: voice),
+                      // Repair packets and closer spacing for transfers
+                      // (Fast MediaMesh); off goes back to the way transfers
+                      // worked before.
+                      ListenableBuilder(
+                        listenable: voice,
+                        builder: (context, _) => SwitchListTile(
+                          secondary: const Icon(Icons.speed),
+                          title: Text(l10n.vox_fastMediaMeshTitle),
+                          subtitle: Text(l10n.vox_fastMediaMeshSubtitle),
+                          value: voice.fastMediaMesh,
+                          onChanged: voice.setFastMediaMesh,
                         ),
-                        // What the radio actually said to `get radio2`, so a radio
-                        // that has radio2 but didn't answer can be told apart.
-                        if (state.radio2Answer case final said?) ...[
-                          const SizedBox(height: 12),
-                          Text(
-                            l10n.mediaMesh_radio2Answer(said),
-                            style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      // Packet spacing that learns (Fast MediaMesh only); off
+                      // is the spacing as it was.
+                      ListenableBuilder(
+                        listenable: voice,
+                        builder: (context, _) => SwitchListTile(
+                          secondary: const Icon(Icons.tune),
+                          title: Text(l10n.vox_adaptiveSpacingTitle),
+                          subtitle: Text(l10n.vox_adaptiveSpacingSubtitle),
+                          value: voice.fastMediaMesh && voice.adaptiveSpacing,
+                          onChanged: voice.fastMediaMesh
+                              ? voice.setAdaptiveSpacing
+                              : null,
+                        ),
+                      ),
+                      // Photo and voice transfers through chosen repeaters.
+                      VoxForcedRouteTile(service: voice),
+                      _header(_Section.voice, l10n.mediaMesh_voiceQuality),
+                      VoxMimiTile(service: voice),
+                      VoxEnhanceVoiceTile(service: voice),
+                      VoxCodec2QualityTile(service: voice),
+                      _header(_Section.tools, l10n.mediaMesh_tools),
+                      if (radioReady) ..._buildTemporary(context),
+                      if (radioReady)
+                        ListTile(
+                          leading: const Icon(Icons.terminal),
+                          title: Text(l10n.mediaMesh_openConsole),
+                          subtitle: Text(l10n.mediaMesh_openConsoleSubtitle),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => RadioConsoleScreen(
+                                connector: widget.connector,
+                              ),
+                            ),
                           ),
-                        ],
-                      ],
-                    )
-                  : _buildForm(context, state),
-            _section(context, l10n.mediaMesh_phoneSection),
-            _buildPhoneSettings(context),
-          ],
+                        ),
+                      ListTile(
+                        leading: const Icon(Icons.receipt_long_outlined),
+                        title: Text(l10n.mediaMesh_diagnostics),
+                        subtitle: Text(l10n.mediaMesh_diagnosticsSubtitle),
+                        onTap: () => showVoxVoiceLog(context, voice),
+                      ),
+                      // Data Audio (lib/vox/modem_sound.dart): also in App
+                      // Settings.
+                      ListenableBuilder(
+                        listenable: voice,
+                        builder: (context, _) => SwitchListTile(
+                          secondary: const Icon(Icons.settings_input_antenna),
+                          title: Text(l10n.vox_dataAudioTitle),
+                          subtitle: Text(l10n.vox_dataAudioMediaSubtitle),
+                          value: voice.dataAudio,
+                          onChanged: voice.setDataAudio,
+                        ),
+                      ),
+                    ],
+                  ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _saving ? null : () => Navigator.pop(context),
-          // Nothing to save offline or without radio2: the phone settings
-          // below apply as they're tapped, so this just closes.
-          child: Text(
-            usable && connected ? l10n.common_cancel : l10n.common_close,
-          ),
+    );
+  }
+
+  String _sectionLabel(_Section s) {
+    final l10n = context.l10n;
+    return switch (s) {
+      _Section.radio2 => l10n.mediaMesh_mode,
+      _Section.mapping => l10n.mediaMesh_mapping,
+      _Section.autoplay => l10n.mediaMesh_autoplay,
+      _Section.speed => l10n.mediaMesh_speedRouting,
+      _Section.voice => l10n.mediaMesh_voiceQuality,
+      _Section.tools => l10n.mediaMesh_tools,
+    };
+  }
+
+  /// Two rows of three buttons, one per section: a tap scrolls to it, and
+  /// the one you're in is filled.
+  Widget _buildJumpButtons(BuildContext context) {
+    Widget button(_Section s) {
+      final label = Text(_sectionLabel(s), textAlign: TextAlign.center);
+      final style = ButtonStyle(
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: 6, vertical: 10),
         ),
-        if (usable && connected)
-          FilledButton(
-            onPressed: _saving || !_profileValid ? null : _save,
-            child: _saving
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(l10n.common_save),
+        minimumSize: const WidgetStatePropertyAll(Size(0, 48)),
+      );
+      return Expanded(
+        child: Padding(
+          padding: const EdgeInsets.all(3),
+          child: s == _current
+              ? FilledButton.tonal(
+                  onPressed: () => _jump(s),
+                  style: style,
+                  child: label,
+                )
+              : OutlinedButton(
+                  onPressed: () => _jump(s),
+                  style: style,
+                  child: label,
+                ),
+        ),
+      );
+    }
+
+    const all = _Section.values;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(13, 6, 13, 8),
+      child: Column(
+        children: [
+          Row(children: [for (final s in all.take(3)) button(s)]),
+          Row(children: [for (final s in all.skip(3)) button(s)]),
+        ],
+      ),
+    );
+  }
+
+  Widget _header(_Section s, String label) => KeyedSubtree(
+    key: _keys[s],
+    child: SectionHeader(
+      label,
+      padding: const EdgeInsets.fromLTRB(0, 24, 0, 8),
+    ),
+  );
+
+  Widget _buildNoRadio2(BuildContext context, MediaMeshState state) {
+    final l10n = context.l10n;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          state.detail != null
+              ? l10n.mediaMesh_cantRun
+              : l10n.mediaMesh_noFirmware,
+        ),
+        // What the radio actually said to `get radio2`, so a radio that has
+        // radio2 but didn't answer can be told apart.
+        if (state.radio2Answer case final said?) ...[
+          const SizedBox(height: 12),
+          Text(
+            l10n.mediaMesh_radio2Answer(said),
+            style: Theme.of(context).textTheme.bodySmall,
           ),
+        ],
       ],
     );
   }
 
-  /// The phone's own photo and voice settings, under the radio's: they take
-  /// effect as they change (Save is for radio2 above), work with no radio connected, and are also
-  /// on the voice diagnostics sheet (the ⓘ under a photo or voice clip).
-  Widget _buildPhoneSettings(BuildContext context) {
+  /// Try a radio2 profile for a while without saving it.
+  List<Widget> _buildTemporary(BuildContext context) {
     final l10n = context.l10n;
     final small = Theme.of(context).textTheme.bodySmall;
-    final voice = context.read<VoxVoiceService>();
-    return ListTileTheme.merge(
-      contentPadding: EdgeInsets.zero,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return [
+      Text(l10n.mediaMesh_temporary, style: Theme.of(context).textTheme.titleSmall),
+      const SizedBox(height: 4),
+      Text(l10n.mediaMesh_temporaryHelp, style: small),
+      const SizedBox(height: 8),
+      if (_temp != null) ...[
+        Text(
+          l10n.mediaMesh_tempRunning(
+            _temp!.frequencyMHz.toStringAsFixed(3),
+            _temp!.minutesLeft,
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
         children: [
-          Text(
-            l10n.mediaMesh_phoneSection,
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-          const SizedBox(height: 4),
-          Text(l10n.mediaMesh_phoneSectionHelp, style: small),
-          const SizedBox(height: 8),
-          // Photo and voice transfers through chosen repeaters.
-          VoxForcedRouteTile(service: voice, contentPadding: EdgeInsets.zero),
-          // Repair packets and closer spacing for transfers (Fast MediaMesh);
-          // off goes back to the way transfers worked before.
-          ListenableBuilder(
-            listenable: voice,
-            builder: (context, _) {
-              return SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                secondary: const Icon(Icons.speed),
-                title: Text(l10n.vox_fastMediaMeshTitle),
-                subtitle: Text(l10n.vox_fastMediaMeshSubtitle),
-                value: voice.fastMediaMesh,
-                onChanged: voice.setFastMediaMesh,
-              );
-            },
-          ),
-          // Packet spacing that learns (Fast MediaMesh only); off is the
-          // spacing as it was.
-          ListenableBuilder(
-            listenable: voice,
-            builder: (context, _) {
-              return SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                secondary: const Icon(Icons.tune),
-                title: Text(l10n.vox_adaptiveSpacingTitle),
-                subtitle: Text(l10n.vox_adaptiveSpacingSubtitle),
-                value: voice.fastMediaMesh && voice.adaptiveSpacing,
-                onChanged: voice.fastMediaMesh
-                    ? voice.setAdaptiveSpacing
-                    : null,
-              );
-            },
-          ),
-          VoxAutoPlayTile(service: voice),
-          VoxMimiTile(service: voice),
-          VoxEnhanceVoiceTile(service: voice),
-          VoxCodec2QualityTile(service: voice),
-          ListTile(
-            leading: const Icon(Icons.receipt_long_outlined),
-            title: Text(l10n.mediaMesh_diagnostics),
-            subtitle: Text(l10n.mediaMesh_diagnosticsSubtitle),
-            onTap: () => showVoxVoiceLog(context, voice),
-          ),
-          // Data Audio (lib/vox/modem_sound.dart): also in App Settings.
-          ListenableBuilder(
-            listenable: voice,
-            builder: (context, _) => SwitchListTile(
-              secondary: const Icon(Icons.settings_input_antenna),
-              title: Text(l10n.vox_dataAudioTitle),
-              subtitle: Text(l10n.vox_dataAudioMediaSubtitle),
-              value: voice.dataAudio,
-              onChanged: voice.setDataAudio,
+          for (final (minutes, label) in [
+            (15, l10n.mediaMesh_temp15),
+            (60, l10n.mediaMesh_temp60),
+            (120, l10n.mediaMesh_temp120),
+          ])
+            OutlinedButton(
+              onPressed: _busyTemp || !_profileValid
+                  ? null
+                  : () => _temporary(minutes),
+              child: Text(label),
             ),
-          ),
+          if (_temp != null)
+            TextButton(
+              onPressed: _busyTemp ? null : () => _temporary(null),
+              child: Text(l10n.mediaMesh_tempStop),
+            ),
         ],
       ),
-    );
+      const SizedBox(height: 8),
+    ];
   }
 
   Widget _section(BuildContext context, String title) => Padding(
@@ -576,8 +799,6 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(l10n.mediaMesh_mode, style: theme.textTheme.titleSmall),
-        const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
           // Off or On (listen and send). Listen only is a console setting;
@@ -688,21 +909,6 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
         ),
         const SizedBox(height: 6),
         Text(l10n.mediaMesh_presetHelp, style: small),
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: OutlinedButton.icon(
-            icon: const Icon(Icons.radar),
-            label: Text(l10n.mediaMesh_find),
-            onPressed: _saving || _busyTemp ? null : _find,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(l10n.mediaMesh_findHelp, style: small),
-        const SizedBox(height: 16),
-        // Where the MediaMesh repeaters reach, as you move.
-        const MediaMeshCoverageTile(),
-        const SizedBox(height: 8),
         const SizedBox(height: 16),
         DropdownButtonFormField<LoRaBandwidth>(
           key: ValueKey('bw-${_settings.bandwidth.name}'),
@@ -757,55 +963,34 @@ class _MediaMeshSettingsDialogState extends State<MediaMeshSettingsDialog> {
         ),
         const SizedBox(height: 12),
         Text(l10n.mediaMesh_footer, style: small),
-        ..._buildStatus(context, small, errorStyle),
-        _section(context, l10n.mediaMesh_temporary),
-        Text(l10n.mediaMesh_temporaryHelp, style: small),
-        const SizedBox(height: 8),
-        if (_temp != null) ...[
-          Text(
-            l10n.mediaMesh_tempRunning(
-              _temp!.frequencyMHz.toStringAsFixed(3),
-              _temp!.minutesLeft,
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
+        const SizedBox(height: 16),
+        Row(
           children: [
-            for (final (minutes, label) in [
-              (15, l10n.mediaMesh_temp15),
-              (60, l10n.mediaMesh_temp60),
-              (120, l10n.mediaMesh_temp120),
-            ])
-              OutlinedButton(
-                onPressed: _busyTemp || !_profileValid
-                    ? null
-                    : () => _temporary(minutes),
-                child: Text(label),
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.radar),
+                label: Text(l10n.mediaMesh_find),
+                onPressed: _saving || _busyTemp ? null : _find,
               ),
-            if (_temp != null)
-              TextButton(
-                onPressed: _busyTemp ? null : () => _temporary(null),
-                child: Text(l10n.mediaMesh_tempStop),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: FilledButton(
+                onPressed: _saving || !_profileValid || !_dirty ? null : _save,
+                child: _saving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(l10n.mediaMesh_saveRadio2),
               ),
+            ),
           ],
         ),
-        const SizedBox(height: 12),
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.terminal),
-          title: Text(l10n.mediaMesh_openConsole),
-          subtitle: Text(l10n.mediaMesh_openConsoleSubtitle),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => RadioConsoleScreen(connector: widget.connector),
-            ),
-          ),
-        ),
+        const SizedBox(height: 4),
+        Text(l10n.mediaMesh_findHelp, style: small),
+        ..._buildStatus(context, small, errorStyle),
       ],
     );
   }
