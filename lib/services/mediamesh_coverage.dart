@@ -5,8 +5,13 @@
 // 40 s, so the repeaters' four answers per two minutes go round) it asks the
 // repeaters in direct range, as Find MediaMesh does (DISCOVER_REQ with the
 // radio2 flag), and keeps only the ones that answer with radio2 on: MediaMesh
-// repeaters, nothing else. Each sample is a point with those repeaters and
-// their signal.
+// repeaters, nothing else. Then it asks the nearest known MediaMesh
+// repeaters that didn't answer, up to [MediaMeshCoverageService.askMax], one
+// by one by name (a one-hop trace), so a repeater that stays quiet is one
+// that was asked. Each sample is a point with the repeaters that answered,
+// their signal (and, for a discovery answer, the RSSI of its reply: SNR
+// readings top out around +12 dB, RSSI keeps rising) and those asked by name
+// that didn't.
 //
 // The ask goes out on the main mesh, and the radio doesn't say which radio a
 // reply came in on, so radio2's reach is estimated from it: the weaker of the
@@ -32,8 +37,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
+import '../models/contact.dart';
 import 'mediamesh_coverage_share.dart';
 import 'mediamesh_receipts.dart';
+import 'mediamesh_repeaters.dart';
 
 /// What the last send to the analyzer did: [error] (a message, or
 /// 'not-connected' / 'bad-address'), or [count] points sent or removed;
@@ -103,6 +110,13 @@ class CoverageRepeater {
   final double remoteSnr; // its of our ask
   final double margin;
   final int bwHz, sf; // its radio2 setting (0: not known)
+
+  /// RSSI (dBm) of its reply as our radio heard it: null when not known (an
+  /// answer to a trace, or an older sample).
+  final int? rssi;
+
+  /// It answered when asked by name (a trace), not to the discovery.
+  final bool asked;
   const CoverageRepeater({
     required this.key,
     required this.name,
@@ -111,6 +125,8 @@ class CoverageRepeater {
     required this.margin,
     this.bwHz = 0,
     this.sf = 0,
+    this.rssi,
+    this.asked = false,
   });
 
   Map<String, Object> toJson() => {
@@ -121,12 +137,14 @@ class CoverageRepeater {
     'm': double.parse(margin.toStringAsFixed(1)),
     if (bwHz > 0) 'b': bwHz,
     if (sf > 0) 'f': sf,
+    if (rssi != null) 'i': rssi!,
+    if (asked) 'w': 't',
   };
   static CoverageRepeater? fromJson(Object? j) {
     if (j is! Map) return null;
     final k = j['k'], n = j['n'], s = j['s'], r = j['r'], m = j['m'];
     if (k is! String || s is! num || r is! num || m is! num) return null;
-    final b = j['b'], f = j['f'];
+    final b = j['b'], f = j['f'], i = j['i'];
     return CoverageRepeater(
       key: k,
       name: n is String ? n : k,
@@ -135,6 +153,8 @@ class CoverageRepeater {
       margin: m.toDouble(),
       bwHz: b is int ? b : 0,
       sf: f is int ? f : 0,
+      rssi: i is int ? i : null,
+      asked: j['w'] == 't',
     );
   }
 }
@@ -148,6 +168,9 @@ class CoverageSample {
   /// how fast the phone was moving (m/s) and the fix's accuracy (m).
   final String radio;
   final double speed, accuracy;
+
+  /// MediaMesh repeaters asked by name that didn't answer (first 8 hex).
+  final List<String> silent;
   const CoverageSample({
     required this.lat,
     required this.lon,
@@ -156,6 +179,7 @@ class CoverageSample {
     this.radio = '',
     this.speed = 0,
     this.accuracy = 0,
+    this.silent = const [],
   });
 
   /// The best repeater's margin; null when none answered.
@@ -172,12 +196,13 @@ class CoverageSample {
     if (radio.isNotEmpty) 'r': radio,
     if (speed > 0) 'v': double.parse(speed.toStringAsFixed(1)),
     if (accuracy > 0) 'c': double.parse(accuracy.toStringAsFixed(1)),
+    if (silent.isNotEmpty) 'q': silent,
   };
   static CoverageSample? fromJson(Object? j) {
     if (j is! Map) return null;
     final a = j['a'], o = j['o'], t = j['t'], p = j['p'];
     if (a is! num || o is! num || t is! int) return null;
-    final r = j['r'], v = j['v'], c = j['c'];
+    final r = j['r'], v = j['v'], c = j['c'], q = j['q'];
     return CoverageSample(
       lat: a.toDouble(),
       lon: o.toDouble(),
@@ -189,6 +214,10 @@ class CoverageSample {
       radio: r is String ? r : '',
       speed: v is num ? v.toDouble() : 0,
       accuracy: c is num ? c.toDouble() : 0,
+      silent: [
+        for (final k in (q is List ? q : const []))
+          if (k is String) k,
+      ],
     );
   }
 }
@@ -218,12 +247,43 @@ String coverageGeoJson(List<CoverageSample> samples) => jsonEncode({
                 'snr': r.snr,
                 'remote_snr': r.remoteSnr,
                 'margin_db': double.parse(r.margin.toStringAsFixed(1)),
+                if (r.rssi != null) 'rssi': r.rssi,
+                if (r.asked) 'asked_by_name': true,
               },
           ],
+          if (s.silent.isNotEmpty) 'asked_no_answer': s.silent,
         },
       },
   ],
 });
+
+/// The MediaMesh repeaters to ask by name at a sample: known ones with a
+/// position within [MediaMeshCoverageService.askWithinMeters] that didn't
+/// answer the discovery ([answered]: first 8 hex), nearest first, at most
+/// [MediaMeshCoverageService.askMax].
+List<Contact> mediaMeshAskList(
+  Iterable<Contact> contacts,
+  double lat,
+  double lon, {
+  required Set<String> answered,
+  required bool Function(String publicKeyHex) isMediaMesh,
+}) {
+  final out = <(double, Contact)>[];
+  final seen = <String>{};
+  for (final c in contacts) {
+    if (c.type != advTypeRepeater || !c.hasLocation) continue;
+    final hex = c.publicKeyHex.toLowerCase();
+    if (hex.length < 8) continue;
+    final key = hex.substring(0, 8);
+    if (answered.contains(key) || !seen.add(key) || !isMediaMesh(hex)) {
+      continue;
+    }
+    final d = Geolocator.distanceBetween(lat, lon, c.latitude!, c.longitude!);
+    if (d <= MediaMeshCoverageService.askWithinMeters) out.add((d, c));
+  }
+  out.sort((a, b) => a.$1.compareTo(b.$1));
+  return [for (final x in out.take(MediaMeshCoverageService.askMax)) x.$2];
+}
 
 class MediaMeshCoverageService extends ChangeNotifier {
   MediaMeshCoverageService(this._connector) {
@@ -236,6 +296,11 @@ class MediaMeshCoverageService extends ChangeNotifier {
   static const int maxSamples = 3000;
   static const double stepMeters = 150;
   static const Duration minGap = Duration(seconds: 40);
+
+  /// After each discovery, the nearest known MediaMesh repeaters that didn't
+  /// answer, within [askWithinMeters], asked by name: at most this many.
+  static const int askMax = 3;
+  static const double askWithinMeters = 6000;
 
   final List<CoverageSample> _samples = [];
   bool _recording = false, _show = true, _asking = false;
@@ -443,12 +508,46 @@ class MediaMeshCoverageService extends ChangeNotifier {
           ),
           bwHz: p.bandwidthHz,
           sf: p.spreadingFactor,
+          rssi: r.rssi < 0 ? r.rssi : null,
         );
         final had = heard[key];
         if (had == null || rep.margin > had.margin) heard[key] = rep;
       }
     } catch (e) {
       _problem = '$e';
+    }
+    // the nearest known MediaMesh repeaters that didn't answer, by name
+    final silent = <String>[];
+    for (final c in mediaMeshAskList(
+      _connector.allContactsUnfiltered,
+      f.latitude,
+      f.longitude,
+      answered: heard.keys.toSet(),
+      isMediaMesh: MediaMeshRepeaters.instance.isMediaMesh,
+    )) {
+      if (!_recording || !_connector.isConnected) break;
+      final key = c.publicKeyHex.substring(0, 8).toLowerCase();
+      final ping = await _connector.pingRepeater(c.publicKey);
+      if (ping == null) {
+        silent.add(key);
+        continue;
+      }
+      final info = MediaMeshRepeaters.instance.infoFor(c.publicKeyHex);
+      heard[key] = CoverageRepeater(
+        key: key,
+        name: c.name,
+        snr: ping.snr,
+        remoteSnr: ping.remoteSnr,
+        margin: mediaMeshMargin(
+          snr: min(ping.snr, ping.remoteSnr),
+          mainBwHz: mainBw,
+          radio2BwHz: info?.bandwidthHz ?? 250000,
+          radio2Sf: info?.spreadingFactor ?? 7,
+        ),
+        bwHz: info?.bandwidthHz ?? 0,
+        sf: info?.spreadingFactor ?? 0,
+        asked: true,
+      );
     }
     final list = heard.values.toList()
       ..sort((a, b) => b.margin.compareTo(a.margin));
@@ -463,6 +562,7 @@ class MediaMeshCoverageService extends ChangeNotifier {
             : _connector.selfPublicKeyHex.toLowerCase(),
         speed: f.speed > 0 && f.speed.isFinite ? f.speed : 0,
         accuracy: f.accuracy > 0 && f.accuracy.isFinite ? f.accuracy : 0,
+        silent: silent,
       ),
     );
     if (_samples.length > maxSamples) _samples.removeAt(0);

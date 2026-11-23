@@ -1192,6 +1192,55 @@ Uint8List buildSendAnonReqFrame(
   return writer.toBytes();
 }
 
+/// Trace packets carry hop hashes 1 << flags bytes wide: 1, 2 or 4. A
+/// 3-byte path hash is traced with a 4-byte public-key prefix.
+int traceHashByteWidthFor(int pathHashByteWidth) {
+  final width = pathHashByteWidth.clamp(1, pubKeySize).toInt();
+  if (width <= 1) return 1;
+  if (width == 2) return 2;
+  return 4;
+}
+
+int traceFlagsForHashWidth(int traceHashByteWidth) {
+  if (traceHashByteWidth <= 1) return 0;
+  if (traceHashByteWidth == 2) return 1;
+  return 2;
+}
+
+/// A repeater's answer to a one-hop trace (MeshCoreConnector.pingRepeater):
+/// [remoteSnr] the SNR it heard us at, [snr] ours of its answer.
+class RepeaterPing {
+  const RepeaterPing({required this.snr, required this.remoteSnr});
+  final double snr;
+  final double remoteSnr;
+}
+
+/// A PUSH_CODE_TRACE_DATA frame for trace [tag] with a one-hop path, as a
+/// [RepeaterPing]; null for any other frame.
+/// `[0x89][reserved][path_len][flags][tag u32 LE][auth u32 LE][path][snr x4 int8 ...]`:
+/// one SNR per hop, then ours of the last.
+RepeaterPing? parseRepeaterPing(Uint8List frame, int tag) {
+  if (frame.length < 12 || frame[0] != pushCodeTraceData) return null;
+  final data = ByteData.sublistView(frame);
+  if (data.getUint32(4, Endian.little) != tag) return null;
+  // path_len is the path's bytes, or (newer firmware) hops in the low six
+  // bits with the hash width above them
+  var pathBytes = frame[2];
+  if (pathBytes != 1 << (frame[3] & 0x03) &&
+      (pathBytes & 0xC0) != 0 &&
+      (pathBytes & 0x3F) == 1) {
+    pathBytes = ((pathBytes & 0xC0) >> 6) + 1;
+  } else if (pathBytes != 1 << (frame[3] & 0x03)) {
+    return null; // not one hop
+  }
+  final at = 12 + pathBytes;
+  if (frame.length < at + 2) return null;
+  return RepeaterPing(
+    remoteSnr: frame[at].toSigned(8) / 4.0,
+    snr: frame[at + 1].toSigned(8) / 4.0,
+  );
+}
+
 //Build a trace request frame
 //[cmd][tag x4][auth x4][flag][payload]
 Uint8List buildTraceReq(int tag, int auth, int flag, {Uint8List? payload}) {

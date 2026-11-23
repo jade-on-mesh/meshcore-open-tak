@@ -9525,6 +9525,46 @@ class MeshCoreConnector extends ChangeNotifier {
     return controller.stream;
   }
 
+  /// Asks one repeater in direct range to answer, by name: a trace whose
+  /// path is just that repeater (as Path trace does, no login needed). It
+  /// adds the SNR it heard us at and sends it back. Null when it didn't
+  /// answer within [timeout] (out of range, busy, or it doesn't forward).
+  /// Used by MediaMesh coverage mapping, where "didn't answer" has to mean
+  /// it was asked.
+  Future<RepeaterPing?> pingRepeater(
+    Uint8List publicKey, {
+    Duration timeout = const Duration(seconds: 8),
+  }) async {
+    if (!isConnected || publicKey.isEmpty) return null;
+    final width = traceHashByteWidthFor(_pathHashByteWidth);
+    if (publicKey.length < width) return null;
+    final tag = math.Random.secure().nextInt(0xFFFFFFFF) + 1;
+    final done = Completer<RepeaterPing?>();
+    final sub = receivedFrames.listen((frame) {
+      final ping = parseRepeaterPing(frame, tag);
+      if (ping != null && !done.isCompleted) done.complete(ping);
+    });
+    final timer = Timer(timeout, () {
+      if (!done.isCompleted) done.complete(null);
+    });
+    try {
+      await sendFrame(
+        buildTraceReq(
+          tag,
+          0,
+          traceFlagsForHashWidth(width),
+          payload: Uint8List.fromList(publicKey.sublist(0, width)),
+        ),
+      );
+      return await done.future;
+    } catch (_) {
+      return null;
+    } finally {
+      timer.cancel();
+      await sub.cancel();
+    }
+  }
+
   /// The best-known contact for a scan response: an existing contact or a
   /// discovered advert with the same key, else a placeholder built from the
   /// response (direct neighbour; firmware fills the name on its next advert).
