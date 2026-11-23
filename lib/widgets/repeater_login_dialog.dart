@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../l10n/l10n.dart';
@@ -122,11 +121,20 @@ class _RepeaterLoginDialogState extends State<RepeaterLoginDialog> {
       final isAdmin = outcome.isAdmin;
       final selection = outcome.selection;
       if (loginResult == true) {
-        appLogger.info('Login succeeded for ${repeater.name}', tag: 'RepeaterLogin');
+        appLogger.info(
+          'Login succeeded for ${repeater.name}',
+          tag: 'RepeaterLogin',
+        );
       } else if (loginResult == false) {
-        appLogger.warn('Login refused for ${repeater.name}', tag: 'RepeaterLogin');
+        appLogger.warn(
+          'Login refused for ${repeater.name}',
+          tag: 'RepeaterLogin',
+        );
       } else {
-        appLogger.warn('Login timed out for ${repeater.name}', tag: 'RepeaterLogin');
+        appLogger.warn(
+          'Login timed out for ${repeater.name}',
+          tag: 'RepeaterLogin',
+        );
       }
       _connector.recordRepeaterPathResult(
         repeater,
