@@ -24,7 +24,10 @@ esac
 cache=${PUB_CACHE:-$HOME/.pub-cache}
 if command -v cygpath >/dev/null 2>&1; then cache=$(cygpath -u "$cache"); fi
 pv=$(awk '/^  flutter_onnxruntime:/{f=1} f && /version:/{gsub(/"/, "", $2); print $2; exit}' pubspec.lock)
-cmake_file="$cache/hosted/pub.dev/flutter_onnxruntime-$pv/$plat/CMakeLists.txt"
+# The plugin is vendored (third_party/flutter_onnxruntime/VENDORED.md); a hosted
+# copy in the pub cache is the fallback, for when it goes back to pub.dev.
+cmake_file="third_party/flutter_onnxruntime/$plat/CMakeLists.txt"
+[ -f "$cmake_file" ] || cmake_file="$cache/hosted/pub.dev/flutter_onnxruntime-$pv/$plat/CMakeLists.txt"
 v=$(sed -n 's/.*set(ONNXRUNTIME_VERSION "\([0-9.]*\)").*/\1/p' "$cmake_file" | head -1)
 if [ -z "$v" ]; then
   echo "::error::No ONNX Runtime version in $cmake_file" >&2
