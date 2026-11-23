@@ -222,6 +222,11 @@ class AppSettings {
   /// sees the phone's address; turn it off to keep that). Stored under a new
   /// key, so phones that saved the old default (off) get the new one.
   final bool linkedImagesOnWifi;
+
+  /// Tapping an obvious web link (an http:// or https:// address written out
+  /// in full, see `isObviousWebLink`) opens it straight away instead of asking
+  /// first. Other links still ask. Off by default.
+  final bool openObviousLinksDirectly;
   final bool imageMessagesEnabled;
 
   /// Whether the channel chat screen's participant sync strip (patch 0010 —
@@ -380,6 +385,7 @@ class AppSettings {
     this.tcpServerPort = 0,
     this.jumpToOldestUnread = false,
     this.linkedImagesOnWifi = true,
+    this.openObviousLinksDirectly = false,
     this.channelParticipantStripEnabled = false,
     this.imageMessagesEnabled = false,
     this.autoFetchRepeaterSettings = false,
@@ -500,6 +506,7 @@ class AppSettings {
       'tcp_server_port': tcpServerPort,
       'jump_to_oldest_unread': jumpToOldestUnread,
       'linked_images_wifi_auto': linkedImagesOnWifi,
+      'open_obvious_links_directly': openObviousLinksDirectly,
       'channel_participant_strip_enabled': channelParticipantStripEnabled,
       'image_messages_enabled': imageMessagesEnabled,
       'auto_fetch_repeater_settings': autoFetchRepeaterSettings,
@@ -697,6 +704,8 @@ class AppSettings {
       tcpServerPort: json['tcp_server_port'] as int? ?? 0,
       jumpToOldestUnread: json['jump_to_oldest_unread'] as bool? ?? false,
       linkedImagesOnWifi: json['linked_images_wifi_auto'] as bool? ?? true,
+      openObviousLinksDirectly:
+          json['open_obvious_links_directly'] as bool? ?? false,
       channelParticipantStripEnabled:
           json['channel_participant_strip_enabled'] as bool? ?? false,
       imageMessagesEnabled: json['image_messages_enabled'] as bool? ?? false,
@@ -852,6 +861,7 @@ class AppSettings {
     int? tcpServerPort,
     bool? jumpToOldestUnread,
     bool? linkedImagesOnWifi,
+    bool? openObviousLinksDirectly,
     bool? channelParticipantStripEnabled,
     bool? imageMessagesEnabled,
     bool? autoFetchRepeaterSettings,
@@ -974,6 +984,8 @@ class AppSettings {
       tcpServerPort: tcpServerPort ?? this.tcpServerPort,
       jumpToOldestUnread: jumpToOldestUnread ?? this.jumpToOldestUnread,
       linkedImagesOnWifi: linkedImagesOnWifi ?? this.linkedImagesOnWifi,
+      openObviousLinksDirectly:
+          openObviousLinksDirectly ?? this.openObviousLinksDirectly,
       channelParticipantStripEnabled:
           channelParticipantStripEnabled ?? this.channelParticipantStripEnabled,
       imageMessagesEnabled: imageMessagesEnabled ?? this.imageMessagesEnabled,

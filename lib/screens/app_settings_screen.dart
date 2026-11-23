@@ -554,6 +554,18 @@ class AppSettingsScreen extends StatelessWidget {
             horizontal: 16,
             vertical: 4,
           ),
+          secondary: const Icon(Icons.open_in_new, size: 24),
+          title: Text(context.l10n.appSettings_openLinksDirectly),
+          subtitle: Text(context.l10n.appSettings_openLinksDirectlySubtitle),
+          value: settingsService.settings.openObviousLinksDirectly,
+          onChanged: settingsService.setOpenObviousLinksDirectly,
+        ),
+        const Divider(height: 1, indent: 16),
+        SwitchListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
           secondary: const Icon(Icons.settings_remote_outlined, size: 24),
           title: Text(context.l10n.appSettings_autoFetchRepeaterSettings),
           subtitle: Text(

@@ -789,6 +789,8 @@
   },
   "appSettings_stadiaApiKeyDialogDescription": "Enter your Stadia Maps API key. This app uses it for raster tile requests.",
   "appSettings_offlineMapCache": "Offline Map Cache",
+  "appSettings_openLinksDirectly": "Open web links without asking",
+  "appSettings_openLinksDirectlySubtitle": "Tapping a link written out in full (http:// or https://) opens it straight away. Anything that could be disguised, like an address without http://, an unusual or look-alike name, or a hidden username, still asks first.",
   "appSettings_unitsTitle": "Units",
   "appSettings_unitsMetric": "Metric (m / km)",
   "appSettings_unitsImperial": "Imperial (ft / mi)",
