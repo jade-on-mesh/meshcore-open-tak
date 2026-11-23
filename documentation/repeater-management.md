@@ -18,6 +18,8 @@ From the Contacts screen:
 - "Save password" checkbox (persists for future logins). If a saved password exists, it is pre-filled and the checkbox is pre-checked, making login one-tap
 - Routing mode selector and "Manage Paths" link are available directly in the dialog (configure routing before login)
 - Auto-retries up to 5 times on timeout, showing progress ("Attempt 2 of 5"). A wrong password (explicit failure response) stops immediately — only timeouts trigger retries
+- The first attempt uses the stored path. If it gets no answer, the path is reset and the remaining attempts flood, so a repeater in direct range is reached even when the stored path goes through other repeaters (an advert heard the long way round, or an old route); its answer teaches the radio a fresh path. A path set by hand in the dialog's routing selector is kept for every attempt
+- Each attempt waits at least 8 seconds (15 when flooded) for the answer: the repeater checks the password before it answers and waits a random moment before sending, and a radio that also listens on radio2 is away part of the time. An answer to an earlier attempt that arrives late still logs in. Room servers log in the same way (`lib/services/node_login.dart`)
 - CLI commands to a repeater are matched to their reply by a short prefix. A reply that arrives late for an earlier attempt still completes the command, and no further attempts are sent
 - If auto-clock-sync is enabled for this repeater (configured in Repeater Settings), a `clock sync` command is sent automatically on successful login
 

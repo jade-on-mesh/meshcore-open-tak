@@ -1,15 +1,12 @@
-import 'dart:async';
 import '../utils/platform_info.dart';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../l10n/l10n.dart';
 import '../models/contact.dart';
 import '../l10n/contact_localization.dart';
 import '../services/storage_service.dart';
 import '../connector/meshcore_connector.dart';
-import '../connector/meshcore_protocol.dart';
 import '../theme/mesh_theme.dart';
 import '../widgets/mesh_ui.dart';
 import '../utils/app_logger.dart';
@@ -17,6 +14,7 @@ import '../helpers/snack_bar_builder.dart';
 import '../helpers/utf8_length_limiter.dart';
 import 'routing_sheet.dart';
 import '../utils/radio_guard.dart';
+import '../services/node_login.dart';
 
 class RoomLoginDialog extends StatefulWidget {
   final Contact room;
@@ -105,60 +103,32 @@ class _RoomLoginDialogState extends State<RoomLoginDialog> {
         'Login started for ${room.name} (${room.publicKeyHex})',
         tag: 'RoomLogin',
       );
-      final selection = await _connector.preparePathForContactSend(room);
-      final loginFrame = buildSendLoginFrame(room.publicKey, password);
-      final pathLengthValue = selection.useFlood ? -1 : selection.hopCount;
-      final responseBytes = loginFrame.length > maxFrameSize
-          ? loginFrame.length
-          : maxFrameSize;
-      final timeoutMs = _connector.calculateTimeout(
-        pathLength: pathLengthValue,
-        messageBytes: responseBytes,
+      final outcome = await loginToNode(
+        connector: _connector,
+        node: room,
+        password: password,
+        maxAttempts: _maxAttempts,
+        tag: 'RoomLogin',
+        onAttempt: (n) {
+          if (mounted) setState(() => _currentAttempt = n);
+        },
       );
-      final timeoutSeconds = (timeoutMs / 1000).ceil();
-      final timeout = Duration(milliseconds: timeoutMs + 2000);
-      final selectionLabel = selection.useFlood
-          ? 'flood'
-          : '${selection.hopCount} hops';
-      appLogger.info('Login routing: $selectionLabel', tag: 'RoomLogin');
-      bool? loginResult;
-      bool isAdmin = false;
-      for (int attempt = 0; attempt < _maxAttempts; attempt++) {
-        if (!mounted) return;
-        setState(() {
-          _currentAttempt = attempt + 1;
-        });
-
-        appLogger.info(
-          'Sending login attempt ${attempt + 1}/$_maxAttempts',
-          tag: 'RoomLogin',
-        );
-        await _connector.sendFrame(loginFrame);
-
-        (loginResult, isAdmin) = await _awaitLoginResponse(timeout);
-        if (loginResult == true) {
-          appLogger.info('Login succeeded for ${room.name}', tag: 'RoomLogin');
-          break;
-        }
-        if (loginResult == false) {
-          appLogger.warn('Login failed for ${room.name}', tag: 'RoomLogin');
-          throw Exception('Wrong password or node is unreachable');
-        }
-        appLogger.warn(
-          'Login attempt ${attempt + 1} timed out after ${timeoutSeconds}s',
-          tag: 'RoomLogin',
-        );
-      }
-
-      if (loginResult == null) {
+      final loginResult = outcome.result;
+      final isAdmin = outcome.isAdmin;
+      final selection = outcome.selection;
+      if (loginResult == true) {
+        appLogger.info('Login succeeded for ${room.name}', tag: 'RoomLogin');
+      } else if (loginResult == false) {
+        appLogger.warn('Login refused for ${room.name}', tag: 'RoomLogin');
+      } else {
         appLogger.warn('Login timed out for ${room.name}', tag: 'RoomLogin');
       }
-
-      if (loginResult == true) {
-        _connector.recordRepeaterPathResult(room, selection, true, null);
-      } else {
-        _connector.recordRepeaterPathResult(room, selection, false, null);
-      }
+      _connector.recordRepeaterPathResult(
+        room,
+        selection,
+        loginResult == true,
+        null,
+      );
 
       if (loginResult != true) {
         throw Exception('Wrong password or node is unreachable');
@@ -191,42 +161,6 @@ class _RoomLoginDialogState extends State<RoomLoginDialog> {
         );
       }
     }
-  }
-
-  Future<(bool?, bool)> _awaitLoginResponse(Duration timeout) async {
-    final completer = Completer<bool?>();
-    Timer? timer;
-    StreamSubscription<Uint8List>? subscription;
-    final targetPrefix = widget.room.publicKey.sublist(0, 6);
-    bool isAdmin = false;
-
-    subscription = _connector.receivedFrames.listen((frame) {
-      if (frame.isEmpty) return;
-      final code = frame[0];
-      if (code != pushCodeLoginSuccess && code != pushCodeLoginFail) return;
-      // NOTE: a bug in the repeater firmware only ever sends 1 or 0 back, not the
-      // expected client permissions
-      isAdmin = (frame[1] == 1);
-      if (frame.length < 8) return;
-      final prefix = frame.sublist(2, 8);
-      if (!listEquals(prefix, targetPrefix)) return;
-
-      completer.complete(code == pushCodeLoginSuccess);
-      subscription?.cancel();
-      timer?.cancel();
-    });
-
-    timer = Timer(timeout, () {
-      if (!completer.isCompleted) {
-        completer.complete(null);
-        subscription?.cancel();
-      }
-    });
-
-    final result = await completer.future;
-    timer.cancel();
-    await subscription.cancel();
-    return (result, isAdmin);
   }
 
   @override
