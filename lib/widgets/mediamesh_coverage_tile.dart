@@ -13,7 +13,11 @@ import '../services/mediamesh_coverage_share.dart';
 import '../team/coverage_layer.dart';
 
 class MediaMeshCoverageTile extends StatelessWidget {
-  const MediaMeshCoverageTile({super.key});
+  /// Whether to start with its own "Coverage map" heading; off where the
+  /// page already gives it one (MediaMesh Settings' Mapping).
+  final bool showTitle;
+
+  const MediaMeshCoverageTile({super.key, this.showTitle = true});
 
   @override
   Widget build(BuildContext context) {
@@ -39,10 +43,11 @@ class MediaMeshCoverageTile extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          l10n.coverage_title,
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
+        if (showTitle)
+          Text(
+            l10n.coverage_title,
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           secondary: Icon(

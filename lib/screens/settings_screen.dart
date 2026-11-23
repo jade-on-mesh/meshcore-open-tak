@@ -21,7 +21,7 @@ import '../helpers/snack_bar_builder.dart';
 import '../helpers/utf8_length_limiter.dart';
 import '../widgets/mesh_nav_tile.dart';
 import '../widgets/mesh_ui.dart';
-import '../widgets/media_mesh_settings_dialog.dart';
+import 'media_mesh_settings_screen.dart';
 import '../widgets/radio_settings_dialog.dart';
 import 'app_settings_screen.dart';
 import 'app_debug_log_screen.dart';
@@ -683,10 +683,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // Opens offline too: the phone's photo and voice settings are in
           // it; radio2 waits for a radio.
           subtitle: l10n.mediaMesh_settingsSubtitle,
-          onTap: () => showDialog(
-            context: context,
-            builder: (context) => MediaMeshSettingsDialog(connector: connector),
-          ),
+          onTap: () => openMediaMeshSettings(context, connector),
         ),
         const Divider(height: 1, indent: 16),
         MeshNavTile(

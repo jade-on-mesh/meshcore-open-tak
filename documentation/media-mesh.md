@@ -7,7 +7,12 @@ switching between them, so you keep hearing the main mesh.
 
 ## Setting it up
 
-**Settings → MediaMesh Settings** (under Radio Settings):
+**Settings → MediaMesh Settings** (under Radio Settings) is one page with every
+setting on show, under six headings: **radio2**, **Mapping**, **Autoplay**,
+**Speed & Routing**, **Voice Quality** and **Tools**. Two rows of buttons at the
+top jump to each heading, and the one you're in is filled.
+
+Under **radio2**:
 
 1. **radio2**: *Off* or *On* (listen and send there). Listen only is a console
    setting (`set radio2 ...,rx`); it selects neither, and *On* makes it send too.
@@ -29,24 +34,25 @@ switching between them, so you keep hearing the main mesh.
    channel. It must differ from the main radio, and every node on the MediaMesh
    needs the same settings.
    Not sure which preset the MediaMesh where you are uses? **Find MediaMesh**
-   (under the presets) tells you: see below.
-4. **Save**. The settings live on the radio, so they also apply when you are not
-   connected (for example a Wadamesh radio fetching a photo by itself).
+   (beside Save radio2) tells you: see below.
+4. **Save radio2**. The settings live on the radio, so they also apply when you
+   are not connected (for example a Wadamesh radio fetching a photo by itself).
+   Leaving the page with unsaved radio2 changes asks whether to save or discard
+   them.
 
-The dialog also shows, every few seconds while it is open: packets received and
-sent on each profile, the measured switch time, and the radio's timing warnings.
+The radio2 section also shows, every few seconds while the page is open:
+packets received and sent on each profile, the measured switch time, and the
+radio's timing warnings.
 
 ### Photos and voice on this phone
 
-Under the radio2 settings, **MediaMesh Settings** holds the phone's own photo and voice settings. They take effect as soon as you tap them (Save is only for radio2), and the dialog opens with no radio connected so you can change them offline:
+Below radio2, **MediaMesh Settings** holds the phone's own photo and voice settings. They take effect as soon as you tap them (Save radio2 is only for radio2), and the page opens with no radio connected so you can change them offline:
 
-- **Route photos and voice via** chosen repeaters
-- **Fast MediaMesh** and **Adaptive spacing** (see below)
-- **Auto-play voice, auto-show photos**, and under it **Also auto-download in channels** (both on by default; with channel auto-download off, a channel photo or clip only downloads when you tap it, or when it reaches you anyway)
-- **Send channel photos and voice right away**
-- **Mimi voice model** / **Send voice with Mimi**, **AI voice restorer**, **Codec2 quality**
-- **Diagnostics and tests**: the transfer log, link test and transfer test
-- **Data Audio**, last (also in App Settings)
+- **Mapping**: Map MediaMesh coverage, sharing coverage points and delivery receipts (see below)
+- **Autoplay**: **Auto-play voice, auto-show photos**, and under it **Also auto-download in channels** (both on by default; with channel auto-download off, a channel photo or clip only downloads when you tap it, or when it reaches you anyway)
+- **Speed & Routing**: **Send channel photos and voice right away**, **Fast MediaMesh** and **Adaptive spacing** (see below), and sending photos and voice through chosen repeaters
+- **Voice Quality**: **Mimi voice model** / **Send voice with Mimi**, **AI voice restorer**, **Codec2 quality**
+- **Tools**: a **Temporary radio2** profile and the **Radio console** (with a radio that has radio2), **Diagnostics and tests** (the transfer log, link test and transfer test), and **Data Audio** (also in App Settings)
 
 The same switches are also on the diagnostics sheet, opened from the ⓘ under a photo, voice or video message or from **Voice settings** in the recorder.
 
@@ -124,7 +130,7 @@ keeps a history: schedules (`radioat2`, `tempradioat2`), `tempradio`,
 
 ### Coverage map
 
-**Map MediaMesh coverage** (MediaMesh Settings, under Find MediaMesh) records where the MediaMesh repeaters reach as you walk or drive, to find the holes and where the next one should go. Only repeaters with MediaMesh (radio2 on) count; plain repeaters are left out.
+**Map MediaMesh coverage** (MediaMesh Settings, under Mapping) records where the MediaMesh repeaters reach as you walk or drive, to find the holes and where the next one should go. Only repeaters with MediaMesh (radio2 on) count; plain repeaters are left out.
 
 - Each time you've moved 150 m (at most every 40 seconds, because repeaters answer four discovery requests every two minutes), the app asks the repeaters in direct range, as Find MediaMesh does, and marks the spot.
 - The dot's colour is the best MediaMesh repeater's margin on radio2: **Good** (green, 5 dB or more to spare), **Marginal** (amber, 0-5 dB), **Out** (red, heard but radio2 wouldn't reach), **None** (grey, no MediaMesh repeater answered).
@@ -205,7 +211,7 @@ A listener missing packets asks for them, and the photo's sender answers with ju
 
 ## Fast MediaMesh
 
-**Fast MediaMesh** in **Settings → MediaMesh Settings**, under Map MediaMesh coverage (on by default), makes transfers on MediaMesh quicker, through repeaters especially:
+**Fast MediaMesh** in **Settings → MediaMesh Settings**, under Speed & Routing (on by default), makes transfers on MediaMesh quicker, through repeaters especially:
 
 - **Repair packets.** A repair packet is a mix of all of a photo's or clip's packets, so any listener missing *m* packets rebuilds them from any *m* repair packets (practically always *m* + 1). A request on the channel says the listener takes them. Whoever answers then sends that many fresh repair packets, plus a margin, instead of the specific packets. One answer mends every listener's gaps at once, whichever packets each one lacks, with far fewer requests on the air. A whole photo sent at once ends with about a tenth repair packets instead of the block parity.
 - **Repair packets in a mixed group.** Data packets going out anyway, to a listener on an older app or standalone that asked for them, count towards the repair packets a listener with Fast MediaMesh is owed: it gets repair packets only for what no data packet carries, plus about a tenth of the rest, since a radio scanning radio2 misses some while it's on the main mesh. (In a field test, a listener lacking 221 packets that were all going out as data anyway got 144 repair packets on top; now it gets 24.)
@@ -291,7 +297,7 @@ answered by `RESP_CODE_CLI_REPLY`, 29) with these commands:
 onto radio2.
 
 Code: `lib/services/media_mesh.dart` (commands and parsing),
-`lib/widgets/media_mesh_settings_dialog.dart` (dialog),
+`lib/screens/media_mesh_settings_screen.dart` (page),
 `lib/widgets/tx_route_dialog.dart` (Send on…),
 `lib/screens/radio_console_screen.dart` (console),
 `MeshCoreConnector.runLocalCliCommand`.

@@ -8916,6 +8916,28 @@ class AppLocalizationsRu extends AppLocalizations {
       'MediaMesh is off on this radio. Tap to set it up.';
 
   @override
+  String get mediaMesh_mapping => 'Mapping';
+
+  @override
+  String get mediaMesh_autoplay => 'Autoplay';
+
+  @override
+  String get mediaMesh_speedRouting => 'Speed & Routing';
+
+  @override
+  String get mediaMesh_voiceQuality => 'Voice Quality';
+
+  @override
+  String get mediaMesh_tools => 'Tools';
+
+  @override
+  String get mediaMesh_saveRadio2 => 'Save radio2';
+
+  @override
+  String get mediaMesh_unsavedMessage =>
+      'Your radio2 changes haven\'t been saved to the radio.';
+
+  @override
   String get mapHighlight_title => 'Highlight new map points';
 
   @override
