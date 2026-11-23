@@ -139,7 +139,7 @@ List<int> coverageBatchBody({
                   'remote_snr': r.remoteSnr,
                   'margin': r1(r.margin),
                   if (r.rssi != null) 'rssi': r.rssi,
-                  if (r.asked) 'via': 'trace',
+                  if (r.onRadio2) 'via': 'radio2',
                 },
             ],
             if (s.silent.isNotEmpty) 'silent': s.silent,

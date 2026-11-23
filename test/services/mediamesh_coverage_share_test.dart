@@ -137,7 +137,7 @@ void main() {
       {'key': '1ea5e195', 'snr': 4.25, 'remote_snr': 2.5, 'margin': 4.0},
     ]);
     expect(p.containsKey('silent'), isFalse);
-    // RSSI, an answer by name and the repeaters asked that didn't answer
+    // RSSI, an answer on radio2 and the repeaters asked on radio2 that didn't
     final more =
         jsonDecode(
               utf8.decode(
@@ -163,7 +163,7 @@ void main() {
                           snr: 1,
                           remoteSnr: 2,
                           margin: 2.5,
-                          asked: true,
+                          onRadio2: true,
                         ),
                       ],
                       radio: radio.toLowerCase(),
@@ -180,7 +180,7 @@ void main() {
     final q = (more['points'] as List).single as Map;
     expect((q['reps'] as List)[0]['rssi'], -71);
     expect((q['reps'] as List)[0].containsKey('via'), isFalse);
-    expect((q['reps'] as List)[1]['via'], 'trace');
+    expect((q['reps'] as List)[1]['via'], 'radio2');
     expect(q['silent'], ['fba9fe12']);
     expect(
       jsonDecode(

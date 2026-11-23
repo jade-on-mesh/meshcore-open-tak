@@ -1201,6 +1201,14 @@ int traceHashByteWidthFor(int pathHashByteWidth) {
   return 4;
 }
 
+/// CMD_SEND_TRACE_PATH's flags: send the trace on radio2 only (MediaMesh).
+/// Firmware that knows it says `on` to `get radio2.trace`; the bit stays off
+/// the air. A MediaMesh repeater forwards a packet on the radio it heard it
+/// on, so a one-hop trace sent on radio2 comes back on radio2, with radio2's
+/// SNR both ways. Older firmware would ignore the bit and send it on the main
+/// mesh, so it's only set after `get radio2.trace` said `on`.
+const int traceFlagOnRadio2 = 0x08;
+
 int traceFlagsForHashWidth(int traceHashByteWidth) {
   if (traceHashByteWidth <= 1) return 0;
   if (traceHashByteWidth == 2) return 1;

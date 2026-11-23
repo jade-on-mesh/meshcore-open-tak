@@ -49,7 +49,7 @@ void main() {
     expect(gj, contains('"reach":"marginal"'));
   });
 
-  test('RSSI, answers by name and the silent ones round trip and export', () {
+  test('RSSI, answers on radio2 and the silent ones round trip and export', () {
     final s = CoverageSample(
       lat: 47.6,
       lon: -122.3,
@@ -69,16 +69,16 @@ void main() {
           snr: 2.0,
           remoteSnr: 1.0,
           margin: 2.5,
-          asked: true,
+          onRadio2: true,
         ),
       ],
       silent: const ['c1c2c3c4'],
     );
     final back = CoverageSample.fromJson(s.toJson())!;
     expect(back.repeaters[0].rssi, -64);
-    expect(back.repeaters[0].asked, isFalse);
+    expect(back.repeaters[0].onRadio2, isFalse);
     expect(back.repeaters[1].rssi, isNull);
-    expect(back.repeaters[1].asked, isTrue);
+    expect(back.repeaters[1].onRadio2, isTrue);
     expect(back.silent, ['c1c2c3c4']);
     // older samples, with none of these, still read
     final old = CoverageSample.fromJson({
@@ -93,8 +93,8 @@ void main() {
     expect(old.silent, isEmpty);
     final gj = coverageGeoJson([s]);
     expect(gj, contains('"rssi":-64'));
-    expect(gj, contains('"asked_by_name":true'));
-    expect(gj, contains('"asked_no_answer":["c1c2c3c4"]'));
+    expect(gj, contains('"measured_on_radio2":true'));
+    expect(gj, contains('"asked_on_radio2_no_answer":["c1c2c3c4"]'));
   });
 
   test('a repeater\'s answer to a one-hop trace', () {
@@ -121,6 +121,13 @@ void main() {
     expect(traceHashByteWidthFor(1), 1);
     expect(traceHashByteWidthFor(3), 4);
     expect(traceFlagsForHashWidth(4), 2);
+    // radio2 only: a bit of its own, never taken for the hash width
+    expect(traceFlagOnRadio2 & 0x03, 0);
+    expect(radio2TraceOn('> on'), isTrue);
+    expect(radio2TraceOn('on'), isTrue);
+    expect(radio2TraceOn('> off'), isFalse);
+    expect(radio2TraceOn('Error: unknown command'), isFalse);
+    expect(radio2TraceOn(null), isFalse);
   });
 
   test('which MediaMesh repeaters to ask by name', () {

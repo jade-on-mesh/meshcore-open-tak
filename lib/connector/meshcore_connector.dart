@@ -9529,11 +9529,13 @@ class MeshCoreConnector extends ChangeNotifier {
   /// path is just that repeater (as Path trace does, no login needed). It
   /// adds the SNR it heard us at and sends it back. Null when it didn't
   /// answer within [timeout] (out of range, busy, or it doesn't forward).
-  /// Used by MediaMesh coverage mapping, where "didn't answer" has to mean
-  /// it was asked.
+  /// [onRadio2]: sent on radio2 only ([traceFlagOnRadio2]; only when the
+  /// radio said `get radio2.trace` on), so the answer comes back on radio2.
+  /// Used by MediaMesh coverage mapping.
   Future<RepeaterPing?> pingRepeater(
     Uint8List publicKey, {
     Duration timeout = const Duration(seconds: 8),
+    bool onRadio2 = false,
   }) async {
     if (!isConnected || publicKey.isEmpty) return null;
     final width = traceHashByteWidthFor(_pathHashByteWidth);
@@ -9552,7 +9554,7 @@ class MeshCoreConnector extends ChangeNotifier {
         buildTraceReq(
           tag,
           0,
-          traceFlagsForHashWidth(width),
+          traceFlagsForHashWidth(width) | (onRadio2 ? traceFlagOnRadio2 : 0),
           payload: Uint8List.fromList(publicKey.sublist(0, width)),
         ),
       );

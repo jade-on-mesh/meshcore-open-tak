@@ -5,13 +5,15 @@
 // 40 s, so the repeaters' four answers per two minutes go round) it asks the
 // repeaters in direct range, as Find MediaMesh does (DISCOVER_REQ with the
 // radio2 flag), and keeps only the ones that answer with radio2 on: MediaMesh
-// repeaters, nothing else. Then it asks the nearest known MediaMesh
-// repeaters that didn't answer, up to [MediaMeshCoverageService.askMax], one
-// by one by name (a one-hop trace), so a repeater that stays quiet is one
-// that was asked. Each sample is a point with the repeaters that answered,
-// their signal (and, for a discovery answer, the RSSI of its reply: SNR
-// readings top out around +12 dB, RSSI keeps rising) and those asked by name
-// that didn't.
+// repeaters, nothing else. Then, when the radio can send a trace on radio2
+// (`get radio2.trace` on), it asks the nearest known MediaMesh repeaters that
+// didn't answer, up to [MediaMeshCoverageService.askMax], one by one by name
+// on radio2 only (a one-hop trace a MediaMesh repeater forwards back on the
+// radio it heard it on): an answer is radio2 reaching both ways, with radio2's
+// own SNR; a repeater that stays quiet was really asked on radio2. Each
+// sample is a point with the repeaters that answered, their signal (and, for
+// a discovery answer, the RSSI of its reply: SNR readings top out around
+// +12 dB, RSSI keeps rising) and those asked on radio2 that didn't.
 //
 // The ask goes out on the main mesh, and the radio doesn't say which radio a
 // reply came in on, so radio2's reach is estimated from it: the weaker of the
@@ -115,8 +117,9 @@ class CoverageRepeater {
   /// answer to a trace, or an older sample).
   final int? rssi;
 
-  /// It answered when asked by name (a trace), not to the discovery.
-  final bool asked;
+  /// It answered when asked by name on radio2 (a trace sent on radio2 only):
+  /// [snr], [remoteSnr] and [margin] are radio2's own, not estimated.
+  final bool onRadio2;
   const CoverageRepeater({
     required this.key,
     required this.name,
@@ -126,7 +129,7 @@ class CoverageRepeater {
     this.bwHz = 0,
     this.sf = 0,
     this.rssi,
-    this.asked = false,
+    this.onRadio2 = false,
   });
 
   Map<String, Object> toJson() => {
@@ -138,7 +141,7 @@ class CoverageRepeater {
     if (bwHz > 0) 'b': bwHz,
     if (sf > 0) 'f': sf,
     if (rssi != null) 'i': rssi!,
-    if (asked) 'w': 't',
+    if (onRadio2) 'w': 'r2',
   };
   static CoverageRepeater? fromJson(Object? j) {
     if (j is! Map) return null;
@@ -154,7 +157,7 @@ class CoverageRepeater {
       bwHz: b is int ? b : 0,
       sf: f is int ? f : 0,
       rssi: i is int ? i : null,
-      asked: j['w'] == 't',
+      onRadio2: j['w'] == 'r2',
     );
   }
 }
@@ -169,7 +172,8 @@ class CoverageSample {
   final String radio;
   final double speed, accuracy;
 
-  /// MediaMesh repeaters asked by name that didn't answer (first 8 hex).
+  /// MediaMesh repeaters asked by name on radio2 that didn't answer (first 8
+  /// hex).
   final List<String> silent;
   const CoverageSample({
     required this.lat,
@@ -248,14 +252,20 @@ String coverageGeoJson(List<CoverageSample> samples) => jsonEncode({
                 'remote_snr': r.remoteSnr,
                 'margin_db': double.parse(r.margin.toStringAsFixed(1)),
                 if (r.rssi != null) 'rssi': r.rssi,
-                if (r.asked) 'asked_by_name': true,
+                if (r.onRadio2) 'measured_on_radio2': true,
               },
           ],
-          if (s.silent.isNotEmpty) 'asked_no_answer': s.silent,
+          if (s.silent.isNotEmpty) 'asked_on_radio2_no_answer': s.silent,
         },
       },
   ],
 });
+
+/// `get radio2.trace`'s answer: the radio can send a trace on radio2.
+bool radio2TraceOn(String? reply) {
+  final t = (reply ?? '').trim().toLowerCase();
+  return t == 'on' || t.startsWith('> on');
+}
 
 /// The MediaMesh repeaters to ask by name at a sample: known ones with a
 /// position within [MediaMeshCoverageService.askWithinMeters] that didn't
@@ -377,6 +387,7 @@ class MediaMeshCoverageService extends ChangeNotifier {
     _problem = null;
     if (on) {
       _lastAt = null;
+      _radio2Trace.clear(); // the radio's settings may have changed
       try {
         var perm = await Geolocator.checkPermission();
         if (perm == LocationPermission.denied) {
@@ -473,6 +484,27 @@ class MediaMeshCoverageService extends ChangeNotifier {
     await _sample(f);
   }
 
+  /// Whether the connected radio can send a trace on radio2 (`get
+  /// radio2.trace` says on): asked once per radio while recording.
+  final Map<String, bool> _radio2Trace = {};
+  Future<bool> _radio2TraceOk() async {
+    final radio = _connector.selfPublicKey == null
+        ? ''
+        : _connector.selfPublicKeyHex.toLowerCase();
+    if (radio.isEmpty) return false;
+    final had = _radio2Trace[radio];
+    if (had != null) return had;
+    var ok = false;
+    try {
+      final reply = await _connector
+          .runLocalCliCommand('get radio2.trace')
+          .timeout(const Duration(seconds: 5));
+      ok = radio2TraceOn(reply);
+    } catch (_) {}
+    _radio2Trace[radio] = ok;
+    return ok;
+  }
+
   void _setProblem(String? p) {
     if (p == _problem) return;
     _problem = p;
@@ -516,9 +548,11 @@ class MediaMeshCoverageService extends ChangeNotifier {
     } catch (e) {
       _problem = '$e';
     }
-    // the nearest known MediaMesh repeaters that didn't answer, by name
+    // the nearest known MediaMesh repeaters that didn't answer, by name, on
+    // radio2 only: only when the radio can send a trace there
     final silent = <String>[];
-    for (final c in mediaMeshAskList(
+    final onRadio2 = await _radio2TraceOk();
+    for (final c in !onRadio2 ? const <Contact>[] : mediaMeshAskList(
       _connector.allContactsUnfiltered,
       f.latitude,
       f.longitude,
@@ -527,26 +561,28 @@ class MediaMeshCoverageService extends ChangeNotifier {
     )) {
       if (!_recording || !_connector.isConnected) break;
       final key = c.publicKeyHex.substring(0, 8).toLowerCase();
-      final ping = await _connector.pingRepeater(c.publicKey);
+      final ping = await _connector.pingRepeater(c.publicKey, onRadio2: true);
       if (ping == null) {
         silent.add(key);
         continue;
       }
       final info = MediaMeshRepeaters.instance.infoFor(c.publicKeyHex);
+      final bw2 = (info?.bandwidthHz ?? 0) > 0 ? info!.bandwidthHz : 250000;
       heard[key] = CoverageRepeater(
         key: key,
         name: c.name,
         snr: ping.snr,
         remoteSnr: ping.remoteSnr,
+        // measured on radio2 both ways: no bandwidth to allow for
         margin: mediaMeshMargin(
           snr: min(ping.snr, ping.remoteSnr),
-          mainBwHz: mainBw,
-          radio2BwHz: info?.bandwidthHz ?? 250000,
-          radio2Sf: info?.spreadingFactor ?? 7,
+          mainBwHz: bw2,
+          radio2BwHz: bw2,
+          radio2Sf: (info?.spreadingFactor ?? 0) > 0 ? info!.spreadingFactor : 7,
         ),
         bwHz: info?.bandwidthHz ?? 0,
         sf: info?.spreadingFactor ?? 0,
-        asked: true,
+        onRadio2: true,
       );
     }
     final list = heard.values.toList()
