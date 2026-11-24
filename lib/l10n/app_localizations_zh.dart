@@ -5564,13 +5564,16 @@ class AppLocalizationsZh extends AppLocalizations {
       'Each packet your radio hears runs from repeater to repeater toward you, and each point it passes pulses. Repeaters with no location on the map are left out.';
 
   @override
-  String get liveTraffic_legendUnreached => 'Faint dashes: the rest of a trace\'s route, not reached yet';
+  String get liveTraffic_legendUnreached =>
+      'Faint dashes: the rest of a trace\'s route, not reached yet';
 
   @override
-  String get liveTraffic_legendRings => 'Hollow rings: carried on MediaMesh (radio2)';
+  String get liveTraffic_legendRings =>
+      'Hollow rings: carried on MediaMesh (radio2)';
 
   @override
-  String get liveTraffic_legendSonar => 'Ripples with a dB label: a trace on MediaMesh, at each repeater it reached';
+  String get liveTraffic_legendSonar =>
+      'Ripples with a dB label: a trace on MediaMesh, at each repeater it reached';
 
   @override
   String liveTraffic_sonarLabel(String snr) {

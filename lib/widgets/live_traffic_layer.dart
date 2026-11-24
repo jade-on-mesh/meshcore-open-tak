@@ -263,7 +263,8 @@ class _LiveTrafficLayerState extends State<LiveTrafficLayer>
     final run = split == null ? hops : hops.sublist(0, split + 1);
     if (split != null) _dashedRest(hops.sublist(split), route.color);
     if (run.length == 1) {
-      if (!run.first.ghost) _pulses.add(_Pulse(run.first.position, route.color));
+      if (!run.first.ghost)
+        _pulses.add(_Pulse(run.first.position, route.color));
     } else {
       _animate(run, route);
     }
@@ -515,7 +516,14 @@ class _LiveTrafficPainter extends CustomPainter {
       (a.dy < 0 && b.dy < 0) ||
       (a.dy > size.height && b.dy > size.height);
 
-  void _rings(Canvas canvas, Offset a, Offset b, int cap, double upTo, Paint p) {
+  void _rings(
+    Canvas canvas,
+    Offset a,
+    Offset b,
+    int cap,
+    double upTo,
+    Paint p,
+  ) {
     final d = b - a;
     for (final f in liveTrafficRingFractions(d.distance, cap)) {
       if (f > upTo) break;
@@ -655,7 +663,11 @@ class _LiveTrafficPainter extends CustomPainter {
               ],
             ).createShader(Rect.fromCircle(center: head, radius: _headGlow)),
         );
-        canvas.drawCircle(head, _headRadius, _stroke(mediaMeshColor, h.opacity, 2));
+        canvas.drawCircle(
+          head,
+          _headRadius,
+          _stroke(mediaMeshColor, h.opacity, 2),
+        );
       } else {
         _line(
           canvas,
@@ -902,11 +914,16 @@ class _Swatch extends CustomPainter {
       case _SwatchKind.sonar:
         final c = Offset(size.width / 2, y);
         canvas.drawCircle(c, 2, stroke(mediaMesh, 1.6));
-        canvas.drawCircle(c, 4.5, stroke(mediaMesh.withValues(alpha: 0.6), 1.3));
+        canvas.drawCircle(
+          c,
+          4.5,
+          stroke(mediaMesh.withValues(alpha: 0.6), 1.3),
+        );
         canvas.drawCircle(c, 7, stroke(mediaMesh.withValues(alpha: 0.3), 1));
     }
   }
 
   @override
-  bool shouldRepaint(_Swatch old) => old.kind != kind || old.mediaMesh != mediaMesh;
+  bool shouldRepaint(_Swatch old) =>
+      old.kind != kind || old.mediaMesh != mediaMesh;
 }
