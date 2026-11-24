@@ -14,7 +14,9 @@ img.Image _qr(String data, {int scale = 6, bool inverted = false}) {
   final n = code.moduleCount;
   final side = (n + 8) * scale;
   final dark = inverted ? img.ColorRgb8(255, 255, 255) : img.ColorRgb8(0, 0, 0);
-  final light = inverted ? img.ColorRgb8(20, 20, 20) : img.ColorRgb8(255, 255, 255);
+  final light = inverted
+      ? img.ColorRgb8(20, 20, 20)
+      : img.ColorRgb8(255, 255, 255);
   final image = img.Image(width: side, height: side);
   img.fill(image, color: light);
   for (var y = 0; y < n; y++) {
@@ -45,7 +47,12 @@ void main() {
   test('reads a QR code from a JPEG on a bigger, off-centre picture', () {
     final frame = img.Image(width: 1600, height: 1200);
     img.fill(frame, color: img.ColorRgb8(200, 200, 190));
-    img.compositeImage(frame, _qr('hello mesh', scale: 8), dstX: 300, dstY: 250);
+    img.compositeImage(
+      frame,
+      _qr('hello mesh', scale: 8),
+      dstX: 300,
+      dstY: 250,
+    );
     expect(decodeQrImage(img.encodeJpg(frame, quality: 85)), 'hello mesh');
   });
 

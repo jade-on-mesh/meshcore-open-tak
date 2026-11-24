@@ -242,7 +242,11 @@ class _QrScannerWidgetState extends State<QrScannerWidget>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.qr_code_scanner, size: 64, color: scheme.onSurfaceVariant),
+              Icon(
+                Icons.qr_code_scanner,
+                size: 64,
+                color: scheme.onSurfaceVariant,
+              ),
               const SizedBox(height: 16),
               Text(
                 context.l10n.qr_pictureOnly,
