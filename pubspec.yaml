@@ -68,6 +68,13 @@ dependencies:
   characters: ^1.4.0
   package_info_plus: ^10.2.2
   mobile_scanner: ^7.4.2  # QR/barcode scanning
+  # QR scanning on Windows, which mobile_scanner doesn't support: the webcam
+  # through camera_windows (used directly, so phones get no extra camera
+  # plugin) and a pure-Dart QR decoder. Also decodes a picture of a code.
+  camera_windows: ^0.2.6
+  camera_platform_interface: ^2.10.0
+  zxing2: ^0.2.3
+  image: ^4.3.0
   image_picker: ^1.1.2    # Pick photos to send as compressed mesh images
   koni_jxl_flutter: ^0.1.4 # Chat background pictures stored as JPEG XL
   qr_flutter: ^4.1.0      # QR code generation
@@ -131,6 +138,7 @@ dependency_overrides:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  qr: ^3.0.0 # draws QR codes for the QR decoder test
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

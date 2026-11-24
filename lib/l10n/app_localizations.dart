@@ -12725,6 +12725,36 @@ abstract class AppLocalizations {
   /// **'Camera not supported on this device.'**
   String get qr_cameraUnsupported;
 
+  /// No description provided for @qr_noWebcam.
+  ///
+  /// In en, this message translates to:
+  /// **'No webcam found. Connect one, or scan a picture of the code.'**
+  String get qr_noWebcam;
+
+  /// No description provided for @qr_switchWebcam.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch camera'**
+  String get qr_switchWebcam;
+
+  /// No description provided for @qr_scanPicture.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan a picture'**
+  String get qr_scanPicture;
+
+  /// No description provided for @qr_noCodeInPicture.
+  ///
+  /// In en, this message translates to:
+  /// **'No QR code found in that picture'**
+  String get qr_noCodeInPicture;
+
+  /// No description provided for @qr_pictureOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera scanning isn\'t available on this computer. Open a picture or screenshot of the code instead.'**
+  String get qr_pictureOnly;
+
   /// No description provided for @qr_cameraStartFailed.
   ///
   /// In en, this message translates to:

@@ -104,6 +104,14 @@ A live QR scanner view with instruction text overlay.
   - The optional `region_scope` parameter is not applied; set the channel's region manually afterwards
 - Invalid QR: shows an orange error snackbar
 
+### On a computer
+Every QR scanner in the app (channels, communities, contacts, team setup, OTP pads) works the same way on desktop:
+- **Windows:** the webcam. The app takes a still a few times a second and reads the code from it (`DesktopQrCamera`, through `camera_windows`, since `mobile_scanner` has no Windows support). A switch button appears when there is more than one camera. **Scan a picture** below the view opens a picture or screenshot of a code instead, and is offered too when no webcam is found or it can't start.
+- **Linux:** no camera plugin, so the scanner shows **Scan a picture** only.
+- **macOS:** the camera, as on a phone (`mobile_scanner`), plus **Scan a picture** next to its buttons.
+
+Pictures and webcam stills are decoded on the device by `decodeQrImage` (`lib/services/qr_image_decoder.dart`, pure-Dart zxing2), which also reads a light code on a dark background.
+
 ---
 
 ## Channel Message Path Viewing

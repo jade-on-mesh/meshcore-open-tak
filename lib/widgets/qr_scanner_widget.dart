@@ -1,10 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../helpers/snack_bar_builder.dart';
 import '../l10n/l10n.dart';
+import '../services/qr_image_decoder.dart';
 import '../theme/mesh_theme.dart';
+import '../utils/platform_info.dart';
+import 'desktop_qr_camera.dart';
 
 /// Size of the square scan window cut out of the overlay.
 const double _scanWindowSize = 250;
@@ -96,8 +102,13 @@ class QrScannerWidget extends StatefulWidget {
 
 class _QrScannerWidgetState extends State<QrScannerWidget>
     with WidgetsBindingObserver {
-  late MobileScannerController _controller;
+  /// mobile_scanner's camera; null on Windows and Linux, which it doesn't
+  /// support (Windows scans with [DesktopQrCamera], Linux from a picture).
+  MobileScannerController? _controller;
   bool _hasScanned = false;
+
+  static bool get _noMobileScanner =>
+      PlatformInfo.isWindows || PlatformInfo.isLinux;
   String? _lastScannedData;
   DateTime? _lastScanTime;
 
@@ -105,33 +116,36 @@ class _QrScannerWidgetState extends State<QrScannerWidget>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _controller = MobileScannerController(
-      detectionSpeed: DetectionSpeed.normal,
-      facing: CameraFacing.back,
-    );
+    if (!_noMobileScanner) {
+      _controller = MobileScannerController(
+        detectionSpeed: DetectionSpeed.normal,
+        facing: CameraFacing.back,
+      );
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Handle app lifecycle changes - pause/resume scanner
-    if (!_controller.value.hasCameraPermission) return;
+    final controller = _controller;
+    if (controller == null || !controller.value.hasCameraPermission) return;
 
     switch (state) {
       case AppLifecycleState.resumed:
-        _controller.start();
+        controller.start();
         break;
       case AppLifecycleState.inactive:
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
-        _controller.stop();
+        controller.stop();
         break;
     }
   }
@@ -144,36 +158,108 @@ class _QrScannerWidgetState extends State<QrScannerWidget>
     for (final barcode in barcodes) {
       final String? rawValue = barcode.rawValue;
       if (rawValue == null || rawValue.isEmpty) continue;
+      if (_handleRaw(rawValue)) return;
+    }
+  }
 
-      // Debounce - ignore if same data scanned too quickly
-      final now = DateTime.now();
-      if (_lastScannedData == rawValue &&
-          _lastScanTime != null &&
-          now.difference(_lastScanTime!) < widget.debounceDuration) {
-        continue;
-      }
+  /// One decoded code, from any source (camera, webcam, picture). True when
+  /// it was taken.
+  bool _handleRaw(String rawValue) {
+    if (_hasScanned && !widget.continuousScanning) return false;
 
-      _lastScannedData = rawValue;
-      _lastScanTime = now;
+    // Debounce - ignore if same data scanned too quickly
+    final now = DateTime.now();
+    if (_lastScannedData == rawValue &&
+        _lastScanTime != null &&
+        now.difference(_lastScanTime!) < widget.debounceDuration) {
+      return false;
+    }
 
-      // Validate if validator provided
-      if (widget.validator != null && !widget.validator!(rawValue)) {
-        widget.onValidationFailed?.call(rawValue);
-        continue;
-      }
+    _lastScannedData = rawValue;
+    _lastScanTime = now;
 
-      // Mark as scanned to prevent duplicates
-      if (!widget.continuousScanning) {
-        setState(() {
-          _hasScanned = true;
-        });
-        _controller.stop();
-      }
+    // Validate if validator provided
+    if (widget.validator != null && !widget.validator!(rawValue)) {
+      widget.onValidationFailed?.call(rawValue);
+      return false;
+    }
 
-      // Notify callback
-      widget.onScanned(rawValue);
+    // Mark as scanned to prevent duplicates
+    if (!widget.continuousScanning) {
+      setState(() {
+        _hasScanned = true;
+      });
+      _controller?.stop();
+    }
+
+    // Notify callback
+    widget.onScanned(rawValue);
+    return true;
+  }
+
+  /// Windows, Linux and Mac: a QR code from a picture or screenshot on disk.
+  Future<void> _scanPicture() async {
+    final XFile? file;
+    try {
+      file = await ImagePicker().pickImage(source: ImageSource.gallery);
+    } catch (_) {
       return;
     }
+    if (file == null || !mounted) return;
+    final code = await decodeQrImageInBackground(await file.readAsBytes());
+    if (!mounted) return;
+    if (code == null) {
+      showInvalidQrSnackBar(context, context.l10n.qr_noCodeInPicture);
+      return;
+    }
+    // A picture is chosen on purpose: no debounce against the last scan.
+    _lastScannedData = null;
+    _handleRaw(code);
+  }
+
+  Widget _pictureButton(BuildContext context) => FilledButton.tonalIcon(
+    onPressed: () => unawaited(_scanPicture()),
+    icon: const Icon(Icons.image_search),
+    label: Text(context.l10n.qr_scanPicture),
+  );
+
+  /// The camera view where mobile_scanner has none: the webcam on Windows,
+  /// a "scan a picture" panel on Linux.
+  Widget _buildDesktopScanner(BuildContext context) {
+    if (desktopQrCameraSupported) {
+      return DesktopQrCamera(
+        onCode: _handleRaw,
+        paused: _hasScanned && !widget.continuousScanning,
+        fallback: _pictureButton(context),
+      );
+    }
+    final scheme = Theme.of(context).colorScheme;
+    return ColoredBox(
+      color: scheme.surface,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.qr_code_scanner,
+                size: 64,
+                color: scheme.onSurfaceVariant,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                context.l10n.qr_pictureOnly,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: scheme.onSurface, fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              _pictureButton(context),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   /// Reset the scanner to allow scanning again
@@ -183,7 +269,7 @@ class _QrScannerWidgetState extends State<QrScannerWidget>
       _lastScannedData = null;
       _lastScanTime = null;
     });
-    _controller.start();
+    _controller?.start();
   }
 
   @override
@@ -195,16 +281,20 @@ class _QrScannerWidgetState extends State<QrScannerWidget>
       child: Stack(
         children: [
           // Scanner view
-          MobileScanner(
-            controller: _controller,
-            onDetect: _handleDetection,
-            errorBuilder: (context, error) {
-              return _buildErrorWidget(context, error);
-            },
-          ),
+          if (_controller case final controller?)
+            MobileScanner(
+              controller: controller,
+              onDetect: _handleDetection,
+              errorBuilder: (context, error) {
+                return _buildErrorWidget(context, error);
+              },
+            )
+          else
+            _buildDesktopScanner(context),
 
-          // Overlay
-          widget.overlay ?? _buildDefaultOverlay(context),
+          // Overlay (Linux has no camera view to frame)
+          if (!PlatformInfo.isLinux)
+            widget.overlay ?? _buildDefaultOverlay(context),
 
           // Control buttons
           Positioned(
@@ -296,15 +386,23 @@ class _QrScannerWidgetState extends State<QrScannerWidget>
   }
 
   Widget _buildControls(BuildContext context) {
+    final controller = _controller;
+    // Windows: the webcam view has its own switch button; a picture can
+    // always be opened instead. Linux's panel holds its own button.
+    if (controller == null) {
+      return PlatformInfo.isLinux
+          ? const SizedBox.shrink()
+          : Center(child: _pictureButton(context));
+    }
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         if (widget.showFlashButton)
           ValueListenableBuilder(
-            valueListenable: _controller,
+            valueListenable: controller,
             builder: (context, state, child) {
               return IconButton.filled(
-                onPressed: () => _controller.toggleTorch(),
+                onPressed: () => controller.toggleTorch(),
                 icon: Icon(
                   state.torchState == TorchState.on
                       ? Icons.flash_on
@@ -318,10 +416,16 @@ class _QrScannerWidgetState extends State<QrScannerWidget>
           const SizedBox(width: 24),
         if (widget.showCameraSwitchButton)
           IconButton.filled(
-            onPressed: () => _controller.switchCamera(),
+            onPressed: () => controller.switchCamera(),
             icon: const Icon(Icons.cameraswitch),
             style: _controlStyle,
           ),
+        // Mac: the camera works, and a picture or screenshot of a code can
+        // be opened too.
+        if (PlatformInfo.isMacOS) ...[
+          const SizedBox(width: 24),
+          _pictureButton(context),
+        ],
       ],
     );
   }
