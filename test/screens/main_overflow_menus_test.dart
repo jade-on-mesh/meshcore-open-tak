@@ -152,6 +152,7 @@ Future<_TestEnv> _createEnv(
   final viewState = UiViewStateService();
   final offlineProviders = [
     ChangeNotifierProvider.value(value: offlineConnector),
+    ...await forkProviders(tester, offlineConnector),
     ChangeNotifierProvider.value(value: MessageRetryService()),
     ChangeNotifierProvider.value(value: PathHistoryService(storage)),
     ChangeNotifierProvider.value(value: settings),

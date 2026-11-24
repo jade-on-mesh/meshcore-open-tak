@@ -118,7 +118,8 @@ void main() {
   });
 
   test('a SENT for an attempt already retried is not taken', () async {
-    final contact = _contact();
+    // A direct path: a flood path gets only the one flood attempt.
+    final contact = _contact(pathLength: 1, path: const [0x11]);
     await service.sendMessageWithRetry(contact: contact, text: 'hello');
     await pumpEventQueue();
     // The watchdog gives up on attempt 0; the message moves on to attempt 1.

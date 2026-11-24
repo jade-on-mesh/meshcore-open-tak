@@ -21,7 +21,6 @@ import 'package:meshcore_open/theme/mesh_theme.dart';
 import 'package:meshcore_open/widgets/mesh_ui.dart';
 import 'package:meshcore_open/widgets/settings_reveal.dart';
 
-import '../helpers/fork_providers.dart';
 
 void main() {
   testWidgets('routing settings show both retry limits', (tester) async {
@@ -53,7 +52,6 @@ void main() {
         providers: [
           ChangeNotifierProvider.value(value: settings),
           ChangeNotifierProvider.value(value: connector),
-          ...await forkProviders(tester, connector),
           ChangeNotifierProvider.value(value: translation),
           ChangeNotifierProvider.value(value: uploads),
         ],
@@ -138,7 +136,6 @@ void main() {
           providers: [
             ChangeNotifierProvider.value(value: settings),
             ChangeNotifierProvider.value(value: connector),
-            ...await forkProviders(tester, connector),
             ChangeNotifierProvider.value(value: translation),
             ChangeNotifierProvider.value(value: uploads),
           ],
@@ -226,7 +223,6 @@ void main() {
         MultiProvider(
           providers: [
             ChangeNotifierProvider.value(value: connector),
-            ...await forkProviders(tester, connector),
             ChangeNotifierProvider.value(value: settings),
           ],
           child: MaterialApp(
@@ -327,7 +323,6 @@ void main() {
             providers: [
               ChangeNotifierProvider.value(value: settings),
               ChangeNotifierProvider.value(value: connector),
-              ...await forkProviders(tester, connector),
               ChangeNotifierProvider.value(value: translation),
               ChangeNotifierProvider.value(value: uploads),
             ],
@@ -374,7 +369,6 @@ void main() {
           MultiProvider(
             providers: [
               ChangeNotifierProvider.value(value: connector),
-              ...await forkProviders(tester, connector),
               ChangeNotifierProvider.value(value: settings),
             ],
             child: MaterialApp(

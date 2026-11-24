@@ -1284,7 +1284,9 @@ class ReceivedImageStore extends ChangeNotifier {
       pngByteCount: pngWritten ? previewPng.length : 0,
       pngBytes: previewPng,
       bitstreamStored: bitsWritten,
-      bitstreamByteCount: bitsWritten ? bitstream.length : 0,
+      // The size of what was sent, for the caption and packet info, even when
+      // the bitstream itself isn't kept.
+      bitstreamByteCount: bitsWritten ? bitstream.length : payloadBytes,
     );
     final stored = await _store(entry);
     await evictToBudget(protect: stored.streamId);

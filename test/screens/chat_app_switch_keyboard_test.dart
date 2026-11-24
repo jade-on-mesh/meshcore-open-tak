@@ -148,7 +148,9 @@ void main() {
   testWidgets(
     'desktop app switch when focus is not restored does not swallow the next tap',
     (tester) async {
-      tester.view.physicalSize = _screen;
+      // MeshCore Open TAK keeps search in the app bar from 480dp up (it's in
+      // the ⋮ menu on a narrower phone).
+      tester.view.physicalSize = const Size(500, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 

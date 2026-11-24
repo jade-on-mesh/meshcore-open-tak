@@ -64,9 +64,14 @@ void main() {
     final l10n = AppLocalizationsEn();
 
     expect(formatContactLastSeen(l10n, epoch), l10n.contacts_lastSeenNever);
+    // MeshCore Open TAK resolves a never-heard contact to Contact.heardNever
+    // rather than the epoch; either way it reads "not heard yet".
     expect(
-      resolveContactLastSeen(_contact(5, lastSeen: epoch)),
-      epoch,
+      formatContactLastSeen(
+        l10n,
+        resolveContactLastSeen(_contact(5, lastSeen: epoch)),
+      ),
+      l10n.contacts_lastSeenNever,
       reason: 'display label is driven by the advert/message time only',
     );
   });

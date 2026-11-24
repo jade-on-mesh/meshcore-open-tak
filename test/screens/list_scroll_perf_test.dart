@@ -276,7 +276,8 @@ void main() {
     connector.nodes = List.of(connector.nodes)
       ..[renamedAt] = visible.first.copyWith(name: renamed);
     await notifyAndSettle(tester);
-    expect(find.text(renamed), findsOneWidget);
+    // The fork's tile adds a location pin to the name's span.
+    expect(find.textContaining(renamed), findsOneWidget);
 
     // ignore: avoid_print
     print(
