@@ -131,6 +131,9 @@ Additional filters:
 
 Every filter is remembered, including **MediaMesh** (only repeaters known to run MediaMesh) and the freshness chips (All / Online / Recent / Stale): leaving the map or restarting the app doesn't reset them.
 
+### Tactical Status and Coordinates (Bottom Centre)
+With the team on, the tactical status pill (live teammates, GPS accuracy, new reports; tap for the Team screen) and your coordinates (tap to change the format) sit at the bottom centre of the map. On a wide screen (tablets, landscape) they're in the row with the SOS and + buttons; on a narrow one, just above that row. Either way they stay clear of the zoom rail on the left and the live traffic and filter buttons on the right.
+
 ### Analyzer-Style Markers
 A switch in the filter sheet (under Markers) and in App Settings > Map display. When on, nodes are drawn the way the CoreScope analyzer draws them, instead of the app's icon pins:
 
