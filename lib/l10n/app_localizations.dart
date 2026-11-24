@@ -10091,10 +10091,34 @@ abstract class AppLocalizations {
   /// **'Each packet your radio hears runs from repeater to repeater toward you, and each point it passes pulses. Repeaters with no location on the map are left out.'**
   String get liveTraffic_legendHint;
 
+  /// No description provided for @liveTraffic_legendUnreached.
+  ///
+  /// In en, this message translates to:
+  /// **'Faint dashes: the rest of a trace\'s route, not reached yet'**
+  String get liveTraffic_legendUnreached;
+
+  /// No description provided for @liveTraffic_legendRings.
+  ///
+  /// In en, this message translates to:
+  /// **'Hollow rings: carried on MediaMesh (radio2)'**
+  String get liveTraffic_legendRings;
+
+  /// No description provided for @liveTraffic_legendSonar.
+  ///
+  /// In en, this message translates to:
+  /// **'Ripples with a dB label: a trace on MediaMesh, at each repeater it reached'**
+  String get liveTraffic_legendSonar;
+
+  /// No description provided for @liveTraffic_sonarLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{snr} dB on radio2'**
+  String liveTraffic_sonarLabel(String snr);
+
   /// No description provided for @liveTraffic_legendGhost.
   ///
   /// In en, this message translates to:
-  /// **'Grey dashes: a repeater placed between known ones, or a trace hop not reached yet'**
+  /// **'Grey dashes and dot: a repeater with no location, placed between known ones'**
   String get liveTraffic_legendGhost;
 
   /// No description provided for @liveTraffic_typeAdvert.

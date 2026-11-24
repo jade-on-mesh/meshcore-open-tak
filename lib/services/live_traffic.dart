@@ -5,7 +5,7 @@
 // LiveTrafficLayer (lib/widgets/live_traffic_layer.dart).
 
 import 'dart:typed_data';
-import 'dart:ui' show Color;
+import 'dart:ui' show Brightness, Color;
 
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
@@ -98,6 +98,36 @@ Color liveTrafficTypeColor(int payloadType) => switch (payloadType) {
 /// The grey of ghost (inferred) hops and their lines (live.js #94a3b8).
 const Color liveTrafficGhostColor = Color(0xFF94A3B8);
 
+/// CoreScope's --mediamesh-path-color: the rings of a packet carried on
+/// MediaMesh (radio2), its hop badges and radio2 trace sonar.
+Color liveTrafficMediaMeshColor(Brightness brightness) =>
+    brightness == Brightness.dark
+    ? const Color(0xFFE879F9)
+    : const Color(0xFFD946EF);
+
+/// Keymind Cascade companions send `[0x92][0xA1]` just before an RX log
+/// frame heard on radio2 (MediaMesh); the log frame itself is unchanged.
+const int pushCodeLogRxRadio = 0x92;
+const int logRxRadio2 = 0xA1;
+
+/// Reads the companion's frames in order: an RX log frame right after the
+/// radio2 marker was heard on MediaMesh.
+class LiveTrafficFrameReader {
+  bool _radio2 = false;
+
+  /// The packet in [frame] (null for the marker and anything else).
+  LiveTrafficPacket? read(Uint8List frame) {
+    if (frame.isNotEmpty && frame[0] == pushCodeLogRxRadio) {
+      _radio2 = frame.length >= 2 && frame[1] == logRxRadio2;
+      return null;
+    }
+    // The marker only ever comes right before its log frame.
+    final radio2 = _radio2;
+    _radio2 = false;
+    return parseLiveTrafficFrame(frame, mediaMesh: radio2);
+  }
+}
+
 /// One packet from the companion's RX log.
 class LiveTrafficPacket {
   final int routeType;
@@ -113,6 +143,9 @@ class LiveTrafficPacket {
   final double snr;
   final int rssi;
 
+  /// Heard on radio2 (MediaMesh): drawn as rings, like the analyzer.
+  final bool mediaMesh;
+
   const LiveTrafficPacket({
     required this.routeType,
     required this.payloadType,
@@ -121,6 +154,7 @@ class LiveTrafficPacket {
     required this.payload,
     required this.snr,
     required this.rssi,
+    this.mediaMesh = false,
   });
 
   /// Flooded (route type 0 transport-flood or 1 flood): its path is the
@@ -132,8 +166,12 @@ class LiveTrafficPacket {
 }
 
 /// The packet in an RX log frame (`[0x88][snr×4][rssi][raw packet]`), or
-/// null for anything else or a malformed frame.
-LiveTrafficPacket? parseLiveTrafficFrame(Uint8List frame) {
+/// null for anything else or a malformed frame. [mediaMesh]: it came in on
+/// radio2 (see [LiveTrafficFrameReader]).
+LiveTrafficPacket? parseLiveTrafficFrame(
+  Uint8List frame, {
+  bool mediaMesh = false,
+}) {
   if (frame.length < 5 || frame[0] != pushCodeLogRxData) return null;
   try {
     final view = ByteData.sublistView(frame);
@@ -167,6 +205,7 @@ LiveTrafficPacket? parseLiveTrafficFrame(Uint8List frame) {
       payload: Uint8List.fromList(frame.sublist(i)),
       snr: snr,
       rssi: rssi,
+      mediaMesh: mediaMesh,
     );
   } catch (_) {
     return null;
@@ -226,33 +265,50 @@ class LiveTrafficHop {
   /// drawn grey and dashed (live.js "Inferred Hops").
   final bool ghost;
 
-  /// False for a TRACE hop the trace hasn't reached yet: the line to it is
-  /// dashed.
+  /// False for a TRACE hop the trace hasn't reached yet.
   final bool reached;
+
+  /// For a TRACE hop it reached: the SNR that repeater heard it at.
+  final double? snr;
 
   const LiveTrafficHop(
     this.key,
     this.position, {
     this.ghost = false,
     this.reached = true,
+    this.snr,
   });
 
   /// Whether the line from [from] to this hop is drawn dashed and grey
-  /// (live.js: ghost hops and a TRACE's unreached hops).
-  bool dashedFrom(LiveTrafficHop from) => ghost || from.ghost || !reached;
+  /// (live.js: lines to and from ghost hops).
+  bool dashedFrom(LiveTrafficHop from) => ghost || from.ghost;
 }
 
-/// How a packet is drawn: through [hops], in [color].
+/// How a packet is drawn: through [hops], in [color]; as MediaMesh rings
+/// when [mediaMesh].
 class LiveTrafficRoute {
   final String typeName;
   final Color color;
   final List<LiveTrafficHop> hops;
+  final bool mediaMesh;
 
   const LiveTrafficRoute({
     required this.typeName,
     required this.color,
     required this.hops,
+    this.mediaMesh = false,
   });
+
+  bool get isTrace => typeName == 'TRACE';
+
+  /// For a TRACE, the index of its first hop not reached (live.js
+  /// hopsCompleted): the run animates to it and the rest is a static dashed
+  /// line. Null when it reached them all (or isn't a trace).
+  int? get firstUnreached {
+    if (!isTrace) return null;
+    final i = hops.indexWhere((h) => !h.reached);
+    return i < 0 ? null : i;
+  }
 }
 
 /// Where [packet] is drawn, or null when nothing on it has a place on the
@@ -263,7 +319,8 @@ class LiveTrafficRoute {
 ///   the companion itself ([self]) last, as the one that heard it.
 /// - Direct packets: their path is the hops still to go, so only a pulse at
 ///   the companion.
-/// - TRACE: its route; lines to hops it has reached solid, the rest dashed.
+/// - TRACE: its route; up to the first hop it hasn't reached animated, the
+///   rest a static dashed line ([LiveTrafficRoute.firstUnreached]).
 ///
 /// Unknown repeaters between two known points are placed evenly between them
 /// as ghosts; unknown ones outside known points are left out (as live.js).
@@ -282,8 +339,16 @@ LiveTrafficRoute? liveTrafficRoute(
     );
     // One SNR byte per repeater that passed it on: those were reached.
     final reached = packet.pathBytes.length;
+    final snrs = ByteData.sublistView(packet.pathBytes);
     for (var j = 0; j < route.length; j++) {
-      raw.add(_RawHop.of(resolved[j], route[j], reached: j < reached));
+      raw.add(
+        _RawHop.of(
+          resolved[j],
+          route[j],
+          reached: j < reached,
+          snr: j < reached ? snrs.getInt8(j) / 4.0 : null,
+        ),
+      );
     }
   } else {
     if (packet.isFlood && packet.pathBytes.isNotEmpty) {
@@ -319,6 +384,7 @@ LiveTrafficRoute? liveTrafficRoute(
     typeName: packet.typeName,
     color: packet.color,
     hops: hops,
+    mediaMesh: packet.mediaMesh,
   );
 }
 
@@ -326,21 +392,29 @@ class _RawHop {
   final String key;
   final LatLng? position;
   final bool reached;
+  final double? snr;
 
-  const _RawHop(this.key, this.position, {this.reached = true});
+  const _RawHop(this.key, this.position, {this.reached = true, this.snr});
 
-  factory _RawHop.of(Contact? contact, List<int> hash, {bool reached = true}) {
+  factory _RawHop.of(
+    Contact? contact,
+    List<int> hash, {
+    bool reached = true,
+    double? snr,
+  }) {
     if (contact != null && contact.hasLocation) {
       return _RawHop(
         contact.publicKeyHex,
         LatLng(contact.latitude!, contact.longitude!),
         reached: reached,
+        snr: snr,
       );
     }
     return _RawHop(
       contact?.publicKeyHex ?? 'hop-${_hex(hash)}',
       null,
       reached: reached,
+      snr: snr,
     );
   }
 }
@@ -357,14 +431,16 @@ List<LiveTrafficHop> _placeGhosts(List<_RawHop> raw) {
     return [
       for (final h in raw)
         if (h.position != null)
-          LiveTrafficHop(h.key, h.position!, reached: h.reached),
+          LiveTrafficHop(h.key, h.position!, reached: h.reached, snr: h.snr),
     ];
   }
   final out = <LiveTrafficHop>[];
   for (var i = 0; i < raw.length; i++) {
     final h = raw[i];
     if (h.position != null) {
-      out.add(LiveTrafficHop(h.key, h.position!, reached: h.reached));
+      out.add(
+        LiveTrafficHop(h.key, h.position!, reached: h.reached, snr: h.snr),
+      );
       continue;
     }
     var gapStart = i, gapEnd = i;
