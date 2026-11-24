@@ -166,7 +166,10 @@ class AnalyzerMarkerPainter extends CustomPainter {
         final r = c - 1.5;
         for (var i = 0; i < 6; i++) {
           final a = (i * 60 - 90) * math.pi / 180;
-          final p = Offset(o.dx + c + r * math.cos(a), o.dy + c + r * math.sin(a));
+          final p = Offset(
+            o.dx + c + r * math.cos(a),
+            o.dy + c + r * math.sin(a),
+          );
           if (i == 0) {
             path.moveTo(p.dx, p.dy);
           } else {
