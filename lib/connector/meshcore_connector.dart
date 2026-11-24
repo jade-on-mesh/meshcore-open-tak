@@ -2202,10 +2202,7 @@ class MeshCoreConnector extends ChangeNotifier {
     return count;
   }
 
-  final Map<
-    int,
-    ({(int, int, String, String) key, int count})
-  >
+  final Map<int, ({(int, int, String, String) key, int count})>
   _channelAlertCounts = {};
 
   /// Every channel's [getChannelAlertCount], for the Channels tab.
@@ -12585,9 +12582,7 @@ class MeshCoreConnector extends ChangeNotifier {
     if (notificationMode == ChannelNotificationMode.mentionsOnly) {
       // An alert word counts like a mention (when its switch is on).
       final alerts = AlertWordsService.instance;
-      final words = alerts.notify
-          ? alerts.wordsFor(label)
-          : const <String>[];
+      final words = alerts.notify ? alerts.wordsFor(label) : const <String>[];
       final alerted =
           words.isNotEmpty &&
           channelMessageAlertWord(message, words, alerts.patternFor(words)) !=

@@ -46,9 +46,7 @@ class _AlertWordsEditorState extends State<AlertWordsEditor> {
     } else if (full) {
       showDismissibleSnackBar(
         context,
-        content: Text(
-          context.l10n.alertWords_full(AlertWordsService.maxWords),
-        ),
+        content: Text(context.l10n.alertWords_full(AlertWordsService.maxWords)),
       );
     } else {
       _field.clear(); // already in the list
@@ -222,7 +220,10 @@ class GlobalAlertWordsSection extends StatelessWidget {
                 horizontal: 16,
                 vertical: 4,
               ),
-              leading: const Icon(Icons.notifications_active_outlined, size: 24),
+              leading: const Icon(
+                Icons.notifications_active_outlined,
+                size: 24,
+              ),
               title: Text(l10n.alertWords_globalTitle),
               subtitle: Text(l10n.alertWords_globalHint),
             ),

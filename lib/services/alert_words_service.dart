@@ -262,9 +262,8 @@ class AlertWordHighlight extends InheritedWidget {
     required super.child,
   });
 
-  static RegExp? of(BuildContext context) => context
-      .dependOnInheritedWidgetOfExactType<AlertWordHighlight>()
-      ?.pattern;
+  static RegExp? of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<AlertWordHighlight>()?.pattern;
 
   @override
   bool updateShouldNotify(AlertWordHighlight oldWidget) =>

@@ -42,7 +42,8 @@ class AppLocalizationsSl extends AppLocalizations {
   }
 
   @override
-  String get alertWords_sheetHint => 'A message in this channel containing one counts like an @mention: a blue badge on the Channels tab and in the channel list. Whole words, any capitals; a phrase matches as written.';
+  String get alertWords_sheetHint =>
+      'A message in this channel containing one counts like an @mention: a blue badge on the Channels tab and in the channel list. Whole words, any capitals; a phrase matches as written.';
 
   @override
   String get alertWords_add => 'Add';
@@ -79,13 +80,15 @@ class AppLocalizationsSl extends AppLocalizations {
   String get alertWords_globalTitle => 'Alert words in all channels';
 
   @override
-  String get alertWords_globalHint => 'Count like an @mention in every channel, on top of each channel\'s own words. A channel can opt out in its Alert words sheet (channel menu).';
+  String get alertWords_globalHint =>
+      'Count like an @mention in every channel, on top of each channel\'s own words. A channel can opt out in its Alert words sheet (channel menu).';
 
   @override
   String get alertWords_notify => 'Notify for alert words';
 
   @override
-  String get alertWords_notifySubtitle => 'A notification even in channels set to Mentions only';
+  String get alertWords_notifySubtitle =>
+      'A notification even in channels set to Mentions only';
 
   @override
   String get alertWords_clearGlobal => 'Clear all global alert words';

@@ -16,8 +16,10 @@ void main() {
     });
 
     test('a phrase matches as written, any spacing between its words', () {
-      expect(first('two unmarked  vans heading north', ['unmarked vans']),
-          'unmarked vans');
+      expect(
+        first('two unmarked  vans heading north', ['unmarked vans']),
+        'unmarked vans',
+      );
       expect(first('vans unmarked', ['unmarked vans']), isNull);
     });
 
@@ -52,32 +54,36 @@ void main() {
       await alerts.load();
     });
 
-    test('a channel gets its own words then the global ones, each once',
-        () async {
-      await alerts.addGlobal('help');
-      await alerts.addGlobal('ICE');
-      await alerts.addChannel('#icewatch', 'ice');
-      await alerts.addChannel('#icewatch', 'raid');
-      expect(alerts.wordsFor('#icewatch'), ['ice', 'raid', 'help']);
-      expect(alerts.wordsFor('#other'), ['help', 'ICE']);
+    test(
+      'a channel gets its own words then the global ones, each once',
+      () async {
+        await alerts.addGlobal('help');
+        await alerts.addGlobal('ICE');
+        await alerts.addChannel('#icewatch', 'ice');
+        await alerts.addChannel('#icewatch', 'raid');
+        expect(alerts.wordsFor('#icewatch'), ['ice', 'raid', 'help']);
+        expect(alerts.wordsFor('#other'), ['help', 'ICE']);
 
-      await alerts.setUsesGlobal('#icewatch', false);
-      expect(alerts.wordsFor('#icewatch'), ['ice', 'raid']);
-      expect(alerts.usesGlobal('#other'), isTrue);
-    });
+        await alerts.setUsesGlobal('#icewatch', false);
+        expect(alerts.wordsFor('#icewatch'), ['ice', 'raid']);
+        expect(alerts.usesGlobal('#other'), isTrue);
+      },
+    );
 
-    test('adding trims, ignores repeats and empties, and caps the list',
-        () async {
-      expect(await alerts.addGlobal('  two   words '), isTrue);
-      expect(alerts.globalWords, ['two words']);
-      expect(await alerts.addGlobal('TWO WORDS'), isFalse);
-      expect(await alerts.addGlobal('   '), isFalse);
-      for (var i = 0; i < AlertWordsService.maxWords; i++) {
-        await alerts.addGlobal('w$i');
-      }
-      expect(alerts.globalWords, hasLength(AlertWordsService.maxWords));
-      expect(await alerts.addGlobal('one more'), isFalse);
-    });
+    test(
+      'adding trims, ignores repeats and empties, and caps the list',
+      () async {
+        expect(await alerts.addGlobal('  two   words '), isTrue);
+        expect(alerts.globalWords, ['two words']);
+        expect(await alerts.addGlobal('TWO WORDS'), isFalse);
+        expect(await alerts.addGlobal('   '), isFalse);
+        for (var i = 0; i < AlertWordsService.maxWords; i++) {
+          await alerts.addGlobal('w$i');
+        }
+        expect(alerts.globalWords, hasLength(AlertWordsService.maxWords));
+        expect(await alerts.addGlobal('one more'), isFalse);
+      },
+    );
 
     test('removing and clearing', () async {
       await alerts.addChannel('#a', 'x');
