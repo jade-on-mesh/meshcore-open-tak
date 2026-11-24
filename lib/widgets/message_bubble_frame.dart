@@ -303,12 +303,12 @@ class MessageBubbleFrame extends StatelessWidget {
       style: MeshChatLook.of(context).style,
       run: run,
     );
-    final contentPadding = compact
+    final EdgeInsets contentPadding = compact
         ? const EdgeInsets.all(4)
         : const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
     // Upstream's bookmark: a ribbon at the top right, with room made for it.
     final padding = isBookmarked
-        ? contentPadding.add(EdgeInsets.only(top: compact ? 18 : 14, right: 14))
+        ? contentPadding + EdgeInsets.only(top: compact ? 18 : 14, right: 14)
         : contentPadding;
     if (colors.flat) {
       // a chat log line: no bubble, the full width

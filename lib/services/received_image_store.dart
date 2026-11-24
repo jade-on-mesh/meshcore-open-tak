@@ -1280,9 +1280,6 @@ class ReceivedImageStore extends ChangeNotifier {
       isOutgoing: true,
       synthesized: synthesized,
       chunkEchoes: chunkEchoes,
-      // The size of what was sent, for the caption and packet info. The
-      // bitstream itself is not kept, so bitstreamStored stays false.
-      bitstreamByteCount: payloadBytes,
       pngStored: pngWritten,
       pngByteCount: pngWritten ? previewPng.length : 0,
       pngBytes: previewPng,

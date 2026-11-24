@@ -4749,7 +4749,7 @@ class _NodeMarkersCacheKey {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     contactsSignature,
     visibleContactsSignature,
     batterySignature,
@@ -4771,7 +4771,7 @@ class _NodeMarkersCacheKey {
     isBuildingPathTrace,
     clusterNodes,
     colorScheme,
-  );
+  ]);
 }
 
 class _GuessedLocation {

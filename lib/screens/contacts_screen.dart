@@ -40,7 +40,6 @@ import '../widgets/sync_progress_overlay.dart';
 import '../widgets/unread_badge.dart';
 import '../helpers/snack_bar_builder.dart';
 import 'add_contact_screen.dart';
-import 'channels_screen.dart';
 import 'chat_screen.dart';
 import 'discovery_screen.dart';
 import '../review_mode/review_mode_banner.dart';
