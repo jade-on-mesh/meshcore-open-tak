@@ -19,7 +19,6 @@ import 'package:meshcore_open/storage/prefs_manager.dart';
 import 'package:meshcore_open/theme/mesh_theme.dart';
 import 'package:meshcore_open/widgets/mesh_ui.dart';
 
-
 /// Repeatable stand-in for profiling rapid scrolling on a phone: builds the
 /// contacts list with 500 contacts and the channels list with 40 channels,
 /// flings each list, and counts widget builds and rows that are not fully
