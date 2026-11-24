@@ -1666,115 +1666,118 @@ class TeamMapOverlay extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-          if (own != null)
-            Material(
-              color: Colors.red,
-              borderRadius: BorderRadius.circular(8),
-              child: InkWell(
-                onTap: () => _confirmCancel(context, team),
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${own.type.label.toUpperCase()} ACTIVE · tap to cancel',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      // Teammates' answers, as they come in.
-                      QuickReplyList(
-                        onColor: true,
-                        entries: teamReplyEntries(
-                          context,
-                          team.repliesFor(
-                            teamReplyRefKey(
-                              TeamReplyRef.alert,
-                              team.selfKey4,
-                              own.alertId,
+                    if (own != null)
+                      Material(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(8),
+                        child: InkWell(
+                          onTap: () => _confirmCancel(context, team),
+                          child: Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '${own.type.label.toUpperCase()} ACTIVE · tap to cancel',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                // Teammates' answers, as they come in.
+                                QuickReplyList(
+                                  onColor: true,
+                                  entries: teamReplyEntries(
+                                    context,
+                                    team.repliesFor(
+                                      teamReplyRefKey(
+                                        TeamReplyRef.alert,
+                                        team.selfKey4,
+                                        own.alertId,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          if (hound != null && team.roadMode != null)
-            RoadDirectionsCard(team: team),
-          if (hound != null)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (fix != null)
-                      Transform.rotate(
-                        angle:
-                            (teamBearingDeg(
-                                  fix.lat,
-                                  fix.lon,
-                                  hound.lat,
-                                  hound.lon,
-                                ) -
-                                (fix.heading ?? 0)) *
-                            pi /
-                            180,
-                        child: const Icon(
-                          Icons.navigation,
-                          color: Color(0xFFFF6D00),
+                    if (hound != null && team.roadMode != null)
+                      RoadDirectionsCard(team: team),
+                    if (hound != null)
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (fix != null)
+                                Transform.rotate(
+                                  angle:
+                                      (teamBearingDeg(
+                                            fix.lat,
+                                            fix.lon,
+                                            hound.lat,
+                                            hound.lon,
+                                          ) -
+                                          (fix.heading ?? 0)) *
+                                      pi /
+                                      180,
+                                  child: const Icon(
+                                    Icons.navigation,
+                                    color: Color(0xFFFF6D00),
+                                  ),
+                                ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  fix == null
+                                      ? '${hound.label}: waiting for your position'
+                                      : team.navRoute != null
+                                      // A shared route: the next turn, as standalone radios show it.
+                                      ? '${hound.label}\n${routeTurnText(context, routeNextTurn(team.navRoute!.points, team.navIndex, fix.lat, fix.lon))}'
+                                      : '${hound.label}\n${teamRangeBearing(teamDistanceMeters(fix.lat, fix.lon, hound.lat, hound.lon), teamBearingDeg(fix.lat, fix.lon, hound.lat, hound.lon))}${fix.heading == null ? ' (arrow: north up)' : ''}',
+                                ),
+                              ),
+                              if (team.navRoute != null) ...[
+                                RoadVoiceButton(team: team),
+                                IconButton(
+                                  icon: const Icon(Icons.skip_previous),
+                                  tooltip: 'Previous checkpoint',
+                                  onPressed: team.navIndex > 0
+                                      ? () => team.skipCheckpoint(-1)
+                                      : null,
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.skip_next),
+                                  tooltip: 'Next checkpoint',
+                                  onPressed:
+                                      team.navIndex <
+                                          team.navRoute!.points.length - 1
+                                      ? () => team.skipCheckpoint(1)
+                                      : null,
+                                ),
+                              ],
+                              if (team.navRoute == null &&
+                                  team.roadMode == null)
+                                RoadSignButton(
+                                  tooltip: context.l10n.road_directions,
+                                  onPressed: () =>
+                                      showRoadDirectionsSheet(context, team),
+                                ),
+                              IconButton(
+                                icon: const Icon(Icons.close),
+                                onPressed: team.stopHound,
+                                tooltip: team.navRoute != null
+                                    ? 'Stop navigating'
+                                    : 'Stop Bloodhound',
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        fix == null
-                            ? '${hound.label}: waiting for your position'
-                            : team.navRoute != null
-                            // A shared route: the next turn, as standalone radios show it.
-                            ? '${hound.label}\n${routeTurnText(context, routeNextTurn(team.navRoute!.points, team.navIndex, fix.lat, fix.lon))}'
-                            : '${hound.label}\n${teamRangeBearing(teamDistanceMeters(fix.lat, fix.lon, hound.lat, hound.lon), teamBearingDeg(fix.lat, fix.lon, hound.lat, hound.lon))}${fix.heading == null ? ' (arrow: north up)' : ''}',
-                      ),
-                    ),
-                    if (team.navRoute != null) ...[
-                      RoadVoiceButton(team: team),
-                      IconButton(
-                        icon: const Icon(Icons.skip_previous),
-                        tooltip: 'Previous checkpoint',
-                        onPressed: team.navIndex > 0
-                            ? () => team.skipCheckpoint(-1)
-                            : null,
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.skip_next),
-                        tooltip: 'Next checkpoint',
-                        onPressed:
-                            team.navIndex < team.navRoute!.points.length - 1
-                            ? () => team.skipCheckpoint(1)
-                            : null,
-                      ),
-                    ],
-                    if (team.navRoute == null && team.roadMode == null)
-                      RoadSignButton(
-                        tooltip: context.l10n.road_directions,
-                        onPressed: () => showRoadDirectionsSheet(context, team),
-                      ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: team.stopHound,
-                      tooltip: team.navRoute != null
-                          ? 'Stop navigating'
-                          : 'Stop Bloodhound',
-                    ),
-                  ],
-                ),
-              ),
-            ),
                   ],
                 ),
               ),
