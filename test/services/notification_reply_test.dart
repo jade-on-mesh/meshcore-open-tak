@@ -125,4 +125,39 @@ void main() {
       );
     });
   });
+
+  group('channel notification payload', () {
+    test('round-trips the index and message id', () {
+      const id = '1732400000000_-12345_678';
+      final payload = channelNotificationPayload(4, id);
+      expect(payload, 'channel:4/$id');
+      final parsed = parseChannelNotificationPayload(
+        payload.substring('channel:'.length),
+      );
+      expect(parsed?.index, 4);
+      expect(parsed?.messageId, id);
+    });
+
+    test('keeps a slash inside the message id', () {
+      final parsed = parseChannelNotificationPayload('2/a/b');
+      expect(parsed?.index, 2);
+      expect(parsed?.messageId, 'a/b');
+    });
+
+    test('no message id', () {
+      expect(channelNotificationPayload(1, null), 'channel:1');
+      expect(parseChannelNotificationPayload('1')?.messageId, isNull);
+      expect(parseChannelNotificationPayload('1/')?.messageId, isNull);
+      expect(parseChannelNotificationPayload('x/abc'), isNull);
+    });
+
+    test('replies still find the channel', () {
+      final reply = NotificationReply.parse(
+        actionId: notificationReplyActionId,
+        payload: 'channel:3/1732400000000_1_2',
+        input: 'hi',
+      );
+      expect(reply?.channelIndex, 3);
+    });
+  });
 }

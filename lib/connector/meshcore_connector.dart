@@ -12146,6 +12146,7 @@ class MeshCoreConnector extends ChangeNotifier {
         message: VoxVoiceEnvelope.previewText(message.text) ?? resolvedText,
         urlImagesEnabled: showChannelUrlImages(channelIndex),
         channelIndex: message.channelIndex,
+        messageId: message.messageId,
         badgeCount: getTotalUnreadCount(),
       );
     }());

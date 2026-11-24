@@ -42,7 +42,7 @@ class NotificationReply {
   bool get isChannel => channelIndex != null;
 
   /// Parses the plugin's action id, notification payload (`message:<keyHex>`
-  /// or `channel:<index>`) and reply input. Returns null for taps, unknown
+  /// or `channel:<index>[/<messageId>]`) and reply input. Returns null for taps, unknown
   /// actions, malformed payloads, and empty replies.
   static NotificationReply? parse({
     required String? actionId,
@@ -77,7 +77,7 @@ class NotificationReply {
       );
     }
     if (kind == 'channel') {
-      final index = int.tryParse(value);
+      final index = parseChannelNotificationPayload(value)?.index;
       if (index == null) return null;
       return NotificationReply._(
         action: action,
@@ -197,4 +197,24 @@ Future<AppLocalizations> _backgroundLocalizations() async {
     } catch (_) {}
   }
   return lookupAppLocalizations(const Locale('en'));
+}
+
+/// The payload of a channel's notification: `channel:<index>`, plus
+/// `/<messageId>` for the message it shows, so a tap can scroll to it.
+/// The index is digits, so the first `/` always ends it.
+String channelNotificationPayload(int? channelIndex, String? messageId) =>
+    messageId == null || messageId.isEmpty
+    ? 'channel:$channelIndex'
+    : 'channel:$channelIndex/$messageId';
+
+/// Splits the part after `channel:` back into the index and message id.
+/// Null when the index isn't a number.
+({int index, String? messageId})? parseChannelNotificationPayload(
+  String value,
+) {
+  final slash = value.indexOf('/');
+  final index = int.tryParse(slash < 0 ? value : value.substring(0, slash));
+  if (index == null) return null;
+  final id = slash < 0 ? null : value.substring(slash + 1);
+  return (index: index, messageId: id == null || id.isEmpty ? null : id);
 }
