@@ -37,6 +37,8 @@ import 'package:meshcore_open/storage/prefs_manager.dart';
 import 'package:meshcore_open/theme/mesh_theme.dart';
 import 'package:meshcore_open/utils/platform_info.dart';
 
+import '../helpers/fork_providers.dart';
+
 final _l10n = lookupAppLocalizations(const Locale('en'));
 
 (MeshCoreConnector, List<SingleChildWidget>)? _shared;
@@ -629,6 +631,7 @@ Future<(MeshCoreConnector, List<SingleChildWidget>)> _connect(
     connector,
     <SingleChildWidget>[
       ChangeNotifierProvider.value(value: connector),
+      ...await forkProviders(tester, connector),
       ChangeNotifierProvider.value(value: retry),
       ChangeNotifierProvider.value(value: PathHistoryService(storage)),
       ChangeNotifierProvider.value(value: settings),

@@ -32,6 +32,8 @@ import 'package:meshcore_open/storage/prefs_manager.dart';
 import 'package:meshcore_open/theme/mesh_theme.dart';
 import 'package:meshcore_open/widgets/connect_sheet.dart';
 
+import '../helpers/fork_providers.dart';
+
 final _l10n = lookupAppLocalizations(const Locale('en'));
 
 class _TestEnv {
@@ -83,6 +85,7 @@ Future<_TestEnv> _createConnectedEnv(WidgetTester tester) async {
 
   final providers = [
     ChangeNotifierProvider.value(value: connector),
+    ...await forkProviders(tester, connector),
     ChangeNotifierProvider.value(value: retry),
     ChangeNotifierProvider.value(value: PathHistoryService(storage)),
     ChangeNotifierProvider.value(value: settings),

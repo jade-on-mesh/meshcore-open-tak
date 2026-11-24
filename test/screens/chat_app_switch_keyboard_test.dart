@@ -32,6 +32,8 @@ import 'package:meshcore_open/storage/prefs_manager.dart';
 import 'package:meshcore_open/theme/mesh_theme.dart';
 import 'package:meshcore_open/widgets/chat_composer.dart';
 
+import '../helpers/fork_providers.dart';
+
 const _screen = Size(400, 800);
 const _keyboard = 300.0;
 
@@ -379,6 +381,7 @@ Future<(MeshCoreConnector, List<SingleChildWidget>)> _connect(
     connector,
     <SingleChildWidget>[
       ChangeNotifierProvider.value(value: connector),
+      ...await forkProviders(tester, connector),
       ChangeNotifierProvider.value(value: retry),
       ChangeNotifierProvider.value(value: PathHistoryService(storage)),
       ChangeNotifierProvider.value(value: settings),

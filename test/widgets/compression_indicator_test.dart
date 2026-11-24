@@ -40,7 +40,10 @@ import 'package:meshcore_open/theme/mesh_theme.dart';
 import 'package:meshcore_open/widgets/message_bubble_frame.dart';
 import 'package:meshcore_open/widgets/message_status_icon.dart';
 import 'package:provider/provider.dart';
+import 'package:provider/single_child_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../helpers/fork_providers.dart';
 
 final _radioKey = Uint8List.fromList(List<int>.generate(32, (i) => 0xA0 + i));
 final _radioHex = pubKeyToHex(_radioKey);
@@ -165,7 +168,12 @@ class _Harness {
   final AppSettingsService settings;
   final List<dynamic> disposables;
 
-  _Harness(this.connector, this.settings, this.disposables);
+  /// MeshCore Open TAK's services (test/helpers/fork_providers.dart), made
+  /// on the real clock with the harness.
+  final List<SingleChildWidget> fork;
+
+  _Harness(this.connector, this.settings, this.disposables)
+    : fork = forkProvidersNow(connector);
 
   List<ChangeNotifierProvider<ChangeNotifier>> get _unused => const [];
 
@@ -174,6 +182,7 @@ class _Harness {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: connector),
+        ...fork,
         ChangeNotifierProvider.value(value: settings),
         ChangeNotifierProvider.value(
           value: disposables[0] as MessageRetryService,

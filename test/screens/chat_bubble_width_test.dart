@@ -40,6 +40,8 @@ import 'package:meshcore_open/theme/mesh_theme.dart';
 import 'package:meshcore_open/utils/platform_info.dart';
 import 'package:meshcore_open/widgets/message_bubble_frame.dart';
 
+import '../helpers/fork_providers.dart';
+
 final _radioKey = Uint8List.fromList(List<int>.generate(32, (i) => 0xA0 + i));
 final _radioHex = pubKeyToHex(_radioKey);
 final _aliceKey = Uint8List.fromList(List<int>.generate(32, (i) => 0x10 + i));
@@ -170,6 +172,7 @@ Future<Widget> _app(
   return MultiProvider(
     providers: [
       ChangeNotifierProvider.value(value: connector),
+      ...await forkProviders(tester, connector),
       ChangeNotifierProvider.value(value: MessageRetryService()),
       ChangeNotifierProvider.value(value: PathHistoryService(storage)),
       ChangeNotifierProvider.value(value: settings),

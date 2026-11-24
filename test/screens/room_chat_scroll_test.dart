@@ -33,6 +33,8 @@ import 'package:meshcore_open/storage/prefs_manager.dart';
 import 'package:meshcore_open/theme/mesh_theme.dart';
 import 'package:meshcore_open/widgets/unread_divider.dart';
 
+import '../helpers/fork_providers.dart';
+
 /// Room chats receive their backlog as a burst of messages right after login.
 /// These tests feed such a burst into an open room chat and check that the
 /// reader's place holds, and that opening the chat still lands where the
@@ -315,6 +317,7 @@ _connect(WidgetTester tester) async {
     connector,
     <SingleChildWidget>[
       ChangeNotifierProvider.value(value: connector),
+      ...await forkProviders(tester, connector),
       ChangeNotifierProvider.value(value: retry),
       ChangeNotifierProvider.value(value: PathHistoryService(storage)),
       ChangeNotifierProvider.value(value: settings),

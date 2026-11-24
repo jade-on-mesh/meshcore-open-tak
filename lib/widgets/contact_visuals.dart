@@ -94,7 +94,9 @@ DateTime resolveContactLastSeen(Contact contact, {DateTime? addedAt}) {
 /// Short relative "last seen" label ("now", "5 mins ago", "2 days ago").
 String formatContactLastSeen(AppLocalizations l10n, DateTime lastSeen) {
   // Never heard at a time we can trust (Contact.heardNever).
-  if (!lastSeen.isAfter(Contact.heardNever)) return '–';
+  if (!lastSeen.isAfter(Contact.heardNever)) {
+    return l10n.contacts_lastSeenNever;
+  }
   final diff = DateTime.now().difference(lastSeen);
 
   if (diff.isNegative || diff.inMinutes < 5) {

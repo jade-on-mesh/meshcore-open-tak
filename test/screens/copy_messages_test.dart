@@ -38,6 +38,8 @@ import 'package:meshcore_open/widgets/message_bubble_frame.dart';
 import 'package:meshcore_open/widgets/received_image_message.dart';
 import 'package:meshcore_open/widgets/shared_contact_card.dart';
 
+import '../helpers/fork_providers.dart';
+
 final _l10n = lookupAppLocalizations(const Locale('en'));
 
 const _contactShareHex =
@@ -598,6 +600,7 @@ _connect(WidgetTester tester) async {
     connector,
     <SingleChildWidget>[
       ChangeNotifierProvider.value(value: connector),
+      ...await forkProviders(tester, connector),
       ChangeNotifierProvider.value(value: retry),
       ChangeNotifierProvider.value(value: PathHistoryService(storage)),
       ChangeNotifierProvider.value(value: settings),

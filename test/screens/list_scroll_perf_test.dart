@@ -19,6 +19,8 @@ import 'package:meshcore_open/storage/prefs_manager.dart';
 import 'package:meshcore_open/theme/mesh_theme.dart';
 import 'package:meshcore_open/widgets/mesh_ui.dart';
 
+import '../helpers/fork_providers.dart';
+
 /// Repeatable stand-in for profiling rapid scrolling on a phone: builds the
 /// contacts list with 500 contacts and the channels list with 40 channels,
 /// flings each list, and counts widget builds and rows that are not fully
@@ -182,6 +184,7 @@ void main() {
       MultiProvider(
         providers: [
           ChangeNotifierProvider<MeshCoreConnector>.value(value: connector),
+          ...await forkProviders(tester, connector),
           ChangeNotifierProvider.value(value: settings),
           ChangeNotifierProvider.value(value: viewState),
         ],
@@ -266,11 +269,14 @@ void main() {
     expect(find.text('42'), findsOneWidget);
 
     // So does a replaced contact.
+    // MeshCore Open TAK sorts by name: keep the new name next to the old one
+    // so the row stays on screen.
     final renamedAt = connector.nodes.indexOf(visible.first);
+    final renamed = '${visible.first.name} renamed';
     connector.nodes = List.of(connector.nodes)
-      ..[renamedAt] = visible.first.copyWith(name: 'Renamed node');
+      ..[renamedAt] = visible.first.copyWith(name: renamed);
     await notifyAndSettle(tester);
-    expect(find.text('Renamed node'), findsOneWidget);
+    expect(find.text(renamed), findsOneWidget);
 
     // ignore: avoid_print
     print(

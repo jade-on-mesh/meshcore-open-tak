@@ -9303,6 +9303,10 @@ class MeshCoreConnector extends ChangeNotifier {
             otpPlaintext: otpPlaintext,
             region: sendRegion,
             replyTo: replyTo,
+            isSmazCompressed: prepareChannelOutbound(
+              channel.index,
+              wireText,
+            ).isSmazCompressed,
           );
     if (jitterMessage != null) {
       _fillJitteredChannelMessageText(

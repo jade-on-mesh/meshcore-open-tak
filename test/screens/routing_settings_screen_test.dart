@@ -21,9 +21,11 @@ import 'package:meshcore_open/theme/mesh_theme.dart';
 import 'package:meshcore_open/widgets/mesh_ui.dart';
 import 'package:meshcore_open/widgets/settings_reveal.dart';
 
+import '../helpers/fork_providers.dart';
+
 void main() {
   testWidgets(
-    'routing settings show both retry limits and reveal channel options',
+    'routing settings show both retry limits',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
       await PrefsManager.initialize();
@@ -53,6 +55,7 @@ void main() {
           providers: [
             ChangeNotifierProvider.value(value: settings),
             ChangeNotifierProvider.value(value: connector),
+            ...await forkProviders(tester, connector),
             ChangeNotifierProvider.value(value: translation),
             ChangeNotifierProvider.value(value: uploads),
           ],
@@ -105,24 +108,8 @@ void main() {
         findsOneWidget,
       );
 
-      final channelSwitch = find.text(l10n.appSettings_channelMinHops);
-      await tester.tap(channelSwitch);
-      await tester.pump();
-      await tester.pump(RevealOnEnable.duration);
-      await tester.pumpAndSettle();
-
-      expect(
-        find.text(l10n.appSettings_channelMinHopsCount(2)),
-        findsOneWidget,
-      );
-      expect(
-        find.text(l10n.appSettings_channelMinHopsRetries(1)),
-        findsOneWidget,
-      );
-
-      await tester.tap(channelSwitch);
-      await tester.pumpAndSettle();
-      expect(find.text(l10n.appSettings_channelMinHopsCount(2)), findsNothing);
+      // MeshCore Open TAK leaves out upstream's channel resend
+      // (appSettings_channelMinHops), so there is nothing to reveal.
     },
   );
 
@@ -157,6 +144,7 @@ void main() {
           providers: [
             ChangeNotifierProvider.value(value: settings),
             ChangeNotifierProvider.value(value: connector),
+            ...await forkProviders(tester, connector),
             ChangeNotifierProvider.value(value: translation),
             ChangeNotifierProvider.value(value: uploads),
           ],
@@ -178,7 +166,6 @@ void main() {
         l10n.appSettings_directRetries(settings.settings.directRetries),
         l10n.appSettings_floodRetries(settings.settings.floodRetries),
         l10n.appSettings_autoRouteRotation,
-        l10n.appSettings_channelMinHops,
         l10n.appSettings_resetRoutingToDefault,
         l10n.appSettings_clockSyncAfterLogin,
         l10n.appSettings_loginPasswordAutofocus,
@@ -186,13 +173,8 @@ void main() {
         l10n.appSettings_autoFetchRepeaterSettings,
         l10n.appSettings_resetRepeaterRoomSettings,
       ];
-      final revealedTitles = [
-        l10n.appSettings_channelMinHopsCount(settings.settings.channelMinHops),
-        l10n.appSettings_channelMinHopsRetries(
-          settings.settings.channelMinHopsRetries,
-        ),
-        l10n.appSettings_channelMinHopsCountRepeaters,
-      ];
+      // No revealed rows: the fork has no channel resend options.
+      final revealedTitles = <String>[];
 
       double expectRowLeadingIcon(String title) {
         final titleFinder = find.text(title);
@@ -250,6 +232,7 @@ void main() {
         MultiProvider(
           providers: [
             ChangeNotifierProvider.value(value: connector),
+            ...await forkProviders(tester, connector),
             ChangeNotifierProvider.value(value: settings),
           ],
           child: MaterialApp(
@@ -350,6 +333,7 @@ void main() {
             providers: [
               ChangeNotifierProvider.value(value: settings),
               ChangeNotifierProvider.value(value: connector),
+              ...await forkProviders(tester, connector),
               ChangeNotifierProvider.value(value: translation),
               ChangeNotifierProvider.value(value: uploads),
             ],
@@ -375,13 +359,6 @@ void main() {
           l10n.appSettings_clearPathOnMaxRetry,
           l10n.appSettings_directRetries(settings.settings.directRetries),
           l10n.appSettings_floodRetries(settings.settings.floodRetries),
-          l10n.appSettings_channelMinHopsCount(
-            settings.settings.channelMinHops,
-          ),
-          l10n.appSettings_channelMinHopsRetries(
-            settings.settings.channelMinHopsRetries,
-          ),
-          l10n.appSettings_channelMinHopsCountRepeaters,
           l10n.appSettings_resetRoutingToDefault,
           l10n.appSettings_clockSyncAfterLogin,
           l10n.appSettings_loginPasswordAutofocus,
@@ -403,6 +380,7 @@ void main() {
           MultiProvider(
             providers: [
               ChangeNotifierProvider.value(value: connector),
+              ...await forkProviders(tester, connector),
               ChangeNotifierProvider.value(value: settings),
             ],
             child: MaterialApp(
@@ -455,147 +433,6 @@ void main() {
     );
   }
 
-  for (final entry in <(String, ThemeData)>[
-    ('light', MeshTheme.light()),
-    ('dark', MeshTheme.dark()),
-    for (final preset in [
-      ...CustomTheme.presets,
-      ...CustomTheme.holidayPresets,
-    ])
-      ('custom:${preset.name}', MeshTheme.fromCustom(preset)),
-  ]) {
-    testWidgets(
-      'slider inactive track, tick marks, and drag bubble contrast inside SettingsReveal and MeshCard (${entry.$1})',
-      (tester) async {
-        SharedPreferences.setMockInitialValues({});
-        PrefsManager.reset();
-        await PrefsManager.initialize();
-        final settings = AppSettingsService();
-        await settings.loadSettings();
-        await settings.updateSettings(
-          settings.settings.copyWith(channelMinHopsEnabled: true),
-        );
-
-        tester.view.physicalSize = const Size(800, 8000);
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.reset);
-
-        final connector = MeshCoreConnector();
-        final translation = TranslationService(settings);
-        final uploads = NetworkMapUploadService(
-          connector: connector,
-          settings: settings,
-        );
-        addTearDown(connector.dispose);
-        addTearDown(translation.dispose);
-        addTearDown(uploads.dispose);
-
-        await tester.pumpWidget(
-          MultiProvider(
-            providers: [
-              ChangeNotifierProvider.value(value: settings),
-              ChangeNotifierProvider.value(value: connector),
-              ChangeNotifierProvider.value(value: translation),
-              ChangeNotifierProvider.value(value: uploads),
-            ],
-            child: MaterialApp(
-              theme: entry.$2,
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
-              supportedLocales: AppLocalizations.supportedLocales,
-              home: const AppSettingsScreen(),
-            ),
-          ),
-        );
-        await tester.pumpAndSettle();
-
-        final screenContext = tester.element(find.byType(AppSettingsScreen));
-        final l10n = AppLocalizations.of(screenContext);
-        final scheme = entry.$2.colorScheme;
-
-        final revealFinder = find.byType(SettingsReveal).first;
-        final revealMaterial = tester.widget<Material>(
-          find
-              .descendant(of: revealFinder, matching: find.byType(Material))
-              .first,
-        );
-        final revealBg = revealMaterial.color!;
-        expect(revealBg, scheme.surfaceContainerHighest);
-
-        final directRowFinder = find.ancestor(
-          of: find.text(
-            l10n.appSettings_directRetries(settings.settings.directRetries),
-          ),
-          matching: find.byType(SettingsValueSlider),
-        );
-        final directCardMaterial = tester.widget<Material>(
-          find
-              .ancestor(of: directRowFinder, matching: find.byType(Material))
-              .first,
-        );
-        final cardBg = directCardMaterial.color!;
-        expect(cardBg, scheme.surfaceContainerLow);
-
-        final hopsRowFinder = find.ancestor(
-          of: find.text(
-            l10n.appSettings_channelMinHopsCount(
-              settings.settings.channelMinHops,
-            ),
-          ),
-          matching: find.byType(SettingsValueSlider),
-        );
-        final revealedSliderFinder = find.descendant(
-          of: hopsRowFinder,
-          matching: find.byType(Slider),
-        );
-        final directSliderFinder = find.descendant(
-          of: directRowFinder,
-          matching: find.byType(Slider),
-        );
-
-        for (final sliderFinder in [revealedSliderFinder, directSliderFinder]) {
-          final sliderContext = tester.element(sliderFinder);
-          final sliderTheme = SliderTheme.of(sliderContext);
-          final inactiveTrack = sliderTheme.inactiveTrackColor!;
-          final inactiveTick = sliderTheme.inactiveTickMarkColor!;
-          final activeTick = sliderTheme.activeTickMarkColor!;
-          final valueIndicator = sliderTheme.valueIndicatorColor!;
-
-          expect(inactiveTrack.a, 1.0);
-          expect(inactiveTrack, isNot(revealBg));
-          expect(inactiveTrack, isNot(cardBg));
-
-          expect(
-            meshContrastRatio(inactiveTrack, revealBg),
-            greaterThanOrEqualTo(2.1),
-            reason: 'Inactive track must stand out on SettingsReveal',
-          );
-          expect(
-            meshContrastRatio(inactiveTrack, cardBg),
-            greaterThanOrEqualTo(2.5),
-            reason: 'Inactive track must stand out on MeshCard',
-          );
-          expect(
-            meshContrastRatio(inactiveTick, inactiveTrack),
-            greaterThanOrEqualTo(2.5),
-            reason: 'Inactive tick marks must stand out on inactive track',
-          );
-          expect(
-            meshContrastRatio(activeTick, sliderTheme.activeTrackColor!),
-            greaterThanOrEqualTo(1.8),
-            reason: 'Active tick marks must stand out on active track',
-          );
-          expect(
-            meshContrastRatio(valueIndicator, revealBg),
-            greaterThanOrEqualTo(3.0),
-            reason: 'Drag bubble must stand out on SettingsReveal',
-          );
-          expect(
-            meshContrastRatio(valueIndicator, cardBg),
-            greaterThanOrEqualTo(3.0),
-            reason: 'Drag bubble must stand out on MeshCard',
-          );
-        }
-      },
-    );
-  }
+  // Upstream's slider-contrast test checks the channel resend sliders inside
+  // a SettingsReveal; MeshCore Open TAK leaves that feature out.
 }

@@ -30,6 +30,8 @@ import 'package:meshcore_open/services/ui_view_state_service.dart';
 import 'package:meshcore_open/storage/prefs_manager.dart';
 import 'package:meshcore_open/theme/mesh_theme.dart';
 
+import '../helpers/fork_providers.dart';
+
 /// Selecting messages must not move the transcript: picking, selecting all
 /// and clearing are not new messages, and the composer getting its focus back
 /// when the action sheet closes is not the user opening the keyboard.
@@ -311,6 +313,7 @@ Future<(MeshCoreConnector, List<SingleChildWidget>)> _connect(
     connector,
     <SingleChildWidget>[
       ChangeNotifierProvider.value(value: connector),
+      ...await forkProviders(tester, connector),
       ChangeNotifierProvider.value(value: retry),
       ChangeNotifierProvider.value(value: PathHistoryService(storage)),
       ChangeNotifierProvider.value(value: settings),
