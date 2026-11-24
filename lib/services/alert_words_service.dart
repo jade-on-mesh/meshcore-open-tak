@@ -3,11 +3,12 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 /// The alert-word colour (Channels tab badge, channel list badge, message
 /// chip and frame, highlighted word): a dark blue that white text reads on
 /// in light and dark themes.
 const Color alertBadgeColor = Color(0xFF1D4ED8);
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// Alert words: words or phrases that make a channel message count like an
 /// @mention. A dark-blue badge counts them on the Channels tab and in the
