@@ -38,7 +38,10 @@ import 'mesh_ui.dart';
 /// while [LiveTrafficSettings.enabled]: it listens to the companion only
 /// while it is there.
 class LiveTrafficLayer extends StatefulWidget {
-  const LiveTrafficLayer({super.key});
+  /// Which packets show, and how strongly (the map's MediaMesh filter).
+  final LiveTrafficFilter filter;
+
+  const LiveTrafficLayer({super.key, this.filter = LiveTrafficFilter.all});
 
   /// At most this many packets run at once (live.js MAX_CONCURRENT_ANIMS);
   /// more are skipped.
@@ -118,6 +121,10 @@ class _HopAnim {
   final bool mediaMesh;
   final int ringCap;
   final int hopNo;
+
+  /// Everything about this packet drawn at this much (1, or 0.15 for
+  /// main-mesh traffic under the map's MediaMesh filter).
+  final double alpha;
   final VoidCallback onComplete;
   double progress = 0;
 
@@ -130,18 +137,24 @@ class _HopAnim {
     required this.mediaMesh,
     required this.ringCap,
     required this.hopNo,
+    this.alpha = 1,
   });
 
-  double get opacity => dashed ? 0.3 : 0.8;
+  /// live.js: 0.8, or 0.3 for a ghost hop's line.
+  double get baseOpacity => dashed ? 0.3 : 0.8;
+
+  double get opacity => baseOpacity * alpha;
 }
 
 class _Fade {
   final _HopAnim hop;
+
+  /// Fades as live.js does (−0.1 a step); drawn times [_HopAnim.alpha].
   double opacity;
   double sinceFade = 0;
   bool stepped = false;
 
-  _Fade(this.hop) : opacity = hop.opacity;
+  _Fade(this.hop) : opacity = hop.baseOpacity;
 }
 
 class _Pulse {
@@ -153,11 +166,12 @@ class _Pulse {
   double hlOp = 0.95;
   double hlWeight = 3;
   double age = 0;
+  final double alpha;
 
   /// live.js pulseNode's default marker size.
   static const double _baseSize = 14;
 
-  _Pulse(this.position, this.color);
+  _Pulse(this.position, this.color, [this.alpha = 1]);
 }
 
 /// A grey dot: an inferred hop (3 s), or a trace's unreached inferred hop
@@ -185,9 +199,10 @@ class _Dash {
   final LatLng from;
   final LatLng to;
   final Color color;
+  final double alpha;
   double timeLeft = 10000;
 
-  _Dash(this.from, this.to, this.color);
+  _Dash(this.from, this.to, this.color, [this.alpha = 1]);
 }
 
 class _Sonar {
@@ -258,23 +273,29 @@ class _LiveTrafficLayerState extends State<LiveTrafficLayer>
   /// live.js: a TRACE splits at its first unreached hop (animated up to it,
   /// dashed after); everything else runs its whole path.
   void _play(LiveTrafficRoute route) {
+    final alpha = widget.filter.alphaFor(route);
+    if (alpha <= 0) return;
     final hops = route.hops;
     final split = route.firstUnreached;
     final run = split == null ? hops : hops.sublist(0, split + 1);
-    if (split != null) _dashedRest(hops.sublist(split), route.color);
+    if (split != null) _dashedRest(hops.sublist(split), route.color, alpha);
     if (run.length == 1) {
       if (!run.first.ghost) {
-        _pulses.add(_Pulse(run.first.position, route.color));
+        _pulses.add(_Pulse(run.first.position, route.color, alpha));
       }
     } else {
-      _animate(run, route);
+      _animate(run, route, alpha);
     }
     _wake();
   }
 
   /// live.js animatePath: at each point a pulse (a grey dot for a ghost),
   /// then the line to the next.
-  void _animate(List<LiveTrafficHop> hops, LiveTrafficRoute route) {
+  void _animate(
+    List<LiveTrafficHop> hops,
+    LiveTrafficRoute route,
+    double alpha,
+  ) {
     if (_running >= LiveTrafficLayer.maxConcurrent) return;
     _running++;
     final ringCap = liveTrafficRingCap(hops.length - 1);
@@ -302,14 +323,14 @@ class _LiveTrafficLayerState extends State<LiveTrafficLayer>
           _Dot(
             hp.position,
             radius: 3,
-            fillAlpha: 0.35,
+            fillAlpha: 0.35 * alpha,
             stroke: liveTrafficGhostColor,
-            strokeAlpha: 0.5,
+            strokeAlpha: 0.5 * alpha,
             timeLeft: 3000,
           ),
         );
       } else {
-        _pulses.add(_Pulse(hp.position, route.color));
+        _pulses.add(_Pulse(hp.position, route.color, alpha));
       }
       if (index < hops.length - 1) {
         final to = hops[index + 1];
@@ -324,10 +345,11 @@ class _LiveTrafficLayerState extends State<LiveTrafficLayer>
             mediaMesh: route.mediaMesh && !dashed,
             ringCap: ringCap,
             hopNo: index + 1,
+            alpha: alpha,
           ),
         );
       } else {
-        if (!hp.ghost) _pulses.add(_Pulse(hp.position, route.color));
+        if (!hp.ghost) _pulses.add(_Pulse(hp.position, route.color, alpha));
         next(index + 1);
       }
     }
@@ -336,10 +358,10 @@ class _LiveTrafficLayerState extends State<LiveTrafficLayer>
   }
 
   /// live.js drawDashedPath: a trace's unreached hops.
-  void _dashedRest(List<LiveTrafficHop> hops, Color color) {
+  void _dashedRest(List<LiveTrafficHop> hops, Color color, double alpha) {
     if (hops.length < 2) return;
     for (var i = 0; i < hops.length - 1; i++) {
-      _dashes.add(_Dash(hops[i].position, hops[i + 1].position, color));
+      _dashes.add(_Dash(hops[i].position, hops[i + 1].position, color, alpha));
     }
     // Hops with no marker of their own (inferred) get a faint dot.
     for (var i = 1; i < hops.length; i++) {
@@ -349,9 +371,9 @@ class _LiveTrafficLayerState extends State<LiveTrafficLayer>
         _Dot(
           hops[i].position,
           radius: last ? 4 : 3,
-          fillAlpha: last ? 0.25 : 0.2,
+          fillAlpha: (last ? 0.25 : 0.2) * alpha,
           stroke: color,
-          strokeAlpha: last ? 0.35 : 0.3,
+          strokeAlpha: (last ? 0.35 : 0.3) * alpha,
           timeLeft: 10000,
         ),
       );
@@ -558,13 +580,15 @@ class _LiveTrafficPainter extends CustomPainter {
     for (final d in dashes) {
       final a = project(d.from), b = project(d.to);
       if (_offscreen(a, b, size)) continue;
-      _line(canvas, a, b, _stroke(d.color, 0.25, 2), dash: 6, gap: 8);
+      _line(canvas, a, b, _stroke(d.color, 0.25 * d.alpha, 2), dash: 6, gap: 8);
     }
 
     // Finished hops, fading (renderFades: contrail at 15 % of the line,
     // 12 % under MediaMesh rings, once fading starts).
     for (final f in fades) {
       final h = f.hop;
+      // Drawn opacity: the fade times the packet's alpha.
+      final fo = f.opacity * h.alpha;
       final a = project(h.from), b = project(h.to);
       if (_offscreen(a, b, size)) continue;
       final glow = f.stepped
@@ -574,7 +598,7 @@ class _LiveTrafficPainter extends CustomPainter {
         canvas,
         a,
         b,
-        _stroke(h.color, f.opacity * glow, 6)..strokeCap = StrokeCap.round,
+        _stroke(h.color, fo * glow, 6)..strokeCap = StrokeCap.round,
       );
       if (h.mediaMesh) {
         _rings(
@@ -583,17 +607,17 @@ class _LiveTrafficPainter extends CustomPainter {
           b,
           h.ringCap,
           1,
-          _stroke(mediaMeshColor, f.opacity, _ringWeight),
+          _stroke(mediaMeshColor, fo, _ringWeight),
         );
         if (h.hopNo > 0) {
-          _hopBadge(canvas, (a + b) / 2, h.hopNo, math.min(1, f.opacity / 0.8));
+          _hopBadge(canvas, (a + b) / 2, h.hopNo, math.min(1, f.opacity / 0.8) * h.alpha);
         }
       } else {
         _line(
           canvas,
           a,
           b,
-          _stroke(h.color, f.opacity, h.dashed ? 1.5 : 2)
+          _stroke(h.color, fo, h.dashed ? 1.5 : 2)
             ..strokeCap = StrokeCap.round,
           dash: h.dashed ? 4 : 0,
           gap: 6,
@@ -622,10 +646,10 @@ class _LiveTrafficPainter extends CustomPainter {
       canvas.drawCircle(
         at,
         p.r,
-        _stroke(p.color, p.op, math.max(0.3, 3 - p.r * 0.04)),
+        _stroke(p.color, p.op * p.alpha, math.max(0.3, 3 - p.r * 0.04)),
       );
       if (p.hlOp > 0) {
-        canvas.drawCircle(at, p.hlR, _stroke(p.color, p.hlOp, p.hlWeight));
+        canvas.drawCircle(at, p.hlR, _stroke(p.color, p.hlOp * p.alpha, p.hlWeight));
       }
     }
 

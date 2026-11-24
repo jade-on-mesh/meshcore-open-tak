@@ -5,16 +5,16 @@ import 'package:meshcore_open/widgets/analyzer_node_marker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  test('contact types map to the analyzer roles and colours', () {
+  test('contact types map to the Cascadia analyzer roles and colours', () {
     expect(analyzerRoleFor(advTypeRepeater), AnalyzerRole.repeater);
     expect(analyzerRoleFor(advTypeChat), AnalyzerRole.companion);
     expect(analyzerRoleFor(advTypeRoom), AnalyzerRole.room);
     expect(analyzerRoleFor(advTypeSensor), AnalyzerRole.sensor);
     expect(analyzerRoleFor(9), AnalyzerRole.unknown);
-    expect(analyzerRoleColor(AnalyzerRole.repeater), const Color(0xFFD55E00));
-    expect(analyzerRoleColor(AnalyzerRole.companion), const Color(0xFF56B4E9));
-    expect(analyzerRoleColor(AnalyzerRole.room), const Color(0xFF009E73));
-    expect(analyzerRoleColor(AnalyzerRole.sensor), const Color(0xFFF0E442));
+    expect(analyzerRoleColor(AnalyzerRole.repeater), const Color(0xFF0080C0));
+    expect(analyzerRoleColor(AnalyzerRole.companion), const Color(0xFF9F0000));
+    expect(analyzerRoleColor(AnalyzerRole.room), const Color(0xFF16A34A));
+    expect(analyzerRoleColor(AnalyzerRole.sensor), const Color(0xFFD97706));
   });
 
   test('sizes follow live.js: 18/14 at zoom 14, even, at least 10', () {

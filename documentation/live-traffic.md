@@ -63,6 +63,10 @@ A companion on Keymind Cascade firmware hears radio2 too, and marks each packet 
 
 Lines to and from inferred hops stay grey and dashed, as in the analyzer. Other companion firmware sends no marker, so everything it hears is drawn as the main mesh.
 
+### The map's MediaMesh filter
+
+With the filter sheet's **MediaMesh** switch on, only radio2 traffic runs. If the Repeaters and Companions switches are both on too, main-mesh traffic still runs, at 15 %. See [Map & Location](map-and-location.md#filter-dialog-fab).
+
 ### Traces
 
 A trace runs up to the first repeater it hasn't reached yet. The rest of its route shows as faint dashes in the trace colour for 10 seconds, with a faint dot on any inferred repeater there.
