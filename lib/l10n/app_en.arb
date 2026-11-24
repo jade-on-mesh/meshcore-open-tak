@@ -22,6 +22,8 @@
   "alertWords_useGlobal": "Also use my global alert words",
   "alertWords_useGlobalSubtitle": "From App Settings: {words}",
   "@alertWords_useGlobalSubtitle": {"placeholders": {"words": {"type": "String"}}},
+  "analyzerMarkers_title": "Analyzer-style markers",
+  "analyzerMarkers_subtitle": "Draw repeaters, companions, rooms and sensors with the analyzer's shapes and colours",
   "alertWords_useGlobalNone": "None set in App Settings yet",
   "alertWords_globalTitle": "Alert words in all channels",
   "alertWords_globalHint": "Count like an @mention in every channel, on top of each channel's own words. A channel can opt out in its Alert words sheet (channel menu).",

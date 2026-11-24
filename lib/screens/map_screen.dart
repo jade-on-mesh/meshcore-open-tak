@@ -54,6 +54,7 @@ import '../widgets/set_my_location_dialog.dart';
 import '../helpers/guessed_location_estimator.dart';
 import '../helpers/marker_message.dart';
 import '../services/live_traffic.dart';
+import '../widgets/analyzer_node_marker.dart';
 import '../widgets/live_traffic_layer.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../helpers/utf8_length_limiter.dart';
@@ -334,6 +335,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _dropHold?.cancel();
     _online.removeListener(_onOnlineChanged);
     MediaMeshRepeaters.instance.removeListener(_onMediaMeshChanged);
+    AnalyzerMarkerSettings.instance.removeListener(_onMediaMeshChanged);
     _online.dispose();
     _scheduleCameraSave();
     _flushCameraSave();
@@ -460,6 +462,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _loadRemovedMarkers();
     _online.addListener(_onOnlineChanged);
     MediaMeshRepeaters.instance.addListener(_onMediaMeshChanged);
+    AnalyzerMarkerSettings.instance.addListener(_onMediaMeshChanged);
     _ageTimer = Timer.periodic(const Duration(seconds: 60), (_) {
       if (mounted) setState(() {});
     });
@@ -1434,6 +1437,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       showSensors: settings.mapShowSensors,
       isBuildingPathTrace: _isBuildingPathTrace,
       clusterNodes: settings.mapClusterNodes,
+      analyzerMarkers: AnalyzerMarkerSettings.instance.enabled,
       // Node labels bake in the overlay colors, so a light/dark or theme
       // switch must rebuild them.
       colorScheme: Theme.of(context).colorScheme,
@@ -1893,7 +1897,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final online = age == _NodeAge.online;
     final batteryLow = _isBatteryLow(contact);
     final mediaMesh = _isMediaMesh(contact);
-    final size = selected ? 46.0 : (dot ? 22.0 : 40.0);
+    // Analyzer style (CoreScope's shapes, colours and zoom sizing): the box
+    // keeps a finger-sized tap area round the small shape.
+    final analyzer = AnalyzerMarkerSettings.instance.enabled;
+    final role = analyzerRoleFor(contact.type);
+    final analyzerSize = analyzerMarkerSize(role, _zoom) * (selected ? 1.4 : 1);
+    final size = analyzer
+        ? max(analyzerSize + 20, 36.0)
+        : (selected ? 46.0 : (dot ? 22.0 : 40.0));
     return Marker(
       point: LatLng(contact.latitude!, contact.longitude!),
       width: size,
@@ -1919,7 +1930,24 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
               ? _addToPath(context, contact)
               : _selectNode(contact),
           child: Center(
-            child: dot && !selected
+            child: analyzer
+                ? SizedBox.expand(
+                    child: AnalyzerNodeMarker(
+                      role: role,
+                      size: analyzerSize,
+                      mediaMesh: !mediaMesh
+                          ? AnalyzerMediaMesh.none
+                          : (MediaMeshRepeaters.instance
+                                        .infoFor(contact.publicKeyHex)
+                                        ?.sends ??
+                                    false)
+                          ? AnalyzerMediaMesh.sends
+                          : AnalyzerMediaMesh.listens,
+                      stale: stale,
+                      selected: selected,
+                    ),
+                  )
+                : dot && !selected
                 ? Container(
                     width: 15,
                     height: 15,
@@ -2292,13 +2320,25 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     String label,
     Color color, {
     ThemeIconSlot? slot,
+    AnalyzerRole? analyzerRole,
+    AnalyzerMediaMesh analyzerMediaMesh = AnalyzerMediaMesh.none,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1.5),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (slot != null)
+          if (analyzerRole != null)
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: AnalyzerNodeMarker(
+                role: analyzerRole,
+                size: analyzerMediaMesh == AnalyzerMediaMesh.none ? 14 : 10,
+                mediaMesh: analyzerMediaMesh,
+              ),
+            )
+          else if (slot != null)
             ThemedIcon(slot, size: 18, color: color)
           else
             Icon(icon, size: 18, color: color),
@@ -2725,6 +2765,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     required int pinCount,
     required int guessedCount,
   }) {
+    final analyzer = AnalyzerMarkerSettings.instance.enabled;
     return Container(
       margin: const EdgeInsets.only(top: 6),
       width: 250,
@@ -2764,29 +2805,35 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             context.l10n.map_chat,
             MeshMapTheme.of(context).accent,
             slot: ThemeIconSlot.mapChat,
+            analyzerRole: analyzer ? AnalyzerRole.companion : null,
           ),
           _buildLegendItem(
             Icons.router,
             context.l10n.map_repeater,
             MapPalette.repeater,
             slot: ThemeIconSlot.mapRepeater,
+            analyzerRole: analyzer ? AnalyzerRole.repeater : null,
           ),
           _buildLegendItem(
             Icons.perm_media,
             context.l10n.mmRepeater_legend,
             MapPalette.mediaMesh,
+            analyzerRole: analyzer ? AnalyzerRole.repeater : null,
+            analyzerMediaMesh: AnalyzerMediaMesh.sends,
           ),
           _buildLegendItem(
             Icons.meeting_room,
             context.l10n.map_room,
             MapPalette.router,
             slot: ThemeIconSlot.mapRoom,
+            analyzerRole: analyzer ? AnalyzerRole.room : null,
           ),
           _buildLegendItem(
             Icons.sensors,
             context.l10n.map_sensor,
             MapPalette.sensor,
             slot: ThemeIconSlot.mapSensor,
+            analyzerRole: analyzer ? AnalyzerRole.sensor : null,
           ),
           _buildLegendItem(
             Icons.flag,
@@ -4104,6 +4151,20 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           ),
                         SectionHeader(sheetContext.l10n.map_markers),
                         SwitchListTile(
+                          title: Text(sheetContext.l10n.analyzerMarkers_title),
+                          subtitle: Text(
+                            sheetContext.l10n.analyzerMarkers_subtitle,
+                          ),
+                          value: AnalyzerMarkerSettings.instance.enabled,
+                          dense: true,
+                          onChanged: (value) async {
+                            await AnalyzerMarkerSettings.instance.setEnabled(
+                              value,
+                            );
+                            setSheetState(() {});
+                          },
+                        ),
+                        SwitchListTile(
                           title: Text(sheetContext.l10n.map_showSharedMarkers),
                           value: settings.mapShowMarkers,
                           dense: true,
@@ -4717,6 +4778,7 @@ class _NodeMarkersCacheKey {
   final bool showSensors;
   final bool isBuildingPathTrace;
   final bool clusterNodes;
+  final bool analyzerMarkers;
   final ColorScheme colorScheme;
 
   const _NodeMarkersCacheKey({
@@ -4740,6 +4802,7 @@ class _NodeMarkersCacheKey {
     required this.showSensors,
     required this.isBuildingPathTrace,
     required this.clusterNodes,
+    required this.analyzerMarkers,
     required this.colorScheme,
   });
 
@@ -4766,6 +4829,7 @@ class _NodeMarkersCacheKey {
         showSensors == other.showSensors &&
         isBuildingPathTrace == other.isBuildingPathTrace &&
         clusterNodes == other.clusterNodes &&
+        analyzerMarkers == other.analyzerMarkers &&
         colorScheme == other.colorScheme;
   }
 
@@ -4791,6 +4855,7 @@ class _NodeMarkersCacheKey {
     showSensors,
     isBuildingPathTrace,
     clusterNodes,
+    analyzerMarkers,
     colorScheme,
   ]);
 }

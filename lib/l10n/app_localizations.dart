@@ -241,6 +241,18 @@ abstract class AppLocalizations {
   /// **'From App Settings: {words}'**
   String alertWords_useGlobalSubtitle(String words);
 
+  /// No description provided for @analyzerMarkers_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Analyzer-style markers'**
+  String get analyzerMarkers_title;
+
+  /// No description provided for @analyzerMarkers_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw repeaters, companions, rooms and sensors with the analyzer\'s shapes and colours'**
+  String get analyzerMarkers_subtitle;
+
   /// No description provided for @alertWords_useGlobalNone.
   ///
   /// In en, this message translates to:

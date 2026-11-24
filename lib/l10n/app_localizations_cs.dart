@@ -74,6 +74,12 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
+  String get analyzerMarkers_title => 'Analyzer-style markers';
+
+  @override
+  String get analyzerMarkers_subtitle => 'Draw repeaters, companions, rooms and sensors with the analyzer\'s shapes and colours';
+
+  @override
   String get alertWords_useGlobalNone => 'None set in App Settings yet';
 
   @override
