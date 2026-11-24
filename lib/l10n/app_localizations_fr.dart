@@ -7643,6 +7643,21 @@ class AppLocalizationsFr extends AppLocalizations {
       'Caméra non prise en charge sur cet appareil.';
 
   @override
+  String get qr_noWebcam => 'No webcam found. Connect one, or scan a picture of the code.';
+
+  @override
+  String get qr_switchWebcam => 'Switch camera';
+
+  @override
+  String get qr_scanPicture => 'Scan a picture';
+
+  @override
+  String get qr_noCodeInPicture => 'No QR code found in that picture';
+
+  @override
+  String get qr_pictureOnly => 'Camera scanning isn\'t available on this computer. Open a picture or screenshot of the code instead.';
+
+  @override
   String qr_cameraStartFailed(String details) {
     return 'Échec du démarrage de la caméra.\n$details';
   }
