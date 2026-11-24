@@ -75,7 +75,11 @@ Testing with the Desktop Head Unit (DHU): enable Android Auto developer mode (ta
 
 ### Notification Tap Behavior
 
-Tapping a notification currently re-launches the app at the root route. It does **not** navigate directly to the relevant chat or channel.
+Tapping a message notification opens its conversation (`NotificationNavigator`, `lib/services/notification_navigator.dart`):
+
+- **Channel notification**: opens the channel scrolled to the message the notification shows (the newest one when several are grouped), highlighted for 2 seconds. If that channel is already open, it just scrolls there. Older pages load as needed; if the message can't be found (deleted, or hidden by the message filter), a snackbar says so and the channel opens at the bottom. The payload is `channel:<index>/<messageId>`; replies and mark-read read only the index.
+- **Direct message notification**: opens the chat, as before.
+- **App not running**: the tap that launches the app is read at startup (`getNotificationAppLaunchDetails`) and waits up to 2 minutes for the radio's contacts and channels (live or the saved copy) before it is dropped.
 
 ## In-App Unread Badges
 

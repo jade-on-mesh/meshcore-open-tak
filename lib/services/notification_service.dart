@@ -197,6 +197,19 @@ class NotificationService {
     } catch (e) {
       debugPrint('Error initializing notifications: $e');
     }
+    // A tap that launched the app (it wasn't running) arrives here rather
+    // than through onDidReceiveNotificationResponse.
+    if (_isInitialized) {
+      try {
+        final launch = await _notifications.getNotificationAppLaunchDetails();
+        final response = launch?.notificationResponse;
+        if (launch?.didNotificationLaunchApp == true && response != null) {
+          _onNotificationTapped(response);
+        }
+      } catch (e) {
+        debugPrint('No notification launch details: $e');
+      }
+    }
   }
 
   void _registerReplyPort() {
@@ -496,6 +509,7 @@ class NotificationService {
             ),
           )
           ..title = title
+          ..payload = payload
           ..badgeCount = badgeCount
           ..imagePath = imagePath;
     for (final prior in history) {
@@ -768,7 +782,8 @@ class NotificationService {
     }
   }
 
-  /// Payload (`message:<key>` or `channel:<index>`) of the last tapped
+  /// Payload (`message:<key>`, or `channel:<index>` with an optional
+  /// `/<messageId>`, see [channelNotificationPayload]) of the last tapped
   /// conversation notification, until [NotificationNavigator] consumes it.
   final ValueNotifier<String?> pendingTap = ValueNotifier<String?>(null);
 
@@ -1018,6 +1033,7 @@ class NotificationService {
     required String message,
     required bool urlImagesEnabled,
     int? channelIndex,
+    String? messageId,
     int? badgeCount,
   }) async {
     if (_suppressNotifications) return;
@@ -1030,6 +1046,7 @@ class NotificationService {
         senderName: senderName,
         urlImagesEnabled: urlImagesEnabled,
         id: channelIndex?.toString(),
+        messageId: messageId,
         badgeCount: badgeCount,
       ),
     );
@@ -1169,7 +1186,10 @@ class NotificationService {
             id:
                 channelIndex?.hashCode ??
                 DateTime.now().millisecondsSinceEpoch & 0x7FFFFFFF,
-            payload: 'channel:$channelIndex',
+            payload: channelNotificationPayload(
+              channelIndex,
+              notification.messageId,
+            ),
             title: notification.title,
             isChannel: true,
             message: notification.body,
@@ -1233,6 +1253,9 @@ class _PendingNotification {
   final String? senderName;
   final bool urlImagesEnabled;
   final String? id;
+
+  /// The channel message this is about, so a tap can scroll to it.
+  final String? messageId;
   final int? badgeCount;
 
   _PendingNotification({
@@ -1242,6 +1265,7 @@ class _PendingNotification {
     this.senderName,
     this.urlImagesEnabled = false,
     this.id,
+    this.messageId,
     this.badgeCount,
   });
 }
@@ -1250,7 +1274,9 @@ class _Conversation {
   String title;
   int? badgeCount;
   String? imagePath;
-  final String payload;
+
+  /// Updated with each message, so a tap opens the newest one.
+  String payload;
   final bool isChannel;
   final List<Message> messages = [];
 

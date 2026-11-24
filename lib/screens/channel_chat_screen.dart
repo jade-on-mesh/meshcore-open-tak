@@ -46,6 +46,7 @@ import '../services/media_lockdown.dart';
 import '../services/media_mesh.dart';
 import '../services/message_filter/message_filter_service.dart';
 import '../services/message_filter/message_filter_text.dart';
+import '../services/notification_navigator.dart';
 import '../services/otp_service.dart';
 import '../services/received_image_store.dart';
 import '../services/translation_service.dart';
@@ -120,10 +121,14 @@ class ChannelChatScreen extends StatefulWidget {
   final Channel channel;
   final int initialUnreadCount;
 
+  /// Opens scrolled to this message, highlighted (a tapped notification).
+  final String? initialMessageId;
+
   const ChannelChatScreen({
     super.key,
     required this.channel,
     this.initialUnreadCount = 0,
+    this.initialMessageId,
   });
 
   @override
@@ -217,6 +222,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     _textFieldFocusNode.addListener(_onTextFieldFocusChange);
     _scrollController.onScrollNearTop = _loadOlderMessages;
     _scrollController.showJumpToBottom.addListener(_clearDividerAtBottom);
+    NotificationNavigator.channelJump.addListener(_onNotificationJump);
     _participantStripPruneTimer = Timer.periodic(const Duration(seconds: 30), (
       _,
     ) {
@@ -243,7 +249,14 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       });
       _connector = connector;
       if (_route?.isCurrent ?? true) _registerActive();
-      if (anchor != null && settings.jumpToOldestUnread) {
+      final notified = widget.initialMessageId;
+      if (notified != null) {
+        // Opened from a notification: go to the message it showed.
+        _channelSkipNextBottomSnap = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) unawaited(_jumpToMessage(notified));
+        });
+      } else if (anchor != null && settings.jumpToOldestUnread) {
         _channelSkipNextBottomSnap = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
@@ -406,6 +419,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     _watchedImageStore?.removeListener(_onImageStoreChanged);
     _unregisterActive();
     _scrollController.showJumpToBottom.removeListener(_clearDividerAtBottom);
+    NotificationNavigator.channelJump.removeListener(_onNotificationJump);
     _textFieldFocusNode.removeListener(_onTextFieldFocusChange);
     _textFieldFocusNode.dispose();
     _textController.dispose();
@@ -689,11 +703,25 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   String? _highlightedMessageId;
   Timer? _highlightTimer;
 
-  /// Closes search and scrolls the transcript to [messageId], loading older
-  /// pages first when the message is further back than what is loaded.
+  /// Closes search and scrolls the transcript to [messageId].
   Future<void> _jumpToSearchResult(String messageId) async {
     FocusScope.of(context).unfocus();
     _closeSearch();
+    await _jumpToMessage(messageId);
+  }
+
+  /// A notification for this channel was tapped while it is open.
+  void _onNotificationJump() {
+    final jump = NotificationNavigator.channelJump.value;
+    if (jump == null || jump.index != widget.channel.index) return;
+    NotificationNavigator.channelJump.value = null;
+    if (_searching) _closeSearch();
+    unawaited(_jumpToMessage(jump.messageId));
+  }
+
+  /// Scrolls the transcript to [messageId] and highlights it briefly,
+  /// loading older pages first when it is further back than what is loaded.
+  Future<void> _jumpToMessage(String messageId) async {
     final connector = context.read<MeshCoreConnector>();
     bool loaded() => connector
         .getChannelMessages(widget.channel)
