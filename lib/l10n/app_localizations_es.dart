@@ -74,6 +74,12 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get analyzerMarkers_title => 'Analyzer-style markers';
+
+  @override
+  String get analyzerMarkers_subtitle => 'Draw repeaters, companions, rooms and sensors with the analyzer\'s shapes and colours';
+
+  @override
   String get alertWords_useGlobalNone => 'None set in App Settings yet';
 
   @override
@@ -5881,6 +5887,97 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get listFilter_users => 'Usuarios';
+
+  @override
+  String get liveTraffic_title => 'Live traffic';
+
+  @override
+  String get liveTraffic_subtitle =>
+      'Show packets your radio hears moving along the repeaters they came through';
+
+  @override
+  String get liveTraffic_show => 'Show live traffic';
+
+  @override
+  String get liveTraffic_hide => 'Hide live traffic';
+
+  @override
+  String get liveTraffic_onHint =>
+      'Live traffic on: packets your radio hears run along their path, coloured by type.';
+
+  @override
+  String get liveTraffic_colours => 'Colours';
+
+  @override
+  String get liveTraffic_coloursSubtitle =>
+      'What each live traffic colour means';
+
+  @override
+  String get liveTraffic_legendTitle => 'Live traffic colours';
+
+  @override
+  String get liveTraffic_legendHint =>
+      'Each packet your radio hears runs from repeater to repeater toward you, and each point it passes pulses. Repeaters with no location on the map are left out.';
+
+  @override
+  String get liveTraffic_legendUnreached =>
+      'Faint dashes: the rest of a trace\'s route, not reached yet';
+
+  @override
+  String get liveTraffic_legendRings =>
+      'Hollow rings: carried on MediaMesh (radio2)';
+
+  @override
+  String get liveTraffic_legendSonar =>
+      'Ripples with a dB label: a trace on MediaMesh, at each repeater it reached';
+
+  @override
+  String liveTraffic_sonarLabel(String snr) {
+    return '$snr dB on radio2';
+  }
+
+  @override
+  String get liveTraffic_legendGhost =>
+      'Grey dashes and dot: a repeater with no location, placed between known ones';
+
+  @override
+  String get liveTraffic_typeAdvert => 'Advert';
+
+  @override
+  String get liveTraffic_typeChannel => 'Channel message';
+
+  @override
+  String get liveTraffic_typeDirect => 'Direct message';
+
+  @override
+  String get liveTraffic_typeAck => 'Acknowledgement';
+
+  @override
+  String get liveTraffic_typeRequest => 'Request';
+
+  @override
+  String get liveTraffic_typeResponse => 'Response';
+
+  @override
+  String get liveTraffic_typeTrace => 'Trace';
+
+  @override
+  String get liveTraffic_typePath => 'Path';
+
+  @override
+  String get liveTraffic_typeAnonRequest => 'Anonymous request';
+
+  @override
+  String get liveTraffic_typeGroupData => 'Group data (photos, voice)';
+
+  @override
+  String get liveTraffic_typeMultipart => 'Multipart';
+
+  @override
+  String get liveTraffic_typeControl => 'Control';
+
+  @override
+  String get liveTraffic_typeRawCustom => 'Raw custom';
 
   @override
   String get listFilter_repeaters => 'Repetidores';

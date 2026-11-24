@@ -7,6 +7,9 @@ import 'package:provider/provider.dart';
 import '../connector/meshcore_connector.dart';
 import '../l10n/l10n.dart';
 import '../models/app_settings.dart';
+import '../services/live_traffic.dart';
+import '../widgets/analyzer_node_marker.dart';
+import '../widgets/live_traffic_layer.dart';
 import '../services/app_settings_service.dart';
 import '../services/background_service.dart';
 import '../team/map_highlights.dart';
@@ -861,6 +864,37 @@ class AppSettingsScreen extends StatelessWidget {
           subtitle: Text(context.l10n.appSettings_showOnlineLinksSubtitle),
           value: settings.mapShowOnlineLinks,
           onChanged: (value) => settingsService.setMapShowOnlineLinks(value),
+        ),
+        const Divider(height: 1, indent: 16),
+        ListenableBuilder(
+          listenable: LiveTrafficSettings.instance,
+          builder: (context, _) => SwitchListTile(
+            contentPadding: tilePadding,
+            secondary: const Icon(Icons.podcasts, size: 24),
+            title: Text(context.l10n.liveTraffic_title),
+            subtitle: Text(context.l10n.liveTraffic_subtitle),
+            value: LiveTrafficSettings.instance.enabled,
+            onChanged: LiveTrafficSettings.instance.setEnabled,
+          ),
+        ),
+        const Divider(height: 1, indent: 16),
+        ListenableBuilder(
+          listenable: AnalyzerMarkerSettings.instance,
+          builder: (context, _) => SwitchListTile(
+            contentPadding: tilePadding,
+            secondary: const Icon(Icons.category_outlined, size: 24),
+            title: Text(context.l10n.analyzerMarkers_title),
+            subtitle: Text(context.l10n.analyzerMarkers_subtitle),
+            value: AnalyzerMarkerSettings.instance.enabled,
+            onChanged: AnalyzerMarkerSettings.instance.setEnabled,
+          ),
+        ),
+        const Divider(height: 1, indent: 16),
+        MeshNavTile(
+          icon: Icons.palette_outlined,
+          title: context.l10n.liveTraffic_colours,
+          subtitle: context.l10n.liveTraffic_coloursSubtitle,
+          onTap: () => showLiveTrafficLegend(context),
         ),
         const Divider(height: 1, indent: 16),
         MeshNavTile(

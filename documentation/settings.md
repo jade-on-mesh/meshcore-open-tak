@@ -180,6 +180,8 @@ If both direct and flood attempts are 0, the message is still sent once on the c
 - **Show Repeaters**: Toggle repeater markers on map
 - **Show Chat Nodes**: Toggle chat node markers
 - **Show Other Nodes**: Toggle room/sensor markers
+- **Live traffic**: Packets the radio hears run across the map (the same switch as the map's live traffic button); **Colours** shows what each colour means. See [Live traffic](live-traffic.md)
+- **Analyzer-style markers**: Repeaters, companions, rooms and sensors drawn with the analyzer's shapes and colours (the same switch as in the map's filter sheet). See [Map & Location](map-and-location.md#analyzer-style-markers)
 - **Time Filter**: All time / Last 1h / Last 6h / Last 24h / Last week
 - **Units**: Metric / Imperial
 - **Raster Tile Source**: Sets the MAP theme and with that from where to get the map tile data:

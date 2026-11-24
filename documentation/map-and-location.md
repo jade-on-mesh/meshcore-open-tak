@@ -131,6 +131,22 @@ Additional filters:
 
 Every filter is remembered, including **MediaMesh** (only repeaters known to run MediaMesh) and the freshness chips (All / Online / Recent / Stale): leaving the map or restarting the app doesn't reset them.
 
+### Analyzer-Style Markers
+A switch in the filter sheet (under Markers) and in App Settings > Map display. When on, nodes are drawn the way the CoreScope analyzer draws them, instead of the app's icon pins:
+
+| Node | Shape | Colour |
+|---|---|---|
+| Repeater | Circle (18 px at zoom 14) | `#D55E00` vermillion |
+| Companion (chat node) | Square (14 px) | `#56B4E9` sky blue |
+| Room server | Hexagon (14 px) | `#009E73` bluish green |
+| Sensor | Triangle (14 px) | `#F0E442` yellow |
+| Anything else | Circle | `#6B7280` grey |
+
+Each has a 2 px white outline and scales with zoom like the analyzer: size × (zoom − 8) / 6, at least 0.4×, never under 10 px. A repeater known to run MediaMesh gets a fuchsia ring and a small badge at its top-right, filled when it sends on radio2 and hollow when it only listens. Stale nodes are drawn at 35 %. The picked node gets a ring in the theme colour. Each marker keeps a finger-sized tap area, and the legend card shows the shapes while the switch is on. Off by default; remembered on this phone.
+
+### Live Traffic Button (above the filter button)
+Shows every packet the companion hears running along the repeaters it came through, in CoreScope's colours. Also in App Settings > Map display. See [Live traffic](live-traffic.md).
+
 ### Legend Card (Top-Right)
 Shows node count and pin count. Tappable to expand a legend of all marker types.
 
