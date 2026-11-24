@@ -12,9 +12,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:meshcore_open/connector/meshcore_connector.dart';
 import 'package:meshcore_open/connector/meshcore_protocol.dart';
+import 'package:meshcore_open/games/chess/chess_game.dart';
+import 'package:meshcore_open/games/chess/chess_link.dart';
+import 'package:meshcore_open/games/chess/chess_packets.dart';
+import 'package:meshcore_open/games/chess/chess_service.dart';
+import 'package:meshcore_open/games/chess/ui/chess_game_screen.dart';
+import 'package:meshcore_open/games/chess/ui/chess_games_sheet.dart';
+import 'package:meshcore_open/games/hash_chain.dart';
 import 'package:meshcore_open/l10n/app_localizations.dart';
 import 'package:meshcore_open/models/contact.dart';
 import 'package:meshcore_open/review_mode/review_radio.dart';
+import 'package:meshcore_open/screens/add_contact_screen.dart';
 import 'package:meshcore_open/screens/app_debug_log_screen.dart';
 import 'package:meshcore_open/screens/app_settings_screen.dart';
 import 'package:meshcore_open/screens/ble_debug_log_screen.dart';
@@ -25,6 +33,7 @@ import 'package:meshcore_open/screens/chat_screen.dart';
 import 'package:meshcore_open/screens/chrome_required_screen.dart';
 import 'package:meshcore_open/screens/companion_radio_stats_screen.dart';
 import 'package:meshcore_open/screens/contacts_screen.dart';
+import 'package:meshcore_open/screens/coordinate_map_screen.dart';
 import 'package:meshcore_open/screens/discovery_screen.dart';
 import 'package:meshcore_open/screens/line_of_sight_map_screen.dart';
 import 'package:meshcore_open/screens/map_cache_screen.dart';
@@ -88,9 +97,14 @@ Future<_Env> _connect(WidgetTester tester) async {
   final translation = TranslationService(settings);
   // The fork's services the chat and map screens read (see main.dart).
   final voice = VoxVoiceService(connector);
+  final chess = ChessService(
+    link: ConnectorChessLink(connector, settings: settings),
+    startHousekeeping: false,
+  );
   // The connector first: the offline variants swap out providers[0].
   final env = _Env(connector, [
     ChangeNotifierProvider.value(value: connector),
+    ChangeNotifierProvider.value(value: chess),
     ChangeNotifierProvider<VoxVoiceService>.value(value: voice),
     ChangeNotifierProvider<WalkieService>.value(
       value: WalkieService(connector, voice),
@@ -149,7 +163,58 @@ Future<_Env> _connect(WidgetTester tester) async {
       await Future<void>.delayed(const Duration(milliseconds: 25));
     }
   });
+  _seedChessGames(chess, connector.channels.first.storageId!);
   return env;
+}
+
+const _chessGameId = 77;
+
+/// A game in progress (long names, a few moves) and an open invite.
+void _seedChessGames(ChessService chess, String channelId) {
+  void feed(ChessPacket p) =>
+      chess.handleIncoming(ChessIncoming(channelId, p.encode()));
+  final white = HashChain(Uint8List(16));
+  final black = HashChain(Uint8List(16)..[0] = 1);
+  feed(
+    ChessInfoPacket(
+      gameId: _chessGameId,
+      ply: 0,
+      startedAtUnix: 1700000000,
+      deadline: ChessDeadline.hour1,
+      whiteCommitment: white.commitment,
+      blackCommitment: black.commitment,
+      inviterValue: white.valueAt(1),
+      whiteName: 'Alexandra the Long-Named',
+      blackName: 'Bartholomew Repeater Fan',
+    ),
+  );
+  final game = chess.game(channelId, _chessGameId)!;
+  for (final (i, uci) in ['e2e4', 'e7e5', 'g1f3'].indexed) {
+    final probe = ChessGame.fromJson(game.toJson())!;
+    final index = probe.legalUci().indexOf(uci);
+    probe.applyUci(uci);
+    feed(
+      ChessMovePacket(
+        gameId: _chessGameId,
+        ply: i + 1,
+        moveIndex: index,
+        // White invited, so its value 1 belongs to the game info.
+        chainValue: i.isEven
+            ? white.valueAt(i ~/ 2 + 2)
+            : black.valueAt(i ~/ 2 + 1),
+        position: probe.packedPosition(),
+      ),
+    );
+  }
+  feed(
+    ChessInvitePacket(
+      gameId: 78,
+      deadline: ChessDeadline.day1,
+      colour: ChessColourPreference.random,
+      commitment: HashChain(Uint8List(16)..[0] = 2).commitment,
+      inviterName: 'Cornelius Openinvite',
+    ),
+  );
 }
 
 Contact _contactOfType(MeshCoreConnector c, int type) => c.contacts.firstWhere(
@@ -174,10 +239,18 @@ _interactions = {
           .first,
     );
   },
-  'Contacts add sheet': (t, _) async {
+  'Contacts add page': (t, _) async {
     await t.tap(find.byType(FloatingActionButton));
   },
   // Four routing modes (Auto, Flood, Direct, Manual) share one row.
+  'Chess games sheet': (t, c) async {
+    unawaited(
+      showChessGamesSheet(
+        t.element(find.byType(ChannelChatScreen)),
+        c.channels.first,
+      ),
+    );
+  },
   'Routing sheet': (t, c) async {
     unawaited(
       ContactRoutingSheet.show(
@@ -190,7 +263,8 @@ _interactions = {
 
 final Map<String, _ScreenBuilder> _screens = {
   'Contacts options sheet': (_) => const ContactsScreen(),
-  'Contacts add sheet': (_) => const ContactsScreen(),
+  'Contacts add page': (_) => const ContactsScreen(),
+  'AddContact': (_) => const AddContactScreen(),
   'Routing sheet': (c) => ChatScreen(contact: _contactOfType(c, advTypeChat)),
   'Scanner': (_) => const ScannerScreen(),
   'Tcp': (_) => const TcpScreen(),
@@ -210,6 +284,11 @@ final Map<String, _ScreenBuilder> _screens = {
   'Map': (_) => const MapScreen(),
   'Chat': (c) => ChatScreen(contact: _contactOfType(c, advTypeChat)),
   'ChannelChat': (c) => ChannelChatScreen(channel: c.channels.first),
+  'Chess games sheet': (c) => ChannelChatScreen(channel: c.channels.first),
+  'ChessGame': (c) => ChessGameScreen(
+    channelId: c.channels.first.storageId!,
+    gameId: _chessGameId,
+  ),
   'ChannelMessagePath': (c) {
     final msgs = c.getChannelMessages(c.channels.first);
     return ChannelMessagePathScreen(message: msgs.last);
@@ -250,6 +329,11 @@ final Map<String, _ScreenBuilder> _screens = {
       LineOfSightEndpoint(label: 'A', point: LatLng(45.5, -122.6)),
       LineOfSightEndpoint(label: 'B', point: LatLng(45.6, -122.7)),
     ],
+  ),
+  'CoordinateMap': (_) => const CoordinateMapScreen(
+    latitude: 45.515232,
+    longitude: -122.678385,
+    label: '45.515232, -122.678385',
   ),
 };
 
@@ -296,6 +380,7 @@ void main() {
             'Map',
             'Chat',
             'ChannelChat',
+            'ChessGame',
             'Settings',
           }.contains(entry.key))
         (entry, true),

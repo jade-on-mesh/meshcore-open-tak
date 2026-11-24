@@ -146,15 +146,32 @@ Individual channels can be muted from the channel chat bell icon, the channel li
 
 ### Messaging
 - **Photos and voice on Public** (default off): Photos, voice messages and push-to-talk on Public and `#public`. Everyone on the mesh shares these channels, so they're off there: the photo, voice and walkie-talkie buttons are dimmed and explain why when tapped, with this switch. A red warning says to switch it on only in an emergency. See [MediaMesh](media-mesh.md#public-and-public)
-- **Clear Path on Max Retry**: Erases the stored routing path after all retries fail
 - **Jump to Oldest Unread**: When opening a chat, scrolls to the oldest unread message instead of the newest
 - **Open web links without asking** (default off): Tapping a link written out in full with `http://` or `https://` to an ordinary name opens it straight away, without the Open link dialog. A link that could hide where it goes still asks first: an address without `http://` (`example.com`), a `user@` part (`https://google.com@evil.example`), a look-alike name (punycode `xn--` or non-Latin letters), a name without a dot, and email or other kinds of link
-- **Auto-fetch Repeater Settings** (off by default): Requests every setting when a repeater's settings screen opens. Each setting is a separate request over LoRa, so this is slow and uses airtime; when off, use Refresh All or the per-setting refresh buttons. See [Repeater Settings](repeater-management.md#repeater-settings)
-- **Auto Route Rotation**: Lets the app choose each message's route from the routes that have worked for that contact (see [Auto route selection](routing-paths.md#auto-route-selection)). When enabled, it expands (hidden when off) to show:
-  - Max Message Retries (2–10, default 5)
-  - **Reset Routing Algorithm to Default**: Restores the routing settings to their factory defaults
 - **Enable Message Tracing**: Shows path trace overlays and extra metadata on messages
 - **Region next to hop count** (default off): Shows a channel message's region chip on the same line as its hop count instead of below it
+- **Repeaters under hop count** (default off): Lists the repeaters a channel message, voice clip or photo came through under its hop count
+- **Compression indicator** (default off): Shows an icon on direct and channel messages that were compressed with SMAZ
+
+### Routing
+What happens when a message is sent. Each slider shows its selected number in the title.
+
+- **Clear Path on Max Retry**: Erases the stored routing path after every send attempt fails
+- **Direct attempts** (0–15, default 4): How many times to try a known route. Available whether or not auto route rotation is on
+- **Flood attempts** (0–10, default 1): How many times to flood. Floods use more airtime. With rotation on, these run after the direct attempts. With it off, they apply only when the contact's path is already Flood
+- **Auto Route Rotation**: Lets the app choose each direct attempt's route from the routes that have worked for that contact (see [Auto route selection](routing-paths.md#auto-route-selection)). Off keeps the contact's current path for every attempt
+- **Reset routing settings to defaults**: Restores every control in this section (the toggles, the attempt limits, and the stored route-weight constants) to the factory defaults
+
+MeshCore Open TAK leaves out upstream's **Resend channel messages until they travel far enough**: Keymind Cascade repeaters make it unneeded, and its extra copies cost airtime. A channel message is sent once.
+
+If both direct and flood attempts are 0, the message is still sent once on the current path. A saved `max_message_retries` value from an older version becomes that many attempts minus one direct, plus one flood, which keeps the old "last attempt floods" behaviour for the previous default of 5 (4 direct + 1 flood).
+
+### Repeaters and Rooms
+- **Sync repeater clock on login** (off by default): After a successful repeater login, send `clock sync`. Off is the previous default: a repeater only synced when its own switch was on. Each repeater can override this with Default, On, or Off. Default follows this switch. A saved per-repeater on or off stays an override
+- **Focus the password field** (off by default): On keeps the previous login dialog: the cursor goes into an empty password field (room login still skips this on a phone). Off waits until you tap the field, so the keyboard does not cover the dialog
+- **Login attempts** (1–10, default 5): How many times to try logging in to a repeater or room server. Telemetry fetches are sent once and have no retry setting
+- **Auto-fetch Repeater Settings** (off by default): Requests every setting when a repeater's settings screen opens. Each setting is a separate request over LoRa, so this is slow and uses airtime; when off, use Refresh All or the per-setting refresh buttons. See [Repeater Settings](repeater-management.md#repeater-settings)
+- **Reset repeater and room settings to defaults**: Restores the controls in this section. Choices saved on individual repeaters are left alone
 
 ### Battery
 - **Battery Chemistry**: NMC / LiFePO4 / LiPo (per device, used to calibrate percentage from voltage)
@@ -172,16 +189,11 @@ Individual channels can be muted from the channel chat bell icon, the channel li
 - **Offline Map Cache**: Navigate to tile download screen
 
 ### Translation
-Not shown on web. Controls on-device message translation powered by a locally-downloaded ML model:
-- **Enable translation**: Enables message translation controls
+Not shown on web. Controls on-device message translation powered by a locally-downloaded ML model. Turn on **Enable translation** first; the translation options and model rows then appear:
 - **Auto-translate incoming messages**: Automatically translates incoming messages for chat/channel display and notifications
 - **Translate before sending**: Sets the default for **Translation options** in the composer's ⊕ menu (on means messages are translated before sending)
 - **Target language**: Language to translate into (searchable list; defaults to the app language)
-- **Downloaded model**: Dropdown to select among already-downloaded translation models
-- **Preset Hugging Face model**: Download a curated preset model with one tap
-- **Manual model URL**: Enter a URL to download a custom GGUF-format model; shows download progress and a cancel button
-
-The auto-translate and composer toggles are disabled until **Enable translation** is on.
+- **Models**: The same model rows used for the image codec. Each preset is one row with its name, size once known, and status (not downloaded, downloading with progress, ready, or couldn't download). The model in use is marked Active; tap another ready row to switch. Download, cancel, and remove are the row's action. A manual model URL under the list downloads a custom GGUF file into the same list.
 
 ### IPFS Provider Configuration
 
@@ -199,10 +211,10 @@ Save the settings before sharing. The upload action is shown in the chat compose
 
 ### Image Messages
 
-Image message controls live in App Settings → Messaging. Turn on **Enable image messages** first; **Process images automatically** and the image model download/cancel/removal controls then appear. Automatic processing reconstructs every image as it arrives and uses about 2 GB of memory for a second each time; leave it off to reconstruct with a tap. See [Image Messages](image-messages.md) for firmware, native-runtime, storage, and memory requirements.
+Image message controls live in App Settings → Messaging. Turn on **Enable image messages** first; **Process images automatically** and the image model row then appear. That row is the same model list used for translation: name, size, status (not downloaded, downloading with progress, ready, or couldn't download), and one action (download, cancel, or remove). A finished install is marked Active. Automatic processing reconstructs every image as it arrives and uses about 2 GB of memory for a second each time; leave it off to reconstruct with a tap. See [Image Messages](image-messages.md) for firmware, native-runtime, storage, and memory requirements.
 
 ### Cyrillic-to-Latin (Cyr2Lat)
-Controls character substitution profiles used to render Cyrillic text in Latin characters. A dropdown selects the active profile; Add, Edit, and Delete buttons manage the profile list (the last remaining profile cannot be deleted). Each profile stores a JSON character map.
+Controls character substitution profiles used to render Cyrillic text in Latin characters. A dropdown selects the active profile; Add, Edit, and Delete buttons manage the profile list (the last remaining profile cannot be deleted). Each profile stores a JSON character map. The active profile is the default; each chat can pick its own in its **Compression** strip (see [Compression](additional-features.md#compression-smaz-and-cyr2lat)).
 
 ### Debug
 - **App Debug Logging**: Enable the in-app debug log

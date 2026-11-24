@@ -8,10 +8,13 @@ import '../connector/meshcore_connector.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../l10n/l10n.dart';
 import '../screens/scanner_screen.dart';
+import '../screens/settings_screen.dart';
 import '../screens/usb_screen.dart';
 import '../storage/last_radio_store.dart';
+import '../theme/theme_icons.dart';
 import '../utils/dialog_utils.dart';
 import '../utils/platform_info.dart';
+import 'app_update_ui.dart';
 import 'mesh_ui.dart';
 
 /// Ways to get a radio connected: reconnect to the last one, pick another,
@@ -193,4 +196,40 @@ PopupMenuItem<T> connectionMenuItem<T>(
     child: MeshMenuItemRow(icon: Icons.link, label: l10n.common_connect),
     onTap: () => showConnectSheet(screenContext),
   );
+}
+
+/// Overflow-menu entry that opens [SettingsScreen].
+/// [screenContext] must outlive the menu, as onTap runs after it closes.
+PopupMenuItem<T> settingsMenuItem<T>(
+  BuildContext screenContext,
+  BuildContext menuContext,
+) {
+  return PopupMenuItem<T>(
+    child: MeshMenuItemRow(
+      // MeshCore Open TAK: a dot when an app update is waiting.
+      leading: const UpdateDot(
+        child: ThemedIcon(ThemeIconSlot.settings, size: 20),
+      ),
+      label: menuContext.l10n.settings_title,
+    ),
+    onTap: () => Navigator.push(
+      screenContext,
+      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+    ),
+  );
+}
+
+/// Trailing app-level section shared by the main views' overflow menus:
+/// an optional [PopupMenuDivider] (omitted when [hasPrecedingItems] is false)
+/// followed by [connectionMenuItem] and [settingsMenuItem].
+List<PopupMenuEntry<T>> mainOverflowTrailingItems<T>(
+  BuildContext screenContext,
+  BuildContext menuContext, {
+  bool hasPrecedingItems = true,
+}) {
+  return <PopupMenuEntry<T>>[
+    if (hasPrecedingItems) const PopupMenuDivider(),
+    connectionMenuItem<T>(screenContext, menuContext),
+    settingsMenuItem<T>(screenContext, menuContext),
+  ];
 }

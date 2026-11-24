@@ -684,6 +684,9 @@ class AppLocalizationsKo extends AppLocalizations {
       '발견된 연락처와 저장된 세부 정보';
 
   @override
+  String get backupRestore_bookmarks => '북마크';
+
+  @override
   String get backupRestore_channels => '채널';
 
   @override
@@ -706,9 +709,8 @@ class AppLocalizationsKo extends AppLocalizations {
   String get backupRestore_missingModelsTitle => '모델이 다운로드되지 않음';
 
   @override
-  String backupRestore_missingModelsMessage(String models) {
-    return '복원된 설정에서 선택한 모델이 이 기기에 없습니다:\n$models\n\n지금 다운로드할까요?';
-  }
+  String get backupRestore_missingModelsMessage =>
+      '복원된 설정에서 선택한 모델이 이 기기에 없습니다. 지금 다운로드할까요?';
 
   @override
   String get backupRestore_downloadModels => '모델 다운로드';
@@ -1503,6 +1505,13 @@ class AppLocalizationsKo extends AppLocalizations {
       '채널 메시지의 지역을 홉 수 아래가 아닌 같은 줄에 표시합니다.';
 
   @override
+  String get appSettings_showCompressionIndicator => '압축 표시';
+
+  @override
+  String get appSettings_showCompressionIndicatorSubtitle =>
+      'SMAZ로 압축된 메시지에 아이콘을 표시합니다.';
+
+  @override
   String get appSettings_notifications => '알림';
 
   @override
@@ -1683,10 +1692,10 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get appSettings_clearPathOnMaxRetrySubtitle =>
-      '전송 시도가 5번 실패하면 연락 경로를 재설정합니다.';
+      '모든 전송 시도가 실패하면 연락처의 저장된 경로를 재설정합니다';
 
   @override
-  String get appSettings_pathsWillBeCleared => '5번 실패하면 해당 경로를 지웁니다.';
+  String get appSettings_pathsWillBeCleared => '모든 전송 시도가 실패하면 경로를 지웁니다';
 
   @override
   String get appSettings_pathsWillNotBeCleared => '경로를 자동으로 지우지 않습니다.';
@@ -1696,7 +1705,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get appSettings_autoRouteRotationSubtitle =>
-      '최적 경로와 플러딩 모드 사이를 전환합니다.';
+      '직접 시도마다 다른 알려진 경로를 사용합니다. 이후 시도는 Flood입니다. 끄면 연락처의 현재 경로를 유지합니다.';
 
   @override
   String get appSettings_autoRouteRotationEnabled => '자동 경로 순환 기능 활성화';
@@ -1709,6 +1718,60 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get appSettings_maxMessageRetriesSubtitle => '메시지를 실패로 처리하기 전 시도 횟수';
+
+  @override
+  String appSettings_directRetries(int count) {
+    return '직접 시도: $count';
+  }
+
+  @override
+  String get appSettings_directRetriesSubtitle =>
+      '알려진 경로를 시도하는 횟수입니다. 자동 경로 순환을 꺼도 설정할 수 있습니다.';
+
+  @override
+  String appSettings_floodRetries(int count) {
+    return 'Flood 시도: $count';
+  }
+
+  @override
+  String get appSettings_floodRetriesSubtitle =>
+      'Flood를 사용하는 횟수입니다. Flood는 전파 시간을 더 씁니다. 순환이 켜져 있으면 직접 시도 다음에 실행됩니다.';
+
+  @override
+  String appSettings_loginAttempts(int count) {
+    return '로그인 시도: $count';
+  }
+
+  @override
+  String get appSettings_loginAttemptsSubtitle =>
+      '중계기나 룸 서버 로그인을 포기하기 전까지의 시도 횟수입니다.';
+
+  @override
+  String get appSettings_repeatersAndRooms => '리피터와 방';
+
+  @override
+  String get appSettings_clockSyncAfterLogin => '로그인 시 리피터 시계 동기화';
+
+  @override
+  String get appSettings_clockSyncAfterLoginSubtitle =>
+      '리피터 로그인에 성공하면 clock sync를 보냅니다. 각 리피터는 기본, 켜기, 끄기를 고를 수 있습니다.';
+
+  @override
+  String get appSettings_loginPasswordAutofocus => '비밀번호 칸에 포커스';
+
+  @override
+  String get appSettings_loginPasswordAutofocusSubtitle =>
+      '리피터나 방 로그인을 열 때 비밀번호가 비어 있으면 그 칸에 커서를 둡니다. 끄면 칸을 누를 때까지 대화상자가 보입니다.';
+
+  @override
+  String get appSettings_resetRepeaterRoomSettings => '리피터와 방 설정을 기본값으로';
+
+  @override
+  String get appSettings_resetRepeaterRoomSettingsSubtitle =>
+      '이 섹션의 설정을 되돌립니다. 각 리피터에 저장한 선택은 그대로입니다.';
+
+  @override
+  String get appSettings_repeaterRoomSettingsReset => '리피터와 방 설정을 되돌렸습니다';
 
   @override
   String get appSettings_ipfsImageLinks => 'IPFS 제공자 설정';
@@ -2091,7 +2154,28 @@ class AppLocalizationsKo extends AppLocalizations {
   String get contacts_noNodesFound => 'No nodes found';
 
   @override
+  String contacts_groupCurrentMembers(int count) {
+    return '현재 멤버($count)';
+  }
+
+  @override
+  String get contacts_groupAddContacts => '연락처 추가';
+
+  @override
+  String contacts_groupRemoveMember(String name) {
+    return '그룹에서 $name 제거';
+  }
+
+  @override
+  String contacts_groupAddMember(String name) {
+    return '그룹에 $name 추가';
+  }
+
+  @override
   String get contacts_lastSeenNow => '최근';
+
+  @override
+  String get contacts_lastSeenNever => '아직 수신 없음';
 
   @override
   String contacts_lastSeenMinsAgo(int minutes) {
@@ -2270,15 +2354,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String channels_editChannelTitle(int index) {
     return '채널 $index 편집';
   }
-
-  @override
-  String get channels_smazCompression => 'SMAZ 압축';
-
-  @override
-  String get channels_cyr2latCompression => 'Cyr2Lat 압축';
-
-  @override
-  String get channels_cyr2latCompressionDscr => '보낼 때 일부 키릴 문자를 라틴 문자로 바꿉니다.';
 
   @override
   String get channels_cyr2latSettingsHeading => 'Cyr2Lat 설정';
@@ -2540,7 +2615,7 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get chat_resend => 'Resend';
+  String get chat_resend => '다시 보내기';
 
   @override
   String chat_replyTo(String name) {
@@ -2584,6 +2659,30 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get chat_messageDeleted => '메시지가 삭제되었습니다.';
+
+  @override
+  String get chat_bookmark => '북마크';
+
+  @override
+  String get chat_removeBookmark => '북마크 삭제';
+
+  @override
+  String get chat_showBookmarks => '북마크 보기';
+
+  @override
+  String get bookmarks_title => '북마크';
+
+  @override
+  String get bookmarks_empty => '북마크한 메시지가 없습니다';
+
+  @override
+  String get bookmarks_channel => '채널';
+
+  @override
+  String get bookmarks_contact => '연락처';
+
+  @override
+  String get bookmarks_remove => '북마크 삭제';
 
   @override
   String get chat_selectMessages => '메시지 선택';
@@ -3059,7 +3158,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get pathEditor_hexLabel => 'HEX 접두사';
 
   @override
-  String get pathEditor_hexHelper => '각 홉마다 2개의 16진수 바이트, 쉼표로 구분';
+  String pathEditor_hexHelper(int count) {
+    return '각 홉마다 $count개의 16진수 문자, 쉼표로 구분';
+  }
 
   @override
   String pathEditor_invalidTokens(String tokens) {
@@ -3098,9 +3199,6 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get chat_publicKey => '공개 키';
-
-  @override
-  String get chat_compressOutgoingMessages => '전송되는 메시지 압축';
 
   @override
   String get chat_floodForced => '플러딩 (강제)';
@@ -3865,7 +3963,16 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get repeater_clockSyncAfterLoginSubtitle =>
-      '성공적인 로그인 후, 자동으로 \"시간 동기화\"를 전송합니다.';
+      '기본은 앱 설정의 리피터와 방을 따릅니다. 켜기와 끄기는 이 리피터에만 적용됩니다.';
+
+  @override
+  String get repeater_clockSyncDefault => '기본';
+
+  @override
+  String get repeater_clockSyncOn => '켜기';
+
+  @override
+  String get repeater_clockSyncOff => '끄기';
 
   @override
   String get repeater_statusTitle => '리피터 상태';
@@ -5985,6 +6092,19 @@ class AppLocalizationsKo extends AppLocalizations {
       'MeshCore Open이 실행 중이 아닙니다. 앱을 연 뒤 답장을 다시 보내세요.';
 
   @override
+  String get settings_exportBookmarks => '북마크를 Markdown으로 내보내기';
+
+  @override
+  String get settings_exportBookmarksSubtitle =>
+      '북마크한 메시지를 Markdown 파일로 공유하거나 저장합니다.';
+
+  @override
+  String get settings_exportBookmarksSuccess => '북마크를 내보냈습니다.';
+
+  @override
+  String get settings_exportBookmarksNoBookmarks => '내보낼 북마크가 없습니다.';
+
+  @override
   String get settings_gpxExportRepeaters => 'GPX로 전송/방 관리 서버';
 
   @override
@@ -6622,6 +6742,56 @@ class AppLocalizationsKo extends AppLocalizations {
   @override
   String get imageSend_reconstructionUnavailable =>
       '이 장치에서는 복원 결과를 미리 볼 수 없습니다.';
+
+  @override
+  String receivedImage_packetEchoes(int number, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count회 재전송',
+      one: '1회 재전송',
+      zero: '수신한 반복기 없음',
+    );
+    return '패킷 $number: $_temp0';
+  }
+
+  @override
+  String receivedImage_recoveryPacketEchoes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count회 재전송',
+      one: '1회 재전송',
+      zero: '수신한 반복기 없음',
+    );
+    return '복구 패킷: $_temp0';
+  }
+
+  @override
+  String get imageSend_preparingPreview => '미리보기 준비 중…';
+
+  @override
+  String get imageSend_tryAnother => '다른 버전 시도';
+
+  @override
+  String get imageSend_versionsHint =>
+      '각 버전은 조금씩 다르게 복원됩니다. 사진과 가장 비슷한 것을 선택하세요.';
+
+  @override
+  String imageSend_versionLabel(int number) {
+    return '버전 $number';
+  }
+
+  @override
+  String imageSend_versionPackets(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '패킷 $count개',
+      one: '패킷 1개',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get imageSend_modelNotDownloaded =>
@@ -7309,14 +7479,14 @@ class AppLocalizationsKo extends AppLocalizations {
   String get appSettings_routingSection => '라우팅';
 
   @override
-  String get appSettings_resetRoutingToDefault => '라우팅 알고리즘 기본값으로 재설정';
+  String get appSettings_resetRoutingToDefault => '라우팅 설정을 기본값으로 재설정';
 
   @override
   String get appSettings_resetRoutingToDefaultSubtitle =>
-      '라우팅 알고리즘 설정을 공장 기본값으로 복원';
+      '이 섹션의 라우팅 설정을 기본값으로 되돌립니다';
 
   @override
-  String get appSettings_routingResetToDefault => '라우팅 알고리즘 설정이 기본값으로 재설정되었습니다';
+  String get appSettings_routingResetToDefault => '라우팅 설정이 기본값으로 재설정되었습니다';
 
   @override
   String get appSettings_imageMessagesSection => '이미지 메시지';
@@ -9788,4 +9958,533 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get chat_composerOffline => '메시지를 보내려면 무전기에 연결하세요';
+
+  @override
+  String get modelDownload_notDownloaded => '다운로드되지 않음';
+
+  @override
+  String get modelDownload_downloading => '다운로드 중';
+
+  @override
+  String get modelDownload_active => '사용 중';
+
+  @override
+  String get modelDownload_failed => '다운로드하지 못했습니다';
+
+  @override
+  String get modelDownload_incomplete => '불완전';
+
+  @override
+  String get modelDownload_verifying => '다운로드를 확인하는 중';
+
+  @override
+  String get modelDownload_useModel => '이 모델 사용';
+
+  @override
+  String modelDownload_removeFailed(String error) {
+    return '모델을 제거하지 못했습니다: $error';
+  }
+
+  @override
+  String modelDownload_progress(String current, String total, String percent) {
+    return '$current / $total MB ($percent%)';
+  }
+
+  @override
+  String get chatCompression_title => '압축';
+
+  @override
+  String chatCompression_label(String mode) {
+    return '압축: $mode';
+  }
+
+  @override
+  String get chatCompression_off => '끔';
+
+  @override
+  String get chatCompression_smaz => 'SMAZ';
+
+  @override
+  String get chatCompression_cyr2lat => 'Cyr2Lat';
+
+  @override
+  String get chatCompression_changeHint => '이 채팅의 압축 설정 변경';
+
+  @override
+  String get chatCompression_sheetSubtitle =>
+      '이 채팅에서 보내는 메시지에 적용됩니다. 이 휴대폰에 저장됩니다.';
+
+  @override
+  String get chatCompression_offDescription =>
+      '압축하지 않습니다. 입력한 그대로 전송되며 모든 앱에서 읽을 수 있습니다. 바이트는 절약되지 않습니다.';
+
+  @override
+  String get chatCompression_smazDescription =>
+      '짧은 텍스트용 무손실 압축입니다. 수신자의 앱이 SMAZ를 지원해야 하며, 지원하지 않는 앱에는 읽을 수 없는 \"s:…\" 텍스트가 표시됩니다. 메시지가 더 작아질 때만 사용되므로 모든 메시지가 압축되는 것은 아닙니다.';
+
+  @override
+  String get chatCompression_cyr2latDescription =>
+      '무손실이 아닙니다. 일부 키릴 문자를 비슷하게 생긴 라틴 문자(А→A, З→3)로 바꿔 바이트를 절약합니다. 디코딩 없이 모든 앱에서 읽을 수 있지만, 여기서 보낸 내 메시지를 포함해 실제 문자가 바뀝니다. 복사, 검색, 기술적인 텍스트에 영향을 줄 수 있습니다. 결과는 선택한 프로필에 따라 달라집니다.';
+
+  @override
+  String get chatCompression_profile => 'Cyr2Lat 프로필';
+
+  @override
+  String get chatCompression_noStorageId =>
+      '이 채널이 라디오에서 동기화될 때까지 압축 설정을 변경할 수 없습니다.';
+
+  @override
+  String get chatCompression_saveFailed => '압축 설정을 저장하지 못했습니다. 저장된 설정을 표시합니다.';
+
+  @override
+  String get messageMeta_smazCompressed => 'SMAZ 압축됨';
+
+  @override
+  String get addContact_title => '연락처 추가';
+
+  @override
+  String get addContact_infoBanner =>
+      '연락하려는 상대의 공개 키를 알고 있다면 상대가 광고(advert)를 보낼 때까지 기다리지 않고 직접 추가할 수 있습니다.';
+
+  @override
+  String get addContact_contactType => '연락처 유형';
+
+  @override
+  String get addContact_name => '이름';
+
+  @override
+  String get addContact_nameRequired => '이름을 입력하세요';
+
+  @override
+  String get addContact_publicKeyHex => '공개 키(16진수)';
+
+  @override
+  String get addContact_publicKeyRequired => '공개 키를 입력하세요';
+
+  @override
+  String get addContact_publicKeyInvalid => '공개 키는 16진수 64자(32바이트)여야 합니다';
+
+  @override
+  String get addContact_clipboardKeyLoaded =>
+      '공개 키를 입력했습니다. 연락처 유형을 선택하고 이름을 입력한 뒤 저장을 누르세요.';
+
+  @override
+  String get addContact_fromDiscovered => '발견된 연락처에서 추가';
+
+  @override
+  String get addContact_saveFailed => '연락처를 추가하지 못했습니다.';
+
+  @override
+  String get coordinateMap_title => '위치';
+
+  @override
+  String get coordinate_copyLocation => '위치 복사';
+
+  @override
+  String get coordinate_openInMaps => '지도에서 열기';
+
+  @override
+  String get coordinate_copied => '위치를 복사했습니다';
+
+  @override
+  String get chess_menuGames => '체스 게임';
+
+  @override
+  String chess_menuGamesCount(int count) {
+    return '체스 게임 ($count)';
+  }
+
+  @override
+  String get chess_sheetTitle => '체스';
+
+  @override
+  String get chess_sectionNewGame => '새 게임';
+
+  @override
+  String get chess_sectionYourGames => '내 게임';
+
+  @override
+  String get chess_sectionInvites => '열린 초대';
+
+  @override
+  String get chess_sectionLive => '진행 중인 게임';
+
+  @override
+  String get chess_sectionFinished => '종료된 게임';
+
+  @override
+  String get chess_newChallenge => '누군가에게 도전';
+
+  @override
+  String get chess_newChallengeSubtitle => '이 채널에서 최근 메시지를 보낸 사람 중에서 선택';
+
+  @override
+  String get chess_newOpenInvite => '공개 초대 올리기';
+
+  @override
+  String get chess_newOpenInviteSubtitle => '이 채널의 누구나 수락할 수 있습니다';
+
+  @override
+  String get chess_emptyTitle => '아직 게임이 없습니다';
+
+  @override
+  String get chess_emptySubtitle =>
+      '누군가에게 도전하거나 공개 초대를 올려 보세요. 채널의 누구나 관전할 수 있습니다.';
+
+  @override
+  String chess_vs(String white, String black) {
+    return '$white 대 $black';
+  }
+
+  @override
+  String get chess_unknownPlayer => '알 수 없음';
+
+  @override
+  String chess_rowChallenge(String inviter, String target) {
+    return '$inviter님이 $target님에게 도전했습니다';
+  }
+
+  @override
+  String get chess_rowYourOpenInvite => '내 공개 초대';
+
+  @override
+  String chess_rowYourChallenge(String name) {
+    return '$name님에게 도전했습니다';
+  }
+
+  @override
+  String chess_rowInviteFrom(String name) {
+    return '$name님과의 게임';
+  }
+
+  @override
+  String get chess_rowStarting => '게임 시작을 기다리는 중';
+
+  @override
+  String chess_rowMoveTurn(int number, String turn) {
+    return '$number수 · $turn';
+  }
+
+  @override
+  String chess_rowOpenInvite(String name) {
+    return '$name님이 게임 상대를 찾고 있습니다';
+  }
+
+  @override
+  String chess_rowChallengedYou(String name) {
+    return '$name님이 도전했습니다';
+  }
+
+  @override
+  String chess_rowInviteDetails(String deadline) {
+    return '수당 제한 시간: $deadline';
+  }
+
+  @override
+  String get chess_accept => '수락';
+
+  @override
+  String get chess_decline => '거절';
+
+  @override
+  String get chess_remove => '제거';
+
+  @override
+  String get chess_cancelInvite => '초대 취소';
+
+  @override
+  String get chess_cancelInviteTitle => '이 초대를 취소하시겠습니까?';
+
+  @override
+  String get chess_sendFailed => '전송하지 못했습니다. 라디오 연결을 확인하세요.';
+
+  @override
+  String chess_challengeSent(String name) {
+    return '$name님에게 도전을 보냈습니다';
+  }
+
+  @override
+  String get chess_inviteSent => '공개 초대를 올렸습니다';
+
+  @override
+  String get chess_pickOpponent => '도전할 상대';
+
+  @override
+  String get chess_noRecentSenders => '이 채널에 최근 메시지를 보낸 사람이 없습니다.';
+
+  @override
+  String get chess_deadlineLabel => '수당 제한 시간';
+
+  @override
+  String get chess_deadlineNone => '제한 없음';
+
+  @override
+  String get chess_deadline15m => '15분';
+
+  @override
+  String get chess_deadline1h => '1시간';
+
+  @override
+  String get chess_deadline6h => '6시간';
+
+  @override
+  String get chess_deadline1d => '1일';
+
+  @override
+  String get chess_deadline3d => '3일';
+
+  @override
+  String get chess_colourLabel => '내 색';
+
+  @override
+  String get chess_colourRandom => '무작위';
+
+  @override
+  String get chess_colourWhite => '백';
+
+  @override
+  String get chess_colourBlack => '흑';
+
+  @override
+  String get chess_sendChallenge => '도전 보내기';
+
+  @override
+  String get chess_postInvite => '초대 올리기';
+
+  @override
+  String get chess_gameGone => '이 게임은 더 이상 사용할 수 없습니다.';
+
+  @override
+  String chess_playerYou(String name) {
+    return '$name (나)';
+  }
+
+  @override
+  String get chess_toMoveChip => '차례';
+
+  @override
+  String get chess_statusYourMove => '내 차례';
+
+  @override
+  String chess_statusWaiting(String name) {
+    return '$name님을 기다리는 중';
+  }
+
+  @override
+  String chess_statusToMove(String name) {
+    return '$name님의 차례';
+  }
+
+  @override
+  String chess_statusTimeLeft(String time) {
+    return '이 수의 남은 시간 $time';
+  }
+
+  @override
+  String get chess_statusOverdue => '이 수의 제한 시간이 끝났습니다';
+
+  @override
+  String chess_statusDrawOffered(String name) {
+    return '$name님이 무승부를 제안했습니다';
+  }
+
+  @override
+  String get chess_statusUnknownPosition => '다음 수가 오면 판이 표시됩니다.';
+
+  @override
+  String get chess_statusUnverified => '플레이어가 아직 확인되지 않았습니다. 업데이트를 요청해 확인하세요.';
+
+  @override
+  String get chess_statusPlayersUnchecked => '플레이어 미확인: 이 휴대폰이 초대를 수신하지 못했습니다.';
+
+  @override
+  String get chess_statusMoveUnconfirmed =>
+      '내 수가 전송되지 않았을 수 있습니다. \"업데이트 요청\"을 눌러 다시 보내세요.';
+
+  @override
+  String get chess_actionResign => '기권';
+
+  @override
+  String get chess_actionOfferDraw => '무승부 제안';
+
+  @override
+  String get chess_actionAcceptDraw => '무승부 수락';
+
+  @override
+  String get chess_actionClaimTimeout => '시간 초과 승리 요청';
+
+  @override
+  String get chess_actionNudge => '업데이트 요청';
+
+  @override
+  String get chess_actionNudgeTooltip => '플레이어에게 최신 수를 다시 보내 달라고 요청합니다';
+
+  @override
+  String get chess_resignConfirmTitle => '이 게임을 기권하시겠습니까?';
+
+  @override
+  String get chess_resignConfirmBody => '상대가 승리합니다.';
+
+  @override
+  String get chess_movesTitle => '기보';
+
+  @override
+  String get chess_noMovesYet => '아직 수가 없습니다';
+
+  @override
+  String get chess_movesMissed => '(누락)';
+
+  @override
+  String get chess_promoteTitle => '승급할 기물';
+
+  @override
+  String get chess_pieceQueen => '퀸';
+
+  @override
+  String get chess_pieceRook => '룩';
+
+  @override
+  String get chess_pieceBishop => '비숍';
+
+  @override
+  String get chess_pieceKnight => '나이트';
+
+  @override
+  String get chess_pieceKing => '킹';
+
+  @override
+  String get chess_piecePawn => '폰';
+
+  @override
+  String chess_squareWhitePiece(String square, String piece) {
+    return '$square: 백 $piece';
+  }
+
+  @override
+  String chess_squareBlackPiece(String square, String piece) {
+    return '$square: 흑 $piece';
+  }
+
+  @override
+  String get chess_resultDraw => '무승부';
+
+  @override
+  String chess_resultWon(String name) {
+    return '$name님 승리';
+  }
+
+  @override
+  String chess_resultWithReason(String result, String reason) {
+    return '$result · $reason';
+  }
+
+  @override
+  String get chess_endCheckmate => '체크메이트';
+
+  @override
+  String get chess_endResignation => '기권';
+
+  @override
+  String get chess_endTimeout => '시간 초과';
+
+  @override
+  String get chess_endDrawAgreed => '합의 무승부';
+
+  @override
+  String get chess_endStalemate => '스테일메이트';
+
+  @override
+  String get chess_endInsufficient => '체크메이트에 필요한 기물 부족';
+
+  @override
+  String get chess_endFiftyMoves => '50수 규칙';
+
+  @override
+  String get chess_endRepetition => '동일 국면 반복';
+
+  @override
+  String get chess_endCancelled => '초대가 취소되었습니다';
+
+  @override
+  String get chess_endDeclined => '도전이 거절되었습니다';
+
+  @override
+  String get chess_endExpired => '초대가 만료되었습니다';
+
+  @override
+  String get chess_endTaken => '다른 사람이 먼저 수락했습니다';
+
+  @override
+  String chess_timeMinutes(int minutes) {
+    return '$minutes분';
+  }
+
+  @override
+  String chess_timeHours(int hours, int minutes) {
+    return '$hours시간 $minutes분';
+  }
+
+  @override
+  String chess_timeDays(int days, int hours) {
+    return '$days일 $hours시간';
+  }
+
+  @override
+  String get chess_notificationSender => '체스';
+
+  @override
+  String chess_notifyChallenge(String name) {
+    return '$name님이 게임을 도전했습니다';
+  }
+
+  @override
+  String chess_notifyAccepted(String name) {
+    return '$name님이 게임을 수락했습니다';
+  }
+
+  @override
+  String chess_notifyAcceptedYourMove(String name) {
+    return '$name님이 게임을 수락했습니다. 백이며 내 차례입니다.';
+  }
+
+  @override
+  String chess_notifyDeclined(String name) {
+    return '$name님이 도전을 거절했습니다';
+  }
+
+  @override
+  String get chess_notifyTaken => '다른 사람이 그 게임을 먼저 수락했습니다';
+
+  @override
+  String get chess_notifyGameStartedYourMove => '게임이 시작되었습니다. 백이며 내 차례입니다.';
+
+  @override
+  String chess_notifyYourMove(String name, String move) {
+    return '$name님이 $move을(를) 두었습니다. 내 차례입니다.';
+  }
+
+  @override
+  String chess_notifyGameOver(String name) {
+    return '$name님과의 게임이 종료되었습니다';
+  }
+
+  @override
+  String chess_notifyResigned(String name) {
+    return '$name님이 기권했습니다. 승리했습니다.';
+  }
+
+  @override
+  String chess_notifyDrawOffered(String name) {
+    return '$name님이 무승부를 제안했습니다';
+  }
+
+  @override
+  String chess_notifyDrawAccepted(String name) {
+    return '$name님이 무승부를 수락했습니다';
+  }
+
+  @override
+  String chess_notifyTimeout(String name) {
+    return '$name님이 시간 초과 승리를 요청했습니다';
+  }
 }

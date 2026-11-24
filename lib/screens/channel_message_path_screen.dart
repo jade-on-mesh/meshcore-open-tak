@@ -21,6 +21,7 @@ import '../models/display_path.dart';
 import '../models/path_playback.dart';
 import '../theme/mesh_theme.dart';
 import '../widgets/adaptive_app_bar_title.dart';
+import '../widgets/contact_visuals.dart';
 import '../widgets/mesh_ui.dart';
 import '../widgets/path_map_scaffold.dart';
 import '../widgets/path_map_ui.dart';
@@ -356,7 +357,7 @@ class ChannelMessagePathScreen extends StatelessWidget {
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    AvatarCircle(name: hop.displayLabel, size: 36),
+                    AvatarCircle(name: hop.avatarName, size: 36),
                     Positioned(
                       right: -4,
                       top: -4,
@@ -1074,7 +1075,7 @@ class _ChannelMessagePathMapScreenState
         ? l10n.channelPath_primaryPath(selectedIndex + 1)
         : l10n.channelPath_pathLabel(selectedIndex + 1);
     return Positioned(
-      left: 16,
+      left: pathMapTopOverlayInset(),
       right: 16,
       top: topOffset,
       child: SafeArea(
@@ -1374,7 +1375,10 @@ class _ChannelMessagePathMapScreenState
               isImperial: isImperial,
               l10n: l10n,
             ),
-            style: MeshTheme.mono(fontSize: 12, color: MeshPalette.ink2),
+            style: MeshTheme.mono(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -1429,6 +1433,7 @@ class _ChannelMessagePathMapScreenState
     Map<int, int> hopUseCount,
   ) {
     final l10n = context.l10n;
+    final scheme = Theme.of(context).colorScheme;
     if (hops.isEmpty) {
       return Center(child: Text(l10n.channelPath_noHopDetailsAvailable));
     }
@@ -1458,7 +1463,7 @@ class _ChannelMessagePathMapScreenState
                 color: index == highlightRow
                     ? highlightColor
                     : isFocused
-                    ? MeshPalette.blueBg
+                    ? scheme.primary.withValues(alpha: 0.12)
                     : Colors.transparent,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -1470,10 +1475,10 @@ class _ChannelMessagePathMapScreenState
                       width: 30,
                       height: 30,
                       decoration: BoxDecoration(
-                        color: MeshPalette.blueDim.withValues(alpha: 0.3),
+                        color: scheme.primary.withValues(alpha: 0.18),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: MeshPalette.blueDim.withValues(alpha: 0.5),
+                          color: scheme.primary.withValues(alpha: 0.5),
                         ),
                       ),
                       alignment: Alignment.center,
@@ -1481,8 +1486,8 @@ class _ChannelMessagePathMapScreenState
                         fit: BoxFit.scaleDown,
                         child: Text(
                           hop.index.toString(),
-                          style: const TextStyle(
-                            color: MeshPalette.ink,
+                          style: TextStyle(
+                            color: scheme.onSurface,
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                           ),
@@ -1515,7 +1520,7 @@ class _ChannelMessagePathMapScreenState
                             ].join(' · '),
                             style: MeshTheme.mono(
                               fontSize: 12,
-                              color: MeshPalette.ink3,
+                              color: scheme.onSurfaceVariant,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1616,14 +1621,23 @@ class _PathHop {
 
   bool get hasLocation => position != null;
 
-  String get displayLabel {
-    final prefixLabel = hopBytes != null && hopBytes!.isNotEmpty
-        ? hopBytes!
-              .map((b) => b.toRadixString(16).padLeft(2, '0'))
-              .join('')
-              .toUpperCase()
-        : _formatPrefix(prefix);
-    return '($prefixLabel) ${_resolveName(contact, l10n)}';
+  String get prefixLabel => hopBytes != null && hopBytes!.isNotEmpty
+      ? hopBytes!
+            .map((b) => b.toRadixString(16).padLeft(2, '0'))
+            .join('')
+            .toUpperCase()
+      : _formatPrefix(prefix);
+
+  String get displayLabel => '($prefixLabel) ${_resolveName(contact, l10n)}';
+
+  /// Avatar source: the repeater's own name, or the hop's hex prefix when
+  /// the hop is unresolved or its name has nothing to make initials from.
+  String get avatarName {
+    final name = contact?.name.trim() ?? '';
+    if (name.toLowerCase() == 'unknown' || avatarInitials(name) == null) {
+      return prefixLabel;
+    }
+    return name;
   }
 }
 

@@ -14,7 +14,12 @@ class PlatformInfo {
   static bool get isChrome => isWeb && BrowserDetection.isChrome;
 
   /// Whether the app is running on Android.
-  static bool get isAndroid => !kIsWeb && Platform.isAndroid;
+  static bool get isAndroid =>
+      debugIsAndroidOverride ?? (!kIsWeb && Platform.isAndroid);
+
+  /// Lets widget tests exercise Android-only UI on a non-Android test host.
+  @visibleForTesting
+  static bool? debugIsAndroidOverride;
 
   /// Whether the app is running on iOS.
   static bool get isIOS => !kIsWeb && Platform.isIOS;
@@ -32,7 +37,12 @@ class PlatformInfo {
   static bool get isMobile => isAndroid || isIOS;
 
   /// Whether the app is running on a desktop platform (macOS, Windows, or Linux).
-  static bool get isDesktop => isMacOS || isWindows || isLinux;
+  static bool get isDesktop =>
+      debugIsDesktopOverride ?? (isMacOS || isWindows || isLinux);
+
+  /// Lets widget tests exercise the mobile layout on a desktop test host.
+  @visibleForTesting
+  static bool? debugIsDesktopOverride;
 
   /// Whether the current platform supports a native USB serial backend.
   static bool get supportsNativeUsbSerial =>

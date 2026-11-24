@@ -1351,6 +1351,12 @@ abstract class AppLocalizations {
   /// **'Discovered contacts and their saved details'**
   String get backupRestore_discoveredContactsDescription;
 
+  /// No description provided for @backupRestore_bookmarks.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookmarks'**
+  String get backupRestore_bookmarks;
+
   /// No description provided for @backupRestore_channels.
   ///
   /// In en, this message translates to:
@@ -1396,8 +1402,8 @@ abstract class AppLocalizations {
   /// No description provided for @backupRestore_missingModelsMessage.
   ///
   /// In en, this message translates to:
-  /// **'The restored settings select models that are not available on this device:\n{models}\n\nDownload them now?'**
-  String backupRestore_missingModelsMessage(String models);
+  /// **'The restored settings select models that are not on this device. Download them now?'**
+  String get backupRestore_missingModelsMessage;
 
   /// No description provided for @backupRestore_downloadModels.
   ///
@@ -2839,6 +2845,18 @@ abstract class AppLocalizations {
   /// **'Show a channel message\'s region on the same line as its hop count instead of below it.'**
   String get appSettings_regionOnHopsLineSubtitle;
 
+  /// No description provided for @appSettings_showCompressionIndicator.
+  ///
+  /// In en, this message translates to:
+  /// **'Compression indicator'**
+  String get appSettings_showCompressionIndicator;
+
+  /// No description provided for @appSettings_showCompressionIndicatorSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show an icon on messages compressed with SMAZ.'**
+  String get appSettings_showCompressionIndicatorSubtitle;
+
   /// No description provided for @appSettings_notifications.
   ///
   /// In en, this message translates to:
@@ -3130,13 +3148,13 @@ abstract class AppLocalizations {
   /// No description provided for @appSettings_clearPathOnMaxRetrySubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Reset contact path after 5 failed send attempts'**
+  /// **'Reset the contact\'s saved path after every send attempt fails'**
   String get appSettings_clearPathOnMaxRetrySubtitle;
 
   /// No description provided for @appSettings_pathsWillBeCleared.
   ///
   /// In en, this message translates to:
-  /// **'Paths will be cleared after 5 failed retries'**
+  /// **'Paths will be cleared after all send attempts fail'**
   String get appSettings_pathsWillBeCleared;
 
   /// No description provided for @appSettings_pathsWillNotBeCleared.
@@ -3154,7 +3172,7 @@ abstract class AppLocalizations {
   /// No description provided for @appSettings_autoRouteRotationSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Cycle between best paths and flood mode'**
+  /// **'On each direct attempt, try a different known route. Later attempts flood. Off keeps the contact\'s current path.'**
   String get appSettings_autoRouteRotationSubtitle;
 
   /// No description provided for @appSettings_autoRouteRotationEnabled.
@@ -3180,6 +3198,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Number of retry attempts before marking a message as failed'**
   String get appSettings_maxMessageRetriesSubtitle;
+
+  /// No description provided for @appSettings_directRetries.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct attempts: {count}'**
+  String appSettings_directRetries(int count);
+
+  /// No description provided for @appSettings_directRetriesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How many times to try a known route. This stays available when auto route rotation is off.'**
+  String get appSettings_directRetriesSubtitle;
+
+  /// No description provided for @appSettings_floodRetries.
+  ///
+  /// In en, this message translates to:
+  /// **'Flood attempts: {count}'**
+  String appSettings_floodRetries(int count);
+
+  /// No description provided for @appSettings_floodRetriesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How many times to flood. Floods use more airtime. With rotation on, these follow the direct attempts.'**
+  String get appSettings_floodRetriesSubtitle;
+
+  /// No description provided for @appSettings_loginAttempts.
+  ///
+  /// In en, this message translates to:
+  /// **'Login attempts: {count}'**
+  String appSettings_loginAttempts(int count);
+
+  /// No description provided for @appSettings_loginAttemptsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How many times to try logging in to a repeater or room server before giving up.'**
+  String get appSettings_loginAttemptsSubtitle;
+
+  /// No description provided for @appSettings_repeatersAndRooms.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeaters and Rooms'**
+  String get appSettings_repeatersAndRooms;
+
+  /// No description provided for @appSettings_clockSyncAfterLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync repeater clock on login'**
+  String get appSettings_clockSyncAfterLogin;
+
+  /// No description provided for @appSettings_clockSyncAfterLoginSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'After a successful repeater login, send clock sync. Each repeater can still choose Default, On, or Off.'**
+  String get appSettings_clockSyncAfterLoginSubtitle;
+
+  /// No description provided for @appSettings_loginPasswordAutofocus.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus the password field'**
+  String get appSettings_loginPasswordAutofocus;
+
+  /// No description provided for @appSettings_loginPasswordAutofocusSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'When opening a repeater or room login, put the cursor in the password field if it is empty. Off leaves the dialog visible until you tap the field.'**
+  String get appSettings_loginPasswordAutofocusSubtitle;
+
+  /// No description provided for @appSettings_resetRepeaterRoomSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset repeater and room settings to defaults'**
+  String get appSettings_resetRepeaterRoomSettings;
+
+  /// No description provided for @appSettings_resetRepeaterRoomSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore the settings in this section to their defaults. Choices saved on individual repeaters stay as they are.'**
+  String get appSettings_resetRepeaterRoomSettingsSubtitle;
+
+  /// No description provided for @appSettings_repeaterRoomSettingsReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeater and room settings reset to defaults'**
+  String get appSettings_repeaterRoomSettingsReset;
 
   /// No description provided for @appSettings_ipfsImageLinks.
   ///
@@ -3853,11 +3955,41 @@ abstract class AppLocalizations {
   /// **'No nodes found'**
   String get contacts_noNodesFound;
 
+  /// No description provided for @contacts_groupCurrentMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'Current members ({count})'**
+  String contacts_groupCurrentMembers(int count);
+
+  /// No description provided for @contacts_groupAddContacts.
+  ///
+  /// In en, this message translates to:
+  /// **'Add contacts'**
+  String get contacts_groupAddContacts;
+
+  /// No description provided for @contacts_groupRemoveMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name} from group'**
+  String contacts_groupRemoveMember(String name);
+
+  /// No description provided for @contacts_groupAddMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Add {name} to group'**
+  String contacts_groupAddMember(String name);
+
   /// No description provided for @contacts_lastSeenNow.
   ///
   /// In en, this message translates to:
   /// **'recently'**
   String get contacts_lastSeenNow;
+
+  /// No description provided for @contacts_lastSeenNever.
+  ///
+  /// In en, this message translates to:
+  /// **'not heard yet'**
+  String get contacts_lastSeenNever;
 
   /// No description provided for @contacts_lastSeenMinsAgo.
   ///
@@ -4170,24 +4302,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Edit Channel {index}'**
   String channels_editChannelTitle(int index);
-
-  /// No description provided for @channels_smazCompression.
-  ///
-  /// In en, this message translates to:
-  /// **'SMAZ compression'**
-  String get channels_smazCompression;
-
-  /// No description provided for @channels_cyr2latCompression.
-  ///
-  /// In en, this message translates to:
-  /// **'Cyr2Lat compression'**
-  String get channels_cyr2latCompression;
-
-  /// No description provided for @channels_cyr2latCompressionDscr.
-  ///
-  /// In en, this message translates to:
-  /// **'Replaces some Cyrillic characters with Latin characters when sending.'**
-  String get channels_cyr2latCompressionDscr;
 
   /// No description provided for @channels_cyr2latSettingsHeading.
   ///
@@ -4716,6 +4830,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Message deleted'**
   String get chat_messageDeleted;
+
+  /// No description provided for @chat_bookmark.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookmark'**
+  String get chat_bookmark;
+
+  /// No description provided for @chat_removeBookmark.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove bookmark'**
+  String get chat_removeBookmark;
+
+  /// No description provided for @chat_showBookmarks.
+  ///
+  /// In en, this message translates to:
+  /// **'Show bookmarks'**
+  String get chat_showBookmarks;
+
+  /// No description provided for @bookmarks_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookmarks'**
+  String get bookmarks_title;
+
+  /// No description provided for @bookmarks_empty.
+  ///
+  /// In en, this message translates to:
+  /// **'No bookmarked messages'**
+  String get bookmarks_empty;
+
+  /// No description provided for @bookmarks_channel.
+  ///
+  /// In en, this message translates to:
+  /// **'Channel'**
+  String get bookmarks_channel;
+
+  /// No description provided for @bookmarks_contact.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact'**
+  String get bookmarks_contact;
+
+  /// No description provided for @bookmarks_remove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove bookmark'**
+  String get bookmarks_remove;
 
   /// No description provided for @chat_selectMessages.
   ///
@@ -5494,7 +5656,7 @@ abstract class AppLocalizations {
   /// No description provided for @pathEditor_searchRepeaters.
   ///
   /// In en, this message translates to:
-  /// **'Search repeaters'**
+  /// **'Search name or hash'**
   String get pathEditor_searchRepeaters;
 
   /// No description provided for @pathEditor_advancedHex.
@@ -5512,8 +5674,8 @@ abstract class AppLocalizations {
   /// No description provided for @pathEditor_hexHelper.
   ///
   /// In en, this message translates to:
-  /// **'Two hex characters per hop, separated by commas'**
-  String get pathEditor_hexHelper;
+  /// **'{count} hex characters per hop, separated by commas'**
+  String pathEditor_hexHelper(int count);
 
   /// No description provided for @pathEditor_invalidTokens.
   ///
@@ -5586,12 +5748,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Public Key'**
   String get chat_publicKey;
-
-  /// No description provided for @chat_compressOutgoingMessages.
-  ///
-  /// In en, this message translates to:
-  /// **'Compress outgoing messages'**
-  String get chat_compressOutgoingMessages;
 
   /// No description provided for @chat_floodForced.
   ///
@@ -6969,8 +7125,26 @@ abstract class AppLocalizations {
   /// Repeater setting subtitle: describes the clock sync after login behavior
   ///
   /// In en, this message translates to:
-  /// **'Automatically send \"clock sync\" after a successful login'**
+  /// **'Default follows Repeaters and Rooms in App Settings. On and Off apply only to this repeater.'**
   String get repeater_clockSyncAfterLoginSubtitle;
+
+  /// No description provided for @repeater_clockSyncDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get repeater_clockSyncDefault;
+
+  /// No description provided for @repeater_clockSyncOn.
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get repeater_clockSyncOn;
+
+  /// No description provided for @repeater_clockSyncOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get repeater_clockSyncOff;
 
   /// No description provided for @repeater_statusTitle.
   ///
@@ -10535,6 +10709,30 @@ abstract class AppLocalizations {
   /// **'MeshCore Open isn\'t running. Open it and send your reply again.'**
   String get notification_replyAppNotRunning;
 
+  /// No description provided for @settings_exportBookmarks.
+  ///
+  /// In en, this message translates to:
+  /// **'Export bookmarks to Markdown'**
+  String get settings_exportBookmarks;
+
+  /// No description provided for @settings_exportBookmarksSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share or save bookmarked messages as a Markdown file.'**
+  String get settings_exportBookmarksSubtitle;
+
+  /// No description provided for @settings_exportBookmarksSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookmarks exported.'**
+  String get settings_exportBookmarksSuccess;
+
+  /// No description provided for @settings_exportBookmarksNoBookmarks.
+  ///
+  /// In en, this message translates to:
+  /// **'No bookmarks to export.'**
+  String get settings_exportBookmarksNoBookmarks;
+
   /// No description provided for @settings_gpxExportRepeaters.
   ///
   /// In en, this message translates to:
@@ -11627,6 +11825,48 @@ abstract class AppLocalizations {
   /// **'This device can\'t preview the reconstruction.'**
   String get imageSend_reconstructionUnavailable;
 
+  /// No description provided for @receivedImage_packetEchoes.
+  ///
+  /// In en, this message translates to:
+  /// **'Packet {number}: {count, plural, =0{no repeater heard} =1{repeated once} other{repeated {count} times}}'**
+  String receivedImage_packetEchoes(int number, int count);
+
+  /// No description provided for @receivedImage_recoveryPacketEchoes.
+  ///
+  /// In en, this message translates to:
+  /// **'Recovery packet: {count, plural, =0{no repeater heard} =1{repeated once} other{repeated {count} times}}'**
+  String receivedImage_recoveryPacketEchoes(int count);
+
+  /// No description provided for @imageSend_preparingPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing preview…'**
+  String get imageSend_preparingPreview;
+
+  /// No description provided for @imageSend_tryAnother.
+  ///
+  /// In en, this message translates to:
+  /// **'Try another version'**
+  String get imageSend_tryAnother;
+
+  /// No description provided for @imageSend_versionsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Each version is reconstructed a little differently. Pick the one that looks most like your photo.'**
+  String get imageSend_versionsHint;
+
+  /// No description provided for @imageSend_versionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {number}'**
+  String imageSend_versionLabel(int number);
+
+  /// No description provided for @imageSend_versionPackets.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 packet} other{{count} packets}}'**
+  String imageSend_versionPackets(int count);
+
   /// No description provided for @imageSend_modelNotDownloaded.
   ///
   /// In en, this message translates to:
@@ -12704,19 +12944,19 @@ abstract class AppLocalizations {
   /// No description provided for @appSettings_resetRoutingToDefault.
   ///
   /// In en, this message translates to:
-  /// **'Reset Routing Algorithm to Default'**
+  /// **'Reset routing settings to defaults'**
   String get appSettings_resetRoutingToDefault;
 
   /// No description provided for @appSettings_resetRoutingToDefaultSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Restore routing algorithm settings to factory defaults'**
+  /// **'Restore the routing settings in this section to their defaults'**
   String get appSettings_resetRoutingToDefaultSubtitle;
 
   /// No description provided for @appSettings_routingResetToDefault.
   ///
   /// In en, this message translates to:
-  /// **'Routing algorithm settings reset to default'**
+  /// **'Routing settings reset to defaults'**
   String get appSettings_routingResetToDefault;
 
   /// No description provided for @appSettings_imageMessagesSection.
@@ -16881,6 +17121,906 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Connect to a radio to send messages'**
   String get chat_composerOffline;
+
+  /// No description provided for @modelDownload_notDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Not downloaded'**
+  String get modelDownload_notDownloaded;
+
+  /// No description provided for @modelDownload_downloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading'**
+  String get modelDownload_downloading;
+
+  /// No description provided for @modelDownload_active.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get modelDownload_active;
+
+  /// No description provided for @modelDownload_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t download'**
+  String get modelDownload_failed;
+
+  /// No description provided for @modelDownload_incomplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Incomplete'**
+  String get modelDownload_incomplete;
+
+  /// No description provided for @modelDownload_verifying.
+  ///
+  /// In en, this message translates to:
+  /// **'Verifying the download'**
+  String get modelDownload_verifying;
+
+  /// No description provided for @modelDownload_useModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this model'**
+  String get modelDownload_useModel;
+
+  /// No description provided for @modelDownload_removeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t remove the model: {error}'**
+  String modelDownload_removeFailed(String error);
+
+  /// No description provided for @modelDownload_progress.
+  ///
+  /// In en, this message translates to:
+  /// **'{current} / {total} MB ({percent}%)'**
+  String modelDownload_progress(String current, String total, String percent);
+
+  /// No description provided for @chatCompression_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Compression'**
+  String get chatCompression_title;
+
+  /// Always-visible control at the top of a chat; mode is Off, SMAZ or Cyr2Lat
+  ///
+  /// In en, this message translates to:
+  /// **'Compression: {mode}'**
+  String chatCompression_label(String mode);
+
+  /// No description provided for @chatCompression_off.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get chatCompression_off;
+
+  /// No description provided for @chatCompression_smaz.
+  ///
+  /// In en, this message translates to:
+  /// **'SMAZ'**
+  String get chatCompression_smaz;
+
+  /// No description provided for @chatCompression_cyr2lat.
+  ///
+  /// In en, this message translates to:
+  /// **'Cyr2Lat'**
+  String get chatCompression_cyr2lat;
+
+  /// No description provided for @chatCompression_changeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Change compression for this chat'**
+  String get chatCompression_changeHint;
+
+  /// No description provided for @chatCompression_sheetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Applies to messages you send in this chat. Saved on this phone.'**
+  String get chatCompression_sheetSubtitle;
+
+  /// No description provided for @chatCompression_offDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'No compression. Sends your text exactly as typed. Every app can read it. Saves no bytes.'**
+  String get chatCompression_offDescription;
+
+  /// No description provided for @chatCompression_smazDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Lossless compression for short text. The recipient\'s app must support SMAZ; other apps show unreadable \"s:…\" text. Only used when it makes a message smaller, so not every message is compressed.'**
+  String get chatCompression_smazDescription;
+
+  /// No description provided for @chatCompression_cyr2latDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Not lossless. Swaps some Cyrillic letters for lookalike Latin ones (А→A, З→3) to save bytes. Readable in any app with no decoding, but the exact characters change, including your own sent messages here. Copying, search and technical text may be affected. Results depend on the chosen profile.'**
+  String get chatCompression_cyr2latDescription;
+
+  /// No description provided for @chatCompression_profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Cyr2Lat profile'**
+  String get chatCompression_profile;
+
+  /// No description provided for @chatCompression_noStorageId.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t change compression until this channel has synced from the radio.'**
+  String get chatCompression_noStorageId;
+
+  /// No description provided for @chatCompression_saveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save the compression setting. Showing the saved setting.'**
+  String get chatCompression_saveFailed;
+
+  /// No description provided for @messageMeta_smazCompressed.
+  ///
+  /// In en, this message translates to:
+  /// **'SMAZ compressed'**
+  String get messageMeta_smazCompressed;
+
+  /// No description provided for @addContact_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Contact'**
+  String get addContact_title;
+
+  /// No description provided for @addContact_infoBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'If you know the public key of someone you want to contact, you can add them manually without waiting for them to advert.'**
+  String get addContact_infoBanner;
+
+  /// No description provided for @addContact_contactType.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact Type'**
+  String get addContact_contactType;
+
+  /// No description provided for @addContact_name.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get addContact_name;
+
+  /// No description provided for @addContact_nameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a name'**
+  String get addContact_nameRequired;
+
+  /// No description provided for @addContact_publicKeyHex.
+  ///
+  /// In en, this message translates to:
+  /// **'Public Key (hex)'**
+  String get addContact_publicKeyHex;
+
+  /// No description provided for @addContact_publicKeyRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a public key'**
+  String get addContact_publicKeyRequired;
+
+  /// No description provided for @addContact_publicKeyInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Public key must be 64 hex characters (32 bytes)'**
+  String get addContact_publicKeyInvalid;
+
+  /// No description provided for @addContact_clipboardKeyLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Public key filled in. Choose a contact type, enter a name, and tap save.'**
+  String get addContact_clipboardKeyLoaded;
+
+  /// No description provided for @addContact_fromDiscovered.
+  ///
+  /// In en, this message translates to:
+  /// **'Add from Discovered Contacts'**
+  String get addContact_fromDiscovered;
+
+  /// No description provided for @addContact_saveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to add contact.'**
+  String get addContact_saveFailed;
+
+  /// No description provided for @coordinateMap_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Location'**
+  String get coordinateMap_title;
+
+  /// No description provided for @coordinate_copyLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy location'**
+  String get coordinate_copyLocation;
+
+  /// No description provided for @coordinate_openInMaps.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in maps'**
+  String get coordinate_openInMaps;
+
+  /// No description provided for @coordinate_copied.
+  ///
+  /// In en, this message translates to:
+  /// **'Location copied'**
+  String get coordinate_copied;
+
+  /// No description provided for @chess_menuGames.
+  ///
+  /// In en, this message translates to:
+  /// **'Chess games'**
+  String get chess_menuGames;
+
+  /// No description provided for @chess_menuGamesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Chess games ({count})'**
+  String chess_menuGamesCount(int count);
+
+  /// No description provided for @chess_sheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Chess'**
+  String get chess_sheetTitle;
+
+  /// No description provided for @chess_sectionNewGame.
+  ///
+  /// In en, this message translates to:
+  /// **'New game'**
+  String get chess_sectionNewGame;
+
+  /// No description provided for @chess_sectionYourGames.
+  ///
+  /// In en, this message translates to:
+  /// **'Your games'**
+  String get chess_sectionYourGames;
+
+  /// No description provided for @chess_sectionInvites.
+  ///
+  /// In en, this message translates to:
+  /// **'Open invites'**
+  String get chess_sectionInvites;
+
+  /// No description provided for @chess_sectionLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Live games'**
+  String get chess_sectionLive;
+
+  /// No description provided for @chess_sectionFinished.
+  ///
+  /// In en, this message translates to:
+  /// **'Finished'**
+  String get chess_sectionFinished;
+
+  /// No description provided for @chess_newChallenge.
+  ///
+  /// In en, this message translates to:
+  /// **'Challenge someone'**
+  String get chess_newChallenge;
+
+  /// No description provided for @chess_newChallengeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick someone recently heard on this channel'**
+  String get chess_newChallengeSubtitle;
+
+  /// No description provided for @chess_newOpenInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'Post an open invite'**
+  String get chess_newOpenInvite;
+
+  /// No description provided for @chess_newOpenInviteSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone on this channel can accept'**
+  String get chess_newOpenInviteSubtitle;
+
+  /// No description provided for @chess_emptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No games yet'**
+  String get chess_emptyTitle;
+
+  /// No description provided for @chess_emptySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Challenge someone or post an open invite. Anyone on the channel can watch.'**
+  String get chess_emptySubtitle;
+
+  /// No description provided for @chess_vs.
+  ///
+  /// In en, this message translates to:
+  /// **'{white} vs {black}'**
+  String chess_vs(String white, String black);
+
+  /// No description provided for @chess_unknownPlayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get chess_unknownPlayer;
+
+  /// No description provided for @chess_rowChallenge.
+  ///
+  /// In en, this message translates to:
+  /// **'{inviter} challenged {target}'**
+  String chess_rowChallenge(String inviter, String target);
+
+  /// No description provided for @chess_rowYourOpenInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'Your open invite'**
+  String get chess_rowYourOpenInvite;
+
+  /// No description provided for @chess_rowYourChallenge.
+  ///
+  /// In en, this message translates to:
+  /// **'You challenged {name}'**
+  String chess_rowYourChallenge(String name);
+
+  /// No description provided for @chess_rowInviteFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Game with {name}'**
+  String chess_rowInviteFrom(String name);
+
+  /// No description provided for @chess_rowStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the game to start'**
+  String get chess_rowStarting;
+
+  /// No description provided for @chess_rowMoveTurn.
+  ///
+  /// In en, this message translates to:
+  /// **'Move {number} · {turn}'**
+  String chess_rowMoveTurn(int number, String turn);
+
+  /// No description provided for @chess_rowOpenInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is looking for a game'**
+  String chess_rowOpenInvite(String name);
+
+  /// No description provided for @chess_rowChallengedYou.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} challenged you'**
+  String chess_rowChallengedYou(String name);
+
+  /// No description provided for @chess_rowInviteDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Time per move: {deadline}'**
+  String chess_rowInviteDetails(String deadline);
+
+  /// No description provided for @chess_accept.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept'**
+  String get chess_accept;
+
+  /// No description provided for @chess_decline.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get chess_decline;
+
+  /// No description provided for @chess_remove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get chess_remove;
+
+  /// No description provided for @chess_cancelInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel invite'**
+  String get chess_cancelInvite;
+
+  /// No description provided for @chess_cancelInviteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel this invite?'**
+  String get chess_cancelInviteTitle;
+
+  /// No description provided for @chess_sendFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send. Check the radio connection.'**
+  String get chess_sendFailed;
+
+  /// No description provided for @chess_challengeSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Challenge sent to {name}'**
+  String chess_challengeSent(String name);
+
+  /// No description provided for @chess_inviteSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Open invite posted'**
+  String get chess_inviteSent;
+
+  /// No description provided for @chess_pickOpponent.
+  ///
+  /// In en, this message translates to:
+  /// **'Who to challenge'**
+  String get chess_pickOpponent;
+
+  /// No description provided for @chess_noRecentSenders.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody has posted on this channel recently.'**
+  String get chess_noRecentSenders;
+
+  /// No description provided for @chess_deadlineLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Time per move'**
+  String get chess_deadlineLabel;
+
+  /// No description provided for @chess_deadlineNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No limit'**
+  String get chess_deadlineNone;
+
+  /// No description provided for @chess_deadline15m.
+  ///
+  /// In en, this message translates to:
+  /// **'15 minutes'**
+  String get chess_deadline15m;
+
+  /// No description provided for @chess_deadline1h.
+  ///
+  /// In en, this message translates to:
+  /// **'1 hour'**
+  String get chess_deadline1h;
+
+  /// No description provided for @chess_deadline6h.
+  ///
+  /// In en, this message translates to:
+  /// **'6 hours'**
+  String get chess_deadline6h;
+
+  /// No description provided for @chess_deadline1d.
+  ///
+  /// In en, this message translates to:
+  /// **'1 day'**
+  String get chess_deadline1d;
+
+  /// No description provided for @chess_deadline3d.
+  ///
+  /// In en, this message translates to:
+  /// **'3 days'**
+  String get chess_deadline3d;
+
+  /// No description provided for @chess_colourLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Your colour'**
+  String get chess_colourLabel;
+
+  /// No description provided for @chess_colourRandom.
+  ///
+  /// In en, this message translates to:
+  /// **'Random'**
+  String get chess_colourRandom;
+
+  /// No description provided for @chess_colourWhite.
+  ///
+  /// In en, this message translates to:
+  /// **'White'**
+  String get chess_colourWhite;
+
+  /// No description provided for @chess_colourBlack.
+  ///
+  /// In en, this message translates to:
+  /// **'Black'**
+  String get chess_colourBlack;
+
+  /// No description provided for @chess_sendChallenge.
+  ///
+  /// In en, this message translates to:
+  /// **'Send challenge'**
+  String get chess_sendChallenge;
+
+  /// No description provided for @chess_postInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'Post invite'**
+  String get chess_postInvite;
+
+  /// No description provided for @chess_gameGone.
+  ///
+  /// In en, this message translates to:
+  /// **'This game is no longer available.'**
+  String get chess_gameGone;
+
+  /// No description provided for @chess_playerYou.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (you)'**
+  String chess_playerYou(String name);
+
+  /// No description provided for @chess_toMoveChip.
+  ///
+  /// In en, this message translates to:
+  /// **'To move'**
+  String get chess_toMoveChip;
+
+  /// No description provided for @chess_statusYourMove.
+  ///
+  /// In en, this message translates to:
+  /// **'Your move'**
+  String get chess_statusYourMove;
+
+  /// No description provided for @chess_statusWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for {name}'**
+  String chess_statusWaiting(String name);
+
+  /// No description provided for @chess_statusToMove.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} to move'**
+  String chess_statusToMove(String name);
+
+  /// No description provided for @chess_statusTimeLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{time} left for this move'**
+  String chess_statusTimeLeft(String time);
+
+  /// No description provided for @chess_statusOverdue.
+  ///
+  /// In en, this message translates to:
+  /// **'Time for this move is up'**
+  String get chess_statusOverdue;
+
+  /// No description provided for @chess_statusDrawOffered.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} offers a draw'**
+  String chess_statusDrawOffered(String name);
+
+  /// No description provided for @chess_statusUnknownPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'The board appears with the next move.'**
+  String get chess_statusUnknownPosition;
+
+  /// No description provided for @chess_statusUnverified.
+  ///
+  /// In en, this message translates to:
+  /// **'Players not confirmed yet. Ask for an update to check them.'**
+  String get chess_statusUnverified;
+
+  /// No description provided for @chess_statusPlayersUnchecked.
+  ///
+  /// In en, this message translates to:
+  /// **'Players not confirmed: this phone didn\'t hear the invite.'**
+  String get chess_statusPlayersUnchecked;
+
+  /// No description provided for @chess_statusMoveUnconfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Your move may not have gone out. Tap Ask for update to send it again.'**
+  String get chess_statusMoveUnconfirmed;
+
+  /// No description provided for @chess_actionResign.
+  ///
+  /// In en, this message translates to:
+  /// **'Resign'**
+  String get chess_actionResign;
+
+  /// No description provided for @chess_actionOfferDraw.
+  ///
+  /// In en, this message translates to:
+  /// **'Offer draw'**
+  String get chess_actionOfferDraw;
+
+  /// No description provided for @chess_actionAcceptDraw.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept draw'**
+  String get chess_actionAcceptDraw;
+
+  /// No description provided for @chess_actionClaimTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Claim win on time'**
+  String get chess_actionClaimTimeout;
+
+  /// No description provided for @chess_actionNudge.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask for update'**
+  String get chess_actionNudge;
+
+  /// No description provided for @chess_actionNudgeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask the players to resend the latest move'**
+  String get chess_actionNudgeTooltip;
+
+  /// No description provided for @chess_resignConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Resign this game?'**
+  String get chess_resignConfirmTitle;
+
+  /// No description provided for @chess_resignConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your opponent wins.'**
+  String get chess_resignConfirmBody;
+
+  /// No description provided for @chess_movesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Moves'**
+  String get chess_movesTitle;
+
+  /// No description provided for @chess_noMovesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No moves yet'**
+  String get chess_noMovesYet;
+
+  /// No description provided for @chess_movesMissed.
+  ///
+  /// In en, this message translates to:
+  /// **'(missed)'**
+  String get chess_movesMissed;
+
+  /// No description provided for @chess_promoteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Promote to'**
+  String get chess_promoteTitle;
+
+  /// No description provided for @chess_pieceQueen.
+  ///
+  /// In en, this message translates to:
+  /// **'Queen'**
+  String get chess_pieceQueen;
+
+  /// No description provided for @chess_pieceRook.
+  ///
+  /// In en, this message translates to:
+  /// **'Rook'**
+  String get chess_pieceRook;
+
+  /// No description provided for @chess_pieceBishop.
+  ///
+  /// In en, this message translates to:
+  /// **'Bishop'**
+  String get chess_pieceBishop;
+
+  /// No description provided for @chess_pieceKnight.
+  ///
+  /// In en, this message translates to:
+  /// **'Knight'**
+  String get chess_pieceKnight;
+
+  /// No description provided for @chess_pieceKing.
+  ///
+  /// In en, this message translates to:
+  /// **'King'**
+  String get chess_pieceKing;
+
+  /// No description provided for @chess_piecePawn.
+  ///
+  /// In en, this message translates to:
+  /// **'Pawn'**
+  String get chess_piecePawn;
+
+  /// No description provided for @chess_squareWhitePiece.
+  ///
+  /// In en, this message translates to:
+  /// **'{square}: {piece}, white'**
+  String chess_squareWhitePiece(String square, String piece);
+
+  /// No description provided for @chess_squareBlackPiece.
+  ///
+  /// In en, this message translates to:
+  /// **'{square}: {piece}, black'**
+  String chess_squareBlackPiece(String square, String piece);
+
+  /// No description provided for @chess_resultDraw.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw'**
+  String get chess_resultDraw;
+
+  /// No description provided for @chess_resultWon.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} won'**
+  String chess_resultWon(String name);
+
+  /// No description provided for @chess_resultWithReason.
+  ///
+  /// In en, this message translates to:
+  /// **'{result} · {reason}'**
+  String chess_resultWithReason(String result, String reason);
+
+  /// No description provided for @chess_endCheckmate.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkmate'**
+  String get chess_endCheckmate;
+
+  /// No description provided for @chess_endResignation.
+  ///
+  /// In en, this message translates to:
+  /// **'Resignation'**
+  String get chess_endResignation;
+
+  /// No description provided for @chess_endTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'On time'**
+  String get chess_endTimeout;
+
+  /// No description provided for @chess_endDrawAgreed.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw agreed'**
+  String get chess_endDrawAgreed;
+
+  /// No description provided for @chess_endStalemate.
+  ///
+  /// In en, this message translates to:
+  /// **'Stalemate'**
+  String get chess_endStalemate;
+
+  /// No description provided for @chess_endInsufficient.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough pieces to mate'**
+  String get chess_endInsufficient;
+
+  /// No description provided for @chess_endFiftyMoves.
+  ///
+  /// In en, this message translates to:
+  /// **'50-move rule'**
+  String get chess_endFiftyMoves;
+
+  /// No description provided for @chess_endRepetition.
+  ///
+  /// In en, this message translates to:
+  /// **'Repetition'**
+  String get chess_endRepetition;
+
+  /// No description provided for @chess_endCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite cancelled'**
+  String get chess_endCancelled;
+
+  /// No description provided for @chess_endDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'Challenge declined'**
+  String get chess_endDeclined;
+
+  /// No description provided for @chess_endExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite expired'**
+  String get chess_endExpired;
+
+  /// No description provided for @chess_endTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone else accepted first'**
+  String get chess_endTaken;
+
+  /// No description provided for @chess_timeMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String chess_timeMinutes(int minutes);
+
+  /// No description provided for @chess_timeHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} h {minutes} min'**
+  String chess_timeHours(int hours, int minutes);
+
+  /// No description provided for @chess_timeDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} d {hours} h'**
+  String chess_timeDays(int days, int hours);
+
+  /// No description provided for @chess_notificationSender.
+  ///
+  /// In en, this message translates to:
+  /// **'Chess'**
+  String get chess_notificationSender;
+
+  /// No description provided for @chess_notifyChallenge.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} challenged you to a game'**
+  String chess_notifyChallenge(String name);
+
+  /// No description provided for @chess_notifyAccepted.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} accepted your game'**
+  String chess_notifyAccepted(String name);
+
+  /// No description provided for @chess_notifyAcceptedYourMove.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} accepted your game. You play white, your move.'**
+  String chess_notifyAcceptedYourMove(String name);
+
+  /// No description provided for @chess_notifyDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} declined your challenge'**
+  String chess_notifyDeclined(String name);
+
+  /// No description provided for @chess_notifyTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone else accepted that game first'**
+  String get chess_notifyTaken;
+
+  /// No description provided for @chess_notifyGameStartedYourMove.
+  ///
+  /// In en, this message translates to:
+  /// **'Your game started. You play white, your move.'**
+  String get chess_notifyGameStartedYourMove;
+
+  /// No description provided for @chess_notifyYourMove.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} played {move}. Your move.'**
+  String chess_notifyYourMove(String name, String move);
+
+  /// No description provided for @chess_notifyGameOver.
+  ///
+  /// In en, this message translates to:
+  /// **'Your game with {name} is over'**
+  String chess_notifyGameOver(String name);
+
+  /// No description provided for @chess_notifyResigned.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} resigned. You win.'**
+  String chess_notifyResigned(String name);
+
+  /// No description provided for @chess_notifyDrawOffered.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} offers a draw'**
+  String chess_notifyDrawOffered(String name);
+
+  /// No description provided for @chess_notifyDrawAccepted.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} accepted the draw'**
+  String chess_notifyDrawAccepted(String name);
+
+  /// No description provided for @chess_notifyTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} claimed a win on time'**
+  String chess_notifyTimeout(String name);
 }
 
 class _AppLocalizationsDelegate

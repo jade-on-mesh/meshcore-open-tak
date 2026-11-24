@@ -105,3 +105,6 @@ third_party/vox_av1/aom-apple/
 third_party/vox_av1/aom-ios/
 third_party/aom-windows/
 third_party/aom-linux/
+
+# Written by scripts/onnx.sh off (ONNX-free build)
+/pubspec_overrides.yaml

@@ -705,6 +705,9 @@ class AppLocalizationsSl extends AppLocalizations {
       'Odkriti kontakti in njihovi shranjeni podatki';
 
   @override
+  String get backupRestore_bookmarks => 'Zaznamki';
+
+  @override
   String get backupRestore_channels => 'Kanali';
 
   @override
@@ -729,9 +732,8 @@ class AppLocalizationsSl extends AppLocalizations {
   String get backupRestore_missingModelsTitle => 'Modeli niso preneseni';
 
   @override
-  String backupRestore_missingModelsMessage(String models) {
-    return 'Obnovljene nastavitve izbirajo modele, ki niso na voljo v tej napravi:\n$models\n\nJih želite prenesti zdaj?';
-  }
+  String get backupRestore_missingModelsMessage =>
+      'Obnovljene nastavitve izbirajo modele, ki niso na voljo v tej napravi. Jih želite prenesti zdaj?';
 
   @override
   String get backupRestore_downloadModels => 'Prenesi modele';
@@ -1557,6 +1559,13 @@ class AppLocalizationsSl extends AppLocalizations {
       'Regijo sporočila kanala prikaži v isti vrstici kot število skokov, ne pod njim.';
 
   @override
+  String get appSettings_showCompressionIndicator => 'Kazalnik stiskanja';
+
+  @override
+  String get appSettings_showCompressionIndicatorSubtitle =>
+      'Pokaži ikono pri sporočilih, stisnjenih s SMAZ.';
+
+  @override
   String get appSettings_notifications => 'Obvestila';
 
   @override
@@ -1741,11 +1750,11 @@ class AppLocalizationsSl extends AppLocalizations {
 
   @override
   String get appSettings_clearPathOnMaxRetrySubtitle =>
-      'Ponastavi pot stika po 5 neuspelih poskusih pošiljanja';
+      'Ponastavi shranjeno pot stika, ko spodletijo vsi poskusi pošiljanja';
 
   @override
   String get appSettings_pathsWillBeCleared =>
-      'Poti bodo počiščene po 5 neuspelih poskusih.';
+      'Poti se počistijo, ko spodletijo vsi poskusi pošiljanja';
 
   @override
   String get appSettings_pathsWillNotBeCleared =>
@@ -1756,7 +1765,7 @@ class AppLocalizationsSl extends AppLocalizations {
 
   @override
   String get appSettings_autoRouteRotationSubtitle =>
-      'Izmenjuj najboljše poti in flood način';
+      'Ob vsakem neposrednem poskusu preizkusi drugo znano pot. Kasnejši poskusi so Flood. Izklopljeno ohrani trenutno pot stika.';
 
   @override
   String get appSettings_autoRouteRotationEnabled =>
@@ -1773,6 +1782,63 @@ class AppLocalizationsSl extends AppLocalizations {
   @override
   String get appSettings_maxMessageRetriesSubtitle =>
       'Število poskusov ponovnega poslanja, preden se sporočilo označuje kot neuspešno';
+
+  @override
+  String appSettings_directRetries(int count) {
+    return 'Neposredni poskusi: $count';
+  }
+
+  @override
+  String get appSettings_directRetriesSubtitle =>
+      'Kolikokrat se preizkusi znana pot. Na voljo tudi, ko je samodejno kroženje poti izklopljeno.';
+
+  @override
+  String appSettings_floodRetries(int count) {
+    return 'Poskusi Flood: $count';
+  }
+
+  @override
+  String get appSettings_floodRetriesSubtitle =>
+      'Kolikokrat se uporabi Flood. Flood porabi več oddajnega časa. Ob vklopljenem kroženju sledijo neposrednim poskusom.';
+
+  @override
+  String appSettings_loginAttempts(int count) {
+    return 'Poskusi prijave: $count';
+  }
+
+  @override
+  String get appSettings_loginAttemptsSubtitle =>
+      'Kolikokrat se poskusi prijava v ponavljalnik ali room strežnik, preden obupa.';
+
+  @override
+  String get appSettings_repeatersAndRooms => 'Repetitorji in sobe';
+
+  @override
+  String get appSettings_clockSyncAfterLogin =>
+      'Sinhroniziraj uro repetitorja ob prijavi';
+
+  @override
+  String get appSettings_clockSyncAfterLoginSubtitle =>
+      'Po uspešni prijavi v repetitor se pošlje clock sync. Vsak repetitor lahko še vedno izbere Privzeto, Vklop ali Izklop.';
+
+  @override
+  String get appSettings_loginPasswordAutofocus => 'Fokus na polje gesla';
+
+  @override
+  String get appSettings_loginPasswordAutofocusSubtitle =>
+      'Ob odprtju prijave v repetitor ali sobo gre kazalec v prazno polje gesla. Izklop pusti okno vidno, dokler se ne dotaknete polja.';
+
+  @override
+  String get appSettings_resetRepeaterRoomSettings =>
+      'Ponastavi nastavitve repetitorjev in sob';
+
+  @override
+  String get appSettings_resetRepeaterRoomSettingsSubtitle =>
+      'Obnovi nastavitve v tem razdelku. Izbire, shranjene pri posameznih repetitorjih, ostanejo.';
+
+  @override
+  String get appSettings_repeaterRoomSettingsReset =>
+      'Nastavitve repetitorjev in sob so ponastavljene';
 
   @override
   String get appSettings_ipfsImageLinks => 'Konfiguracija ponudnika IPFS';
@@ -2168,7 +2234,28 @@ class AppLocalizationsSl extends AppLocalizations {
   String get contacts_noNodesFound => 'No nodes found';
 
   @override
+  String contacts_groupCurrentMembers(int count) {
+    return 'Trenutni člani ($count)';
+  }
+
+  @override
+  String get contacts_groupAddContacts => 'Dodaj stike';
+
+  @override
+  String contacts_groupRemoveMember(String name) {
+    return 'Odstrani $name iz skupine';
+  }
+
+  @override
+  String contacts_groupAddMember(String name) {
+    return 'Dodaj $name v skupino';
+  }
+
+  @override
   String get contacts_lastSeenNow => 'pravkar';
+
+  @override
+  String get contacts_lastSeenNever => 'še ni slišan';
 
   @override
   String contacts_lastSeenMinsAgo(int minutes) {
@@ -2350,16 +2437,6 @@ class AppLocalizationsSl extends AppLocalizations {
   String channels_editChannelTitle(int index) {
     return 'Uredi Kanal $index';
   }
-
-  @override
-  String get channels_smazCompression => 'Kompresija SMAZ';
-
-  @override
-  String get channels_cyr2latCompression => 'Kompresija Cyr2Lat';
-
-  @override
-  String get channels_cyr2latCompressionDscr =>
-      'Pri pošiljanju nekatere cirilice nadomesti z latiničnimi.';
 
   @override
   String get channels_cyr2latSettingsHeading => 'Nastavitve Cyr2Lat';
@@ -2636,7 +2713,7 @@ class AppLocalizationsSl extends AppLocalizations {
   }
 
   @override
-  String get chat_resend => 'Resend';
+  String get chat_resend => 'Pošlji znova';
 
   @override
   String chat_replyTo(String name) {
@@ -2680,6 +2757,30 @@ class AppLocalizationsSl extends AppLocalizations {
 
   @override
   String get chat_messageDeleted => 'Sporočilo izbrisano';
+
+  @override
+  String get chat_bookmark => 'Zaznamek';
+
+  @override
+  String get chat_removeBookmark => 'Odstrani zaznamek';
+
+  @override
+  String get chat_showBookmarks => 'Pokaži zaznamke';
+
+  @override
+  String get bookmarks_title => 'Zaznamki';
+
+  @override
+  String get bookmarks_empty => 'Ni sporočil z zaznamki';
+
+  @override
+  String get bookmarks_channel => 'Kanal';
+
+  @override
+  String get bookmarks_contact => 'Stik';
+
+  @override
+  String get bookmarks_remove => 'Odstrani zaznamek';
 
   @override
   String get chat_selectMessages => 'Izberi sporočila';
@@ -3174,8 +3275,9 @@ class AppLocalizationsSl extends AppLocalizations {
   String get pathEditor_hexLabel => 'Predfiks za heksadecimalno šifro';
 
   @override
-  String get pathEditor_hexHelper =>
-      'Dva šestbitna znaka na vsak skok, ločena z vejico';
+  String pathEditor_hexHelper(int count) {
+    return '$count šestnajstiških znakov na vsak skok, ločenih z vejico';
+  }
 
   @override
   String pathEditor_invalidTokens(String tokens) {
@@ -3215,9 +3317,6 @@ class AppLocalizationsSl extends AppLocalizations {
 
   @override
   String get chat_publicKey => 'Ključ javnega tipa';
-
-  @override
-  String get chat_compressOutgoingMessages => 'Stisnite izhodne sporočila';
 
   @override
   String get chat_floodForced => 'Flood (vsiljeno)';
@@ -4004,7 +4103,16 @@ class AppLocalizationsSl extends AppLocalizations {
 
   @override
   String get repeater_clockSyncAfterLoginSubtitle =>
-      'Po uspešni prijavi samodejno pošlji »sinhronizacijo ure«';
+      'Privzeto sledi Repetitorjem in sobam v nastavitvah. Vklop in Izklop veljata samo za ta repetitor.';
+
+  @override
+  String get repeater_clockSyncDefault => 'Privzeto';
+
+  @override
+  String get repeater_clockSyncOn => 'Vklop';
+
+  @override
+  String get repeater_clockSyncOff => 'Izklop';
 
   @override
   String get repeater_statusTitle => 'Status repetitora';
@@ -6222,6 +6330,19 @@ class AppLocalizationsSl extends AppLocalizations {
       'MeshCore Open ne teče. Odprite ga in ponovno pošite odgovor.';
 
   @override
+  String get settings_exportBookmarks => 'Izvozi zaznamke v Markdown';
+
+  @override
+  String get settings_exportBookmarksSubtitle =>
+      'Deli ali shrani sporočila z zaznamki kot datoteko Markdown.';
+
+  @override
+  String get settings_exportBookmarksSuccess => 'Zaznamki so izvoženi.';
+
+  @override
+  String get settings_exportBookmarksNoBookmarks => 'Ni zaznamkov za izvoz.';
+
+  @override
   String get settings_gpxExportRepeaters =>
       'Izvoz ponoviteljev / strežnika sobe v GPX';
 
@@ -6894,6 +7015,62 @@ class AppLocalizationsSl extends AppLocalizations {
   @override
   String get imageSend_reconstructionUnavailable =>
       'Ta naprava ne more prikazati predogleda rekonstrukcije.';
+
+  @override
+  String receivedImage_packetEchoes(int number, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'ponovljen $count-krat',
+      few: 'ponovljen $count-krat',
+      two: 'ponovljen $count-krat',
+      one: 'ponovljen enkrat',
+      zero: 'noben repetitor ni slišal',
+    );
+    return 'Paket $number: $_temp0';
+  }
+
+  @override
+  String receivedImage_recoveryPacketEchoes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'ponovljen $count-krat',
+      few: 'ponovljen $count-krat',
+      two: 'ponovljen $count-krat',
+      one: 'ponovljen enkrat',
+      zero: 'noben repetitor ni slišal',
+    );
+    return 'Obnovitveni paket: $_temp0';
+  }
+
+  @override
+  String get imageSend_preparingPreview => 'Priprava predogleda…';
+
+  @override
+  String get imageSend_tryAnother => 'Poskusi drugo različico';
+
+  @override
+  String get imageSend_versionsHint =>
+      'Vsaka različica je rekonstruirana nekoliko drugače. Izberite tisto, ki je najbolj podobna vaši fotografiji.';
+
+  @override
+  String imageSend_versionLabel(int number) {
+    return 'Različica $number';
+  }
+
+  @override
+  String imageSend_versionPackets(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count paketov',
+      few: '$count paketi',
+      two: '$count paketa',
+      one: '1 paket',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get imageSend_modelNotDownloaded =>
@@ -7598,15 +7775,15 @@ class AppLocalizationsSl extends AppLocalizations {
 
   @override
   String get appSettings_resetRoutingToDefault =>
-      'Ponastavite algoritem usmerjanja na privzeto';
+      'Ponastavi nastavitve usmerjanja na privzete';
 
   @override
   String get appSettings_resetRoutingToDefaultSubtitle =>
-      'Obnovite nastavitve algoritma usmerjanja na tovarniške privzetke';
+      'Obnovi nastavitve usmerjanja v tem razdelku na privzete vrednosti';
 
   @override
   String get appSettings_routingResetToDefault =>
-      'Nastavitve algoritma usmerjanja so ponastavljene na privzeto';
+      'Nastavitve usmerjanja so ponastavljene na privzete';
 
   @override
   String get appSettings_imageMessagesSection => 'Sporočila s slikami';
@@ -10106,4 +10283,543 @@ class AppLocalizationsSl extends AppLocalizations {
   @override
   String get chat_composerOffline =>
       'Za pošiljanje sporočil se povežite z radiem';
+
+  @override
+  String get modelDownload_notDownloaded => 'Ni preneseno';
+
+  @override
+  String get modelDownload_downloading => 'Prenašanje';
+
+  @override
+  String get modelDownload_active => 'Aktiven';
+
+  @override
+  String get modelDownload_failed => 'Prenos ni uspel';
+
+  @override
+  String get modelDownload_incomplete => 'Nepopolno';
+
+  @override
+  String get modelDownload_verifying => 'Preverjanje prenosa';
+
+  @override
+  String get modelDownload_useModel => 'Uporabi ta model';
+
+  @override
+  String modelDownload_removeFailed(String error) {
+    return 'Modela ni bilo mogoče odstraniti: $error';
+  }
+
+  @override
+  String modelDownload_progress(String current, String total, String percent) {
+    return '$current / $total MB ($percent%)';
+  }
+
+  @override
+  String get chatCompression_title => 'Stiskanje';
+
+  @override
+  String chatCompression_label(String mode) {
+    return 'Stiskanje: $mode';
+  }
+
+  @override
+  String get chatCompression_off => 'Izklopljeno';
+
+  @override
+  String get chatCompression_smaz => 'SMAZ';
+
+  @override
+  String get chatCompression_cyr2lat => 'Cyr2Lat';
+
+  @override
+  String get chatCompression_changeHint => 'Spremeni stiskanje za ta klepet';
+
+  @override
+  String get chatCompression_sheetSubtitle =>
+      'Velja za sporočila, ki jih pošljete v tem klepetu. Shranjeno v tem telefonu.';
+
+  @override
+  String get chatCompression_offDescription =>
+      'Brez stiskanja. Besedilo se pošlje natanko tako, kot ste ga vnesli. Vsaka aplikacija ga lahko prebere. Ne prihrani nobenega bajta.';
+
+  @override
+  String get chatCompression_smazDescription =>
+      'Stiskanje brez izgub za kratka besedila. Aplikacija prejemnika mora podpirati SMAZ, druge aplikacije prikažejo neberljivo besedilo »s:…«. Uporabi se le, kadar sporočilo skrajša, zato ni stisnjeno vsako sporočilo.';
+
+  @override
+  String get chatCompression_cyr2latDescription =>
+      'Ni brez izgub. Nekatere cirilične črke zamenja s podobnimi latiničnimi (А→A, З→3), da prihrani bajte. Berljivo v vsaki aplikaciji brez dekodiranja, vendar se natančni znaki spremenijo, tudi v vaših poslanih sporočilih tukaj. Lahko vpliva na kopiranje, iskanje in tehnična besedila. Rezultat je odvisen od izbranega profila.';
+
+  @override
+  String get chatCompression_profile => 'Profil Cyr2Lat';
+
+  @override
+  String get chatCompression_noStorageId =>
+      'Stiskanja ni mogoče spremeniti, dokler se ta kanal ne sinhronizira z radiem.';
+
+  @override
+  String get chatCompression_saveFailed =>
+      'Nastavitve stiskanja ni bilo mogoče shraniti. Prikazana je shranjena nastavitev.';
+
+  @override
+  String get messageMeta_smazCompressed => 'Stisnjeno s SMAZ';
+
+  @override
+  String get addContact_title => 'Dodaj stik';
+
+  @override
+  String get addContact_infoBanner =>
+      'Če poznate javni ključ osebe, s katero želite stopiti v stik, jo lahko dodate ročno, ne da bi čakali na njeno oglasitev.';
+
+  @override
+  String get addContact_contactType => 'Vrsta stika';
+
+  @override
+  String get addContact_name => 'Ime';
+
+  @override
+  String get addContact_nameRequired => 'Vnesite ime';
+
+  @override
+  String get addContact_publicKeyHex => 'Javni ključ (hex)';
+
+  @override
+  String get addContact_publicKeyRequired => 'Vnesite javni ključ';
+
+  @override
+  String get addContact_publicKeyInvalid =>
+      'Javni ključ mora imeti 64 šestnajstiških znakov (32 bajtov)';
+
+  @override
+  String get addContact_clipboardKeyLoaded =>
+      'Javni ključ je izpolnjen. Izberite vrsto stika, vnesite ime in tapnite Shrani.';
+
+  @override
+  String get addContact_fromDiscovered => 'Dodaj iz odkritih stikov';
+
+  @override
+  String get addContact_saveFailed => 'Stika ni bilo mogoče dodati.';
+
+  @override
+  String get coordinateMap_title => 'Lokacija';
+
+  @override
+  String get coordinate_copyLocation => 'Kopiraj lokacijo';
+
+  @override
+  String get coordinate_openInMaps => 'Odpri v zemljevidih';
+
+  @override
+  String get coordinate_copied => 'Lokacija kopirana';
+
+  @override
+  String get chess_menuGames => 'Šahovske igre';
+
+  @override
+  String chess_menuGamesCount(int count) {
+    return 'Šahovske igre ($count)';
+  }
+
+  @override
+  String get chess_sheetTitle => 'Šah';
+
+  @override
+  String get chess_sectionNewGame => 'Nova igra';
+
+  @override
+  String get chess_sectionYourGames => 'Vaše igre';
+
+  @override
+  String get chess_sectionInvites => 'Odprta povabila';
+
+  @override
+  String get chess_sectionLive => 'Igre v teku';
+
+  @override
+  String get chess_sectionFinished => 'Končane';
+
+  @override
+  String get chess_newChallenge => 'Izzovi nekoga';
+
+  @override
+  String get chess_newChallengeSubtitle =>
+      'Izberite nekoga, ki se je nedavno oglasil na tem kanalu';
+
+  @override
+  String get chess_newOpenInvite => 'Objavi odprto povabilo';
+
+  @override
+  String get chess_newOpenInviteSubtitle =>
+      'Sprejme ga lahko kdorkoli na tem kanalu';
+
+  @override
+  String get chess_emptyTitle => 'Še ni iger';
+
+  @override
+  String get chess_emptySubtitle =>
+      'Izzovite nekoga ali objavite odprto povabilo. Na kanalu lahko igro spremlja kdorkoli.';
+
+  @override
+  String chess_vs(String white, String black) {
+    return '$white proti $black';
+  }
+
+  @override
+  String get chess_unknownPlayer => 'Neznan';
+
+  @override
+  String chess_rowChallenge(String inviter, String target) {
+    return '$inviter izziva igralca $target';
+  }
+
+  @override
+  String get chess_rowYourOpenInvite => 'Vaše odprto povabilo';
+
+  @override
+  String chess_rowYourChallenge(String name) {
+    return 'Izzvali ste igralca $name';
+  }
+
+  @override
+  String chess_rowInviteFrom(String name) {
+    return 'Igra z igralcem $name';
+  }
+
+  @override
+  String get chess_rowStarting => 'Čakanje na začetek igre';
+
+  @override
+  String chess_rowMoveTurn(int number, String turn) {
+    return 'Poteza $number · $turn';
+  }
+
+  @override
+  String chess_rowOpenInvite(String name) {
+    return '$name išče nasprotnika';
+  }
+
+  @override
+  String chess_rowChallengedYou(String name) {
+    return '$name vas izziva';
+  }
+
+  @override
+  String chess_rowInviteDetails(String deadline) {
+    return 'Čas za potezo: $deadline';
+  }
+
+  @override
+  String get chess_accept => 'Sprejmi';
+
+  @override
+  String get chess_decline => 'Zavrni';
+
+  @override
+  String get chess_remove => 'Odstrani';
+
+  @override
+  String get chess_cancelInvite => 'Prekliči povabilo';
+
+  @override
+  String get chess_cancelInviteTitle => 'Preklicati to povabilo?';
+
+  @override
+  String get chess_sendFailed =>
+      'Pošiljanje ni uspelo. Preverite povezavo z radiem.';
+
+  @override
+  String chess_challengeSent(String name) {
+    return 'Izziv poslan igralcu $name';
+  }
+
+  @override
+  String get chess_inviteSent => 'Odprto povabilo objavljeno';
+
+  @override
+  String get chess_pickOpponent => 'Koga izzvati';
+
+  @override
+  String get chess_noRecentSenders => 'Na tem kanalu nedavno ni nihče objavil.';
+
+  @override
+  String get chess_deadlineLabel => 'Čas za potezo';
+
+  @override
+  String get chess_deadlineNone => 'Brez omejitve';
+
+  @override
+  String get chess_deadline15m => '15 minut';
+
+  @override
+  String get chess_deadline1h => '1 ura';
+
+  @override
+  String get chess_deadline6h => '6 ur';
+
+  @override
+  String get chess_deadline1d => '1 dan';
+
+  @override
+  String get chess_deadline3d => '3 dni';
+
+  @override
+  String get chess_colourLabel => 'Vaša barva';
+
+  @override
+  String get chess_colourRandom => 'Naključna';
+
+  @override
+  String get chess_colourWhite => 'Bela';
+
+  @override
+  String get chess_colourBlack => 'Črna';
+
+  @override
+  String get chess_sendChallenge => 'Pošlji izziv';
+
+  @override
+  String get chess_postInvite => 'Objavi povabilo';
+
+  @override
+  String get chess_gameGone => 'Ta igra ni več na voljo.';
+
+  @override
+  String chess_playerYou(String name) {
+    return '$name (vi)';
+  }
+
+  @override
+  String get chess_toMoveChip => 'Na potezi';
+
+  @override
+  String get chess_statusYourMove => 'Vaša poteza';
+
+  @override
+  String chess_statusWaiting(String name) {
+    return 'Čakanje na igralca $name';
+  }
+
+  @override
+  String chess_statusToMove(String name) {
+    return 'Na potezi: $name';
+  }
+
+  @override
+  String chess_statusTimeLeft(String time) {
+    return 'Za to potezo je ostalo $time';
+  }
+
+  @override
+  String get chess_statusOverdue => 'Čas za to potezo je potekel';
+
+  @override
+  String chess_statusDrawOffered(String name) {
+    return '$name ponuja remi';
+  }
+
+  @override
+  String get chess_statusUnknownPosition =>
+      'Šahovnica se prikaže ob naslednji potezi.';
+
+  @override
+  String get chess_statusUnverified =>
+      'Igralci še niso potrjeni. Zahtevajte posodobitev, da jih preverite.';
+
+  @override
+  String get chess_statusPlayersUnchecked =>
+      'Igralca nista potrjena: ta telefon povabila ni slišal.';
+
+  @override
+  String get chess_statusMoveUnconfirmed =>
+      'Vaša poteza morda ni bila poslana. Tapnite »Zahtevaj posodobitev«, da jo pošljete znova.';
+
+  @override
+  String get chess_actionResign => 'Vdaj se';
+
+  @override
+  String get chess_actionOfferDraw => 'Ponudi remi';
+
+  @override
+  String get chess_actionAcceptDraw => 'Sprejmi remi';
+
+  @override
+  String get chess_actionClaimTimeout => 'Zahtevaj zmago na čas';
+
+  @override
+  String get chess_actionNudge => 'Zahtevaj posodobitev';
+
+  @override
+  String get chess_actionNudgeTooltip =>
+      'Prosi igralca, naj ponovno pošljeta zadnjo potezo';
+
+  @override
+  String get chess_resignConfirmTitle => 'Se vdati v tej igri?';
+
+  @override
+  String get chess_resignConfirmBody => 'Nasprotnik zmaga.';
+
+  @override
+  String get chess_movesTitle => 'Poteze';
+
+  @override
+  String get chess_noMovesYet => 'Še ni potez';
+
+  @override
+  String get chess_movesMissed => '(zamujeno)';
+
+  @override
+  String get chess_promoteTitle => 'Promocija v';
+
+  @override
+  String get chess_pieceQueen => 'Dama';
+
+  @override
+  String get chess_pieceRook => 'Trdnjava';
+
+  @override
+  String get chess_pieceBishop => 'Tekač';
+
+  @override
+  String get chess_pieceKnight => 'Konj';
+
+  @override
+  String get chess_pieceKing => 'Kralj';
+
+  @override
+  String get chess_piecePawn => 'Kmet';
+
+  @override
+  String chess_squareWhitePiece(String square, String piece) {
+    return '$square: $piece, bela';
+  }
+
+  @override
+  String chess_squareBlackPiece(String square, String piece) {
+    return '$square: $piece, črna';
+  }
+
+  @override
+  String get chess_resultDraw => 'Remi';
+
+  @override
+  String chess_resultWon(String name) {
+    return 'Zmagal je $name';
+  }
+
+  @override
+  String chess_resultWithReason(String result, String reason) {
+    return '$result · $reason';
+  }
+
+  @override
+  String get chess_endCheckmate => 'Mat';
+
+  @override
+  String get chess_endResignation => 'Vdaja';
+
+  @override
+  String get chess_endTimeout => 'Na čas';
+
+  @override
+  String get chess_endDrawAgreed => 'Dogovorjen remi';
+
+  @override
+  String get chess_endStalemate => 'Pat';
+
+  @override
+  String get chess_endInsufficient => 'Premalo figur za mat';
+
+  @override
+  String get chess_endFiftyMoves => 'Pravilo 50 potez';
+
+  @override
+  String get chess_endRepetition => 'Ponovitev';
+
+  @override
+  String get chess_endCancelled => 'Povabilo preklicano';
+
+  @override
+  String get chess_endDeclined => 'Izziv zavrnjen';
+
+  @override
+  String get chess_endExpired => 'Povabilo je poteklo';
+
+  @override
+  String get chess_endTaken => 'Prej je sprejel nekdo drug';
+
+  @override
+  String chess_timeMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String chess_timeHours(int hours, int minutes) {
+    return '$hours h $minutes min';
+  }
+
+  @override
+  String chess_timeDays(int days, int hours) {
+    return '$days d $hours h';
+  }
+
+  @override
+  String get chess_notificationSender => 'Šah';
+
+  @override
+  String chess_notifyChallenge(String name) {
+    return '$name vas izziva v igro';
+  }
+
+  @override
+  String chess_notifyAccepted(String name) {
+    return 'Igralec $name je sprejel vašo igro';
+  }
+
+  @override
+  String chess_notifyAcceptedYourMove(String name) {
+    return 'Igralec $name je sprejel vašo igro. Igrate z belimi, ste na potezi.';
+  }
+
+  @override
+  String chess_notifyDeclined(String name) {
+    return 'Igralec $name je zavrnil vaš izziv';
+  }
+
+  @override
+  String get chess_notifyTaken => 'To igro je prej sprejel nekdo drug';
+
+  @override
+  String get chess_notifyGameStartedYourMove =>
+      'Vaša igra se je začela. Igrate z belimi, ste na potezi.';
+
+  @override
+  String chess_notifyYourMove(String name, String move) {
+    return 'Igralec $name je odigral $move. Ste na potezi.';
+  }
+
+  @override
+  String chess_notifyGameOver(String name) {
+    return 'Vaša igra z igralcem $name se je končala';
+  }
+
+  @override
+  String chess_notifyResigned(String name) {
+    return 'Igralec $name se je vdal. Zmagali ste.';
+  }
+
+  @override
+  String chess_notifyDrawOffered(String name) {
+    return '$name ponuja remi';
+  }
+
+  @override
+  String chess_notifyDrawAccepted(String name) {
+    return 'Igralec $name je sprejel remi';
+  }
+
+  @override
+  String chess_notifyTimeout(String name) {
+    return 'Igralec $name je zahteval zmago na čas';
+  }
 }

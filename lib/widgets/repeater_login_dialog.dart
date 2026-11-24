@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../l10n/l10n.dart';
 import '../models/contact.dart';
 import '../l10n/contact_localization.dart';
+import '../services/app_settings_service.dart';
 import '../services/storage_service.dart';
 import '../services/repeater_command_service.dart';
 import '../connector/meshcore_connector.dart';
@@ -38,7 +39,9 @@ class _RepeaterLoginDialogState extends State<RepeaterLoginDialog> {
   String? _loginError;
   late MeshCoreConnector _connector;
   int _currentAttempt = 0;
-  static const int _maxAttempts = 5;
+
+  int get _maxAttempts =>
+      context.read<AppSettingsService>().settings.loginAttempts;
 
   @override
   void initState() {
@@ -165,10 +168,13 @@ class _RepeaterLoginDialogState extends State<RepeaterLoginDialog> {
         await _storage.removeRepeaterPassword(widget.repeater.publicKeyHex);
       }
 
-      final autoClockSync = await _storage
-          .getRepeaterAutoClockSyncAfterLoginEnabled(
-            widget.repeater.publicKeyHex,
-          );
+      final globalClockSync = mounted
+          ? context.read<AppSettingsService>().settings.clockSyncAfterLogin
+          : false;
+      final autoClockSync = await _storage.repeaterClockSyncAfterLogin(
+        widget.repeater.publicKeyHex,
+        globalDefault: globalClockSync,
+      );
       if (autoClockSync) {
         try {
           final timestampSeconds =
@@ -324,7 +330,12 @@ class _RepeaterLoginDialogState extends State<RepeaterLoginDialog> {
                       }
                     },
                     onSubmitted: (_) => _handleLogin(),
-                    autofocus: _passwordController.text.isEmpty,
+                    autofocus:
+                        context
+                            .watch<AppSettingsService>()
+                            .settings
+                            .loginPasswordAutofocus &&
+                        _passwordController.text.isEmpty,
                   ),
                   const SizedBox(height: 12),
                   CheckboxListTile(

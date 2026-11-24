@@ -287,6 +287,7 @@
   "backupRestore_contactsDescription": "Contacts, per-contact filters and settings, groups, and message history",
   "backupRestore_discoveredContacts": "Discovered Contacts",
   "backupRestore_discoveredContactsDescription": "Discovered contacts and their saved details",
+  "backupRestore_bookmarks": "Bookmarks",
   "backupRestore_channels": "Channels",
   "backupRestore_channelsDescription": "Channels, channel filters, communities, and message history",
   "backupRestore_backup": "Create Backup",
@@ -294,12 +295,7 @@
   "backupRestore_backupComplete": "Backup file created.",
   "backupRestore_restoreComplete": "Restore complete. Reconnect if you restored the radio identity.",
   "backupRestore_missingModelsTitle": "Models Not Downloaded",
-  "backupRestore_missingModelsMessage": "The restored settings select models that are not available on this device:\n{models}\n\nDownload them now?",
-  "@backupRestore_missingModelsMessage": {
-    "placeholders": {
-      "models": {"type": "String"}
-    }
-  },
+  "backupRestore_missingModelsMessage": "The restored settings select models that are not on this device. Download them now?",
   "backupRestore_downloadModels": "Download Models",
   "backupRestore_downloading": "Downloading…",
   "backupRestore_cancelDownload": "Cancel Download",
@@ -660,6 +656,8 @@
   "appSettings_enableMessageTracingSubtitle": "Also show repeat counts and trip times. Long-press a message and choose Path for full details.",
   "appSettings_regionOnHopsLine": "Region next to hop count",
   "appSettings_regionOnHopsLineSubtitle": "Show a channel message's region on the same line as its hop count instead of below it.",
+  "appSettings_showCompressionIndicator": "Compression indicator",
+  "appSettings_showCompressionIndicatorSubtitle": "Show an icon on messages compressed with SMAZ.",
   "appSettings_notifications": "Notifications",
   "appSettings_enableNotifications": "Enable Notifications",
   "appSettings_enableNotificationsSubtitle": "Receive notifications for messages and adverts",
@@ -711,15 +709,50 @@
   "appSettings_advertisementNotificationsSubtitle": "Show notification when new nodes are discovered",
   "appSettings_messaging": "Messaging",
   "appSettings_clearPathOnMaxRetry": "Clear Path on Max Retry",
-  "appSettings_clearPathOnMaxRetrySubtitle": "Reset contact path after 5 failed send attempts",
-  "appSettings_pathsWillBeCleared": "Paths will be cleared after 5 failed retries",
+  "appSettings_clearPathOnMaxRetrySubtitle": "Reset the contact's saved path after every send attempt fails",
+  "appSettings_pathsWillBeCleared": "Paths will be cleared after all send attempts fail",
   "appSettings_pathsWillNotBeCleared": "Paths will not be auto-cleared",
   "appSettings_autoRouteRotation": "Auto Route Rotation",
-  "appSettings_autoRouteRotationSubtitle": "Cycle between best paths and flood mode",
+  "appSettings_autoRouteRotationSubtitle": "On each direct attempt, try a different known route. Later attempts flood. Off keeps the contact's current path.",
   "appSettings_autoRouteRotationEnabled": "Auto route rotation enabled",
   "appSettings_autoRouteRotationDisabled": "Auto route rotation disabled",
   "appSettings_maxMessageRetries": "Max Message Retries",
   "appSettings_maxMessageRetriesSubtitle": "Number of retry attempts before marking a message as failed",
+  "appSettings_directRetries": "Direct attempts: {count}",
+  "@appSettings_directRetries": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "appSettings_directRetriesSubtitle": "How many times to try a known route. This stays available when auto route rotation is off.",
+  "appSettings_floodRetries": "Flood attempts: {count}",
+  "@appSettings_floodRetries": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "appSettings_floodRetriesSubtitle": "How many times to flood. Floods use more airtime. With rotation on, these follow the direct attempts.",
+  "appSettings_loginAttempts": "Login attempts: {count}",
+  "@appSettings_loginAttempts": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "appSettings_loginAttemptsSubtitle": "How many times to try logging in to a repeater or room server before giving up.",
+  "appSettings_repeatersAndRooms": "Repeaters and Rooms",
+  "appSettings_clockSyncAfterLogin": "Sync repeater clock on login",
+  "appSettings_clockSyncAfterLoginSubtitle": "After a successful repeater login, send clock sync. Each repeater can still choose Default, On, or Off.",
+  "appSettings_loginPasswordAutofocus": "Focus the password field",
+  "appSettings_loginPasswordAutofocusSubtitle": "When opening a repeater or room login, put the cursor in the password field if it is empty. Off leaves the dialog visible until you tap the field.",
+  "appSettings_resetRepeaterRoomSettings": "Reset repeater and room settings to defaults",
+  "appSettings_resetRepeaterRoomSettingsSubtitle": "Restore the settings in this section to their defaults. Choices saved on individual repeaters stay as they are.",
+  "appSettings_repeaterRoomSettingsReset": "Repeater and room settings reset to defaults",
   "appSettings_ipfsImageLinks": "IPFS provider configuration",
   "appSettings_ipfsImageLinksSubtitle": "Upload for url Images (or Files) via IPFS provider and default gateway to receive",
   "appSettings_loadLinkImages": "Load images from links",
@@ -949,7 +982,33 @@
   "contacts_searchNodes": "Search {number}{str} Nodes...",
   "@contacts_searchNodes": {"placeholders": {"number": {"type": "int"}, "str": {"type": "String"}}},
   "contacts_noNodesFound": "No nodes found",
+  "contacts_groupCurrentMembers": "Current members ({count})",
+  "@contacts_groupCurrentMembers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "contacts_groupAddContacts": "Add contacts",
+  "contacts_groupRemoveMember": "Remove {name} from group",
+  "@contacts_groupRemoveMember": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "contacts_groupAddMember": "Add {name} to group",
+  "@contacts_groupAddMember": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "contacts_lastSeenNow": "recently",
+  "contacts_lastSeenNever": "not heard yet",
   "contacts_lastSeenMinsAgo": "~ {minutes} min.",
   "@contacts_lastSeenMinsAgo": {
     "placeholders": {
@@ -1079,9 +1138,6 @@
       }
     }
   },
-  "channels_smazCompression": "SMAZ compression",
-  "channels_cyr2latCompression": "Cyr2Lat compression",
-  "channels_cyr2latCompressionDscr": "Replaces some Cyrillic characters with Latin characters when sending.",
   "channels_cyr2latSettingsHeading": "Cyr2Lat Setup",
   "channels_cyr2latSettingsSubheading": "List of replacements",
   "channels_cyr2latSettingsDscr": "Edit the JSON configuration of character replacement",
@@ -1262,6 +1318,14 @@
   },
   "chat_messageCopied": "Message copied",
   "chat_messageDeleted": "Message deleted",
+  "chat_bookmark": "Bookmark",
+  "chat_removeBookmark": "Remove bookmark",
+  "chat_showBookmarks": "Show bookmarks",
+  "bookmarks_title": "Bookmarks",
+  "bookmarks_empty": "No bookmarked messages",
+  "bookmarks_channel": "Channel",
+  "bookmarks_contact": "Contact",
+  "bookmarks_remove": "Remove bookmark",
   "chat_selectMessages": "Select messages",
   "chat_selectedCount": "{count} selected",
   "@chat_selectedCount": {
@@ -1544,10 +1608,17 @@
   },
   "pathEditor_noHops": "No hops yet. Tap repeaters below to add them in order, or save with no hops to send direct.",
   "pathEditor_addHops": "Add hops in order",
-  "pathEditor_searchRepeaters": "Search repeaters",
+  "pathEditor_searchRepeaters": "Search name or hash",
   "pathEditor_advancedHex": "Advanced: raw hex path",
   "pathEditor_hexLabel": "Hex prefixes",
-  "pathEditor_hexHelper": "Two hex characters per hop, separated by commas",
+  "pathEditor_hexHelper": "{count} hex characters per hop, separated by commas",
+  "@pathEditor_hexHelper": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "pathEditor_invalidTokens": "Invalid: {tokens}",
   "@pathEditor_invalidTokens": {
     "placeholders": {
@@ -1567,7 +1638,6 @@
   "chat_path": "Path",
   "chat_viewPathOnMap": "View path on map",
   "chat_publicKey": "Public Key",
-  "chat_compressOutgoingMessages": "Compress outgoing messages",
   "chat_floodForced": "Flood (forced)",
   "chat_directForced": "Direct (forced)",
   "chat_hopsForced": "{count} hops (forced)",
@@ -2021,7 +2091,10 @@
   "@repeater_clockSyncAfterLogin": {
     "description": "Repeater setting: auto sync device clock after successful login"
   },
-  "repeater_clockSyncAfterLoginSubtitle": "Automatically send \"clock sync\" after a successful login",
+  "repeater_clockSyncAfterLoginSubtitle": "Default follows Repeaters and Rooms in App Settings. On and Off apply only to this repeater.",
+  "repeater_clockSyncDefault": "Default",
+  "repeater_clockSyncOn": "On",
+  "repeater_clockSyncOff": "Off",
   "@repeater_clockSyncAfterLoginSubtitle": {
     "description": "Repeater setting subtitle: describes the clock sync after login behavior"
   },
@@ -3346,6 +3419,10 @@
   "notification_replyUnavailable": "This conversation is no longer on the connected radio.",
   "notification_replySendFailed": "Your reply may not have been sent. Check in MeshCore Open and try again.",
   "notification_replyAppNotRunning": "MeshCore Open isn't running. Open it and send your reply again.",
+  "settings_exportBookmarks": "Export bookmarks to Markdown",
+  "settings_exportBookmarksSubtitle": "Share or save bookmarked messages as a Markdown file.",
+  "settings_exportBookmarksSuccess": "Bookmarks exported.",
+  "settings_exportBookmarksNoBookmarks": "No bookmarks to export.",
   "settings_gpxExportRepeaters": "Export repeaters / room server to GPX",
   "settings_gpxExportRepeatersSubtitle": "Exports repeaters / roomserver with a location to GPX file.",
   "settings_gpxExportContacts": "Export companions to GPX",
@@ -3707,6 +3784,44 @@
   "imageSend_viewOriginal": "Original",
   "imageSend_viewReconstruction": "What recipients see",
   "imageSend_reconstructionUnavailable": "This device can't preview the reconstruction.",
+  "receivedImage_packetEchoes": "Packet {number}: {count, plural, =0{no repeater heard} =1{repeated once} other{repeated {count} times}}",
+  "@receivedImage_packetEchoes": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "receivedImage_recoveryPacketEchoes": "Recovery packet: {count, plural, =0{no repeater heard} =1{repeated once} other{repeated {count} times}}",
+  "@receivedImage_recoveryPacketEchoes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "imageSend_preparingPreview": "Preparing preview…",
+  "imageSend_tryAnother": "Try another version",
+  "imageSend_versionsHint": "Each version is reconstructed a little differently. Pick the one that looks most like your photo.",
+  "imageSend_versionLabel": "Version {number}",
+  "@imageSend_versionLabel": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "imageSend_versionPackets": "{count, plural, =1{1 packet} other{{count} packets}}",
+  "@imageSend_versionPackets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "imageSend_modelNotDownloaded": "The image model isn't downloaded yet. Download it in Settings to send images.",
   "imageSend_originalSize": "Original",
   "imageSend_onAirSize": "On air",
@@ -4068,9 +4183,9 @@
   "appSettings_sourceSummary": "{label} - {description}",
   "@appSettings_sourceSummary": {"placeholders": {"label": {"type": "String"}, "description": {"type": "String"}}},
   "appSettings_routingSection": "Routing",
-  "appSettings_resetRoutingToDefault": "Reset Routing Algorithm to Default",
-  "appSettings_resetRoutingToDefaultSubtitle": "Restore routing algorithm settings to factory defaults",
-  "appSettings_routingResetToDefault": "Routing algorithm settings reset to default",
+  "appSettings_resetRoutingToDefault": "Reset routing settings to defaults",
+  "appSettings_resetRoutingToDefaultSubtitle": "Restore the routing settings in this section to their defaults",
+  "appSettings_routingResetToDefault": "Routing settings reset to defaults",
   "appSettings_imageMessagesSection": "Image messages",
   "appSettings_showApiKey": "Show API key",
   "appSettings_hideApiKey": "Hide API key",
@@ -5153,5 +5268,426 @@
   "chat_composerOffline": "Connect to a radio to send messages",
   "@chat_composerOffline": {
     "description": "Shown in place of the message box while no radio is connected"
+  },
+  "modelDownload_notDownloaded": "Not downloaded",
+  "modelDownload_downloading": "Downloading",
+  "modelDownload_active": "Active",
+  "modelDownload_failed": "Couldn't download",
+  "modelDownload_incomplete": "Incomplete",
+  "modelDownload_verifying": "Verifying the download",
+  "modelDownload_useModel": "Use this model",
+  "modelDownload_removeFailed": "Couldn't remove the model: {error}",
+  "modelDownload_progress": "{current} / {total} MB ({percent}%)",
+  "@modelDownload_removeFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "@modelDownload_progress": {
+    "placeholders": {
+      "current": {"type": "String"},
+      "total": {"type": "String"},
+      "percent": {"type": "String"}
+    }
+  },
+  "chatCompression_title": "Compression",
+  "chatCompression_label": "Compression: {mode}",
+  "@chatCompression_label": {
+    "description": "Always-visible control at the top of a chat; mode is Off, SMAZ or Cyr2Lat",
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "chatCompression_off": "Off",
+  "chatCompression_smaz": "SMAZ",
+  "chatCompression_cyr2lat": "Cyr2Lat",
+  "chatCompression_changeHint": "Change compression for this chat",
+  "chatCompression_sheetSubtitle": "Applies to messages you send in this chat. Saved on this phone.",
+  "chatCompression_offDescription": "No compression. Sends your text exactly as typed. Every app can read it. Saves no bytes.",
+  "chatCompression_smazDescription": "Lossless compression for short text. The recipient's app must support SMAZ; other apps show unreadable \"s:…\" text. Only used when it makes a message smaller, so not every message is compressed.",
+  "chatCompression_cyr2latDescription": "Not lossless. Swaps some Cyrillic letters for lookalike Latin ones (А→A, З→3) to save bytes. Readable in any app with no decoding, but the exact characters change, including your own sent messages here. Copying, search and technical text may be affected. Results depend on the chosen profile.",
+  "chatCompression_profile": "Cyr2Lat profile",
+  "chatCompression_noStorageId": "Can't change compression until this channel has synced from the radio.",
+  "chatCompression_saveFailed": "Couldn't save the compression setting. Showing the saved setting.",
+  "messageMeta_smazCompressed": "SMAZ compressed",
+  "addContact_title": "Add Contact",
+  "addContact_infoBanner": "If you know the public key of someone you want to contact, you can add them manually without waiting for them to advert.",
+  "addContact_contactType": "Contact Type",
+  "addContact_name": "Name",
+  "addContact_nameRequired": "Please enter a name",
+  "addContact_publicKeyHex": "Public Key (hex)",
+  "addContact_publicKeyRequired": "Please enter a public key",
+  "addContact_publicKeyInvalid": "Public key must be 64 hex characters (32 bytes)",
+  "addContact_clipboardKeyLoaded": "Public key filled in. Choose a contact type, enter a name, and tap save.",
+  "addContact_fromDiscovered": "Add from Discovered Contacts",
+  "addContact_saveFailed": "Failed to add contact.",
+  "coordinateMap_title": "Location",
+  "coordinate_copyLocation": "Copy location",
+  "coordinate_openInMaps": "Open in maps",
+  "coordinate_copied": "Location copied",
+  "chess_menuGames": "Chess games",
+  "chess_menuGamesCount": "Chess games ({count})",
+  "@chess_menuGamesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "chess_sheetTitle": "Chess",
+  "chess_sectionNewGame": "New game",
+  "chess_sectionYourGames": "Your games",
+  "chess_sectionInvites": "Open invites",
+  "chess_sectionLive": "Live games",
+  "chess_sectionFinished": "Finished",
+  "chess_newChallenge": "Challenge someone",
+  "chess_newChallengeSubtitle": "Pick someone recently heard on this channel",
+  "chess_newOpenInvite": "Post an open invite",
+  "chess_newOpenInviteSubtitle": "Anyone on this channel can accept",
+  "chess_emptyTitle": "No games yet",
+  "chess_emptySubtitle": "Challenge someone or post an open invite. Anyone on the channel can watch.",
+  "chess_vs": "{white} vs {black}",
+  "@chess_vs": {
+    "placeholders": {
+      "white": {
+        "type": "String"
+      },
+      "black": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_unknownPlayer": "Unknown",
+  "chess_rowChallenge": "{inviter} challenged {target}",
+  "@chess_rowChallenge": {
+    "placeholders": {
+      "inviter": {
+        "type": "String"
+      },
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_rowYourOpenInvite": "Your open invite",
+  "chess_rowYourChallenge": "You challenged {name}",
+  "@chess_rowYourChallenge": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_rowInviteFrom": "Game with {name}",
+  "@chess_rowInviteFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_rowStarting": "Waiting for the game to start",
+  "chess_rowMoveTurn": "Move {number} · {turn}",
+  "@chess_rowMoveTurn": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "turn": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_rowOpenInvite": "{name} is looking for a game",
+  "@chess_rowOpenInvite": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_rowChallengedYou": "{name} challenged you",
+  "@chess_rowChallengedYou": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_rowInviteDetails": "Time per move: {deadline}",
+  "@chess_rowInviteDetails": {
+    "placeholders": {
+      "deadline": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_accept": "Accept",
+  "chess_decline": "Decline",
+  "chess_remove": "Remove",
+  "chess_cancelInvite": "Cancel invite",
+  "chess_cancelInviteTitle": "Cancel this invite?",
+  "chess_sendFailed": "Couldn't send. Check the radio connection.",
+  "chess_challengeSent": "Challenge sent to {name}",
+  "@chess_challengeSent": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_inviteSent": "Open invite posted",
+  "chess_pickOpponent": "Who to challenge",
+  "chess_noRecentSenders": "Nobody has posted on this channel recently.",
+  "chess_deadlineLabel": "Time per move",
+  "chess_deadlineNone": "No limit",
+  "chess_deadline15m": "15 minutes",
+  "chess_deadline1h": "1 hour",
+  "chess_deadline6h": "6 hours",
+  "chess_deadline1d": "1 day",
+  "chess_deadline3d": "3 days",
+  "chess_colourLabel": "Your colour",
+  "chess_colourRandom": "Random",
+  "chess_colourWhite": "White",
+  "chess_colourBlack": "Black",
+  "chess_sendChallenge": "Send challenge",
+  "chess_postInvite": "Post invite",
+  "chess_gameGone": "This game is no longer available.",
+  "chess_playerYou": "{name} (you)",
+  "@chess_playerYou": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_toMoveChip": "To move",
+  "chess_statusYourMove": "Your move",
+  "chess_statusWaiting": "Waiting for {name}",
+  "@chess_statusWaiting": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_statusToMove": "{name} to move",
+  "@chess_statusToMove": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_statusTimeLeft": "{time} left for this move",
+  "@chess_statusTimeLeft": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_statusOverdue": "Time for this move is up",
+  "chess_statusDrawOffered": "{name} offers a draw",
+  "@chess_statusDrawOffered": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_statusUnknownPosition": "The board appears with the next move.",
+  "chess_statusUnverified": "Players not confirmed yet. Ask for an update to check them.",
+  "chess_statusPlayersUnchecked": "Players not confirmed: this phone didn't hear the invite.",
+  "chess_statusMoveUnconfirmed": "Your move may not have gone out. Tap Ask for update to send it again.",
+  "chess_actionResign": "Resign",
+  "chess_actionOfferDraw": "Offer draw",
+  "chess_actionAcceptDraw": "Accept draw",
+  "chess_actionClaimTimeout": "Claim win on time",
+  "chess_actionNudge": "Ask for update",
+  "chess_actionNudgeTooltip": "Ask the players to resend the latest move",
+  "chess_resignConfirmTitle": "Resign this game?",
+  "chess_resignConfirmBody": "Your opponent wins.",
+  "chess_movesTitle": "Moves",
+  "chess_noMovesYet": "No moves yet",
+  "chess_movesMissed": "(missed)",
+  "chess_promoteTitle": "Promote to",
+  "chess_pieceQueen": "Queen",
+  "chess_pieceRook": "Rook",
+  "chess_pieceBishop": "Bishop",
+  "chess_pieceKnight": "Knight",
+  "chess_pieceKing": "King",
+  "chess_piecePawn": "Pawn",
+  "chess_squareWhitePiece": "{square}: {piece}, white",
+  "@chess_squareWhitePiece": {
+    "placeholders": {
+      "square": {
+        "type": "String"
+      },
+      "piece": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_squareBlackPiece": "{square}: {piece}, black",
+  "@chess_squareBlackPiece": {
+    "placeholders": {
+      "square": {
+        "type": "String"
+      },
+      "piece": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_resultDraw": "Draw",
+  "chess_resultWon": "{name} won",
+  "@chess_resultWon": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_resultWithReason": "{result} · {reason}",
+  "@chess_resultWithReason": {
+    "placeholders": {
+      "result": {
+        "type": "String"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_endCheckmate": "Checkmate",
+  "chess_endResignation": "Resignation",
+  "chess_endTimeout": "On time",
+  "chess_endDrawAgreed": "Draw agreed",
+  "chess_endStalemate": "Stalemate",
+  "chess_endInsufficient": "Not enough pieces to mate",
+  "chess_endFiftyMoves": "50-move rule",
+  "chess_endRepetition": "Repetition",
+  "chess_endCancelled": "Invite cancelled",
+  "chess_endDeclined": "Challenge declined",
+  "chess_endExpired": "Invite expired",
+  "chess_endTaken": "Someone else accepted first",
+  "chess_timeMinutes": "{minutes} min",
+  "@chess_timeMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "chess_timeHours": "{hours} h {minutes} min",
+  "@chess_timeHours": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "chess_timeDays": "{days} d {hours} h",
+  "@chess_timeDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "chess_notificationSender": "Chess",
+  "chess_notifyChallenge": "{name} challenged you to a game",
+  "@chess_notifyChallenge": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_notifyAccepted": "{name} accepted your game",
+  "@chess_notifyAccepted": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_notifyAcceptedYourMove": "{name} accepted your game. You play white, your move.",
+  "@chess_notifyAcceptedYourMove": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_notifyDeclined": "{name} declined your challenge",
+  "@chess_notifyDeclined": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_notifyTaken": "Someone else accepted that game first",
+  "chess_notifyGameStartedYourMove": "Your game started. You play white, your move.",
+  "chess_notifyYourMove": "{name} played {move}. Your move.",
+  "@chess_notifyYourMove": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "move": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_notifyGameOver": "Your game with {name} is over",
+  "@chess_notifyGameOver": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_notifyResigned": "{name} resigned. You win.",
+  "@chess_notifyResigned": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_notifyDrawOffered": "{name} offers a draw",
+  "@chess_notifyDrawOffered": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_notifyDrawAccepted": "{name} accepted the draw",
+  "@chess_notifyDrawAccepted": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chess_notifyTimeout": "{name} claimed a win on time",
+  "@chess_notifyTimeout": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   }
 }

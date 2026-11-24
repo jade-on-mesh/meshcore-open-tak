@@ -38,13 +38,12 @@ import '../helpers/contact_share_message.dart';
 import '../helpers/gif_helper.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../helpers/utf8_length_limiter.dart';
+import 'bookmarks_screen.dart';
 import 'channel_chat_screen.dart';
 import '../utils/channel_qr.dart';
 import 'channel_qr_scanner_screen.dart';
 import 'community_qr_scanner_screen.dart';
-import 'settings_screen.dart';
 import '../review_mode/review_mode_banner.dart';
-import '../theme/theme_icons.dart';
 import '../vox/voice_wire.dart';
 
 class ChannelsScreen extends StatefulWidget {
@@ -128,11 +127,21 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
           bottom: const SyncProgressAppBarBottom(),
           actions: [
             PopupMenuButton(
+              tooltip: context.l10n.contacts_moreOptions,
               // onTap handlers run after the menu route pops, so they must
               // capture the screen's context — not the itemBuilder's menu
               // context, which is deactivated by then.
               itemBuilder: (menuContext) => [
-                connectionMenuItem(context, menuContext),
+                PopupMenuItem(
+                  child: MeshMenuItemRow(
+                    icon: Icons.bookmark_border,
+                    label: menuContext.l10n.bookmarks_title,
+                  ),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const BookmarksScreen()),
+                  ),
+                ),
                 PopupMenuItem(
                   child: MeshMenuItemRow(
                     icon: Icons.groups,
@@ -140,20 +149,7 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
                   ),
                   onTap: () => _showManageCommunitiesDialog(context),
                 ),
-                PopupMenuItem(
-                  child: MeshMenuItemRow(
-                    leading: const UpdateDot(
-                      child: ThemedIcon(ThemeIconSlot.settings, size: 20),
-                    ),
-                    label: menuContext.l10n.settings_title,
-                  ),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const SettingsScreen(),
-                    ),
-                  ),
-                ),
+                ...mainOverflowTrailingItems(context, menuContext),
               ],
               icon: const UpdateDot(child: Icon(Icons.more_vert)),
             ),
@@ -792,13 +788,14 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
         break;
       case ChannelSortOption.latestMessages:
         // Filtered messages don't bump a channel, matching the preview.
+        // Ordered by local arrival time: sender clocks can be far off.
         // Looked up once per channel: the lookup can scan back through
         // filtered messages, and the comparator runs O(n log n) times.
         final epoch = DateTime(1970);
         final latest = <Channel, DateTime>{
           for (final channel in filtered)
             channel:
-                connector.latestVisibleChannelMessage(channel)?.timestamp ??
+                connector.latestVisibleChannelMessage(channel)?.receivedAt ??
                 epoch,
         };
         filtered.sort((a, b) {
@@ -2148,16 +2145,11 @@ void showEditChannelSheet(
     context,
     listen: false,
   );
-  bool smazEnabled = connector.isChannelSmazEnabled(channel.index);
-  bool cyr2latEnabled = connector.isChannelCyr2LatEnabled(channel.index);
   final initialUrlImagesEnabled = connector.isChannelUrlImagesEnabled(
     channel.index,
   );
   bool urlImagesEnabled = initialUrlImagesEnabled;
   final loadLinkImages = appSettingsService.settings.loadLinkImages;
-  String? selectedCyr2LatProfileId = connector.getChannelCyr2LatProfileId(
-    channel.index,
-  );
 
   showMeshSheet(
     context,
@@ -2230,62 +2222,6 @@ void showEditChannelSheet(
                       const SizedBox(height: 16),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: Text(sheetContext.l10n.channels_smazCompression),
-                        value: smazEnabled,
-                        onChanged: (value) => setSheetState(() {
-                          smazEnabled = value;
-                          if (smazEnabled) {
-                            cyr2latEnabled = false;
-                          }
-                        }),
-                      ),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          sheetContext.l10n.channels_cyr2latCompression,
-                        ),
-                        subtitle: Text(
-                          sheetContext.l10n.channels_cyr2latCompressionDscr,
-                        ),
-                        value: cyr2latEnabled,
-                        onChanged: (value) => setSheetState(() {
-                          cyr2latEnabled = value;
-                          if (cyr2latEnabled) {
-                            smazEnabled = false;
-                          }
-                        }),
-                      ),
-                      if (cyr2latEnabled) ...[
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
-                          child: DropdownButtonFormField<String>(
-                            isExpanded: true,
-                            initialValue: selectedCyr2LatProfileId,
-                            decoration: InputDecoration(
-                              labelText: sheetContext
-                                  .l10n
-                                  .channels_cyr2latSettingsSubheading,
-                              border: const OutlineInputBorder(),
-                            ),
-                            items: appSettingsService.settings.cyr2latProfiles
-                                .map((profile) {
-                                  return DropdownMenuItem(
-                                    value: profile.id,
-                                    child: Text(
-                                      profile.name,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  );
-                                })
-                                .toList(),
-                            onChanged: (value) => setSheetState(() {
-                              selectedCyr2LatProfileId = value;
-                            }),
-                          ),
-                        ),
-                      ],
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
                         title: Text(sheetContext.l10n.urlImage_enable),
                         subtitle: loadLinkImages
                             ? null
@@ -2345,30 +2281,38 @@ void showEditChannelSheet(
                             }
 
                             Navigator.pop(sheetContext);
+                            // A new PSK gives the channel a new storage ID;
+                            // its compression settings move with it.
+                            final previousId = connector.channelIdForSlot(
+                              channel.index,
+                            );
+                            final compression = connector
+                                .channelCompressionMode(channel.index);
+                            final cyr2LatProfileId = connector
+                                .getChannelCyr2LatProfileId(channel.index);
                             try {
                               await connector.setChannel(
                                 channel.index,
                                 name,
                                 psk,
                               );
-                              await connector.setChannelSmazEnabled(
-                                channel.index,
-                                smazEnabled,
-                              );
-                              await connector.setChannelCyr2LatEnabled(
-                                channel.index,
-                                cyr2latEnabled,
-                              );
+                              if (connector.channelIdForSlot(channel.index) !=
+                                  previousId) {
+                                await connector.setChannelCompressionMode(
+                                  channel.index,
+                                  compression,
+                                );
+                                await connector.setChannelCyr2LatProfileId(
+                                  channel.index,
+                                  cyr2LatProfileId,
+                                );
+                              }
                               if (urlImagesEnabled != initialUrlImagesEnabled) {
                                 await connector.setChannelUrlImagesEnabled(
                                   channel.index,
                                   urlImagesEnabled,
                                 );
                               }
-                              await connector.setChannelCyr2LatProfileId(
-                                channel.index,
-                                selectedCyr2LatProfileId,
-                              );
                               if (!context.mounted) return;
                               showDismissibleSnackBar(
                                 context,

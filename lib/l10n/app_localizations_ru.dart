@@ -706,6 +706,9 @@ class AppLocalizationsRu extends AppLocalizations {
       'Обнаруженные контакты и их сохранённые данные';
 
   @override
+  String get backupRestore_bookmarks => 'Закладки';
+
+  @override
   String get backupRestore_channels => 'Каналы';
 
   @override
@@ -729,9 +732,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get backupRestore_missingModelsTitle => 'Модели не загружены';
 
   @override
-  String backupRestore_missingModelsMessage(String models) {
-    return 'Восстановленные настройки выбирают модели, которых нет на этом устройстве:\n$models\n\nЗагрузить их сейчас?';
-  }
+  String get backupRestore_missingModelsMessage =>
+      'Восстановленные настройки выбирают модели, которых нет на этом устройстве. Загрузить их сейчас?';
 
   @override
   String get backupRestore_downloadModels => 'Загрузить модели';
@@ -1563,6 +1565,13 @@ class AppLocalizationsRu extends AppLocalizations {
       'Показывать регион сообщения канала в одной строке с числом хопов, а не под ней.';
 
   @override
+  String get appSettings_showCompressionIndicator => 'Индикатор сжатия';
+
+  @override
+  String get appSettings_showCompressionIndicatorSubtitle =>
+      'Показывать значок на сообщениях, сжатых с помощью SMAZ.';
+
+  @override
   String get appSettings_notifications => 'Уведомления';
 
   @override
@@ -1748,11 +1757,11 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get appSettings_clearPathOnMaxRetrySubtitle =>
-      'Сбросить маршрут контакта после 5 неудачных попыток отправки';
+      'Сбросить сохранённый маршрут контакта, когда все попытки отправки не удались';
 
   @override
   String get appSettings_pathsWillBeCleared =>
-      'Маршруты будут сброшены после 5 неудачных попыток';
+      'Маршруты будут сброшены, когда все попытки отправки не удались';
 
   @override
   String get appSettings_pathsWillNotBeCleared =>
@@ -1764,7 +1773,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get appSettings_autoRouteRotationSubtitle =>
-      'Циклически переключаться между лучшими маршрутами и режимом Flood';
+      'При каждой прямой попытке пробовать другой известный маршрут. Следующие попытки — Flood. Выключено оставляет текущий маршрут контакта.';
 
   @override
   String get appSettings_autoRouteRotationEnabled =>
@@ -1781,6 +1790,63 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get appSettings_maxMessageRetriesSubtitle =>
       'Количество попыток повторной отправки сообщения перед тем, как пометить его как неудачное.';
+
+  @override
+  String appSettings_directRetries(int count) {
+    return 'Прямые попытки: $count';
+  }
+
+  @override
+  String get appSettings_directRetriesSubtitle =>
+      'Сколько раз пробовать известный маршрут. Доступно и когда автоматическая ротация выключена.';
+
+  @override
+  String appSettings_floodRetries(int count) {
+    return 'Попытки Flood: $count';
+  }
+
+  @override
+  String get appSettings_floodRetriesSubtitle =>
+      'Сколько раз использовать Flood. Flood занимает больше эфирного времени. При включённой ротации они идут после прямых попыток.';
+
+  @override
+  String appSettings_loginAttempts(int count) {
+    return 'Попытки входа: $count';
+  }
+
+  @override
+  String get appSettings_loginAttemptsSubtitle =>
+      'Сколько раз пытаться войти на ретранслятор или room-сервер, прежде чем сдаться.';
+
+  @override
+  String get appSettings_repeatersAndRooms => 'Ретрансляторы и комнаты';
+
+  @override
+  String get appSettings_clockSyncAfterLogin =>
+      'Синхронизировать часы ретранслятора при входе';
+
+  @override
+  String get appSettings_clockSyncAfterLoginSubtitle =>
+      'После успешного входа на ретранслятор отправляется clock sync. Для каждого ретранслятора по-прежнему можно выбрать По умолчанию, Вкл. или Выкл.';
+
+  @override
+  String get appSettings_loginPasswordAutofocus => 'Фокус на поле пароля';
+
+  @override
+  String get appSettings_loginPasswordAutofocusSubtitle =>
+      'При открытии входа на ретранслятор или в комнату курсор ставится в пустое поле пароля. Выключено оставляет окно видимым, пока вы не нажмёте на поле.';
+
+  @override
+  String get appSettings_resetRepeaterRoomSettings =>
+      'Сбросить настройки ретрансляторов и комнат';
+
+  @override
+  String get appSettings_resetRepeaterRoomSettingsSubtitle =>
+      'Возвращает настройки этого раздела. Выбор, сохранённый для отдельных ретрансляторов, остаётся.';
+
+  @override
+  String get appSettings_repeaterRoomSettingsReset =>
+      'Настройки ретрансляторов и комнат сброшены';
 
   @override
   String get appSettings_ipfsImageLinks => 'Настройка провайдера IPFS';
@@ -2176,7 +2242,28 @@ class AppLocalizationsRu extends AppLocalizations {
   String get contacts_noNodesFound => 'No nodes found';
 
   @override
+  String contacts_groupCurrentMembers(int count) {
+    return 'Текущие участники ($count)';
+  }
+
+  @override
+  String get contacts_groupAddContacts => 'Добавить контакты';
+
+  @override
+  String contacts_groupRemoveMember(String name) {
+    return 'Удалить $name из группы';
+  }
+
+  @override
+  String contacts_groupAddMember(String name) {
+    return 'Добавить $name в группу';
+  }
+
+  @override
   String get contacts_lastSeenNow => 'недавно';
+
+  @override
+  String get contacts_lastSeenNever => 'ещё не слышали';
 
   @override
   String contacts_lastSeenMinsAgo(int minutes) {
@@ -2359,16 +2446,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String channels_editChannelTitle(int index) {
     return 'Изменить канал $index';
   }
-
-  @override
-  String get channels_smazCompression => 'Сжатие SMAZ';
-
-  @override
-  String get channels_cyr2latCompression => 'Сжатие Cyr2Lat';
-
-  @override
-  String get channels_cyr2latCompressionDscr =>
-      'Заменяет некоторые кириллические символы на латиницу при отправке.';
 
   @override
   String get channels_cyr2latSettingsHeading => 'Настройка Cyr2Lat';
@@ -2643,7 +2720,7 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get chat_resend => 'Resend';
+  String get chat_resend => 'Отправить снова';
 
   @override
   String chat_replyTo(String name) {
@@ -2687,6 +2764,30 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get chat_messageDeleted => 'Сообщение удалено';
+
+  @override
+  String get chat_bookmark => 'В закладки';
+
+  @override
+  String get chat_removeBookmark => 'Убрать из закладок';
+
+  @override
+  String get chat_showBookmarks => 'Показать закладки';
+
+  @override
+  String get bookmarks_title => 'Закладки';
+
+  @override
+  String get bookmarks_empty => 'Нет сообщений в закладках';
+
+  @override
+  String get bookmarks_channel => 'Канал';
+
+  @override
+  String get bookmarks_contact => 'Контакт';
+
+  @override
+  String get bookmarks_remove => 'Убрать из закладок';
 
   @override
   String get chat_selectMessages => 'Выбрать сообщения';
@@ -3186,8 +3287,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pathEditor_hexLabel => 'Префиксы шестнадцатеричной системы';
 
   @override
-  String get pathEditor_hexHelper =>
-      'Два шестнадцатеричных символа на каждом шаге, разделенные запятыми.';
+  String pathEditor_hexHelper(int count) {
+    return '$count шестнадцатеричных символа на каждом шаге, разделенные запятыми.';
+  }
 
   @override
   String pathEditor_invalidTokens(String tokens) {
@@ -3228,9 +3330,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get chat_publicKey => 'Публичный ключ';
-
-  @override
-  String get chat_compressOutgoingMessages => 'Сжимать исходящие сообщения';
 
   @override
   String get chat_floodForced => 'Flood (принудительно)';
@@ -4014,7 +4113,16 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get repeater_clockSyncAfterLoginSubtitle =>
-      'Автоматически отправлять сообщение \"синхронизация времени\" после успешной авторизации.';
+      '«По умолчанию» следует разделу «Ретрансляторы и комнаты» в настройках. «Вкл.» и «Выкл.» только для этого ретранслятора.';
+
+  @override
+  String get repeater_clockSyncDefault => 'По умолчанию';
+
+  @override
+  String get repeater_clockSyncOn => 'Вкл.';
+
+  @override
+  String get repeater_clockSyncOff => 'Выкл.';
 
   @override
   String get repeater_statusTitle => 'Статус репитера';
@@ -6253,6 +6361,20 @@ class AppLocalizationsRu extends AppLocalizations {
       'MeshCore Open не запущен. Откройте его и отправьте ответ снова.';
 
   @override
+  String get settings_exportBookmarks => 'Экспорт закладок в Markdown';
+
+  @override
+  String get settings_exportBookmarksSubtitle =>
+      'Поделитесь закладками или сохраните их в файл Markdown.';
+
+  @override
+  String get settings_exportBookmarksSuccess => 'Закладки экспортированы.';
+
+  @override
+  String get settings_exportBookmarksNoBookmarks =>
+      'Нет закладок для экспорта.';
+
+  @override
   String get settings_gpxExportRepeaters =>
       'Экспортировать рипитеры / сервер комнаты в GPX';
 
@@ -6928,6 +7050,62 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get imageSend_reconstructionUnavailable =>
       'Это устройство не может показать реконструкцию.';
+
+  @override
+  String receivedImage_packetEchoes(int number, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'повторён $count раза',
+      many: 'повторён $count раз',
+      few: 'повторён $count раза',
+      one: 'повторён $count раз',
+      zero: 'ретранслятор не слышен',
+    );
+    return 'Пакет $number: $_temp0';
+  }
+
+  @override
+  String receivedImage_recoveryPacketEchoes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'повторён $count раза',
+      many: 'повторён $count раз',
+      few: 'повторён $count раза',
+      one: 'повторён $count раз',
+      zero: 'ретранслятор не слышен',
+    );
+    return 'Пакет восстановления: $_temp0';
+  }
+
+  @override
+  String get imageSend_preparingPreview => 'Подготовка предпросмотра…';
+
+  @override
+  String get imageSend_tryAnother => 'Другой вариант';
+
+  @override
+  String get imageSend_versionsHint =>
+      'Каждый вариант восстанавливается немного по-разному. Выберите тот, что больше похож на ваше фото.';
+
+  @override
+  String imageSend_versionLabel(int number) {
+    return 'Вариант $number';
+  }
+
+  @override
+  String imageSend_versionPackets(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count пакета',
+      many: '$count пакетов',
+      few: '$count пакета',
+      one: '$count пакет',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get imageSend_modelNotDownloaded =>
@@ -7637,15 +7815,15 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get appSettings_resetRoutingToDefault =>
-      'Сбросить алгоритм маршрутизации к значению по умолчанию';
+      'Сбросить настройки маршрутизации к значениям по умолчанию';
 
   @override
   String get appSettings_resetRoutingToDefaultSubtitle =>
-      'Восстановить настройки алгоритма маршрутизации к заводским значениям по умолчанию';
+      'Вернуть настройки маршрутизации в этом разделе к значениям по умолчанию';
 
   @override
   String get appSettings_routingResetToDefault =>
-      'Настройки алгоритма маршрутизации сброшены к значению по умолчанию';
+      'Настройки маршрутизации сброшены к значениям по умолчанию';
 
   @override
   String get appSettings_imageMessagesSection => 'Сообщения-изображения';
@@ -10147,4 +10325,543 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get chat_composerOffline =>
       'Подключитесь к радио, чтобы отправлять сообщения';
+
+  @override
+  String get modelDownload_notDownloaded => 'Не скачано';
+
+  @override
+  String get modelDownload_downloading => 'Загрузка';
+
+  @override
+  String get modelDownload_active => 'Активна';
+
+  @override
+  String get modelDownload_failed => 'Не удалось скачать';
+
+  @override
+  String get modelDownload_incomplete => 'Неполная';
+
+  @override
+  String get modelDownload_verifying => 'Проверка загрузки';
+
+  @override
+  String get modelDownload_useModel => 'Использовать эту модель';
+
+  @override
+  String modelDownload_removeFailed(String error) {
+    return 'Не удалось удалить модель: $error';
+  }
+
+  @override
+  String modelDownload_progress(String current, String total, String percent) {
+    return '$current / $total MB ($percent%)';
+  }
+
+  @override
+  String get chatCompression_title => 'Сжатие';
+
+  @override
+  String chatCompression_label(String mode) {
+    return 'Сжатие: $mode';
+  }
+
+  @override
+  String get chatCompression_off => 'Выкл.';
+
+  @override
+  String get chatCompression_smaz => 'SMAZ';
+
+  @override
+  String get chatCompression_cyr2lat => 'Кир→Лат';
+
+  @override
+  String get chatCompression_changeHint => 'Изменить сжатие для этого чата';
+
+  @override
+  String get chatCompression_sheetSubtitle =>
+      'Действует для сообщений, которые вы отправляете в этом чате. Сохраняется на этом телефоне.';
+
+  @override
+  String get chatCompression_offDescription =>
+      'Без сжатия. Текст отправляется точно как набран. Его прочтёт любое приложение. Байты не экономятся.';
+
+  @override
+  String get chatCompression_smazDescription =>
+      'Сжатие без потерь для коротких текстов. Приложение получателя должно поддерживать SMAZ, иначе другие приложения покажут нечитаемый текст вида «s:…». Применяется, только если сообщение становится короче, поэтому сжимаются не все сообщения.';
+
+  @override
+  String get chatCompression_cyr2latDescription =>
+      'Сжатие с потерями. Часть кириллических букв заменяется похожими латинскими (А→A, З→3), чтобы сэкономить байты. Читается в любом приложении без декодирования, но точные символы меняются, в том числе в ваших отправленных сообщениях здесь. Это может повлиять на копирование, поиск и технический текст. Результат зависит от выбранного профиля.';
+
+  @override
+  String get chatCompression_profile => 'Профиль кир→лат';
+
+  @override
+  String get chatCompression_noStorageId =>
+      'Нельзя изменить сжатие, пока этот канал не синхронизирован с радио.';
+
+  @override
+  String get chatCompression_saveFailed =>
+      'Не удалось сохранить настройку сжатия. Показана сохранённая настройка.';
+
+  @override
+  String get messageMeta_smazCompressed => 'Сжато SMAZ';
+
+  @override
+  String get addContact_title => 'Добавить контакт';
+
+  @override
+  String get addContact_infoBanner =>
+      'Если вы знаете открытый ключ нужного абонента, можно добавить его вручную, не дожидаясь его объявления (advert).';
+
+  @override
+  String get addContact_contactType => 'Тип контакта';
+
+  @override
+  String get addContact_name => 'Имя';
+
+  @override
+  String get addContact_nameRequired => 'Введите имя';
+
+  @override
+  String get addContact_publicKeyHex => 'Открытый ключ (hex)';
+
+  @override
+  String get addContact_publicKeyRequired => 'Введите открытый ключ';
+
+  @override
+  String get addContact_publicKeyInvalid =>
+      'Открытый ключ должен содержать 64 hex-символа (32 байта)';
+
+  @override
+  String get addContact_clipboardKeyLoaded =>
+      'Открытый ключ подставлен. Выберите тип контакта, введите имя и нажмите «Сохранить».';
+
+  @override
+  String get addContact_fromDiscovered => 'Добавить из обнаруженных контактов';
+
+  @override
+  String get addContact_saveFailed => 'Не удалось добавить контакт.';
+
+  @override
+  String get coordinateMap_title => 'Местоположение';
+
+  @override
+  String get coordinate_copyLocation => 'Копировать местоположение';
+
+  @override
+  String get coordinate_openInMaps => 'Открыть на карте';
+
+  @override
+  String get coordinate_copied => 'Местоположение скопировано';
+
+  @override
+  String get chess_menuGames => 'Шахматные партии';
+
+  @override
+  String chess_menuGamesCount(int count) {
+    return 'Шахматные партии ($count)';
+  }
+
+  @override
+  String get chess_sheetTitle => 'Шахматы';
+
+  @override
+  String get chess_sectionNewGame => 'Новая партия';
+
+  @override
+  String get chess_sectionYourGames => 'Ваши партии';
+
+  @override
+  String get chess_sectionInvites => 'Открытые приглашения';
+
+  @override
+  String get chess_sectionLive => 'Идут сейчас';
+
+  @override
+  String get chess_sectionFinished => 'Завершённые';
+
+  @override
+  String get chess_newChallenge => 'Бросить вызов';
+
+  @override
+  String get chess_newChallengeSubtitle =>
+      'Выберите того, кого недавно слышно в этом канале';
+
+  @override
+  String get chess_newOpenInvite => 'Опубликовать открытое приглашение';
+
+  @override
+  String get chess_newOpenInviteSubtitle =>
+      'Принять вызов может любой в этом канале';
+
+  @override
+  String get chess_emptyTitle => 'Партий пока нет';
+
+  @override
+  String get chess_emptySubtitle =>
+      'Бросьте кому-нибудь вызов или опубликуйте открытое приглашение. Наблюдать может любой в канале.';
+
+  @override
+  String chess_vs(String white, String black) {
+    return '$white против $black';
+  }
+
+  @override
+  String get chess_unknownPlayer => 'Неизвестный';
+
+  @override
+  String chess_rowChallenge(String inviter, String target) {
+    return '$inviter бросает вызов: $target';
+  }
+
+  @override
+  String get chess_rowYourOpenInvite => 'Ваше открытое приглашение';
+
+  @override
+  String chess_rowYourChallenge(String name) {
+    return 'Вы бросили вызов: $name';
+  }
+
+  @override
+  String chess_rowInviteFrom(String name) {
+    return 'Партия с $name';
+  }
+
+  @override
+  String get chess_rowStarting => 'Ожидание начала партии';
+
+  @override
+  String chess_rowMoveTurn(int number, String turn) {
+    return 'Ход $number · $turn';
+  }
+
+  @override
+  String chess_rowOpenInvite(String name) {
+    return '$name ищет партнёра для игры';
+  }
+
+  @override
+  String chess_rowChallengedYou(String name) {
+    return '$name бросает вам вызов';
+  }
+
+  @override
+  String chess_rowInviteDetails(String deadline) {
+    return 'Время на ход: $deadline';
+  }
+
+  @override
+  String get chess_accept => 'Принять';
+
+  @override
+  String get chess_decline => 'Отклонить';
+
+  @override
+  String get chess_remove => 'Удалить';
+
+  @override
+  String get chess_cancelInvite => 'Отменить приглашение';
+
+  @override
+  String get chess_cancelInviteTitle => 'Отменить это приглашение?';
+
+  @override
+  String get chess_sendFailed =>
+      'Не удалось отправить. Проверьте подключение к радио.';
+
+  @override
+  String chess_challengeSent(String name) {
+    return 'Вызов отправлен: $name';
+  }
+
+  @override
+  String get chess_inviteSent => 'Открытое приглашение опубликовано';
+
+  @override
+  String get chess_pickOpponent => 'Недавно в этом канале никто не писал.';
+
+  @override
+  String get chess_noRecentSenders => 'Кому бросить вызов';
+
+  @override
+  String get chess_deadlineLabel => 'Время на ход';
+
+  @override
+  String get chess_deadlineNone => 'Без ограничения';
+
+  @override
+  String get chess_deadline15m => '15 минут';
+
+  @override
+  String get chess_deadline1h => '1 час';
+
+  @override
+  String get chess_deadline6h => '6 часов';
+
+  @override
+  String get chess_deadline1d => '1 день';
+
+  @override
+  String get chess_deadline3d => '3 дня';
+
+  @override
+  String get chess_colourLabel => 'Ваш цвет';
+
+  @override
+  String get chess_colourRandom => 'Случайно';
+
+  @override
+  String get chess_colourWhite => 'Белые';
+
+  @override
+  String get chess_colourBlack => 'Чёрные';
+
+  @override
+  String get chess_sendChallenge => 'Отправить вызов';
+
+  @override
+  String get chess_postInvite => 'Опубликовать';
+
+  @override
+  String get chess_gameGone => 'Эта партия больше недоступна.';
+
+  @override
+  String chess_playerYou(String name) {
+    return '$name (вы)';
+  }
+
+  @override
+  String get chess_toMoveChip => 'Ход';
+
+  @override
+  String get chess_statusYourMove => 'Ваш ход';
+
+  @override
+  String chess_statusWaiting(String name) {
+    return 'Ожидание: $name';
+  }
+
+  @override
+  String chess_statusToMove(String name) {
+    return 'Ход: $name';
+  }
+
+  @override
+  String chess_statusTimeLeft(String time) {
+    return 'Осталось на этот ход: $time';
+  }
+
+  @override
+  String get chess_statusOverdue => 'Время на этот ход истекло';
+
+  @override
+  String chess_statusDrawOffered(String name) {
+    return '$name предлагает ничью';
+  }
+
+  @override
+  String get chess_statusUnknownPosition =>
+      'Доска появится после следующего хода.';
+
+  @override
+  String get chess_statusUnverified =>
+      'Участники ещё не подтверждены. Запросите обновление, чтобы проверить их.';
+
+  @override
+  String get chess_statusPlayersUnchecked =>
+      'Игроки не подтверждены: этот телефон не слышал приглашение.';
+
+  @override
+  String get chess_statusMoveUnconfirmed =>
+      'Ваш ход мог не уйти. Нажмите «Запросить обновление», чтобы отправить его снова.';
+
+  @override
+  String get chess_actionResign => 'Сдаться';
+
+  @override
+  String get chess_actionOfferDraw => 'Предложить ничью';
+
+  @override
+  String get chess_actionAcceptDraw => 'Принять ничью';
+
+  @override
+  String get chess_actionClaimTimeout => 'Требовать победу по времени';
+
+  @override
+  String get chess_actionNudge => 'Запросить обновление';
+
+  @override
+  String get chess_actionNudgeTooltip =>
+      'Попросить игроков повторно отправить последний ход';
+
+  @override
+  String get chess_resignConfirmTitle => 'Сдаться в этой партии?';
+
+  @override
+  String get chess_resignConfirmBody => 'Победит ваш соперник.';
+
+  @override
+  String get chess_movesTitle => 'Ходы';
+
+  @override
+  String get chess_noMovesYet => 'Ходов пока нет';
+
+  @override
+  String get chess_movesMissed => '(пропущен)';
+
+  @override
+  String get chess_promoteTitle => 'Превращение в';
+
+  @override
+  String get chess_pieceQueen => 'Ферзь';
+
+  @override
+  String get chess_pieceRook => 'Ладья';
+
+  @override
+  String get chess_pieceBishop => 'Слон';
+
+  @override
+  String get chess_pieceKnight => 'Конь';
+
+  @override
+  String get chess_pieceKing => 'Король';
+
+  @override
+  String get chess_piecePawn => 'Пешка';
+
+  @override
+  String chess_squareWhitePiece(String square, String piece) {
+    return '$square: $piece, белые';
+  }
+
+  @override
+  String chess_squareBlackPiece(String square, String piece) {
+    return '$square: $piece, чёрные';
+  }
+
+  @override
+  String get chess_resultDraw => 'Ничья';
+
+  @override
+  String chess_resultWon(String name) {
+    return 'Победа: $name';
+  }
+
+  @override
+  String chess_resultWithReason(String result, String reason) {
+    return '$result · $reason';
+  }
+
+  @override
+  String get chess_endCheckmate => 'Мат';
+
+  @override
+  String get chess_endResignation => 'Сдача';
+
+  @override
+  String get chess_endTimeout => 'По времени';
+
+  @override
+  String get chess_endDrawAgreed => 'Ничья по соглашению';
+
+  @override
+  String get chess_endStalemate => 'Пат';
+
+  @override
+  String get chess_endInsufficient => 'Недостаточно материала для мата';
+
+  @override
+  String get chess_endFiftyMoves => 'Правило 50 ходов';
+
+  @override
+  String get chess_endRepetition => 'Повторение позиции';
+
+  @override
+  String get chess_endCancelled => 'Приглашение отменено';
+
+  @override
+  String get chess_endDeclined => 'Вызов отклонён';
+
+  @override
+  String get chess_endExpired => 'Приглашение истекло';
+
+  @override
+  String get chess_endTaken => 'Другой игрок принял раньше';
+
+  @override
+  String chess_timeMinutes(int minutes) {
+    return '$minutes мин';
+  }
+
+  @override
+  String chess_timeHours(int hours, int minutes) {
+    return '$hours ч $minutes мин';
+  }
+
+  @override
+  String chess_timeDays(int days, int hours) {
+    return '$days д $hours ч';
+  }
+
+  @override
+  String get chess_notificationSender => 'Шахматы';
+
+  @override
+  String chess_notifyChallenge(String name) {
+    return '$name бросает вам вызов';
+  }
+
+  @override
+  String chess_notifyAccepted(String name) {
+    return 'Ваша партия принята: $name';
+  }
+
+  @override
+  String chess_notifyAcceptedYourMove(String name) {
+    return 'Ваша партия принята: $name. Вы играете белыми, ваш ход.';
+  }
+
+  @override
+  String chess_notifyDeclined(String name) {
+    return '$name отклоняет ваш вызов';
+  }
+
+  @override
+  String get chess_notifyTaken => 'Другой игрок принял эту партию раньше';
+
+  @override
+  String get chess_notifyGameStartedYourMove =>
+      'Ваша партия началась. Вы играете белыми, ваш ход.';
+
+  @override
+  String chess_notifyYourMove(String name, String move) {
+    return '$name: $move. Ваш ход.';
+  }
+
+  @override
+  String chess_notifyGameOver(String name) {
+    return 'Ваша партия с $name завершена';
+  }
+
+  @override
+  String chess_notifyResigned(String name) {
+    return '$name сдался. Вы победили.';
+  }
+
+  @override
+  String chess_notifyDrawOffered(String name) {
+    return '$name предлагает ничью';
+  }
+
+  @override
+  String chess_notifyDrawAccepted(String name) {
+    return '$name принимает ничью';
+  }
+
+  @override
+  String chess_notifyTimeout(String name) {
+    return '$name требует победу по времени';
+  }
 }

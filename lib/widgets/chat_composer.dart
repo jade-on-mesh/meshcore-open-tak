@@ -77,6 +77,16 @@ class ChatComposer extends StatelessWidget {
   final ValueChanged<String> onAction;
   final List<Widget> header;
 
+  /// Shown above the field, usually a [ChatComposerQuote] (upstream's reply
+  /// preview); before [header].
+  final Widget? replyPreview;
+
+  /// Marks the composer (upstream tests find it by this key).
+  static const bubbleKey = ValueKey('chat-composer-bubble');
+
+  /// Marks the "+" menu (upstream tests find it by this key).
+  static const actionMenuKey = ValueKey('chat-composer-action-menu');
+
   /// MeshCore Open TAK: shown in the send button's place while there's
   /// nothing to send (the voice-message button), as messaging apps do.
   final Widget? idleTrailing;
@@ -104,6 +114,7 @@ class ChatComposer extends StatelessWidget {
     this.softLimitNote,
     this.encoder,
     this.header = const [],
+    this.replyPreview,
     this.idleTrailing,
     this.counterTextBuilder,
     this.counterColorBuilder,
@@ -174,8 +185,14 @@ class ChatComposer extends StatelessWidget {
     // by the screen) and is back when the radio reconnects.
     if (context.radioReadOnly) return const OfflineComposerBar();
     final look = ChatComposerLook.of(context);
-    if (!look.isPlain) return _buildStyled(context, look);
+    if (!look.isPlain) {
+      return KeyedSubtree(
+        key: ChatComposer.bubbleKey,
+        child: _buildStyled(context, look),
+      );
+    }
     return Container(
+      key: ChatComposer.bubbleKey,
       decoration: BoxDecoration(
         color: scheme.surface,
         border: Border(top: BorderSide(color: scheme.outlineVariant, width: 1)),
@@ -184,6 +201,7 @@ class ChatComposer extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (replyPreview != null) replyPreview!,
             ...header,
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -373,6 +391,7 @@ class ChatComposer extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (replyPreview != null) replyPreview!,
             ...header,
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
@@ -492,6 +511,7 @@ class ChatComposer extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (replyPreview != null) replyPreview!,
             ...header,
             Padding(
               padding: EdgeInsets.fromLTRB(
@@ -733,6 +753,92 @@ class ChatComposer extends StatelessWidget {
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 18,
           vertical: 12,
+        ),
+      ),
+    );
+  }
+}
+
+/// Upstream's most lines the field grows to before it scrolls.
+const int kComposerMaxLines = 5;
+
+/// A quoted message above the field ("Replying to Bob"): a coloured bar on
+/// the leading edge, [title], [content], optional [trailing] controls and a
+/// dismiss button. From upstream MeshCore Open.
+class ChatComposerQuote extends StatelessWidget {
+  final String title;
+  final Widget content;
+  final Widget? trailing;
+  final VoidCallback onDismiss;
+  final String dismissTooltip;
+
+  const ChatComposerQuote({
+    super.key,
+    required this.title,
+    required this.content,
+    required this.onDismiss,
+    required this.dismissTooltip,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final background = scheme.surfaceContainerHighest;
+    final accent = readableAccent(scheme.primary, background);
+    final trailing = this.trailing;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(MeshRadii.md),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: background,
+            border: BorderDirectional(
+              start: BorderSide(color: accent, width: 4),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(10, 6, 0, 6),
+            child: LayoutBuilder(
+              builder: (context, constraints) => Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: accent,
+                              ),
+                        ),
+                        content,
+                      ],
+                    ),
+                  ),
+                  if (trailing != null)
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: constraints.maxWidth * 0.4,
+                      ),
+                      child: trailing,
+                    ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    tooltip: dismissTooltip,
+                    color: scheme.onSurfaceVariant,
+                    onPressed: onDismiss,
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

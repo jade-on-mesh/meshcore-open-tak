@@ -3,6 +3,7 @@ import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 
 import '../theme/chat_look.dart';
+import '../l10n/l10n.dart';
 import '../theme/mesh_theme.dart';
 
 /// Colours shared by the direct-message and channel chat bubbles.
@@ -257,6 +258,7 @@ Color senderNameColor(String name, {ChatStyle style = ChatStyle.standard}) =>
 class MessageBubbleFrame extends StatelessWidget {
   final bool isOutgoing;
   final bool isFailed;
+  final bool isBookmarked;
 
   /// Tighter padding for media (GIF) content.
   final bool compact;
@@ -269,6 +271,7 @@ class MessageBubbleFrame extends StatelessWidget {
     required this.maxWidth,
     required this.child,
     this.isFailed = false,
+    this.isBookmarked = false,
     this.compact = false,
     this.colors,
     this.run = ChatRun.solo,
@@ -300,51 +303,98 @@ class MessageBubbleFrame extends StatelessWidget {
       style: MeshChatLook.of(context).style,
       run: run,
     );
-    final padding = compact
+    final EdgeInsets contentPadding = compact
         ? const EdgeInsets.all(4)
         : const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+    // Upstream's bookmark: a ribbon at the top right, with room made for it.
+    final padding = isBookmarked
+        ? contentPadding + EdgeInsets.only(top: compact ? 18 : 14, right: 14)
+        : contentPadding;
     if (colors.flat) {
       // a chat log line: no bubble, the full width
       final lead = leading;
-      return Container(
-        padding: compact
-            ? EdgeInsets.zero
-            : const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
-        constraints: BoxConstraints(maxWidth: maxWidth),
-        child: lead == null
-            ? child
-            : Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // a long nick wraps rather than pushing the text off
-                  ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: maxWidth * 0.5),
-                    child: lead,
-                  ),
-                  Flexible(child: child),
-                ],
-              ),
+      return _withBookmark(
+        Container(
+          padding: compact
+              ? EdgeInsets.zero
+              : const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: lead == null
+              ? child
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // a long nick wraps rather than pushing the text off
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: maxWidth * 0.5),
+                      child: lead,
+                    ),
+                    Flexible(child: child),
+                  ],
+                ),
+        ),
       );
     }
     final constraints = BoxConstraints(maxWidth: maxWidth * 0.72);
     if (colors.glass) {
-      return _GlassBubble(
-        colors: colors,
-        radius: radius,
-        padding: padding,
-        constraints: constraints,
-        child: child,
+      return _withBookmark(
+        _GlassBubble(
+          colors: colors,
+          radius: radius,
+          padding: padding,
+          constraints: constraints,
+          child: child,
+        ),
       );
     }
-    return Container(
-      padding: padding,
-      constraints: constraints,
-      decoration: BoxDecoration(
-        color: colors.background,
-        borderRadius: radius,
-        border: Border.all(color: colors.border, width: 1),
+    return _withBookmark(
+      Container(
+        padding: padding,
+        constraints: constraints,
+        decoration: BoxDecoration(
+          color: colors.background,
+          borderRadius: radius,
+          border: Border.all(color: colors.border, width: 1),
+        ),
+        child: child,
       ),
-      child: child,
+    );
+  }
+
+  Widget _withBookmark(Widget bubble) {
+    if (!isBookmarked) return bubble;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        bubble,
+        const Positioned(
+          top: -2,
+          right: 12,
+          child: Icon(Icons.bookmark, size: 22, color: Color(0xFFFFE54A)),
+        ),
+      ],
+    );
+  }
+}
+
+/// Subtle indicator shown in a message bubble's metadata row when SMAZ
+/// compression was applied to the message.
+class CompressionIndicator extends StatelessWidget {
+  final double size;
+  final Color color;
+
+  const CompressionIndicator({super.key, this.size = 14, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final label = context.l10n.messageMeta_smazCompressed;
+    return Tooltip(
+      message: label,
+      triggerMode: TooltipTriggerMode.tap,
+      child: Semantics(
+        label: label,
+        child: Icon(Icons.compress, size: size, color: color),
+      ),
     );
   }
 }

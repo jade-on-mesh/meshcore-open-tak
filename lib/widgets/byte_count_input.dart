@@ -77,10 +77,13 @@ class ByteCountedTextField extends StatelessWidget {
   final Color Function(int usedBytes, int maxBytes, Color defaultColor)?
   counterColorBuilder;
 
-  /// The most lines the field grows to before it scrolls inside itself
-  /// (null: it grows without limit).
+  /// Lines the field grows to before it scrolls internally. Null (the
+  /// default) grows without limit.
   final int? maxLines;
 
+  /// Show the counter row only once usage passes [warningThreshold], and give
+  /// it no space until then. By default the row keeps its height while hidden.
+  final bool counterOnlyNearLimit;
   const ByteCountedTextField({
     super.key,
     required this.maxBytes,
@@ -104,6 +107,7 @@ class ByteCountedTextField extends StatelessWidget {
     this.fieldFrame,
     this.counterColorBuilder,
     this.maxLines,
+    this.counterOnlyNearLimit = false,
   });
 
   @override
@@ -116,7 +120,9 @@ class ByteCountedTextField extends StatelessWidget {
             : value.text;
         final usedBytes = utf8.encode(effectiveText).length;
         final ratio = maxBytes > 0 ? usedBytes / maxBytes : 0.0;
-        final showCounter = !(hideCounterWhenEmpty && value.text.isEmpty);
+        final showCounter = counterOnlyNearLimit
+            ? ratio > warningThreshold
+            : !(hideCounterWhenEmpty && value.text.isEmpty);
         final showSoftLimitNote =
             softLimitNote != null &&
             softLimitBytes != null &&
@@ -164,37 +170,51 @@ class ByteCountedTextField extends StatelessWidget {
           onSubmitted: onSubmitted,
         );
 
+        final softNote = showSoftLimitNote
+            ? Text(
+                softLimitNote!,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.tertiary,
+                ),
+              )
+            : null;
+        final counter = Text(
+          counterText,
+          style: TextStyle(fontSize: 11, color: counterColor),
+        );
+
         return Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             fieldFrame?.call(textField) ?? textField,
-            Opacity(
-              opacity: showCounter ? 1 : 0,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 4, right: 4),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: showSoftLimitNote
-                          ? Text(
-                              softLimitNote!,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Theme.of(context).colorScheme.tertiary,
-                              ),
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      counterText,
-                      style: TextStyle(fontSize: 11, color: counterColor),
-                    ),
-                  ],
+            if (counterOnlyNearLimit && showCounter)
+              // Right-aligned, and wraps rather than overflowing at large
+              // text sizes in a narrow field.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 12, 8),
+                child: Wrap(
+                  alignment: WrapAlignment.end,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  children: [?softNote, counter],
+                ),
+              )
+            else if (!counterOnlyNearLimit)
+              Opacity(
+                opacity: showCounter ? 1 : 0,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 4, right: 4),
+                  child: Row(
+                    children: [
+                      Expanded(child: softNote ?? const SizedBox.shrink()),
+                      const SizedBox(width: 8),
+                      counter,
+                    ],
+                  ),
                 ),
               ),
-            ),
           ],
         );
       },

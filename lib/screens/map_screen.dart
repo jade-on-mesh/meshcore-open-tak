@@ -55,7 +55,6 @@ import '../helpers/guessed_location_estimator.dart';
 import '../helpers/marker_message.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../helpers/utf8_length_limiter.dart';
-import 'settings_screen.dart';
 import 'line_of_sight_map_screen.dart';
 import '../theme/theme_icons.dart';
 
@@ -981,14 +980,18 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
               actions: [
                 ..._tak.appBarActions(context),
                 PopupMenuButton(
-                  itemBuilder: (context) => [
+                  tooltip: context.l10n.contacts_moreOptions,
+                  // onTap handlers run after the menu route pops, so they must
+                  // capture the screen's context — not the itemBuilder's menu
+                  // context, which is deactivated by then.
+                  itemBuilder: (menuContext) => [
                     if (!_isBuildingPathTrace &&
                         connector.selfLatitude != null &&
                         connector.selfLongitude != null)
                       PopupMenuItem(
                         child: MeshMenuItemRow(
                           icon: Icons.radar,
-                          label: context.l10n.contacts_pathTrace,
+                          label: menuContext.l10n.contacts_pathTrace,
                         ),
                         onTap: () => _openPathTrace(
                           connector,
@@ -1003,7 +1006,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         enabled: !readOnly,
                         child: MeshMenuItemRow(
                           icon: Icons.radar,
-                          label: context.l10n.manualTrace_menuItem,
+                          label: menuContext.l10n.manualTrace_menuItem,
                         ),
                         onTap: () => ManualPathTraceScreen.open(context),
                       ),
@@ -1011,7 +1014,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       PopupMenuItem(
                         child: MeshMenuItemRow(
                           leading: const LosIcon(size: 20),
-                          label: context.l10n.map_lineOfSight,
+                          label: menuContext.l10n.map_lineOfSight,
                         ),
                         onTap: () {
                           final candidates = <LineOfSightEndpoint>[];
@@ -1042,7 +1045,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => LineOfSightMapScreen(
+                              builder: (_) => LineOfSightMapScreen(
                                 title: context.l10n.map_losScreenTitle,
                                 candidates: candidates,
                               ),
@@ -1050,20 +1053,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           );
                         },
                       ),
-                    connectionMenuItem(this.context, context),
-                    PopupMenuItem(
-                      child: MeshMenuItemRow(
-                        leading: const UpdateDot(
-                          child: ThemedIcon(ThemeIconSlot.settings, size: 20),
-                        ),
-                        label: context.l10n.settings_title,
-                      ),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SettingsScreen(),
-                        ),
-                      ),
+                    ...mainOverflowTrailingItems(
+                      context,
+                      menuContext,
+                      hasPrecedingItems: !_isBuildingPathTrace,
                     ),
                   ],
                   icon: const UpdateDot(child: Icon(Icons.more_vert)),
@@ -1420,6 +1413,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       showSensors: settings.mapShowSensors,
       isBuildingPathTrace: _isBuildingPathTrace,
       clusterNodes: settings.mapClusterNodes,
+      // Node labels bake in the overlay colors, so a light/dark or theme
+      // switch must rebuild them.
+      colorScheme: Theme.of(context).colorScheme,
     );
     if (key != _nodeMarkersCacheKey) {
       _nodeMarkersCacheKey = key;
@@ -2565,13 +2561,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   ) {
     final query = _searchQuery.trim().toLowerCase();
     final matches =
-        allContacts.where((c) => matchesContactQuery(c, query)).toList()
-          ..sort((a, b) {
+        allContacts.where((c) => matchesContactQuery(c, query)).toList()..sort(
+          (a, b) => compareContactQueryRank(a, b, query, (a, b) {
             if (a.hasLocation != b.hasLocation) {
               return a.hasLocation ? -1 : 1;
             }
             return b.lastHeard.compareTo(a.lastHeard);
-          });
+          }),
+        );
     final results = matches.take(8).toList();
     return Container(
       margin: const EdgeInsets.only(top: 6),
@@ -3742,6 +3739,15 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         contact.type != advTypeRoom,
                   )
                   .toList();
+              final people = allContacts
+                  .where(
+                    (contact) =>
+                        query.isEmpty || matchesContactQuery(contact, query),
+                  )
+                  .toList();
+              if (query.isNotEmpty) {
+                people.sort((a, b) => compareContactQueryRank(a, b, query));
+              }
               return SafeArea(
                 child: SingleChildScrollView(
                   child: Column(
@@ -3777,29 +3783,23 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           },
                         ),
                       ),
-                      ...allContacts
-                          .where(
-                            (contact) =>
-                                query.isEmpty ||
-                                matchesContactQuery(contact, query),
-                          )
-                          .map((contact) {
-                            return ListTile(
-                              leading: const Icon(Icons.person),
-                              title: Text(contact.name),
-                              onTap: () {
-                                Navigator.pop(sheetContext);
-                                if (!_markerFits(
-                                  context,
-                                  markerText,
-                                  maxContactMessageBytes(),
-                                )) {
-                                  return;
-                                }
-                                liveConnector.sendMessage(contact, markerText);
-                              },
-                            );
-                          }),
+                      ...people.map((contact) {
+                        return ListTile(
+                          leading: const Icon(Icons.person),
+                          title: Text(contact.name),
+                          onTap: () {
+                            Navigator.pop(sheetContext);
+                            if (!_markerFits(
+                              context,
+                              markerText,
+                              maxContactMessageBytes(),
+                            )) {
+                              return;
+                            }
+                            liveConnector.sendMessage(contact, markerText);
+                          },
+                        );
+                      }),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                         child: Text(
@@ -4696,6 +4696,7 @@ class _NodeMarkersCacheKey {
   final bool showSensors;
   final bool isBuildingPathTrace;
   final bool clusterNodes;
+  final ColorScheme colorScheme;
 
   const _NodeMarkersCacheKey({
     required this.contactsSignature,
@@ -4718,6 +4719,7 @@ class _NodeMarkersCacheKey {
     required this.showSensors,
     required this.isBuildingPathTrace,
     required this.clusterNodes,
+    required this.colorScheme,
   });
 
   @override
@@ -4742,11 +4744,12 @@ class _NodeMarkersCacheKey {
         showRooms == other.showRooms &&
         showSensors == other.showSensors &&
         isBuildingPathTrace == other.isBuildingPathTrace &&
-        clusterNodes == other.clusterNodes;
+        clusterNodes == other.clusterNodes &&
+        colorScheme == other.colorScheme;
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     contactsSignature,
     visibleContactsSignature,
     batterySignature,
@@ -4767,7 +4770,8 @@ class _NodeMarkersCacheKey {
     showSensors,
     isBuildingPathTrace,
     clusterNodes,
-  );
+    colorScheme,
+  ]);
 }
 
 class _GuessedLocation {

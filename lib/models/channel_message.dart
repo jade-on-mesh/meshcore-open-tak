@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+
 import '../connector/meshcore_protocol.dart';
 import '../helpers/reaction_helper.dart';
 import '../helpers/smaz.dart';
@@ -43,6 +44,8 @@ class ChannelMessage {
   /// to the bottom; [timestamp] stays the sender's identity time.
   final DateTime receivedAt;
   final bool isOutgoing;
+  final bool isBookmarked;
+  final bool isSmazCompressed;
   final ChannelMessageStatus status;
   final List<Repeat> repeats;
   final int repeatCount;
@@ -87,6 +90,8 @@ class ChannelMessage {
     required this.timestamp,
     DateTime? receivedAt,
     required this.isOutgoing,
+    this.isBookmarked = false,
+    this.isSmazCompressed = false,
     this.status = ChannelMessageStatus.pending,
     this.repeats = const [],
     this.repeatCount = 0,
@@ -119,6 +124,17 @@ class ChannelMessage {
 
   bool get isFiltered => filterReason != null;
 
+  /// Full wire/sent text, restoring the `@[sender] ` reply prefix when it
+  /// was split into [replyToSenderName] on storage.
+  String get fullText {
+    if (replyToMessageId != null &&
+        replyToSenderName != null &&
+        replyToSenderName!.isNotEmpty) {
+      return '@[$replyToSenderName] $text';
+    }
+    return text;
+  }
+
   String? get senderKeyHex =>
       senderKey != null ? pubKeyToHex(senderKey!) : null;
 
@@ -139,6 +155,8 @@ class ChannelMessage {
     // site leaves this null and keeps `text`.
     String? text,
     ChannelMessageStatus? status,
+    bool? isBookmarked,
+    bool? isSmazCompressed,
     List<Repeat>? repeats,
     int? repeatCount,
     int? pathLength,
@@ -187,6 +205,8 @@ class ChannelMessage {
       timestamp: timestamp,
       receivedAt: receivedAt,
       isOutgoing: isOutgoing,
+      isBookmarked: isBookmarked ?? this.isBookmarked,
+      isSmazCompressed: isSmazCompressed ?? this.isSmazCompressed,
       status: status ?? this.status,
       repeats: repeats ?? this.repeats,
       repeatCount: repeatCount ?? this.repeatCount,
@@ -278,7 +298,8 @@ class ChannelMessage {
         }
       }
 
-      final decodedText = Smaz.tryDecodePrefixed(actualText) ?? actualText;
+      final smazDecoded = Smaz.tryDecodePrefixed(actualText);
+      final decodedText = smazDecoded ?? actualText;
 
       return ChannelMessage(
         senderKey: null,
@@ -287,6 +308,7 @@ class ChannelMessage {
         timestamp: DateTime.fromMillisecondsSinceEpoch(timestampRaw * 1000),
         receivedAt: DateTime.now(),
         isOutgoing: false,
+        isSmazCompressed: smazDecoded != null,
         status: ChannelMessageStatus.sent,
         pathLength: pathLen,
         pathHashWidth: packetPathHashWidth,
@@ -319,6 +341,7 @@ class ChannelMessage {
     // orphaning any queue entry or later copyWith lookup keyed on the
     // original id.
     String? messageId,
+    bool isSmazCompressed = false,
   }) {
     return ChannelMessage(
       senderKey: null,
@@ -333,6 +356,7 @@ class ChannelMessage {
       otpPlaintext: otpPlaintext,
       timestamp: DateTime.now(),
       isOutgoing: true,
+      isSmazCompressed: isSmazCompressed,
       status: ChannelMessageStatus.pending,
       pathLength: null,
       pathBytes: Uint8List(0),

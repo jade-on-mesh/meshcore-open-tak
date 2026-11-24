@@ -703,6 +703,9 @@ class AppLocalizationsCs extends AppLocalizations {
       'Objevené kontakty a jejich uložené údaje';
 
   @override
+  String get backupRestore_bookmarks => 'Záložky';
+
+  @override
   String get backupRestore_channels => 'Kanály';
 
   @override
@@ -726,9 +729,8 @@ class AppLocalizationsCs extends AppLocalizations {
   String get backupRestore_missingModelsTitle => 'Modely nejsou stažené';
 
   @override
-  String backupRestore_missingModelsMessage(String models) {
-    return 'Obnovené nastavení vybírá modely, které nejsou v tomto zařízení k dispozici:\n$models\n\nStáhnout je nyní?';
-  }
+  String get backupRestore_missingModelsMessage =>
+      'Obnovené nastavení vybírá modely, které nejsou v tomto zařízení k dispozici. Stáhnout je nyní?';
 
   @override
   String get backupRestore_downloadModels => 'Stáhnout modely';
@@ -1560,6 +1562,13 @@ class AppLocalizationsCs extends AppLocalizations {
       'Zobrazit region zprávy kanálu na stejném řádku jako počet skoků místo pod ním.';
 
   @override
+  String get appSettings_showCompressionIndicator => 'Indikátor komprese';
+
+  @override
+  String get appSettings_showCompressionIndicatorSubtitle =>
+      'Zobrazit ikonu u zpráv komprimovaných pomocí SMAZ.';
+
+  @override
   String get appSettings_notifications => 'Oznámení';
 
   @override
@@ -1744,11 +1753,11 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get appSettings_clearPathOnMaxRetrySubtitle =>
-      'Resetovat cestu kontaktu po 5 neúspěšných pokusech o odeslání';
+      'Resetovat uloženou cestu kontaktu, když selžou všechny pokusy o odeslání';
 
   @override
   String get appSettings_pathsWillBeCleared =>
-      'Cesty budou vymazány po 5 neúspěšných pokusech';
+      'Cesty se vymažou, když selžou všechny pokusy o odeslání';
 
   @override
   String get appSettings_pathsWillNotBeCleared =>
@@ -1759,7 +1768,7 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get appSettings_autoRouteRotationSubtitle =>
-      'Střídat nejlepší cesty a režim flood';
+      'Při každém přímém pokusu zkusit jinou známou trasu. Pozdější pokusy jsou Flood. Vypnuto ponechá aktuální cestu kontaktu.';
 
   @override
   String get appSettings_autoRouteRotationEnabled =>
@@ -1775,6 +1784,63 @@ class AppLocalizationsCs extends AppLocalizations {
   @override
   String get appSettings_maxMessageRetriesSubtitle =>
       'Počet opakovaných pokusů, než se zpráva označí jako neodeslaná';
+
+  @override
+  String appSettings_directRetries(int count) {
+    return 'Přímé pokusy: $count';
+  }
+
+  @override
+  String get appSettings_directRetriesSubtitle =>
+      'Kolikrát se zkusí známá trasa. Dostupné i když je automatické střídání tras vypnuté.';
+
+  @override
+  String appSettings_floodRetries(int count) {
+    return 'Pokusy Flood: $count';
+  }
+
+  @override
+  String get appSettings_floodRetriesSubtitle =>
+      'Kolikrát se použije Flood. Flood zabere víc vysílacího času. Při zapnutém střídání následují po přímých pokusech.';
+
+  @override
+  String appSettings_loginAttempts(int count) {
+    return 'Pokusy o přihlášení: $count';
+  }
+
+  @override
+  String get appSettings_loginAttemptsSubtitle =>
+      'Kolikrát se zkusí přihlášení k opakovači nebo room serveru, než se to vzdá.';
+
+  @override
+  String get appSettings_repeatersAndRooms => 'Opakovače a místnosti';
+
+  @override
+  String get appSettings_clockSyncAfterLogin =>
+      'Synchronizovat hodiny opakovače při přihlášení';
+
+  @override
+  String get appSettings_clockSyncAfterLoginSubtitle =>
+      'Po úspěšném přihlášení k opakovači se odešle clock sync. Každý opakovač může dál zvolit Výchozí, Zapnuto nebo Vypnuto.';
+
+  @override
+  String get appSettings_loginPasswordAutofocus => 'Zaměřit pole hesla';
+
+  @override
+  String get appSettings_loginPasswordAutofocusSubtitle =>
+      'Při otevření přihlášení k opakovači nebo místnosti je kurzor v prázdném poli hesla. Vypnuto nechá dialog viditelný, dokud na pole neklepnete.';
+
+  @override
+  String get appSettings_resetRepeaterRoomSettings =>
+      'Obnovit nastavení opakovačů a místností';
+
+  @override
+  String get appSettings_resetRepeaterRoomSettingsSubtitle =>
+      'Obnoví nastavení v této části. Volby uložené u jednotlivých opakovačů zůstanou.';
+
+  @override
+  String get appSettings_repeaterRoomSettingsReset =>
+      'Nastavení opakovačů a místností obnoveno';
 
   @override
   String get appSettings_ipfsImageLinks => 'Konfigurace poskytovatele IPFS';
@@ -2171,7 +2237,28 @@ class AppLocalizationsCs extends AppLocalizations {
   String get contacts_noNodesFound => 'No nodes found';
 
   @override
+  String contacts_groupCurrentMembers(int count) {
+    return 'Současní členové ($count)';
+  }
+
+  @override
+  String get contacts_groupAddContacts => 'Přidat kontakty';
+
+  @override
+  String contacts_groupRemoveMember(String name) {
+    return 'Odebrat $name ze skupiny';
+  }
+
+  @override
+  String contacts_groupAddMember(String name) {
+    return 'Přidat $name do skupiny';
+  }
+
+  @override
   String get contacts_lastSeenNow => 'nedávno';
+
+  @override
+  String get contacts_lastSeenNever => 'zatím neslyšen';
 
   @override
   String contacts_lastSeenMinsAgo(int minutes) {
@@ -2352,16 +2439,6 @@ class AppLocalizationsCs extends AppLocalizations {
   String channels_editChannelTitle(int index) {
     return 'Upravit kanál $index';
   }
-
-  @override
-  String get channels_smazCompression => 'Komprese SMAZ';
-
-  @override
-  String get channels_cyr2latCompression => 'Komprese Cyr2Lat';
-
-  @override
-  String get channels_cyr2latCompressionDscr =>
-      'Při odesílání nahradí některé znaky cyrilice latinkou.';
 
   @override
   String get channels_cyr2latSettingsHeading => 'Nastavení Cyr2Lat';
@@ -2634,7 +2711,7 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
-  String get chat_resend => 'Resend';
+  String get chat_resend => 'Odeslat znovu';
 
   @override
   String chat_replyTo(String name) {
@@ -2678,6 +2755,30 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get chat_messageDeleted => 'Zpráva smazána';
+
+  @override
+  String get chat_bookmark => 'Záložka';
+
+  @override
+  String get chat_removeBookmark => 'Odebrat záložku';
+
+  @override
+  String get chat_showBookmarks => 'Zobrazit záložky';
+
+  @override
+  String get bookmarks_title => 'Záložky';
+
+  @override
+  String get bookmarks_empty => 'Žádné zprávy v záložkách';
+
+  @override
+  String get bookmarks_channel => 'Kanál';
+
+  @override
+  String get bookmarks_contact => 'Kontakt';
+
+  @override
+  String get bookmarks_remove => 'Odebrat záložku';
 
   @override
   String get chat_selectMessages => 'Vybrat zprávy';
@@ -3175,7 +3276,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get pathEditor_hexLabel => 'Hex prefixy';
 
   @override
-  String get pathEditor_hexHelper => 'Dva hex znaky na skok, oddělené čárkami';
+  String pathEditor_hexHelper(int count) {
+    return '$count hex znaky na skok, oddělené čárkami';
+  }
 
   @override
   String pathEditor_invalidTokens(String tokens) {
@@ -3215,9 +3318,6 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get chat_publicKey => 'Veřejný klíč';
-
-  @override
-  String get chat_compressOutgoingMessages => 'Komprimovat odchozí zprávy';
 
   @override
   String get chat_floodForced => 'Flood (vynuceno)';
@@ -4000,7 +4100,16 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get repeater_clockSyncAfterLoginSubtitle =>
-      'Automaticky odeslat „clock sync“ po úspěšném přihlášení';
+      'Výchozí se řídí Opakovači a místnostmi v nastavení aplikace. Zapnuto a Vypnuto platí jen pro tento opakovač.';
+
+  @override
+  String get repeater_clockSyncDefault => 'Výchozí';
+
+  @override
+  String get repeater_clockSyncOn => 'Zapnuto';
+
+  @override
+  String get repeater_clockSyncOff => 'Vypnuto';
 
   @override
   String get repeater_statusTitle => 'Stav opakovače';
@@ -6216,6 +6325,19 @@ class AppLocalizationsCs extends AppLocalizations {
       'MeshCore Open neběží. Otevřete ji a odešlete odpověď znovu.';
 
   @override
+  String get settings_exportBookmarks => 'Exportovat záložky do Markdownu';
+
+  @override
+  String get settings_exportBookmarksSubtitle =>
+      'Sdílet nebo uložit zprávy v záložkách jako soubor Markdown.';
+
+  @override
+  String get settings_exportBookmarksSuccess => 'Záložky byly exportovány.';
+
+  @override
+  String get settings_exportBookmarksNoBookmarks => 'Žádné záložky k exportu.';
+
+  @override
   String get settings_gpxExportRepeaters =>
       'Exportovat opakovače / room servery do GPX';
 
@@ -6893,6 +7015,58 @@ class AppLocalizationsCs extends AppLocalizations {
   @override
   String get imageSend_reconstructionUnavailable =>
       'Toto zařízení nemůže zobrazit náhled rekonstrukce.';
+
+  @override
+  String receivedImage_packetEchoes(int number, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'zopakován ${count}krát',
+      one: 'zopakován jednou',
+      zero: 'žádný opakovač neslyšel',
+    );
+    return 'Paket $number: $_temp0';
+  }
+
+  @override
+  String receivedImage_recoveryPacketEchoes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'zopakován ${count}krát',
+      one: 'zopakován jednou',
+      zero: 'žádný opakovač neslyšel',
+    );
+    return 'Záchranný paket: $_temp0';
+  }
+
+  @override
+  String get imageSend_preparingPreview => 'Připravuji náhled…';
+
+  @override
+  String get imageSend_tryAnother => 'Zkusit jinou verzi';
+
+  @override
+  String get imageSend_versionsHint =>
+      'Každá verze je rekonstruována trochu jinak. Vyberte tu, která se nejvíce podobá vaší fotce.';
+
+  @override
+  String imageSend_versionLabel(int number) {
+    return 'Verze $number';
+  }
+
+  @override
+  String imageSend_versionPackets(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count paketů',
+      many: '$count paketu',
+      few: '$count pakety',
+      one: '1 paket',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get imageSend_modelNotDownloaded =>
@@ -7602,15 +7776,15 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get appSettings_resetRoutingToDefault =>
-      'Obnovit výchozí směrovací algoritmus';
+      'Obnovit výchozí nastavení směrování';
 
   @override
   String get appSettings_resetRoutingToDefaultSubtitle =>
-      'Obnovit nastavení směrovacího algoritmu na tovární hodnoty';
+      'Obnovit nastavení směrování v této části na výchozí hodnoty';
 
   @override
   String get appSettings_routingResetToDefault =>
-      'Nastavení směrovacího algoritmu obnoveno na výchozí';
+      'Nastavení směrování obnoveno na výchozí';
 
   @override
   String get appSettings_imageMessagesSection => 'Obrázkové zprávy';
@@ -10100,4 +10274,543 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get chat_composerOffline => 'Pro odesílání zpráv se připojte k rádiu';
+
+  @override
+  String get modelDownload_notDownloaded => 'Nestaženo';
+
+  @override
+  String get modelDownload_downloading => 'Stahování';
+
+  @override
+  String get modelDownload_active => 'Aktivní';
+
+  @override
+  String get modelDownload_failed => 'Stažení se nezdařilo';
+
+  @override
+  String get modelDownload_incomplete => 'Neúplné';
+
+  @override
+  String get modelDownload_verifying => 'Ověřování stažení';
+
+  @override
+  String get modelDownload_useModel => 'Použít tento model';
+
+  @override
+  String modelDownload_removeFailed(String error) {
+    return 'Model se nepodařilo odebrat: $error';
+  }
+
+  @override
+  String modelDownload_progress(String current, String total, String percent) {
+    return '$current / $total MB ($percent%)';
+  }
+
+  @override
+  String get chatCompression_title => 'Komprese';
+
+  @override
+  String chatCompression_label(String mode) {
+    return 'Komprese: $mode';
+  }
+
+  @override
+  String get chatCompression_off => 'Vypnuto';
+
+  @override
+  String get chatCompression_smaz => 'SMAZ';
+
+  @override
+  String get chatCompression_cyr2lat => 'Cyr2Lat';
+
+  @override
+  String get chatCompression_changeHint => 'Změnit kompresi pro tento chat';
+
+  @override
+  String get chatCompression_sheetSubtitle =>
+      'Platí pro zprávy odeslané v tomto chatu. Uloženo v tomto telefonu.';
+
+  @override
+  String get chatCompression_offDescription =>
+      'Bez komprese. Text se odešle přesně tak, jak jste ho napsali. Přečte ho každá aplikace. Neušetří žádné bajty.';
+
+  @override
+  String get chatCompression_smazDescription =>
+      'Bezeztrátová komprese krátkých textů. Aplikace příjemce musí podporovat SMAZ, jiné aplikace zobrazí nečitelný text „s:…“. Použije se jen tehdy, když zprávu zmenší, takže nemusí být komprimována každá zpráva.';
+
+  @override
+  String get chatCompression_cyr2latDescription =>
+      'Ne bezeztrátová. Nahrazuje některá cyrilská písmena podobně vypadajícími latinskými (А→A, З→3), aby se ušetřily bajty. Čitelné v jakékoli aplikaci bez dekódování, ale přesné znaky se změní, včetně vašich odeslaných zpráv zde. Může to ovlivnit kopírování, vyhledávání a technické texty. Výsledek závisí na zvoleném profilu.';
+
+  @override
+  String get chatCompression_profile => 'Profil Cyr2Lat';
+
+  @override
+  String get chatCompression_noStorageId =>
+      'Kompresi nelze změnit, dokud se tento kanál nesynchronizuje z rádia.';
+
+  @override
+  String get chatCompression_saveFailed =>
+      'Nastavení komprese se nepodařilo uložit. Zobrazeno uložené nastavení.';
+
+  @override
+  String get messageMeta_smazCompressed => 'Komprimováno pomocí SMAZ';
+
+  @override
+  String get addContact_title => 'Přidat kontakt';
+
+  @override
+  String get addContact_infoBanner =>
+      'Pokud znáte veřejný klíč někoho, koho chcete kontaktovat, můžete ho přidat ručně, aniž byste čekali na jeho inzerát.';
+
+  @override
+  String get addContact_contactType => 'Typ kontaktu';
+
+  @override
+  String get addContact_name => 'Název';
+
+  @override
+  String get addContact_nameRequired => 'Zadejte název';
+
+  @override
+  String get addContact_publicKeyHex => 'Veřejný klíč (hex)';
+
+  @override
+  String get addContact_publicKeyRequired => 'Zadejte veřejný klíč';
+
+  @override
+  String get addContact_publicKeyInvalid =>
+      'Veřejný klíč musí mít 64 hexadecimálních znaků (32 bajtů)';
+
+  @override
+  String get addContact_clipboardKeyLoaded =>
+      'Veřejný klíč vyplněn. Vyberte typ kontaktu, zadejte název a klepněte na Uložit.';
+
+  @override
+  String get addContact_fromDiscovered => 'Přidat z objevených kontaktů';
+
+  @override
+  String get addContact_saveFailed => 'Kontakt se nepodařilo přidat.';
+
+  @override
+  String get coordinateMap_title => 'Poloha';
+
+  @override
+  String get coordinate_copyLocation => 'Kopírovat polohu';
+
+  @override
+  String get coordinate_openInMaps => 'Otevřít v mapách';
+
+  @override
+  String get coordinate_copied => 'Poloha zkopírována';
+
+  @override
+  String get chess_menuGames => 'Šachové hry';
+
+  @override
+  String chess_menuGamesCount(int count) {
+    return 'Šachové hry ($count)';
+  }
+
+  @override
+  String get chess_sheetTitle => 'Šachy';
+
+  @override
+  String get chess_sectionNewGame => 'Nová hra';
+
+  @override
+  String get chess_sectionYourGames => 'Vaše hry';
+
+  @override
+  String get chess_sectionInvites => 'Otevřené výzvy';
+
+  @override
+  String get chess_sectionLive => 'Probíhající hry';
+
+  @override
+  String get chess_sectionFinished => 'Dohrané';
+
+  @override
+  String get chess_newChallenge => 'Vyzvat někoho';
+
+  @override
+  String get chess_newChallengeSubtitle =>
+      'Vyberte někoho, koho jste nedávno slyšeli na tomto kanálu';
+
+  @override
+  String get chess_newOpenInvite => 'Zveřejnit otevřenou výzvu';
+
+  @override
+  String get chess_newOpenInviteSubtitle =>
+      'Přijmout ji může kdokoli na tomto kanálu';
+
+  @override
+  String get chess_emptyTitle => 'Zatím žádné hry';
+
+  @override
+  String get chess_emptySubtitle =>
+      'Vyzvěte někoho nebo zveřejněte otevřenou výzvu. Kdokoli na kanálu se může dívat.';
+
+  @override
+  String chess_vs(String white, String black) {
+    return '$white vs $black';
+  }
+
+  @override
+  String get chess_unknownPlayer => 'Neznámý';
+
+  @override
+  String chess_rowChallenge(String inviter, String target) {
+    return '$inviter vyzývá hráče $target';
+  }
+
+  @override
+  String get chess_rowYourOpenInvite => 'Vaše otevřená výzva';
+
+  @override
+  String chess_rowYourChallenge(String name) {
+    return 'Vyzvali jste hráče $name';
+  }
+
+  @override
+  String chess_rowInviteFrom(String name) {
+    return 'Hra s hráčem $name';
+  }
+
+  @override
+  String get chess_rowStarting => 'Čekání na zahájení hry';
+
+  @override
+  String chess_rowMoveTurn(int number, String turn) {
+    return 'Tah $number · $turn';
+  }
+
+  @override
+  String chess_rowOpenInvite(String name) {
+    return '$name hledá soupeře';
+  }
+
+  @override
+  String chess_rowChallengedYou(String name) {
+    return '$name vás vyzývá';
+  }
+
+  @override
+  String chess_rowInviteDetails(String deadline) {
+    return 'Čas na tah: $deadline';
+  }
+
+  @override
+  String get chess_accept => 'Přijmout';
+
+  @override
+  String get chess_decline => 'Odmítnout';
+
+  @override
+  String get chess_remove => 'Odstranit';
+
+  @override
+  String get chess_cancelInvite => 'Zrušit výzvu';
+
+  @override
+  String get chess_cancelInviteTitle => 'Zrušit tuto výzvu?';
+
+  @override
+  String get chess_sendFailed =>
+      'Odeslání se nezdařilo. Zkontrolujte spojení s rádiem.';
+
+  @override
+  String chess_challengeSent(String name) {
+    return 'Výzva odeslána hráči $name';
+  }
+
+  @override
+  String get chess_inviteSent => 'Otevřená výzva zveřejněna';
+
+  @override
+  String get chess_pickOpponent => 'Koho vyzvat';
+
+  @override
+  String get chess_noRecentSenders => 'Na tomto kanálu nedávno nikdo nepsal.';
+
+  @override
+  String get chess_deadlineLabel => 'Čas na tah';
+
+  @override
+  String get chess_deadlineNone => 'Bez limitu';
+
+  @override
+  String get chess_deadline15m => '15 minut';
+
+  @override
+  String get chess_deadline1h => '1 hodina';
+
+  @override
+  String get chess_deadline6h => '6 hodin';
+
+  @override
+  String get chess_deadline1d => '1 den';
+
+  @override
+  String get chess_deadline3d => '3 dny';
+
+  @override
+  String get chess_colourLabel => 'Vaše barva';
+
+  @override
+  String get chess_colourRandom => 'Náhodná';
+
+  @override
+  String get chess_colourWhite => 'Bílá';
+
+  @override
+  String get chess_colourBlack => 'Černá';
+
+  @override
+  String get chess_sendChallenge => 'Odeslat výzvu';
+
+  @override
+  String get chess_postInvite => 'Zveřejnit výzvu';
+
+  @override
+  String get chess_gameGone => 'Tato hra už není k dispozici.';
+
+  @override
+  String chess_playerYou(String name) {
+    return '$name (vy)';
+  }
+
+  @override
+  String get chess_toMoveChip => 'Na tahu';
+
+  @override
+  String get chess_statusYourMove => 'Váš tah';
+
+  @override
+  String chess_statusWaiting(String name) {
+    return 'Čekání na hráče $name';
+  }
+
+  @override
+  String chess_statusToMove(String name) {
+    return 'Na tahu: $name';
+  }
+
+  @override
+  String chess_statusTimeLeft(String time) {
+    return 'Na tento tah zbývá $time';
+  }
+
+  @override
+  String get chess_statusOverdue => 'Čas na tento tah vypršel';
+
+  @override
+  String chess_statusDrawOffered(String name) {
+    return '$name nabízí remízu';
+  }
+
+  @override
+  String get chess_statusUnknownPosition =>
+      'Šachovnice se zobrazí s dalším tahem.';
+
+  @override
+  String get chess_statusUnverified =>
+      'Hráči zatím nejsou potvrzeni. Vyžádejte si aktualizaci a ověřte je.';
+
+  @override
+  String get chess_statusPlayersUnchecked =>
+      'Hráči nepotvrzeni: tento telefon výzvu neslyšel.';
+
+  @override
+  String get chess_statusMoveUnconfirmed =>
+      'Váš tah možná neodešel. Klepnutím na „Vyžádat aktualizaci“ ho odešlete znovu.';
+
+  @override
+  String get chess_actionResign => 'Vzdát se';
+
+  @override
+  String get chess_actionOfferDraw => 'Nabídnout remízu';
+
+  @override
+  String get chess_actionAcceptDraw => 'Přijmout remízu';
+
+  @override
+  String get chess_actionClaimTimeout => 'Uplatnit výhru na čas';
+
+  @override
+  String get chess_actionNudge => 'Vyžádat aktualizaci';
+
+  @override
+  String get chess_actionNudgeTooltip =>
+      'Požádat hráče o opětovné odeslání posledního tahu';
+
+  @override
+  String get chess_resignConfirmTitle => 'Vzdát se této hry?';
+
+  @override
+  String get chess_resignConfirmBody => 'Soupeř vyhrává.';
+
+  @override
+  String get chess_movesTitle => 'Tahy';
+
+  @override
+  String get chess_noMovesYet => 'Zatím žádné tahy';
+
+  @override
+  String get chess_movesMissed => '(zmeškáno)';
+
+  @override
+  String get chess_promoteTitle => 'Proměnit na';
+
+  @override
+  String get chess_pieceQueen => 'Dáma';
+
+  @override
+  String get chess_pieceRook => 'Věž';
+
+  @override
+  String get chess_pieceBishop => 'Střelec';
+
+  @override
+  String get chess_pieceKnight => 'Jezdec';
+
+  @override
+  String get chess_pieceKing => 'Král';
+
+  @override
+  String get chess_piecePawn => 'Pěšec';
+
+  @override
+  String chess_squareWhitePiece(String square, String piece) {
+    return '$square: $piece, bílá';
+  }
+
+  @override
+  String chess_squareBlackPiece(String square, String piece) {
+    return '$square: $piece, černá';
+  }
+
+  @override
+  String get chess_resultDraw => 'Remíza';
+
+  @override
+  String chess_resultWon(String name) {
+    return 'Vítězí $name';
+  }
+
+  @override
+  String chess_resultWithReason(String result, String reason) {
+    return '$result · $reason';
+  }
+
+  @override
+  String get chess_endCheckmate => 'Mat';
+
+  @override
+  String get chess_endResignation => 'Vzdání se';
+
+  @override
+  String get chess_endTimeout => 'Na čas';
+
+  @override
+  String get chess_endDrawAgreed => 'Remíza dohodou';
+
+  @override
+  String get chess_endStalemate => 'Pat';
+
+  @override
+  String get chess_endInsufficient => 'Nedostatek materiálu k matu';
+
+  @override
+  String get chess_endFiftyMoves => 'Pravidlo 50 tahů';
+
+  @override
+  String get chess_endRepetition => 'Opakování pozice';
+
+  @override
+  String get chess_endCancelled => 'Výzva zrušena';
+
+  @override
+  String get chess_endDeclined => 'Výzva odmítnuta';
+
+  @override
+  String get chess_endExpired => 'Výzva vypršela';
+
+  @override
+  String get chess_endTaken => 'Přijal ji někdo jiný';
+
+  @override
+  String chess_timeMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String chess_timeHours(int hours, int minutes) {
+    return '$hours h $minutes min';
+  }
+
+  @override
+  String chess_timeDays(int days, int hours) {
+    return '$days d $hours h';
+  }
+
+  @override
+  String get chess_notificationSender => 'Šachy';
+
+  @override
+  String chess_notifyChallenge(String name) {
+    return '$name vás vyzývá ke hře';
+  }
+
+  @override
+  String chess_notifyAccepted(String name) {
+    return 'Hráč $name přijal vaši hru';
+  }
+
+  @override
+  String chess_notifyAcceptedYourMove(String name) {
+    return 'Hráč $name přijal vaši hru. Hrajete bílými, jste na tahu.';
+  }
+
+  @override
+  String chess_notifyDeclined(String name) {
+    return 'Hráč $name odmítl vaši výzvu';
+  }
+
+  @override
+  String get chess_notifyTaken => 'Tuto hru přijal dřív někdo jiný';
+
+  @override
+  String get chess_notifyGameStartedYourMove =>
+      'Vaše hra začala. Hrajete bílými, jste na tahu.';
+
+  @override
+  String chess_notifyYourMove(String name, String move) {
+    return 'Hráč $name táhl $move. Jste na tahu.';
+  }
+
+  @override
+  String chess_notifyGameOver(String name) {
+    return 'Vaše hra s hráčem $name skončila';
+  }
+
+  @override
+  String chess_notifyResigned(String name) {
+    return 'Hráč $name se vzdal. Vyhráváte.';
+  }
+
+  @override
+  String chess_notifyDrawOffered(String name) {
+    return '$name nabízí remízu';
+  }
+
+  @override
+  String chess_notifyDrawAccepted(String name) {
+    return 'Hráč $name přijal remízu';
+  }
+
+  @override
+  String chess_notifyTimeout(String name) {
+    return 'Hráč $name uplatnil výhru na čas';
+  }
 }
