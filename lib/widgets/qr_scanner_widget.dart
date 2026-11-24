@@ -197,7 +197,7 @@ class _QrScannerWidgetState extends State<QrScannerWidget>
     return true;
   }
 
-  /// Windows and Linux: a QR code from a picture or screenshot on disk.
+  /// Windows, Linux and Mac: a QR code from a picture or screenshot on disk.
   Future<void> _scanPicture() async {
     final XFile? file;
     try {
@@ -420,6 +420,12 @@ class _QrScannerWidgetState extends State<QrScannerWidget>
             icon: const Icon(Icons.cameraswitch),
             style: _controlStyle,
           ),
+        // Mac: the camera works, and a picture or screenshot of a code can
+        // be opened too.
+        if (PlatformInfo.isMacOS) ...[
+          const SizedBox(width: 24),
+          _pictureButton(context),
+        ],
       ],
     );
   }
