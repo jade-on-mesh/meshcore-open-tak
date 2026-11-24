@@ -1632,14 +1632,40 @@ class TeamMapOverlay extends StatelessWidget {
     // Spoken prompts speak the app's language.
     team.voiceWords = roadVoiceWordsOf(context);
     team.voiceLanguage = Localizations.localeOf(context).toLanguageTag();
+    // The tactical status and coordinates sit at the bottom centre, clear of
+    // the map's control rail (left, from 96 px up) and its buttons (right):
+    // in the SOS row when there's room, else just above it.
+    Widget? pills;
+    if (team.enabled) {
+      pills = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _StatusPill(team: team),
+          if (fix != null) ...[
+            const SizedBox(height: 4),
+            _CoordPill(team: team, fix: fix),
+          ],
+        ],
+      );
+    }
     return Positioned(
       left: 12,
       bottom: 16,
-      right: 88,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      right: 12,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final inRow = width >= _pillsInRowWidth;
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: 76),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
           if (own != null)
             Material(
               color: Colors.red,
@@ -1749,32 +1775,55 @@ class TeamMapOverlay extends StatelessWidget {
                 ),
               ),
             ),
-          if (team.enabled) ...[
-            const SizedBox(height: 6),
-            _StatusPill(team: team),
-            if (fix != null) ...[
-              const SizedBox(height: 4),
-              _CoordPill(team: team, fix: fix),
-            ],
-            const SizedBox(height: 8),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _SosButton(team: team),
-                const SizedBox(width: 10),
-                FloatingActionButton.small(
-                  heroTag: 'tak-quick',
-                  tooltip: 'Pin, report or status',
-                  onPressed: () => _quickActions(context, team),
-                  child: const Icon(Icons.add),
+                  ],
+                ),
+              ),
+              if (pills != null && !inRow) ...[
+                const SizedBox(height: 6),
+                Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: max(0.0, width - 2 * _pillsSideClearance),
+                    ),
+                    child: pills,
+                  ),
                 ),
               ],
-            ),
-          ],
-        ],
+              if (team.enabled) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _SosButton(team: team),
+                    const SizedBox(width: 10),
+                    FloatingActionButton.small(
+                      heroTag: 'tak-quick',
+                      tooltip: 'Pin, report or status',
+                      onPressed: () => _quickActions(context, team),
+                      child: const Icon(Icons.add),
+                    ),
+                    if (pills != null && inRow) ...[
+                      const SizedBox(width: 12),
+                      Expanded(child: Center(child: pills)),
+                      // The map's filter and live-traffic buttons.
+                      const SizedBox(width: 76),
+                    ],
+                  ],
+                ),
+              ],
+            ],
+          );
+        },
       ),
     );
   }
+
+  /// From this width (the overlay's, inside its 12 px margins) the pills fit
+  /// in the SOS row between the SOS and + buttons and the map's buttons.
+  static const double _pillsInRowWidth = 560;
+
+  /// Kept clear on each side when the pills sit above the SOS row: the
+  /// control rail on the left and the map's buttons on the right.
+  static const double _pillsSideClearance = 64;
 
   Future<void> _quickActions(BuildContext context, TeamService team) {
     final fix = team.fix;
@@ -1976,6 +2025,8 @@ class _CoordPill extends StatelessWidget {
             if ((fix.speed ?? 0) > 0.5)
               '${(fix.speed! * 3.6).toStringAsFixed(0)} km/h',
           ].join(' · '),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             color: Colors.white,
             fontSize: 12,
