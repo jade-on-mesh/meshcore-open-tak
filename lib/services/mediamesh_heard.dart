@@ -98,8 +98,7 @@ class MediaMeshHeard extends ChangeNotifier {
       await prefs.setString(
         _prefsKey,
         jsonEncode({
-          for (final e in _heard.entries)
-            e.key: e.value.millisecondsSinceEpoch,
+          for (final e in _heard.entries) e.key: e.value.millisecondsSinceEpoch,
         }),
       );
     } catch (e) {

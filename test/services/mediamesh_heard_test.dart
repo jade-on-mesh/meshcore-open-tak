@@ -52,32 +52,34 @@ void main() {
   final chat = _node(0xCC, 0x01, type: advTypeChat);
 
   group('mediaMeshSenderKey (CoreScope "heard")', () {
-    test('a flood with a path: its last hop, when only one repeater has it',
-        () {
-      expect(
-        mediaMeshSenderKey(
-          _packet(type: payloadTypeGRPDATA, path: [0xBB, 0xAA]),
-          [a, b, chat],
-        ),
-        a.publicKeyHex.toLowerCase(),
-      );
-      // Two repeaters share BB: not evidence.
-      expect(
-        mediaMeshSenderKey(
-          _packet(type: payloadTypeGRPDATA, path: [0xAA, 0xBB]),
-          [a, b, b2],
-        ),
-        isNull,
-      );
-      // A 2-byte hash tells them apart.
-      expect(
-        mediaMeshSenderKey(
-          _packet(type: payloadTypeGRPDATA, path: [0xBB, 0x02], width: 2),
-          [a, b, b2],
-        ),
-        b2.publicKeyHex.toLowerCase(),
-      );
-    });
+    test(
+      'a flood with a path: its last hop, when only one repeater has it',
+      () {
+        expect(
+          mediaMeshSenderKey(
+            _packet(type: payloadTypeGRPDATA, path: [0xBB, 0xAA]),
+            [a, b, chat],
+          ),
+          a.publicKeyHex.toLowerCase(),
+        );
+        // Two repeaters share BB: not evidence.
+        expect(
+          mediaMeshSenderKey(
+            _packet(type: payloadTypeGRPDATA, path: [0xAA, 0xBB]),
+            [a, b, b2],
+          ),
+          isNull,
+        );
+        // A 2-byte hash tells them apart.
+        expect(
+          mediaMeshSenderKey(
+            _packet(type: payloadTypeGRPDATA, path: [0xBB, 0x02], width: 2),
+            [a, b, b2],
+          ),
+          b2.publicKeyHex.toLowerCase(),
+        );
+      },
+    );
 
     test('an advert with no path: its sender, companions too', () {
       expect(
@@ -97,7 +99,10 @@ void main() {
     });
 
     test('nothing for encrypted senders, direct paths and traces', () {
-      expect(mediaMeshSenderKey(_packet(type: payloadTypeGRPDATA), [a]), isNull);
+      expect(
+        mediaMeshSenderKey(_packet(type: payloadTypeGRPDATA), [a]),
+        isNull,
+      );
       expect(
         mediaMeshSenderKey(
           _packet(type: payloadTypeTXTMSG, route: 2, path: [0xAA]),

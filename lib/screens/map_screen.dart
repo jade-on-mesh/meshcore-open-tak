@@ -1976,71 +1976,71 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       child: Opacity(
         opacity: dimmed ? _mediaMeshOthersOpacity : 1,
         child: Semantics(
-        button: true,
-        selected: selected,
-        label: context.l10n.map_nodeMarkerSemantics(
-          contact.name,
-          contact.typeLabel(context.l10n),
-          _ageLabel(age),
-        ),
-        excludeSemantics: true,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onLongPress: () {
-            if (_isBuildingPathTrace) showNodeInfoSheet(context, contact);
-          },
-          onSecondaryTap: () {
-            if (_isBuildingPathTrace) showNodeInfoSheet(context, contact);
-          },
-          onTap: () => _isBuildingPathTrace
-              ? _addToPath(context, contact)
-              : _selectNode(contact),
-          child: Center(
-            child: analyzer
-                ? SizedBox.expand(
-                    child: AnalyzerNodeMarker(
-                      role: role,
-                      size: analyzerSize,
-                      mediaMesh: analyzerMediaMesh,
-                      stale: stale,
-                      selected: selected,
-                    ),
-                  )
-                : dot && !selected
-                ? Container(
-                    width: 15,
-                    height: 15,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: baseColor,
-                      border: Border.all(
-                        color: mediaMesh
-                            ? MapPalette.mediaMesh
-                            : MapPalette.markerOutline,
-                        width: mediaMesh ? 3 : 2,
+          button: true,
+          selected: selected,
+          label: context.l10n.map_nodeMarkerSemantics(
+            contact.name,
+            contact.typeLabel(context.l10n),
+            _ageLabel(age),
+          ),
+          excludeSemantics: true,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onLongPress: () {
+              if (_isBuildingPathTrace) showNodeInfoSheet(context, contact);
+            },
+            onSecondaryTap: () {
+              if (_isBuildingPathTrace) showNodeInfoSheet(context, contact);
+            },
+            onTap: () => _isBuildingPathTrace
+                ? _addToPath(context, contact)
+                : _selectNode(contact),
+            child: Center(
+              child: analyzer
+                  ? SizedBox.expand(
+                      child: AnalyzerNodeMarker(
+                        role: role,
+                        size: analyzerSize,
+                        mediaMesh: analyzerMediaMesh,
+                        stale: stale,
+                        selected: selected,
                       ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: MapPalette.markerShadow,
-                          blurRadius: 6,
-                          offset: Offset(0, 2),
+                    )
+                  : dot && !selected
+                  ? Container(
+                      width: 15,
+                      height: 15,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: baseColor,
+                        border: Border.all(
+                          color: mediaMesh
+                              ? MapPalette.mediaMesh
+                              : MapPalette.markerOutline,
+                          width: mediaMesh ? 3 : 2,
                         ),
-                      ],
+                        boxShadow: const [
+                          BoxShadow(
+                            color: MapPalette.markerShadow,
+                            blurRadius: 6,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _buildNodeMarkerWidget(
+                      color: baseColor,
+                      icon: mapNodeTypeIcon(contact.type),
+                      slot: mapMarkerSlotForNodeType(contact.type),
+                      selected: selected,
+                      stale: stale,
+                      online: online,
+                      batteryLow: batteryLow,
+                      mediaMesh: mediaMesh,
                     ),
-                  )
-                : _buildNodeMarkerWidget(
-                    color: baseColor,
-                    icon: mapNodeTypeIcon(contact.type),
-                    slot: mapMarkerSlotForNodeType(contact.type),
-                    selected: selected,
-                    stale: stale,
-                    online: online,
-                    batteryLow: batteryLow,
-                    mediaMesh: mediaMesh,
-                  ),
+            ),
           ),
         ),
-      ),
       ),
     );
   }

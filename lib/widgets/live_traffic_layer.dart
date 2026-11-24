@@ -610,15 +610,19 @@ class _LiveTrafficPainter extends CustomPainter {
           _stroke(mediaMeshColor, fo, _ringWeight),
         );
         if (h.hopNo > 0) {
-          _hopBadge(canvas, (a + b) / 2, h.hopNo, math.min(1, f.opacity / 0.8) * h.alpha);
+          _hopBadge(
+            canvas,
+            (a + b) / 2,
+            h.hopNo,
+            math.min(1, f.opacity / 0.8) * h.alpha,
+          );
         }
       } else {
         _line(
           canvas,
           a,
           b,
-          _stroke(h.color, fo, h.dashed ? 1.5 : 2)
-            ..strokeCap = StrokeCap.round,
+          _stroke(h.color, fo, h.dashed ? 1.5 : 2)..strokeCap = StrokeCap.round,
           dash: h.dashed ? 4 : 0,
           gap: 6,
         );
@@ -649,7 +653,11 @@ class _LiveTrafficPainter extends CustomPainter {
         _stroke(p.color, p.op * p.alpha, math.max(0.3, 3 - p.r * 0.04)),
       );
       if (p.hlOp > 0) {
-        canvas.drawCircle(at, p.hlR, _stroke(p.color, p.hlOp * p.alpha, p.hlWeight));
+        canvas.drawCircle(
+          at,
+          p.hlR,
+          _stroke(p.color, p.hlOp * p.alpha, p.hlWeight),
+        );
       }
     }
 
