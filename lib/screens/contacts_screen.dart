@@ -483,7 +483,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
             selectedIndex: _tab,
             onDestinationSelected: (index) =>
                 switchMainTab(context, index, current: _tab),
-            contactsUnreadCount: connector.getTotalPeopleUnreadCount(),
+            dmsUnreadCount: connector.getTotalPeopleUnreadCount(),
             nodesUnreadCount: connector.getTotalNodesUnreadCount(),
             channelsUnreadCount: connector.getTotalChannelsUnreadCount(),
           ),

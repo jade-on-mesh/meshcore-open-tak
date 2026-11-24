@@ -11,14 +11,15 @@ import '../theme/mesh_theme.dart';
 import '../theme/theme_icons.dart';
 import '../utils/main_navigation.dart' show MainTab;
 
-/// The main tabs: Contacts (people), Nodes (repeaters, rooms, sensors),
-/// Channels, Map, and Tactical (its own screen). Indexes are [MainTab]'s.
+/// The main tabs: DMs (direct conversations, unread first), Contacts
+/// (people), Nodes (repeaters, rooms, sensors), Channels, Map, and Tactical
+/// (its own screen). Indexes are [MainTab]'s.
 class QuickSwitchBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
 
-  /// Unread direct messages from people.
-  final int contactsUnreadCount;
+  /// Unread direct messages from people, on the DMs tab.
+  final int dmsUnreadCount;
 
   /// Unread messages from nodes (room servers).
   final int nodesUnreadCount;
@@ -29,7 +30,7 @@ class QuickSwitchBar extends StatelessWidget {
     super.key,
     required this.selectedIndex,
     required this.onDestinationSelected,
-    this.contactsUnreadCount = 0,
+    this.dmsUnreadCount = 0,
     this.nodesUnreadCount = 0,
     this.channelsUnreadCount = 0,
     this.highContrast = false,
@@ -100,6 +101,7 @@ class QuickSwitchBar extends StatelessWidget {
                 // room above the labels.
                 height:
                     MeshIconTheme.of(context).hasPictureFor(const [
+                      ThemeIconSlot.dms,
                       ThemeIconSlot.contacts,
                       ThemeIconSlot.nodes,
                       ThemeIconSlot.channels,
@@ -126,13 +128,21 @@ class QuickSwitchBar extends StatelessWidget {
                   NavigationDestination(
                     icon: _buildIconWithBadge(
                       context,
-                      const ThemedIcon(ThemeIconSlot.contacts),
-                      contactsUnreadCount,
+                      const ThemedIcon(ThemeIconSlot.dms),
+                      dmsUnreadCount,
                     ),
                     selectedIcon: _buildIconWithBadge(
                       context,
-                      const ThemedIcon(ThemeIconSlot.contacts, selected: true),
-                      contactsUnreadCount,
+                      const ThemedIcon(ThemeIconSlot.dms, selected: true),
+                      dmsUnreadCount,
+                    ),
+                    label: context.l10n.nav_dms,
+                  ),
+                  NavigationDestination(
+                    icon: const ThemedIcon(ThemeIconSlot.contacts),
+                    selectedIcon: const ThemedIcon(
+                      ThemeIconSlot.contacts,
+                      selected: true,
                     ),
                     label: context.l10n.nav_contacts,
                   ),

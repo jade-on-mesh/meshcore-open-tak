@@ -9,21 +9,22 @@ Launch → Scanner Screen → [Connect via BLE/USB/TCP] → Channels Screen
 Launch (a radio connected before) → Channels Screen (offline until connected)
 ```
 
-After connecting, the main screens (Contacts, Nodes, Channels, Map, and Tactical) are accessible via a persistent bottom navigation bar called the **QuickSwitchBar**.
+After connecting, the main screens (DMs, Contacts, Nodes, Channels, Map, and Tactical) are accessible via a persistent bottom navigation bar called the **QuickSwitchBar**.
 
 ## Quick Switch Bar
 
-The QuickSwitchBar is a Material 3 `NavigationBar` with a frosted-glass visual treatment (blur backdrop, transparent theme, rounded corners). It appears at the bottom of the Contacts, Nodes, Channels and Map screens.
+The QuickSwitchBar is a Material 3 `NavigationBar` with a frosted-glass visual treatment (blur backdrop, transparent theme, rounded corners). It appears at the bottom of the DMs, Contacts, Nodes, Channels and Map screens.
 
 | Index | Icon | Label | Screen |
 |---|---|---|---|
-| 0 | People | Contacts | ContactsScreen (users only) |
-| 1 | Antenna | Nodes | ContactsScreen with `ContactsScope.nodes` (repeaters, rooms, sensors) |
-| 2 | Tag | Channels | ChannelsScreen |
-| 3 | Map | Map | MapScreen |
-| 4 | Shield | Tactical | TeamScreen (pushed, not replaced) |
+| 0 | Chat bubble | DMs | DmsScreen (direct conversations with people, unread first) |
+| 1 | People | Contacts | ContactsScreen (users only) |
+| 2 | Antenna | Nodes | ContactsScreen with `ContactsScope.nodes` (repeaters, rooms, sensors) |
+| 3 | Tag | Channels | ChannelsScreen |
+| 4 | Map | Map | MapScreen |
+| 5 | Shield | Tactical | TeamScreen (pushed, not replaced) |
 
-Tapping a tab replaces the current screen with a subtle fade + slight horizontal nudge transition (220ms forward, 200ms reverse). The back button is suppressed on the main screens — navigation between them is flat, not stacked. Tab indices live in `MainTab` and switching goes through `switchMainTab` (`lib/utils/main_navigation.dart`). The Nodes icon is the `nodes` theme icon slot (`settings_input_antenna` by default). The Contacts badge counts unread messages from users; the Nodes badge counts unread room and sensor messages (repeaters don't count).
+Tapping a tab replaces the current screen with a subtle fade + slight horizontal nudge transition (220ms forward, 200ms reverse). The back button is suppressed on the main screens — navigation between them is flat, not stacked. The DMs icon is the `dms` theme icon slot (`chat_bubble_outline` by default). Tab indices live in `MainTab` and switching goes through `switchMainTab` (`lib/utils/main_navigation.dart`). The Nodes icon is the `nodes` theme icon slot (`settings_input_antenna` by default). The DMs badge counts unread direct messages from people (Contacts has no badge); the Nodes badge counts unread room and sensor messages (repeaters don't count).
 
 ## Disconnection
 
@@ -46,24 +47,34 @@ ScannerScreen (root when no radio is remembered; otherwise pushed from the conne
   └─ [USB icon button] → push → UsbScreen
         └─ [USB connected] → ChannelsScreen as the only route
 
-ContactsScreen (selected=0 for Contacts, 1 for Nodes)
-  ├─ [quick-switch 0/1] → pushReplacement → ContactsScreen (users / nodes)
-  ├─ [quick-switch 2] → pushReplacement → ChannelsScreen
-  ├─ [quick-switch 3] → pushReplacement → MapScreen
+DmsScreen (selected=0)
+  ├─ [quick-switch 1/2] → pushReplacement → ContactsScreen (users / nodes)
+  ├─ [quick-switch 3] → pushReplacement → ChannelsScreen
+  ├─ [quick-switch 4] → pushReplacement → MapScreen
+  ├─ [tap conversation] → push → ChatScreen (marks it read)
+  └─ [Unread › Mark all read] → clears every person's unread count
+
+ContactsScreen (selected=1 for Contacts, 2 for Nodes)
+  ├─ [quick-switch 0] → pushReplacement → DmsScreen
+  ├─ [quick-switch 1/2] → pushReplacement → ContactsScreen (users / nodes)
+  ├─ [quick-switch 3] → pushReplacement → ChannelsScreen
+  ├─ [quick-switch 4] → pushReplacement → MapScreen
   ├─ [tap contact] → push → ChatScreen
   ├─ [FAB / overflow > Add Contact] → push → AddContactScreen
   ├─ [overflow > Settings] → push → SettingsScreen
   └─ [overflow > Discovered] → push → DiscoveryScreen
 
-ChannelsScreen (selected=2)
-  ├─ [quick-switch 0/1] → pushReplacement → ContactsScreen (users / nodes)
-  ├─ [quick-switch 3] → pushReplacement → MapScreen
+ChannelsScreen (selected=3)
+  ├─ [quick-switch 0] → pushReplacement → DmsScreen
+  ├─ [quick-switch 1/2] → pushReplacement → ContactsScreen (users / nodes)
+  ├─ [quick-switch 4] → pushReplacement → MapScreen
   ├─ [tap channel] → push → ChannelChatScreen
   └─ [overflow > Settings] → push → SettingsScreen
 
-MapScreen (selected=3)
-  ├─ [quick-switch 0/1] → pushReplacement → ContactsScreen (users / nodes)
-  ├─ [quick-switch 2] → pushReplacement → ChannelsScreen
+MapScreen (selected=4)
+  ├─ [quick-switch 0] → pushReplacement → DmsScreen
+  ├─ [quick-switch 1/2] → pushReplacement → ContactsScreen (users / nodes)
+  ├─ [quick-switch 3] → pushReplacement → ChannelsScreen
   ├─ [radar menu item] → enters in-map path trace mode (push → PathTraceMapScreen after path is built)
   ├─ [Path trace by hashes] → push → ManualPathTraceScreen → push → PathTraceMapScreen
   ├─ [terrain menu item] → push → LineOfSightMapScreen

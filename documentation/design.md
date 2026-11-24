@@ -153,8 +153,9 @@ Icon sizes in use: 24 for tile and banner icons, 20 for menu icons and small act
 | Metric | `StatTile` | Label wraps to 2 lines; value wraps |
 | Signal | `SignalBars`, `MeshTheme.snrColor` | |
 | Route kind | `RouteChip` | Direct / hop count / Flood |
+| Conversation list (DMs tab) | `MeshCard` rows in `dms_screen.dart`: `AvatarCircle` (contact photo), name (`w700` when unread), relative time in mono (`primary` when unread, else `onSurfaceVariant`), one-line preview (`onSurface` when unread) and an `UnreadBadge`. Unread rows sit under an "Unread" `SectionHeader` whose trailing `TextButton` marks them all read; the rest under "Earlier" ("Recent" when nothing is unread) | `groupDmConversations` decides the groups and order |
 | Count badge | `Badge` on nav icons (`QuickSwitchBar`, caps at 99+), `UnreadBadge` in lists (alert red, mono 12) | |
-| Main tabs | `QuickSwitchBar`: Contacts (people), Nodes (repeaters, rooms, sensors), Channels, Map, Tactical. Use `MainTab` indices and `switchMainTab`; give a new tab its own `ThemeIconSlot` | [navigation.md](navigation.md) |
+| Main tabs | `QuickSwitchBar`: DMs (direct conversations, unread first), Contacts (people), Nodes (repeaters, rooms, sensors), Channels, Map, Tactical. Use `MainTab` indices and `switchMainTab`; give a new tab its own `ThemeIconSlot` | [navigation.md](navigation.md) |
 | Empty list | `EmptyState(icon:, title:, subtitle:, action:)` | Scrolls rather than overflowing at large text |
 | Inline error with retry | `ErrorRetryCard(message:, onRetry:, retryLabel:)` | Pass `retryLabel: context.l10n.common_retry` |
 | Radio offline on a remote-node screen | `RadioDisconnectedBanner` | Renders nothing while connected |

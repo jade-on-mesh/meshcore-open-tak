@@ -10967,6 +10967,96 @@ abstract class AppLocalizations {
   /// **'Goes to {name} alone, along the route to them. They hear it as you speak; it\'s also sent as a voice message.'**
   String dmWalkie_routed(String name);
 
+  /// No description provided for @nav_dms.
+  ///
+  /// In en, this message translates to:
+  /// **'DMs'**
+  String get nav_dms;
+
+  /// No description provided for @dms_title.
+  ///
+  /// In en, this message translates to:
+  /// **'DMs'**
+  String get dms_title;
+
+  /// No description provided for @dms_unreadCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} unread'**
+  String dms_unreadCount(int count);
+
+  /// No description provided for @dms_allRead.
+  ///
+  /// In en, this message translates to:
+  /// **'All caught up'**
+  String get dms_allRead;
+
+  /// No description provided for @dms_unreadSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Unread'**
+  String get dms_unreadSection;
+
+  /// No description provided for @dms_earlierSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier'**
+  String get dms_earlierSection;
+
+  /// No description provided for @dms_recentSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get dms_recentSection;
+
+  /// No description provided for @dms_noneUnread.
+  ///
+  /// In en, this message translates to:
+  /// **'No unread direct messages'**
+  String get dms_noneUnread;
+
+  /// No description provided for @dms_empty.
+  ///
+  /// In en, this message translates to:
+  /// **'No direct messages yet'**
+  String get dms_empty;
+
+  /// No description provided for @dms_emptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a person in Contacts to start one.'**
+  String get dms_emptyHint;
+
+  /// No description provided for @dms_markAllRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark all read'**
+  String get dms_markAllRead;
+
+  /// No description provided for @dms_search.
+  ///
+  /// In en, this message translates to:
+  /// **'Search conversations'**
+  String get dms_search;
+
+  /// No description provided for @dms_closeSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Close search'**
+  String get dms_closeSearch;
+
+  /// No description provided for @dms_noMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'No conversations match'**
+  String get dms_noMatches;
+
+  /// No description provided for @dms_youPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'You: {text}'**
+  String dms_youPrefix(String text);
+
   /// No description provided for @dmWalkie_noRoute.
   ///
   /// In en, this message translates to:

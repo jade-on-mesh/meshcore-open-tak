@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../screens/channels_screen.dart';
 import '../screens/contacts_screen.dart';
+import '../screens/dms_screen.dart';
 import '../screens/map_screen.dart';
 import 'route_transitions.dart';
 
@@ -16,11 +17,13 @@ void navigateToMainAfterConnect(BuildContext context) {
 /// The main tabs, left to right in the bottom bar. Tactical opens as a screen
 /// of its own (QuickSwitchBar does that).
 abstract final class MainTab {
-  static const contacts = 0;
-  static const nodes = 1;
-  static const channels = 2;
-  static const map = 3;
-  static const tactical = 4;
+  /// Direct conversations with people, unread ones first (DmsScreen).
+  static const dms = 0;
+  static const contacts = 1;
+  static const nodes = 2;
+  static const channels = 3;
+  static const map = 4;
+  static const tactical = 5;
 }
 
 /// Switches to main tab [index] from tab [current]: replaces this screen with
@@ -29,6 +32,7 @@ void switchMainTab(BuildContext context, int index, {required int current}) {
   FocusManager.instance.primaryFocus?.unfocus();
   if (index == current) return;
   final Widget? page = switch (index) {
+    MainTab.dms => const DmsScreen(hideBackButton: true),
     MainTab.contacts => const ContactsScreen(hideBackButton: true),
     MainTab.nodes => const ContactsScreen(
       hideBackButton: true,

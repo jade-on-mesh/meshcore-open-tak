@@ -1346,7 +1346,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                   selectedIndex: MainTab.map,
                   onDestinationSelected: (index) =>
                       switchMainTab(context, index, current: MainTab.map),
-                  contactsUnreadCount: unread.$1,
+                  dmsUnreadCount: unread.$1,
                   nodesUnreadCount: unread.$2,
                   channelsUnreadCount: unread.$3,
                   highContrast: _usePaletteOverlay,

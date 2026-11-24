@@ -6,6 +6,7 @@ import 'package:meshcore_open/services/app_settings_service.dart';
 import 'package:meshcore_open/services/map_tile_cache_service.dart';
 import 'package:meshcore_open/storage/prefs_manager.dart';
 import 'package:meshcore_open/theme/mesh_theme.dart';
+import 'package:meshcore_open/utils/main_navigation.dart';
 import 'package:meshcore_open/widgets/quick_switch_bar.dart';
 import 'package:meshcore_open/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -93,7 +94,7 @@ void main() {
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: QuickSwitchBar(
-              selectedIndex: 3, // MainTab.map
+              selectedIndex: MainTab.map,
               onDestinationSelected: (_) {},
               highContrast: true,
             ),

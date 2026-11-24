@@ -351,7 +351,7 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
             selectedIndex: MainTab.channels,
             onDestinationSelected: (index) =>
                 switchMainTab(context, index, current: MainTab.channels),
-            contactsUnreadCount: connector.getTotalPeopleUnreadCount(),
+            dmsUnreadCount: connector.getTotalPeopleUnreadCount(),
             nodesUnreadCount: connector.getTotalNodesUnreadCount(),
             channelsUnreadCount: connector.getTotalChannelsUnreadCount(),
           ),
