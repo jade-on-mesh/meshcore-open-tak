@@ -21,7 +21,6 @@ import 'package:meshcore_open/theme/mesh_theme.dart';
 import 'package:meshcore_open/widgets/mesh_ui.dart';
 import 'package:meshcore_open/widgets/settings_reveal.dart';
 
-
 void main() {
   testWidgets('routing settings show both retry limits', (tester) async {
     SharedPreferences.setMockInitialValues({});
