@@ -101,7 +101,9 @@ void main() {
     Uint8List frame(int tag, {int pathLen = 1, int flags = 0}) {
       final b = BytesBuilder()
         ..add([pushCodeTraceData, 0, pathLen, flags])
-        ..add((ByteData(4)..setUint32(0, tag, Endian.little)).buffer.asUint8List())
+        ..add(
+          (ByteData(4)..setUint32(0, tag, Endian.little)).buffer.asUint8List(),
+        )
         ..add([0, 0, 0, 0]) // auth
         ..add(List.filled(pathLen == 1 ? 1 : 1 << (flags & 3), 0xab)) // path
         ..add([-10 & 0xFF, 22]); // it heard us at -2.5, we heard it at 5.5
@@ -117,7 +119,11 @@ void main() {
       5.5,
       reason: '4-byte hashes',
     );
-    expect(parseRepeaterPing(frame(77, pathLen: 2), 77), isNull, reason: 'two hops');
+    expect(
+      parseRepeaterPing(frame(77, pathLen: 2), 77),
+      isNull,
+      reason: 'two hops',
+    );
     expect(traceHashByteWidthFor(1), 1);
     expect(traceHashByteWidthFor(3), 4);
     expect(traceFlagsForHashWidth(4), 2);
@@ -134,7 +140,12 @@ void main() {
     Contact rep(String hex, double? lat, {int type = advTypeRepeater}) =>
         Contact(
           publicKey: Uint8List.fromList(
-            List.generate(32, (i) => i < 4 ? int.parse(hex.substring(i * 2, i * 2 + 2), radix: 16) : i),
+            List.generate(
+              32,
+              (i) => i < 4
+                  ? int.parse(hex.substring(i * 2, i * 2 + 2), radix: 16)
+                  : i,
+            ),
           ),
           name: hex,
           type: type,
@@ -144,7 +155,14 @@ void main() {
           longitude: lat == null ? null : -122.3,
           lastSeen: DateTime(2026),
         );
-    final mm = {'a1000000', 'a2000000', 'a3000000', 'a4000000', 'a5000000', 'a6000000'};
+    final mm = {
+      'a1000000',
+      'a2000000',
+      'a3000000',
+      'a4000000',
+      'a5000000',
+      'a6000000',
+    };
     final list = mediaMeshAskList(
       [
         rep('a1000000', 47.62), // 2.2 km

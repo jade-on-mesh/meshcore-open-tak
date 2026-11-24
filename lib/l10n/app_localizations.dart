@@ -457,6 +457,48 @@ abstract class AppLocalizations {
   /// **'listens and sends'**
   String get mmRepeater_sends;
 
+  /// No description provided for @modelDownload_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading the {name}'**
+  String modelDownload_title(String name);
+
+  /// No description provided for @modelDownload_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'On Wi-Fi, in the background. You can keep using the app.'**
+  String get modelDownload_subtitle;
+
+  /// No description provided for @modelDownload_upscaler.
+  ///
+  /// In en, this message translates to:
+  /// **'photo upscaler'**
+  String get modelDownload_upscaler;
+
+  /// No description provided for @modelDownload_restorer.
+  ///
+  /// In en, this message translates to:
+  /// **'AI voice restorer'**
+  String get modelDownload_restorer;
+
+  /// No description provided for @modelDownload_mimi.
+  ///
+  /// In en, this message translates to:
+  /// **'Mimi voice model'**
+  String get modelDownload_mimi;
+
+  /// No description provided for @modelDownload_imageCodec.
+  ///
+  /// In en, this message translates to:
+  /// **'AI photo codec'**
+  String get modelDownload_imageCodec;
+
+  /// No description provided for @modelDownload_translation.
+  ///
+  /// In en, this message translates to:
+  /// **'translation model'**
+  String get modelDownload_translation;
+
   /// No description provided for @mmRepeater_info.
   ///
   /// In en, this message translates to:

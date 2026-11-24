@@ -552,13 +552,16 @@ class MediaMeshCoverageService extends ChangeNotifier {
     // radio2 only: only when the radio can send a trace there
     final silent = <String>[];
     final onRadio2 = await _radio2TraceOk();
-    for (final c in !onRadio2 ? const <Contact>[] : mediaMeshAskList(
-      _connector.allContactsUnfiltered,
-      f.latitude,
-      f.longitude,
-      answered: heard.keys.toSet(),
-      isMediaMesh: MediaMeshRepeaters.instance.isMediaMesh,
-    )) {
+    for (final c
+        in !onRadio2
+            ? const <Contact>[]
+            : mediaMeshAskList(
+                _connector.allContactsUnfiltered,
+                f.latitude,
+                f.longitude,
+                answered: heard.keys.toSet(),
+                isMediaMesh: MediaMeshRepeaters.instance.isMediaMesh,
+              )) {
       if (!_recording || !_connector.isConnected) break;
       final key = c.publicKeyHex.substring(0, 8).toLowerCase();
       final ping = await _connector.pingRepeater(c.publicKey, onRadio2: true);
@@ -578,7 +581,9 @@ class MediaMeshCoverageService extends ChangeNotifier {
           snr: min(ping.snr, ping.remoteSnr),
           mainBwHz: bw2,
           radio2BwHz: bw2,
-          radio2Sf: (info?.spreadingFactor ?? 0) > 0 ? info!.spreadingFactor : 7,
+          radio2Sf: (info?.spreadingFactor ?? 0) > 0
+              ? info!.spreadingFactor
+              : 7,
         ),
         bwHz: info?.bandwidthHz ?? 0,
         sf: info?.spreadingFactor ?? 0,

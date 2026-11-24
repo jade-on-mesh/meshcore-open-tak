@@ -32,6 +32,7 @@ import 'telemetry_screen.dart';
 import '../widgets/sync_progress_overlay.dart';
 import 'radio_import_flow.dart';
 import 'region_management_screen.dart';
+import '../widgets/model_download_progress.dart';
 import 'backup_restore_screen.dart';
 import 'export_screen.dart';
 import '../utils/radio_guard.dart';
@@ -89,6 +90,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
           children: [
+            // A model being fetched in the background, with its progress.
+            const ModelDownloadProgress(),
             // IDENTITY section
             SectionHeader(l10n.settings_deviceInfo),
             MeshCard(

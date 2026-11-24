@@ -149,6 +149,7 @@ Icon sizes in use: 24 for tile and banner icons, 20 for menu icons and small act
 | Inline error with retry | `ErrorRetryCard(message:, onRetry:, retryLabel:)` | Pass `retryLabel: context.l10n.common_retry` |
 | Radio offline on a remote-node screen | `RadioDisconnectedBanner` | Renders nothing while connected |
 | Sync progress | `SyncProgressAppBarBottom` as the app bar `bottom` | 3px bar |
+| Background model download | `ModelDownloadProgress` (`lib/widgets/model_download_progress.dart`) at the top of Settings | A `MeshCard`: `primary` download icon, "Downloading the {name}" in `onSurface`, the percentage in tabular figures, an 8px rounded `LinearProgressIndicator` (`primary` on `surfaceContainerHighest`, indeterminate until the size is known) and a `bodySmall` `onSurfaceVariant` note. Renders nothing when no model is downloading |
 | Toast message | `showDismissibleSnackBar(context, content: Text(...))` | Tap to dismiss, replaces the current snackbar, safe after an async gap |
 | List item entrance | `ListEntrance(index:)` | Optional |
 | Suggestions while typing in a composer | `MentionPicker` (`lib/widgets/mention_picker.dart`) in `ChatComposer.header` | A rounded `surfaceContainer` card with an `outlineVariant` edge, at most about eight rows tall then it scrolls; each row is the chat's avatar and the name in `onSurface`. Renders nothing when there is nothing to suggest |
