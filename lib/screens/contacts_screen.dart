@@ -486,6 +486,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
             dmsUnreadCount: connector.getTotalPeopleUnreadCount(),
             nodesUnreadCount: connector.getTotalNodesUnreadCount(),
             channelsUnreadCount: connector.getTotalChannelsUnreadCount(),
+            channelsAlertCount: connector.getTotalChannelsAlertCount(),
           ),
         ),
       ),

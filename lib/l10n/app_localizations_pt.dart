@@ -34,6 +34,81 @@ class AppLocalizationsPt extends AppLocalizations {
   String get aeicHd_autoStopTitle => 'Stop getting the rest';
 
   @override
+  String get alertWords_title => 'Alert words';
+
+  @override
+  String alertWords_menuWithCount(int count) {
+    return 'Alert words ($count)';
+  }
+
+  @override
+  String get alertWords_sheetHint =>
+      'A message in this channel containing one counts like an @mention: a blue badge on the Channels tab and in the channel list. Whole words, any capitals; a phrase matches as written.';
+
+  @override
+  String get alertWords_add => 'Add';
+
+  @override
+  String get alertWords_addHint => 'Add a word or phrase';
+
+  @override
+  String get alertWords_addLabel => 'Add an alert word or phrase';
+
+  @override
+  String alertWords_remove(String word) {
+    return 'Remove $word';
+  }
+
+  @override
+  String get alertWords_clearAll => 'Clear all';
+
+  @override
+  String get alertWords_none => 'No alert words yet';
+
+  @override
+  String get alertWords_useGlobal => 'Also use my global alert words';
+
+  @override
+  String alertWords_useGlobalSubtitle(String words) {
+    return 'From App Settings: $words';
+  }
+
+  @override
+  String get alertWords_useGlobalNone => 'None set in App Settings yet';
+
+  @override
+  String get alertWords_globalTitle => 'Alert words in all channels';
+
+  @override
+  String get alertWords_globalHint =>
+      'Count like an @mention in every channel, on top of each channel\'s own words. A channel can opt out in its Alert words sheet (channel menu).';
+
+  @override
+  String get alertWords_notify => 'Notify for alert words';
+
+  @override
+  String get alertWords_notifySubtitle =>
+      'A notification even in channels set to Mentions only';
+
+  @override
+  String get alertWords_clearGlobal => 'Clear all global alert words';
+
+  @override
+  String alertWords_full(int max) {
+    return 'Up to $max alert words';
+  }
+
+  @override
+  String alertWords_badgeLabel(int count) {
+    return '$count unread with alert words';
+  }
+
+  @override
+  String alertWords_chipLabel(String word) {
+    return 'Alert word: $word';
+  }
+
+  @override
   String get aeicHd_autoStopHint =>
       'The app keeps asking for the missing packets until the picture is whole. Ask for the rest starts it again.';
 

@@ -1336,11 +1336,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             ),
             bottomNavigationBar: SafeArea(
               top: false,
-              child: Selector<MeshCoreConnector, (int, int, int)>(
+              child: Selector<MeshCoreConnector, (int, int, int, int)>(
                 selector: (_, connector) => (
                   connector.getTotalPeopleUnreadCount(),
                   connector.getTotalNodesUnreadCount(),
                   connector.getTotalChannelsUnreadCount(),
+                  connector.getTotalChannelsAlertCount(),
                 ),
                 builder: (context, unread, child) => QuickSwitchBar(
                   selectedIndex: MainTab.map,
@@ -1349,6 +1350,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                   dmsUnreadCount: unread.$1,
                   nodesUnreadCount: unread.$2,
                   channelsUnreadCount: unread.$3,
+                  channelsAlertCount: unread.$4,
                   highContrast: _usePaletteOverlay,
                 ),
               ),

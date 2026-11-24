@@ -459,6 +459,9 @@ class _LineOfSightMapScreenState extends State<LineOfSightMapScreen> {
           channelsUnreadCount: context
               .watch<MeshCoreConnector>()
               .getTotalChannelsUnreadCount(),
+          channelsAlertCount: context
+              .watch<MeshCoreConnector>()
+              .getTotalChannelsAlertCount(),
           highContrast: true,
         ),
       ),

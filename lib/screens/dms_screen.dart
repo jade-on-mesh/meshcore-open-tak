@@ -237,6 +237,7 @@ class _DmsScreenState extends State<DmsScreen> {
             dmsUnreadCount: unreadTotal,
             nodesUnreadCount: connector.getTotalNodesUnreadCount(),
             channelsUnreadCount: connector.getTotalChannelsUnreadCount(),
+            channelsAlertCount: connector.getTotalChannelsAlertCount(),
           ),
         ),
       ),

@@ -17,6 +17,7 @@ import '../theme/chat_look.dart';
 import '../utils/platform_info.dart';
 import '../widgets/public_media_switch.dart';
 import '../widgets/adaptive_app_bar_title.dart';
+import '../widgets/alert_words_editor.dart';
 import '../widgets/chat_style_sheet.dart';
 import '../widgets/cyr2lat_profile_dialog.dart';
 import '../widgets/language_picker_sheet.dart';
@@ -328,6 +329,9 @@ class AppSettingsScreen extends StatelessWidget {
   ) {
     return Column(
       children: [
+        // Alert words for every channel (AlertWordsService).
+        const GlobalAlertWordsSection(),
+        const Divider(height: 1, indent: 16),
         // Photos and voice on Public and #public: off unless an emergency.
         const PublicMediaSwitch(
           contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),

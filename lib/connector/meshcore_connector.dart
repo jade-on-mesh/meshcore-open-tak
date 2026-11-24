@@ -28,6 +28,7 @@ import '../helpers/cyr2lat.dart';
 import '../helpers/smaz.dart';
 import '../storage/otp_pad_store.dart';
 import '../storage/passphrase_lock_store.dart';
+import '../services/alert_words_service.dart';
 import '../services/wifi_state.dart';
 import '../services/app_debug_log_service.dart';
 import '../services/ble_mota_catalog.dart';
@@ -2172,6 +2173,59 @@ class MeshCoreConnector extends ChangeNotifier {
     if (!_unreadStateLoaded) return 0;
     return _cachedChannelsUnreadTotal;
   }
+
+  /// How many of [channel]'s unread messages hold one of its alert words
+  /// (AlertWordsService): the dark-blue badge in the channel list.
+  int getChannelAlertCount(Channel channel) {
+    final alerts = AlertWordsService.instance;
+    if (!alerts.any) return 0;
+    final unread = getUnreadCountForChannel(channel);
+    if (unread <= 0) return 0;
+    final words = alerts.wordsFor(channel.muteKey);
+    if (words.isEmpty) return 0;
+    final messages = getChannelMessages(channel);
+    final last = messages.isEmpty ? '' : messages.last.messageId;
+    final key = (unread, messages.length, last, words.join('\u0000'));
+    final cached = _channelAlertCounts[channel.index];
+    if (cached != null && cached.key == key) return cached.count;
+    final pattern = alerts.patternFor(words);
+    var count = 0;
+    var seen = 0;
+    for (var i = messages.length - 1; i >= 0 && seen < unread; i--) {
+      final m = messages[i];
+      if (m.isOutgoing) continue;
+      seen++;
+      if (m.isFiltered) continue;
+      if (channelMessageAlertWord(m, words, pattern) != null) count++;
+    }
+    _channelAlertCounts[channel.index] = (key: key, count: count);
+    return count;
+  }
+
+  final Map<int, ({(int, int, String, String) key, int count})>
+  _channelAlertCounts = {};
+
+  /// Every channel's [getChannelAlertCount], for the Channels tab.
+  int getTotalChannelsAlertCount() {
+    if (!_unreadStateLoaded || !AlertWordsService.instance.any) return 0;
+    var total = 0;
+    for (final c in channels) {
+      total += getChannelAlertCount(c);
+    }
+    return total;
+  }
+
+  /// The alert word [message] holds (shown text, else the untranslated
+  /// original), or null.
+  static String? channelMessageAlertWord(
+    ChannelMessage message,
+    List<String> words,
+    RegExp? pattern,
+  ) =>
+      matchIn(message.displayText, pattern, words) ??
+      (message.originalText == null
+          ? null
+          : matchIn(message.originalText!, pattern, words));
 
   /// Recalculates both cached unread totals from scratch.
   /// Called when unread state is first loaded.
@@ -12526,7 +12580,15 @@ class MeshCoreConnector extends ChangeNotifier {
 
     // Mentions are matched on the untranslated text.
     if (notificationMode == ChannelNotificationMode.mentionsOnly) {
-      if (!textMentionsName(message.originalText ?? message.text, _selfName)) {
+      // An alert word counts like a mention (when its switch is on).
+      final alerts = AlertWordsService.instance;
+      final words = alerts.notify ? alerts.wordsFor(label) : const <String>[];
+      final alerted =
+          words.isNotEmpty &&
+          channelMessageAlertWord(message, words, alerts.patternFor(words)) !=
+              null;
+      if (!alerted &&
+          !textMentionsName(message.originalText ?? message.text, _selfName)) {
         return;
       }
     }

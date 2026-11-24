@@ -175,6 +175,126 @@ abstract class AppLocalizations {
   /// **'Stop getting the rest'**
   String get aeicHd_autoStopTitle;
 
+  /// No description provided for @alertWords_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Alert words'**
+  String get alertWords_title;
+
+  /// No description provided for @alertWords_menuWithCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Alert words ({count})'**
+  String alertWords_menuWithCount(int count);
+
+  /// No description provided for @alertWords_sheetHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A message in this channel containing one counts like an @mention: a blue badge on the Channels tab and in the channel list. Whole words, any capitals; a phrase matches as written.'**
+  String get alertWords_sheetHint;
+
+  /// No description provided for @alertWords_add.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get alertWords_add;
+
+  /// No description provided for @alertWords_addHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a word or phrase'**
+  String get alertWords_addHint;
+
+  /// No description provided for @alertWords_addLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Add an alert word or phrase'**
+  String get alertWords_addLabel;
+
+  /// No description provided for @alertWords_remove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {word}'**
+  String alertWords_remove(String word);
+
+  /// No description provided for @alertWords_clearAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all'**
+  String get alertWords_clearAll;
+
+  /// No description provided for @alertWords_none.
+  ///
+  /// In en, this message translates to:
+  /// **'No alert words yet'**
+  String get alertWords_none;
+
+  /// No description provided for @alertWords_useGlobal.
+  ///
+  /// In en, this message translates to:
+  /// **'Also use my global alert words'**
+  String get alertWords_useGlobal;
+
+  /// No description provided for @alertWords_useGlobalSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'From App Settings: {words}'**
+  String alertWords_useGlobalSubtitle(String words);
+
+  /// No description provided for @alertWords_useGlobalNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None set in App Settings yet'**
+  String get alertWords_useGlobalNone;
+
+  /// No description provided for @alertWords_globalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Alert words in all channels'**
+  String get alertWords_globalTitle;
+
+  /// No description provided for @alertWords_globalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Count like an @mention in every channel, on top of each channel\'s own words. A channel can opt out in its Alert words sheet (channel menu).'**
+  String get alertWords_globalHint;
+
+  /// No description provided for @alertWords_notify.
+  ///
+  /// In en, this message translates to:
+  /// **'Notify for alert words'**
+  String get alertWords_notify;
+
+  /// No description provided for @alertWords_notifySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A notification even in channels set to Mentions only'**
+  String get alertWords_notifySubtitle;
+
+  /// No description provided for @alertWords_clearGlobal.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all global alert words'**
+  String get alertWords_clearGlobal;
+
+  /// No description provided for @alertWords_full.
+  ///
+  /// In en, this message translates to:
+  /// **'Up to {max} alert words'**
+  String alertWords_full(int max);
+
+  /// No description provided for @alertWords_badgeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} unread with alert words'**
+  String alertWords_badgeLabel(int count);
+
+  /// No description provided for @alertWords_chipLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Alert word: {word}'**
+  String alertWords_chipLabel(String word);
+
   /// No description provided for @aeicHd_autoStopHint.
   ///
   /// In en, this message translates to:
