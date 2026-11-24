@@ -19,7 +19,6 @@ import 'package:meshcore_open/storage/prefs_manager.dart';
 import 'package:meshcore_open/theme/mesh_theme.dart';
 import 'package:meshcore_open/widgets/mesh_ui.dart';
 
-import '../helpers/fork_providers.dart';
 
 /// Repeatable stand-in for profiling rapid scrolling on a phone: builds the
 /// contacts list with 500 contacts and the channels list with 40 channels,
@@ -184,7 +183,6 @@ void main() {
       MultiProvider(
         providers: [
           ChangeNotifierProvider<MeshCoreConnector>.value(value: connector),
-          ...await forkProviders(tester, connector),
           ChangeNotifierProvider.value(value: settings),
           ChangeNotifierProvider.value(value: viewState),
         ],

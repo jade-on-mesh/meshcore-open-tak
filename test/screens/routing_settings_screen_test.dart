@@ -357,7 +357,8 @@ void main() {
           await tester.scrollUntilVisible(
             find.text(label),
             200,
-            maxScrolls: 100,
+            // The fork's App Settings page is much longer at 2x text.
+            maxScrolls: 400,
             // The page's own list: a horizontal row that scrolls out of view
             // (the fork's chat style picker) must not be picked.
             scrollable: find
