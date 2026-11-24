@@ -51,6 +51,7 @@ MeshCore Open is an open-source Flutter client for MeshCore LoRa mesh networking
 36. [AR view](ar-view.md) - Hold the phone up to see teammates, pins and watched reports as labels with their distance
 37. [Transit cards](transit-watch.md) - A watched transit bot channel (BusBot's #transit) as full cards: ticking arrivals, alerts, trip plans, stops on the map
 38. [Team presence](team-presence.md) - How teammates stay on the list: beacons, live/stale/lost, and what the Team tab says when nobody shows up
+39. [Alert words](alert-words.md) - Words or phrases that make a channel message count like an @mention: a dark-blue badge, a framed message and a notification even in Mentions only
 
 ## App Overview
 

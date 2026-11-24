@@ -48,6 +48,7 @@ import '../services/media_lockdown.dart';
 import '../services/media_mesh.dart';
 import '../services/message_filter/message_filter_service.dart';
 import '../services/message_filter/message_filter_text.dart';
+import '../services/alert_words_service.dart';
 import '../services/notification_navigator.dart';
 import '../services/otp_service.dart';
 import '../services/received_image_store.dart';
@@ -67,6 +68,8 @@ import '../widgets/empty_state.dart';
 import '../widgets/filter_rule_dialog.dart';
 import '../widgets/filtered_message_ghost.dart';
 import '../widgets/chat_composer.dart';
+import '../widgets/alert_word_badge.dart';
+import '../widgets/alert_words_editor.dart';
 import '../widgets/chat_compression_selector.dart';
 import '../widgets/chat_send_pipeline.dart';
 import '../widgets/chat_zoom_wrapper.dart';
@@ -840,6 +843,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen>
             _toggleChannelFiltering();
           case 'notifications':
             showChannelNotificationModeSheet(context, muteKey);
+          case 'alertWords':
+            showChannelAlertWordsSheet(context, widget.channel);
           case 'region':
             openRegionSelectDialog(widget.channel);
           case 'editChannel':
@@ -932,6 +937,13 @@ class _ChannelChatScreenState extends State<ChannelChatScreen>
               context.l10n.channels_notificationModeTooltip(
                 channelNotificationModeLabel(context, notificationMode),
               ),
+            ),
+          ),
+          PopupMenuItem(
+            value: 'alertWords',
+            child: _menuRow(
+              Icons.notifications_active_outlined,
+              _alertWordsMenuLabel(context),
             ),
           ),
           PopupMenuItem(
@@ -1817,6 +1829,19 @@ class _ChannelChatScreenState extends State<ChannelChatScreen>
           );
     final textColor = colors.text;
     final metaColor = colors.meta;
+    // An alert word in someone else's message: a blue frame, a bell chip
+    // naming the word, the word highlighted (AlertWordsService).
+    final alertWords = isOutgoing || message.isFiltered
+        ? const <String>[]
+        : AlertWordsService.instance.wordsFor(widget.channel.muteKey);
+    final alertPattern = AlertWordsService.instance.patternFor(alertWords);
+    final alertWord = alertWords.isEmpty
+        ? null
+        : MeshCoreConnector.channelMessageAlertWord(
+            message,
+            alertWords,
+            alertPattern,
+          );
     // Signal, iPhone, Android and Discord: a run from one sender drawn as one
     // block.
     final discord = look.style == ChatStyle.discord;
@@ -1958,13 +1983,25 @@ class _ChannelChatScreenState extends State<ChannelChatScreen>
                     isOutgoing: layoutOutgoing,
                     colors: colors,
                     isBookmarked: message.isBookmarked || _showBookmarkedOnly,
+                    alert: alertWord != null,
                     compact: gifId != null,
                     maxWidth: constraints.maxWidth,
                     run: run,
                     leading: mircPrefix,
-                    child: Column(
+                    child: AlertWordHighlight(
+                      pattern: alertWord == null ? null : alertPattern,
+                      child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (alertWord != null && !(showName && !discord))
+                          Padding(
+                            padding: EdgeInsets.only(
+                              left: gifId != null ? 8 : 0,
+                              top: gifId != null ? 4 : 0,
+                              bottom: 4,
+                            ),
+                            child: AlertWordChip(word: alertWord),
+                          ),
                         if (showName && discord) ...[
                           // Discord's header: the name, the time beside it.
                           Padding(
@@ -2007,7 +2044,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen>
                                     bottom: 4,
                                   )
                                 : EdgeInsets.zero,
-                            child: Text(
+                            child: _withAlertChip(alertWord, Text(
                               log
                                   ? look.logNick(
                                       message.senderName,
@@ -2030,7 +2067,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen>
                                       fontWeight: FontWeight.w700,
                                       color: colors.name ?? textColor,
                                     ),
-                            ),
+                            )),
                           ),
                           if (gifId == null) const SizedBox(height: 2),
                         ],
@@ -2345,7 +2382,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen>
                           ),
                         ),
                       ],
-                    ),
+                    )),
                   ),
                 ),
               ),
@@ -3719,6 +3756,26 @@ class _ChannelChatScreenState extends State<ChannelChatScreen>
           senderName: who,
         ),
   ];
+
+  String _alertWordsMenuLabel(BuildContext context) {
+    final count = AlertWordsService.instance
+        .channelWords(widget.channel.muteKey)
+        .length;
+    return count == 0
+        ? context.l10n.alertWords_title
+        : context.l10n.alertWords_menuWithCount(count);
+  }
+
+  /// [name] with the alert-word chip after it, when [word] is set.
+  static Widget _withAlertChip(String? word, Widget name) {
+    if (word == null) return name;
+    return Wrap(
+      spacing: 6,
+      runSpacing: 2,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [name, AlertWordChip(word: word)],
+    );
+  }
 
   /// What Copy puts on the clipboard: the text as shown (an OTP message's
   /// plaintext), with the `@[sender] ` reply prefix it was sent with.

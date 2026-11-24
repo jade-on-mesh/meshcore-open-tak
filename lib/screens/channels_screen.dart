@@ -12,6 +12,7 @@ import '../connector/meshcore_connector.dart';
 import '../l10n/l10n.dart';
 import '../services/app_settings_service.dart'
     show AppSettingsService, ChannelNotificationMode;
+import '../services/alert_words_service.dart';
 import '../services/message_filter/message_filter_service.dart';
 import '../services/ui_view_state_service.dart';
 import '../models/channel.dart';
@@ -20,6 +21,7 @@ import '../storage/community_store.dart';
 import '../theme/mesh_theme.dart';
 import '../utils/main_navigation.dart';
 import '../utils/radio_guard.dart';
+import '../widgets/alert_word_badge.dart';
 import '../widgets/app_update_ui.dart';
 import '../widgets/channel_notification_mode_sheet.dart';
 import '../widgets/connect_sheet.dart';
@@ -64,6 +66,7 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
 
   @override
   void initState() {
+    AlertWordsService.instance.addListener(_onAlertWords);
     super.initState();
     _searchController.text = context
         .read<UiViewStateService>()
@@ -89,9 +92,14 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
 
   @override
   void dispose() {
+    AlertWordsService.instance.removeListener(_onAlertWords);
     _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onAlertWords() {
+    if (mounted) setState(() {});
   }
 
   String _relativeTime(DateTime t) {
@@ -354,6 +362,7 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
             dmsUnreadCount: connector.getTotalPeopleUnreadCount(),
             nodesUnreadCount: connector.getTotalNodesUnreadCount(),
             channelsUnreadCount: connector.getTotalChannelsUnreadCount(),
+            channelsAlertCount: connector.getTotalChannelsAlertCount(),
           ),
         ),
       ),
@@ -369,6 +378,7 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
     int listIndex = 0,
   }) {
     final unreadCount = connector.getUnreadCountForChannel(channel);
+    final alertCount = connector.getChannelAlertCount(channel);
     final notificationMode = context
         .watch<AppSettingsService>()
         .getChannelNotificationMode(channel.muteKey);
@@ -588,6 +598,10 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
                         size: 18,
                         color: scheme.onSurfaceVariant,
                       ),
+                      const SizedBox(width: 4),
+                    ],
+                    if (alertCount > 0) ...[
+                      AlertWordBadge(count: alertCount),
                       const SizedBox(width: 4),
                     ],
                     if (unreadCount > 0) UnreadBadge(count: unreadCount),

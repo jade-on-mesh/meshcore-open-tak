@@ -14,6 +14,7 @@ import 'review_mode/review_mode_storage.dart';
 import 'screens/chrome_required_screen.dart';
 import 'team/drone_detector.dart';
 import 'team/map_highlights.dart';
+import 'services/alert_words_service.dart';
 import 'services/mediamesh_coverage.dart';
 import 'services/media_mesh_nearby.dart';
 import 'services/mediamesh_repeaters.dart';
@@ -149,6 +150,10 @@ void main() async {
     () => MediaMeshNearby.instance.load(),
   );
   await _startupStep('mapHighlights.load', () => MapHighlights.instance.load());
+  await _startupStep(
+    'alertWords.load',
+    () => AlertWordsService.instance.load(),
+  );
   MediaMeshNearby.instance.attach(connector);
   await _startupStep(
     'mediaMeshRepeaters.load',

@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../helpers/coordinate_parser.dart';
 import '../helpers/snack_bar_builder.dart';
+import '../services/alert_words_service.dart';
 import '../services/app_settings_service.dart';
 import '../widgets/hashtag_channel_join.dart';
 import '../l10n/l10n.dart';
@@ -428,7 +429,33 @@ class _InteractiveMessageTextState extends State<_InteractiveMessageText> {
         mouseCursor: SystemMouseCursors.click,
       );
     }
-    return TextSpan(text: element.text, style: widget.style);
+    return _highlighted(element.text);
+  }
+
+  /// [text] with any alert word (AlertWordHighlight above) marked in white
+  /// on the alert blue.
+  InlineSpan _highlighted(String text) {
+    final pattern = AlertWordHighlight.of(context);
+    if (pattern == null) return TextSpan(text: text, style: widget.style);
+    final spans = <InlineSpan>[];
+    var at = 0;
+    for (final m in pattern.allMatches(text)) {
+      if (m.start > at) spans.add(TextSpan(text: text.substring(at, m.start)));
+      spans.add(
+        TextSpan(
+          text: m[0],
+          style: const TextStyle(
+            color: Colors.white,
+            backgroundColor: alertBadgeColor,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
+      at = m.end;
+    }
+    if (spans.isEmpty) return TextSpan(text: text, style: widget.style);
+    if (at < text.length) spans.add(TextSpan(text: text.substring(at)));
+    return TextSpan(style: widget.style, children: spans);
   }
 
   @override

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../l10n/l10n.dart';
+import '../services/alert_words_service.dart' show alertBadgeColor;
 import '../team/team_screen.dart';
 import '../team/team_service.dart';
 import '../team/watch_feed.dart';
@@ -24,6 +25,10 @@ class QuickSwitchBar extends StatelessWidget {
   /// Unread messages from nodes (room servers).
   final int nodesUnreadCount;
   final int channelsUnreadCount;
+
+  /// Unread channel messages holding an alert word: a dark-blue badge at the
+  /// Channels icon's other corner.
+  final int channelsAlertCount;
   final bool highContrast;
 
   const QuickSwitchBar({
@@ -33,6 +38,7 @@ class QuickSwitchBar extends StatelessWidget {
     this.dmsUnreadCount = 0,
     this.nodesUnreadCount = 0,
     this.channelsUnreadCount = 0,
+    this.channelsAlertCount = 0,
     this.highContrast = false,
   });
 
@@ -160,15 +166,22 @@ class QuickSwitchBar extends StatelessWidget {
                     label: context.l10n.nav_nodes,
                   ),
                   NavigationDestination(
-                    icon: _buildIconWithBadge(
-                      context,
-                      const ThemedIcon(ThemeIconSlot.channels),
-                      channelsUnreadCount,
+                    icon: _withAlertBadge(
+                      _buildIconWithBadge(
+                        context,
+                        const ThemedIcon(ThemeIconSlot.channels),
+                        channelsUnreadCount,
+                      ),
                     ),
-                    selectedIcon: _buildIconWithBadge(
-                      context,
-                      const ThemedIcon(ThemeIconSlot.channels, selected: true),
-                      channelsUnreadCount,
+                    selectedIcon: _withAlertBadge(
+                      _buildIconWithBadge(
+                        context,
+                        const ThemedIcon(
+                          ThemeIconSlot.channels,
+                          selected: true,
+                        ),
+                        channelsUnreadCount,
+                      ),
                     ),
                     label: context.l10n.nav_channels,
                   ),
@@ -190,6 +203,21 @@ class QuickSwitchBar extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  /// The alert-word count, top left in dark blue (white text reads on it in
+  /// both themes), opposite the red unread count.
+  Widget _withAlertBadge(Widget icon) {
+    final count = channelsAlertCount;
+    if (count <= 0) return icon;
+    return Badge(
+      label: Text(count > 99 ? '99+' : '$count'),
+      backgroundColor: alertBadgeColor,
+      textColor: Colors.white,
+      alignment: AlignmentDirectional.topStart,
+      offset: const Offset(-12, -4),
+      child: icon,
     );
   }
 

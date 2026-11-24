@@ -2,6 +2,7 @@ import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 
+import '../services/alert_words_service.dart' show alertBadgeColor;
 import '../theme/chat_look.dart';
 import '../l10n/l10n.dart';
 import '../theme/mesh_theme.dart';
@@ -260,6 +261,9 @@ class MessageBubbleFrame extends StatelessWidget {
   final bool isFailed;
   final bool isBookmarked;
 
+  /// Holds an alert word (AlertWordsService): a 2px alert-blue frame.
+  final bool alert;
+
   /// Tighter padding for media (GIF) content.
   final bool compact;
   final double maxWidth;
@@ -272,6 +276,7 @@ class MessageBubbleFrame extends StatelessWidget {
     required this.child,
     this.isFailed = false,
     this.isBookmarked = false,
+    this.alert = false,
     this.compact = false,
     this.colors,
     this.run = ChatRun.solo,
@@ -339,7 +344,16 @@ class MessageBubbleFrame extends StatelessWidget {
     if (colors.glass) {
       return _withBookmark(
         _GlassBubble(
-          colors: colors,
+          colors: alert
+              ? MessageBubbleColors(
+                  background: colors.background,
+                  border: alertBadgeColor,
+                  text: colors.text,
+                  meta: colors.meta,
+                  name: colors.name,
+                  glass: true,
+                )
+              : colors,
           radius: radius,
           padding: padding,
           constraints: constraints,
@@ -354,7 +368,9 @@ class MessageBubbleFrame extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.background,
           borderRadius: radius,
-          border: Border.all(color: colors.border, width: 1),
+          border: alert
+              ? Border.all(color: alertBadgeColor, width: 2)
+              : Border.all(color: colors.border, width: 1),
         ),
         child: child,
       ),
