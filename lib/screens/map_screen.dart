@@ -1938,9 +1938,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       mediaMesh: !mediaMesh
                           ? AnalyzerMediaMesh.none
                           : (MediaMeshRepeaters.instance
-                                        .infoFor(contact.publicKeyHex)
-                                        ?.sends ??
-                                    false)
+                                    .infoFor(contact.publicKeyHex)
+                                    ?.sends ??
+                                false)
                           ? AnalyzerMediaMesh.sends
                           : AnalyzerMediaMesh.listens,
                       stale: stale,
