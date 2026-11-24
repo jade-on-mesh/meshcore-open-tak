@@ -20,6 +20,8 @@ The settings screen is a scrollable list of cards:
 7. [Debug](#debug)
 8. [About](#about)
 
+While the app is fetching an on-device model in the background (the photo upscaler, the AI voice restorer, the Mimi voice model, the AI photo codec or a translation model), a card at the very top shows which one and a progress bar with the percentage. The app fetches them on Wi-Fi by itself, one at a time, and resumes after an interruption; the card goes away when nothing is downloading.
+
 ---
 
 ## Device Info

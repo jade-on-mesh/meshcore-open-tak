@@ -613,6 +613,8 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
           return VoxUpscaler.instance.isReady;
         },
         download: VoxUpscaler.instance.download,
+        label: (l) => l.modelDownload_upscaler,
+        progress: () => VoxUpscaler.instance.progress,
       ),
       AutoDownloadModel(
         id: 'vox-voice-restorer',
@@ -621,6 +623,8 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
           return VoxVoiceEnhancer.restorer.isReady;
         },
         download: VoxVoiceEnhancer.restorer.download,
+        label: (l) => l.modelDownload_restorer,
+        progress: () => VoxVoiceEnhancer.restorer.progress,
       ),
       AutoDownloadModel(
         id: 'vox-mimi',
@@ -629,6 +633,8 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
           return _voxVoiceService.mimi.isReady;
         },
         download: _voxVoiceService.mimi.download,
+        label: (l) => l.modelDownload_mimi,
+        progress: () => _voxVoiceService.mimi.progress,
       ),
       if (aeic != null)
         AutoDownloadModel(
@@ -640,6 +646,8 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
                 !codec.needsModelUpgrade;
           },
           download: () => codec.downloadPresetModel(aeic),
+          label: (l) => l.modelDownload_imageCodec,
+          progress: () => codec.downloadProgress,
         ),
       if (translationModel != null)
         AutoDownloadModel(
@@ -651,6 +659,8 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
             fileName: translationModel.name,
             id: translationModel.id,
           ),
+          label: (l) => l.modelDownload_translation,
+          progress: () => translation.downloadProgress,
         ),
     ])..start();
   }

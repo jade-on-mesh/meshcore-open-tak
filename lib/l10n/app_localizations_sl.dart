@@ -184,6 +184,29 @@ class AppLocalizationsSl extends AppLocalizations {
   String get mmRepeater_sends => 'listens and sends';
 
   @override
+  String modelDownload_title(String name) {
+    return 'Downloading the $name';
+  }
+
+  @override
+  String get modelDownload_subtitle => 'On Wi-Fi, in the background. You can keep using the app.';
+
+  @override
+  String get modelDownload_upscaler => 'photo upscaler';
+
+  @override
+  String get modelDownload_restorer => 'AI voice restorer';
+
+  @override
+  String get modelDownload_mimi => 'Mimi voice model';
+
+  @override
+  String get modelDownload_imageCodec => 'AI photo codec';
+
+  @override
+  String get modelDownload_translation => 'translation model';
+
+  @override
   String mmRepeater_info(String profile, String mode, String ago) {
     return '$profile, $mode, heard $ago';
   }

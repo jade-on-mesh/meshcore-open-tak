@@ -10,7 +10,9 @@
 // before) it is recorded as done, so one the user later deletes is not fetched
 // again. A failed download is retried on the next Wi-Fi connection or open.
 // The models' own services do the downloading, so their progress shows where
-// it always did and a tap on a model already downloading does nothing.
+// it always did and a tap on a model already downloading does nothing. The one
+// downloading now is also in [ModelAutoDownloader.current], which Settings
+// shows as a progress bar (ModelDownloadProgress), wherever it started from.
 
 import 'dart:async';
 
@@ -18,13 +20,23 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../l10n/app_localizations.dart';
+
 /// One model the app can fetch by itself.
 class AutoDownloadModel {
   const AutoDownloadModel({
     required this.id,
     required this.isReady,
     required this.download,
+    this.label,
+    this.progress,
   });
+
+  /// What the progress bar calls it ("Mimi voice model"). Null: not shown.
+  final String Function(AppLocalizations l10n)? label;
+
+  /// How far its download is, 0..1, or null when not known yet.
+  final double? Function()? progress;
 
   /// Stable key in the "done" list. Never rename one: it would be fetched again.
   final String id;
@@ -50,6 +62,10 @@ class ModelAutoDownloader {
        _wifiChanges = wifiChanges ?? _connectivityChanges();
 
   static const prefsKey = 'model_auto_download_done';
+
+  /// The model downloading now, or null (for the progress bar in Settings).
+  static final ValueNotifier<AutoDownloadModel?> current =
+      ValueNotifier<AutoDownloadModel?>(null);
 
   final List<AutoDownloadModel> models;
   final Future<bool> Function() _onWifi;
@@ -108,10 +124,13 @@ class ModelAutoDownloader {
         }
         if (!await _onWifi()) return; // the rest wait for Wi-Fi
         debugPrint('[models] downloading ${m.id}');
+        current.value = m;
         try {
           await m.download();
         } catch (e) {
           debugPrint('[models] ${m.id} failed: $e');
+        } finally {
+          if (current.value == m) current.value = null;
         }
         if (await m.isReady()) {
           await markDone(m.id);
