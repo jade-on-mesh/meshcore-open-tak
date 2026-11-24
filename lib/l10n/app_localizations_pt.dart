@@ -5884,6 +5884,75 @@ class AppLocalizationsPt extends AppLocalizations {
   String get listFilter_users => 'Usuários';
 
   @override
+  String get liveTraffic_title => 'Live traffic';
+
+  @override
+  String get liveTraffic_subtitle => 'Show packets your radio hears moving along the repeaters they came through';
+
+  @override
+  String get liveTraffic_show => 'Show live traffic';
+
+  @override
+  String get liveTraffic_hide => 'Hide live traffic';
+
+  @override
+  String get liveTraffic_onHint => 'Live traffic on: packets your radio hears run along their path, coloured by type.';
+
+  @override
+  String get liveTraffic_colours => 'Colours';
+
+  @override
+  String get liveTraffic_coloursSubtitle => 'What each live traffic colour means';
+
+  @override
+  String get liveTraffic_legendTitle => 'Live traffic colours';
+
+  @override
+  String get liveTraffic_legendHint => 'Each packet your radio hears runs from repeater to repeater toward you, and each point it passes pulses. Repeaters with no location on the map are left out.';
+
+  @override
+  String get liveTraffic_legendGhost => 'Grey dashes: a repeater placed between known ones, or a trace hop not reached yet';
+
+  @override
+  String get liveTraffic_typeAdvert => 'Advert';
+
+  @override
+  String get liveTraffic_typeChannel => 'Channel message';
+
+  @override
+  String get liveTraffic_typeDirect => 'Direct message';
+
+  @override
+  String get liveTraffic_typeAck => 'Acknowledgement';
+
+  @override
+  String get liveTraffic_typeRequest => 'Request';
+
+  @override
+  String get liveTraffic_typeResponse => 'Response';
+
+  @override
+  String get liveTraffic_typeTrace => 'Trace';
+
+  @override
+  String get liveTraffic_typePath => 'Path';
+
+  @override
+  String get liveTraffic_typeAnonRequest => 'Anonymous request';
+
+  @override
+  String get liveTraffic_typeGroupData => 'Group data (photos, voice)';
+
+  @override
+  String get liveTraffic_typeMultipart => 'Multipart';
+
+  @override
+  String get liveTraffic_typeControl => 'Control';
+
+  @override
+  String get liveTraffic_typeRawCustom => 'Raw custom';
+
+  @override
   String get listFilter_repeaters => 'Repetidores';
 
   @override

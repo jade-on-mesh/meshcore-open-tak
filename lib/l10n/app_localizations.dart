@@ -10037,6 +10037,144 @@ abstract class AppLocalizations {
   /// **'Users'**
   String get listFilter_users;
 
+  /// No description provided for @liveTraffic_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Live traffic'**
+  String get liveTraffic_title;
+
+  /// No description provided for @liveTraffic_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show packets your radio hears moving along the repeaters they came through'**
+  String get liveTraffic_subtitle;
+
+  /// No description provided for @liveTraffic_show.
+  ///
+  /// In en, this message translates to:
+  /// **'Show live traffic'**
+  String get liveTraffic_show;
+
+  /// No description provided for @liveTraffic_hide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide live traffic'**
+  String get liveTraffic_hide;
+
+  /// No description provided for @liveTraffic_onHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Live traffic on: packets your radio hears run along their path, coloured by type.'**
+  String get liveTraffic_onHint;
+
+  /// No description provided for @liveTraffic_colours.
+  ///
+  /// In en, this message translates to:
+  /// **'Colours'**
+  String get liveTraffic_colours;
+
+  /// No description provided for @liveTraffic_coloursSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What each live traffic colour means'**
+  String get liveTraffic_coloursSubtitle;
+
+  /// No description provided for @liveTraffic_legendTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Live traffic colours'**
+  String get liveTraffic_legendTitle;
+
+  /// No description provided for @liveTraffic_legendHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Each packet your radio hears runs from repeater to repeater toward you, and each point it passes pulses. Repeaters with no location on the map are left out.'**
+  String get liveTraffic_legendHint;
+
+  /// No description provided for @liveTraffic_legendGhost.
+  ///
+  /// In en, this message translates to:
+  /// **'Grey dashes: a repeater placed between known ones, or a trace hop not reached yet'**
+  String get liveTraffic_legendGhost;
+
+  /// No description provided for @liveTraffic_typeAdvert.
+  ///
+  /// In en, this message translates to:
+  /// **'Advert'**
+  String get liveTraffic_typeAdvert;
+
+  /// No description provided for @liveTraffic_typeChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Channel message'**
+  String get liveTraffic_typeChannel;
+
+  /// No description provided for @liveTraffic_typeDirect.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct message'**
+  String get liveTraffic_typeDirect;
+
+  /// No description provided for @liveTraffic_typeAck.
+  ///
+  /// In en, this message translates to:
+  /// **'Acknowledgement'**
+  String get liveTraffic_typeAck;
+
+  /// No description provided for @liveTraffic_typeRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Request'**
+  String get liveTraffic_typeRequest;
+
+  /// No description provided for @liveTraffic_typeResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'Response'**
+  String get liveTraffic_typeResponse;
+
+  /// No description provided for @liveTraffic_typeTrace.
+  ///
+  /// In en, this message translates to:
+  /// **'Trace'**
+  String get liveTraffic_typeTrace;
+
+  /// No description provided for @liveTraffic_typePath.
+  ///
+  /// In en, this message translates to:
+  /// **'Path'**
+  String get liveTraffic_typePath;
+
+  /// No description provided for @liveTraffic_typeAnonRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Anonymous request'**
+  String get liveTraffic_typeAnonRequest;
+
+  /// No description provided for @liveTraffic_typeGroupData.
+  ///
+  /// In en, this message translates to:
+  /// **'Group data (photos, voice)'**
+  String get liveTraffic_typeGroupData;
+
+  /// No description provided for @liveTraffic_typeMultipart.
+  ///
+  /// In en, this message translates to:
+  /// **'Multipart'**
+  String get liveTraffic_typeMultipart;
+
+  /// No description provided for @liveTraffic_typeControl.
+  ///
+  /// In en, this message translates to:
+  /// **'Control'**
+  String get liveTraffic_typeControl;
+
+  /// No description provided for @liveTraffic_typeRawCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Raw custom'**
+  String get liveTraffic_typeRawCustom;
+
   /// No description provided for @listFilter_repeaters.
   ///
   /// In en, this message translates to:

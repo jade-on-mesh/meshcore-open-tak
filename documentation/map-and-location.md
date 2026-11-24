@@ -131,6 +131,9 @@ Additional filters:
 
 Every filter is remembered, including **MediaMesh** (only repeaters known to run MediaMesh) and the freshness chips (All / Online / Recent / Stale): leaving the map or restarting the app doesn't reset them.
 
+### Live Traffic Button (above the filter button)
+Shows every packet the companion hears running along the repeaters it came through, in CoreScope's colours. Also in App Settings > Map display. See [Live traffic](live-traffic.md).
+
 ### Legend Card (Top-Right)
 Shows node count and pin count. Tappable to expand a legend of all marker types.
 

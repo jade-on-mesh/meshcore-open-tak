@@ -53,6 +53,8 @@ import '../widgets/node_info_sheet.dart';
 import '../widgets/set_my_location_dialog.dart';
 import '../helpers/guessed_location_estimator.dart';
 import '../helpers/marker_message.dart';
+import '../services/live_traffic.dart';
+import '../widgets/live_traffic_layer.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../helpers/utf8_length_limiter.dart';
 import 'line_of_sight_map_screen.dart';
@@ -1274,6 +1276,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                             ),
                         ],
                       ),
+                      if (!_isBuildingPathTrace)
+                        ListenableBuilder(
+                          listenable: LiveTrafficSettings.instance,
+                          builder: (context, _) =>
+                              LiveTrafficSettings.instance.enabled
+                              ? const LiveTrafficLayer()
+                              : const SizedBox.shrink(),
+                        ),
                     ],
                   ),
                 ),
@@ -1359,14 +1369,23 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                 (selectedContact == null &&
                     !_isBuildingPathTrace &&
                     !_tak.chatOpen)
-                ? FloatingActionButton(
-                    onPressed: () => _showFilterSheet(context, settingsService),
-                    tooltip: context.l10n.map_filterNodes,
-                    child: Badge.count(
-                      count: _activeFilterCount(settings),
-                      isLabelVisible: _activeFilterCount(settings) > 0,
-                      child: const Icon(Icons.filter_list),
-                    ),
+                ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      const LiveTrafficButton(),
+                      const SizedBox(height: 12),
+                      FloatingActionButton(
+                        onPressed: () =>
+                            _showFilterSheet(context, settingsService),
+                        tooltip: context.l10n.map_filterNodes,
+                        child: Badge.count(
+                          count: _activeFilterCount(settings),
+                          isLabelVisible: _activeFilterCount(settings) > 0,
+                          child: const Icon(Icons.filter_list),
+                        ),
+                      ),
+                    ],
                   )
                 : null,
           ),
