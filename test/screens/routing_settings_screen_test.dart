@@ -358,7 +358,13 @@ void main() {
             find.text(label),
             200,
             maxScrolls: 100,
-            scrollable: find.byType(Scrollable).first,
+            // The page's own list: a horizontal row that scrolls out of view
+            // (the fork's chat style picker) must not be picked.
+            scrollable: find
+                .byWidgetPredicate(
+                  (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+                )
+                .first,
           );
           await tester.pump();
           expect(find.text(label), findsOneWidget);

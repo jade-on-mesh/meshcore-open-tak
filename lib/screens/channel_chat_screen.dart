@@ -3692,6 +3692,16 @@ class _ChannelChatScreenState extends State<ChannelChatScreen>
         ),
   ];
 
+  /// What Copy puts on the clipboard: the text as shown (an OTP message's
+  /// plaintext), with the `@[sender] ` reply prefix it was sent with.
+  static String _copyText(ChannelMessage message) {
+    final name = message.replyToSenderName;
+    if (message.replyToMessageId != null && name != null && name.isNotEmpty) {
+      return '@[$name] ${message.displayText}';
+    }
+    return message.displayText;
+  }
+
   String _imageCopyText(ReceivedImageEntry entry) {
     final l10n = context.l10n;
     final lines = <String>[
@@ -4422,7 +4432,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen>
                 title: Text(context.l10n.common_copy),
                 onTap: () {
                   Navigator.pop(sheetContext);
-                  copyChatMessageText(context, message.displayText);
+                  copyChatMessageText(context, _copyText(message));
                 },
               ),
               ListTile(
