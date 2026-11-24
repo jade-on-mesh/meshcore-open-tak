@@ -4,7 +4,6 @@
 // (public/live.js). Parsing and path building live here; the drawing is
 // LiveTrafficLayer (lib/widgets/live_traffic_layer.dart).
 
-import 'dart:typed_data';
 import 'dart:ui' show Brightness, Color;
 
 import 'package:flutter/foundation.dart';
