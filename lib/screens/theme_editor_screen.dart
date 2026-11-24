@@ -642,6 +642,8 @@ class _ThemePreview extends StatelessWidget {
 String themeIconSlotLabel(BuildContext context, ThemeIconSlot slot) {
   final l10n = context.l10n;
   switch (slot) {
+    case ThemeIconSlot.dms:
+      return l10n.nav_dms;
     case ThemeIconSlot.contacts:
       return l10n.nav_contacts;
     case ThemeIconSlot.nodes:

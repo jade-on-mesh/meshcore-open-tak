@@ -14,13 +14,14 @@ void main() {
   test('the tabs, left to right', () {
     expect(
       [
+        MainTab.dms,
         MainTab.contacts,
         MainTab.nodes,
         MainTab.channels,
         MainTab.map,
         MainTab.tactical,
       ],
-      [0, 1, 2, 3, 4],
+      [0, 1, 2, 3, 4, 5],
     );
   });
 }

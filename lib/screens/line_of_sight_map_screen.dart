@@ -450,7 +450,7 @@ class _LineOfSightMapScreenState extends State<LineOfSightMapScreen> {
         child: QuickSwitchBar(
           selectedIndex: MainTab.map,
           onDestinationSelected: (index) => _handleQuickSwitch(index, context),
-          contactsUnreadCount: context
+          dmsUnreadCount: context
               .watch<MeshCoreConnector>()
               .getTotalPeopleUnreadCount(),
           nodesUnreadCount: context

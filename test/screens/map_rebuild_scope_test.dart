@@ -164,7 +164,7 @@ void main() {
     final navigation = tester.widget<QuickSwitchBar>(
       find.byType(QuickSwitchBar),
     );
-    expect(navigation.contactsUnreadCount, 3);
+    expect(navigation.dmsUnreadCount, 3);
     expect(navigation.channelsUnreadCount, 5);
     expect(tiles.builds, originalBuilds);
 

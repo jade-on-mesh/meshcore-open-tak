@@ -84,6 +84,7 @@ Tapping a message notification opens its conversation (`NotificationNavigator`, 
 ## In-App Unread Badges
 
 Red numeric badges appear throughout the UI:
+- **DMs tab**: The bottom bar's DMs tab carries the total unread direct messages from people. Its list pins unread conversations on top, newest first, each with its count, so an unread message is never lost among the contacts
 - **Contacts list**: Each contact row shows a red pill badge (e.g., "3") for unread messages
 - **Channels list**: Each channel row shows an unread badge
 - **Chat screen subtitle**: Shows unread count inline

@@ -6518,6 +6518,55 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get nav_dms => 'DMs';
+
+  @override
+  String get dms_title => 'DMs';
+
+  @override
+  String dms_unreadCount(int count) {
+    return '$count unread';
+  }
+
+  @override
+  String get dms_allRead => 'All caught up';
+
+  @override
+  String get dms_unreadSection => 'Unread';
+
+  @override
+  String get dms_earlierSection => 'Earlier';
+
+  @override
+  String get dms_recentSection => 'Recent';
+
+  @override
+  String get dms_noneUnread => 'No unread direct messages';
+
+  @override
+  String get dms_empty => 'No direct messages yet';
+
+  @override
+  String get dms_emptyHint => 'Tap a person in Contacts to start one.';
+
+  @override
+  String get dms_markAllRead => 'Mark all read';
+
+  @override
+  String get dms_search => 'Search conversations';
+
+  @override
+  String get dms_closeSearch => 'Close search';
+
+  @override
+  String get dms_noMatches => 'No conversations match';
+
+  @override
+  String dms_youPrefix(String text) {
+    return 'You: $text';
+  }
+
+  @override
   String dmWalkie_noRoute(String name) {
     return 'No route to $name yet: they hear it live only if they\'re in range of your radio. It\'s sent as a voice message either way.';
   }

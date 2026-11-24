@@ -10,6 +10,7 @@ import '../connector/meshcore_protocol.dart';
 /// The app icons a theme can replace. [key] is what themes store, so it must
 /// never change once released.
 enum ThemeIconSlot {
+  dms('dms', Icons.chat_bubble_outline, Icons.chat_bubble),
   contacts('contacts', Icons.people_outline, Icons.people),
   nodes('nodes', Icons.settings_input_antenna, Icons.settings_input_antenna),
   channels('channels', Icons.tag, Icons.tag),
