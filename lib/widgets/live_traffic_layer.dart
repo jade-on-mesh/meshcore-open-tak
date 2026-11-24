@@ -263,8 +263,9 @@ class _LiveTrafficLayerState extends State<LiveTrafficLayer>
     final run = split == null ? hops : hops.sublist(0, split + 1);
     if (split != null) _dashedRest(hops.sublist(split), route.color);
     if (run.length == 1) {
-      if (!run.first.ghost)
+      if (!run.first.ghost) {
         _pulses.add(_Pulse(run.first.position, route.color));
+      }
     } else {
       _animate(run, route);
     }
