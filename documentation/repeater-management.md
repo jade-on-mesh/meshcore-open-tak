@@ -21,7 +21,7 @@ From the Contacts screen:
 - The first attempt uses the stored path. If it gets no answer, the path is reset and the remaining attempts flood, so a repeater in direct range is reached even when the stored path goes through other repeaters (an advert heard the long way round, or an old route); its answer teaches the radio a fresh path. A path set by hand in the dialog's routing selector is kept for every attempt
 - Each attempt waits at least 8 seconds (15 when flooded) for the answer: the repeater checks the password before it answers and waits a random moment before sending, and a radio that also listens on radio2 is away part of the time. An answer to an earlier attempt that arrives late still logs in. Room servers log in the same way (`lib/services/node_login.dart`)
 - CLI commands to a repeater are matched to their reply by a short prefix. A reply that arrives late for an earlier attempt still completes the command, and no further attempts are sent
-- If auto-clock-sync is enabled for this repeater (configured in Repeater Settings), a `clock sync` command is sent automatically on successful login
+- If clock sync on login is on for this repeater, a `clock sync` command is sent automatically on successful login. The repeater's choice is Default, On, or Off. Default follows **Sync repeater clock on login** in App Settings → Repeaters and Rooms, which is off unless you turn it on
 
 ---
 
@@ -183,7 +183,7 @@ Most settings are declared once in `repeaterSettingSpecs` (`lib/models/repeater_
 - Packet forwarding toggle (`set repeat`)
 - Guest access toggle (`set allow.read.only`)
 - Multi-ACKs toggle (`set multi.acks`)
-- Auto clock sync after login toggle (local app setting only, not sent to repeater)
+- Clock sync after login (Default / On / Off; local app setting only, not sent to repeater). Default follows App Settings → Repeaters and Rooms
 
 **5. Network Health**
 - Loop detection dropdown (off / minimal / moderate / strict; `set loop.detect`)
@@ -222,7 +222,7 @@ Most settings are declared once in `repeaterSettingSpecs` (`lib/models/repeater_
 - Erase filesystem (serial-only; shown disabled with an explanation — no command is sent over the air)
 
 ### Key Interactions
-- **Settings are not fetched on open by default.** Each `get` is a separate LoRa round trip, so fetching everything is slow and uses airtime. Turn on **Auto-fetch repeater settings** in App Settings to fetch everything when the screen opens; otherwise use **Refresh all** or the per-setting refresh buttons. Name and location are pre-filled from cached contact data
+- **Settings are not fetched on open by default.** Each `get` is a separate LoRa round trip, so fetching everything is slow and uses airtime. Turn on **Auto-fetch repeater settings** in App Settings → Repeaters and Rooms to fetch everything when the screen opens; otherwise use **Refresh all** or the per-setting refresh buttons. Name and location are pre-filled from cached contact data
 - Every control can be edited before its value has been fetched. Unfetched values show as "—" (or off) until fetched or edited, and only edited settings are sent on save
 - Save button in app bar appears when any change is detected; failed commands keep those settings dirty for retry, and a saved value counts as the repeater's current value
 - Settings are sent sequentially with 200ms delays between commands; firmware responses are checked and partial failures are reported in a snackbar

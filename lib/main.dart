@@ -23,6 +23,8 @@ import 'screens/channels_screen.dart';
 import 'utils/platform_info.dart';
 
 import 'connector/meshcore_connector.dart';
+import 'games/chess/chess_link.dart';
+import 'games/chess/chess_service.dart';
 import 'helpers/message_url_image_helper.dart';
 import 'models/image_codec_support.dart';
 import 'screens/scanner_screen.dart';
@@ -199,6 +201,8 @@ void main() async {
       <Uint8List>[blob],
       channelIndex: channelIndex,
       interChunkDelay: Duration.zero,
+      // One blob at a time: echo tracking needs the whole chunk set.
+      repairUnheardChunks: false,
     ),
     // Overwritten by onImageSenderPrefix as soon as SELF_INFO lands.
     senderPrefix: 0,
@@ -298,6 +302,9 @@ void main() async {
     connector: connector,
     settings: appSettingsService,
   );
+  final chessService = ChessService(
+    link: ConnectorChessLink(connector, settings: appSettingsService),
+  );
 
   await _startupStep(
     'connector.restoreLastRadio',
@@ -324,6 +331,7 @@ void main() async {
       aeicHdRepair: aeicHdRepair,
       voxVoiceService: voxVoiceService,
       networkMapUploadService: networkMapUploadService,
+      chessService: chessService,
       chatBackgroundService: chatBackgroundService,
       messageFilterService: messageFilterService,
     ),
@@ -500,6 +508,7 @@ class MeshCoreApp extends StatefulWidget {
   final AeicHdRepairService aeicHdRepair;
   final VoxVoiceService? voxVoiceService;
   final NetworkMapUploadService networkMapUploadService;
+  final ChessService chessService;
   final ChatBackgroundService chatBackgroundService;
   final MessageFilterService messageFilterService;
 
@@ -523,6 +532,7 @@ class MeshCoreApp extends StatefulWidget {
     required this.aeicHdRepair,
     this.voxVoiceService,
     required this.networkMapUploadService,
+    required this.chessService,
     required this.chatBackgroundService,
     required this.messageFilterService,
   });
@@ -752,6 +762,7 @@ class _MeshCoreAppState extends State<MeshCoreApp> with WidgetsBindingObserver {
         ),
         Provider<AtakPluginBridge>.value(value: _atakBridge),
         ChangeNotifierProvider.value(value: widget.networkMapUploadService),
+        ChangeNotifierProvider.value(value: widget.chessService),
         ChangeNotifierProvider.value(value: widget.chatBackgroundService),
         ChangeNotifierProvider.value(value: widget.messageFilterService),
       ],

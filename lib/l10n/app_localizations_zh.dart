@@ -676,6 +676,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get backupRestore_discoveredContactsDescription => '已发现的联系人及其保存的详细信息';
 
   @override
+  String get backupRestore_bookmarks => '书签';
+
+  @override
   String get backupRestore_channels => '频道';
 
   @override
@@ -697,9 +700,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get backupRestore_missingModelsTitle => '模型未下载';
 
   @override
-  String backupRestore_missingModelsMessage(String models) {
-    return '恢复的设置所选用的模型在此设备上不可用：\n$models\n\n现在下载吗？';
-  }
+  String get backupRestore_missingModelsMessage => '恢复的设置所选用的模型在此设备上不可用。现在下载吗？';
 
   @override
   String get backupRestore_downloadModels => '下载模型';
@@ -1483,6 +1484,13 @@ class AppLocalizationsZh extends AppLocalizations {
       '将频道消息的地区与跳数显示在同一行，而不是在其下方。';
 
   @override
+  String get appSettings_showCompressionIndicator => '压缩标记';
+
+  @override
+  String get appSettings_showCompressionIndicatorSubtitle =>
+      '在使用 SMAZ 压缩的消息上显示图标。';
+
+  @override
   String get appSettings_notifications => '通知';
 
   @override
@@ -1659,10 +1667,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appSettings_clearPathOnMaxRetry => '达到最大重试次数时清除路径';
 
   @override
-  String get appSettings_clearPathOnMaxRetrySubtitle => '在5次发送失败后重置联系路径。';
+  String get appSettings_clearPathOnMaxRetrySubtitle =>
+      '所有发送尝试都失败后，重置联系人已保存的路径';
 
   @override
-  String get appSettings_pathsWillBeCleared => '5次失败后将重新路由';
+  String get appSettings_pathsWillBeCleared => '所有发送尝试失败后将清除路径';
 
   @override
   String get appSettings_pathsWillNotBeCleared => '路径不会自动清除';
@@ -1671,7 +1680,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appSettings_autoRouteRotation => '自动路径轮换';
 
   @override
-  String get appSettings_autoRouteRotationSubtitle => '在最佳路径和泛洪模式之间切换';
+  String get appSettings_autoRouteRotationSubtitle =>
+      '每次直接尝试换一条已知路由。之后的尝试使用 Flood。关闭后保持联系人的当前路径。';
 
   @override
   String get appSettings_autoRouteRotationEnabled => '自动路径轮换已启用';
@@ -1684,6 +1694,58 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appSettings_maxMessageRetriesSubtitle => '在将消息标记为失败之前，允许尝试的次数';
+
+  @override
+  String appSettings_directRetries(int count) {
+    return '直接尝试：$count';
+  }
+
+  @override
+  String get appSettings_directRetriesSubtitle => '尝试已知路由的次数。关闭自动路径轮换后仍然可以设置。';
+
+  @override
+  String appSettings_floodRetries(int count) {
+    return 'Flood 尝试：$count';
+  }
+
+  @override
+  String get appSettings_floodRetriesSubtitle =>
+      '使用 Flood 的次数。Flood 占用更多空中时间。开启轮换时，这些尝试排在直接尝试之后。';
+
+  @override
+  String appSettings_loginAttempts(int count) {
+    return '登录尝试：$count';
+  }
+
+  @override
+  String get appSettings_loginAttemptsSubtitle => '登录中继或房间服务器时，放弃前的尝试次数。';
+
+  @override
+  String get appSettings_repeatersAndRooms => '中继和房间';
+
+  @override
+  String get appSettings_clockSyncAfterLogin => '登录时同步中继时钟';
+
+  @override
+  String get appSettings_clockSyncAfterLoginSubtitle =>
+      '成功登录中继后会发送 clock sync。每个中继仍可选择默认、开或关。';
+
+  @override
+  String get appSettings_loginPasswordAutofocus => '聚焦密码框';
+
+  @override
+  String get appSettings_loginPasswordAutofocusSubtitle =>
+      '打开中继或房间登录时，如果密码为空，光标会进入密码框。关闭后，在你点按该框之前对话框保持可见。';
+
+  @override
+  String get appSettings_resetRepeaterRoomSettings => '将中继和房间设置重置为默认';
+
+  @override
+  String get appSettings_resetRepeaterRoomSettingsSubtitle =>
+      '恢复这一节的设置。保存在各个中继上的选择保持不变。';
+
+  @override
+  String get appSettings_repeaterRoomSettingsReset => '中继和房间设置已重置';
 
   @override
   String get appSettings_ipfsImageLinks => 'IPFS 提供商配置';
@@ -2052,6 +2114,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get contacts_noMembers => '暂无成员';
 
   @override
+  String contacts_groupCurrentMembers(int count) {
+    return '当前成员（$count）';
+  }
+
+  @override
+  String get contacts_groupAddContacts => '添加联系人';
+
+  @override
+  String contacts_groupRemoveMember(String name) {
+    return '将 $name 移出群聊';
+  }
+
+  @override
+  String contacts_groupAddMember(String name) {
+    return '将 $name 加入群聊';
+  }
+
+  @override
   String get nav_nodes => 'Nodes';
 
   @override
@@ -2064,6 +2144,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get contacts_lastSeenNow => '刚刚';
+
+  @override
+  String get contacts_lastSeenNever => '尚未收到';
 
   @override
   String contacts_lastSeenMinsAgo(int minutes) {
@@ -2242,15 +2325,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String channels_editChannelTitle(int index) {
     return '编辑频道 $index';
   }
-
-  @override
-  String get channels_smazCompression => 'SMAZ 压缩';
-
-  @override
-  String get channels_cyr2latCompression => 'Cyr2Lat 压缩';
-
-  @override
-  String get channels_cyr2latCompressionDscr => '发送时将一些西里尔字符替换为拉丁字符。';
 
   @override
   String get channels_cyr2latSettingsHeading => 'Cyr2Lat 設定';
@@ -2554,6 +2628,30 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get chat_messageDeleted => '消息已删除';
+
+  @override
+  String get chat_bookmark => '添加书签';
+
+  @override
+  String get chat_removeBookmark => '移除书签';
+
+  @override
+  String get chat_showBookmarks => '显示书签';
+
+  @override
+  String get bookmarks_title => '书签';
+
+  @override
+  String get bookmarks_empty => '没有已加书签的消息';
+
+  @override
+  String get bookmarks_channel => '频道';
+
+  @override
+  String get bookmarks_contact => '联系人';
+
+  @override
+  String get bookmarks_remove => '移除书签';
 
   @override
   String get chat_selectMessages => '选择消息';
@@ -3017,7 +3115,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get pathEditor_hexLabel => '十六进制前缀';
 
   @override
-  String get pathEditor_hexHelper => '每跳使用两个十六进制字符，用逗号分隔。';
+  String pathEditor_hexHelper(int count) {
+    return '每跳使用$count个十六进制字符，用逗号分隔。';
+  }
 
   @override
   String pathEditor_invalidTokens(String tokens) {
@@ -3056,9 +3156,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get chat_publicKey => '公钥';
-
-  @override
-  String get chat_compressOutgoingMessages => '压缩发送的消息';
 
   @override
   String get chat_floodForced => '泛洪（强制）';
@@ -3816,7 +3913,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get repeater_clockSyncAfterLogin => '登录后，自动同步时钟';
 
   @override
-  String get repeater_clockSyncAfterLoginSubtitle => '在成功登录后，自动发送“时钟同步”指令。';
+  String get repeater_clockSyncAfterLoginSubtitle =>
+      '默认跟随应用设置里的“中继和房间”。开和关只作用于这个中继。';
+
+  @override
+  String get repeater_clockSyncDefault => '默认';
+
+  @override
+  String get repeater_clockSyncOn => '开';
+
+  @override
+  String get repeater_clockSyncOff => '关';
 
   @override
   String get repeater_statusTitle => '转发节点状态';
@@ -5848,6 +5955,18 @@ class AppLocalizationsZh extends AppLocalizations {
       'MeshCore Open 未在运行。请打开它并再次发送回复。';
 
   @override
+  String get settings_exportBookmarks => '将书签导出为 Markdown';
+
+  @override
+  String get settings_exportBookmarksSubtitle => '将已加书签的消息分享或保存为 Markdown 文件。';
+
+  @override
+  String get settings_exportBookmarksSuccess => '书签已导出。';
+
+  @override
+  String get settings_exportBookmarksNoBookmarks => '没有可导出的书签。';
+
+  @override
   String get settings_gpxExportRepeaters => '导出转发节点/房间服务器到 GPX';
 
   @override
@@ -6471,6 +6590,55 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get imageSend_reconstructionUnavailable => '此设备无法预览重建结果。';
+
+  @override
+  String receivedImage_packetEchoes(int number, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '已转发 $count 次',
+      one: '已转发 1 次',
+      zero: '未听到转发节点',
+    );
+    return '数据包 $number：$_temp0';
+  }
+
+  @override
+  String receivedImage_recoveryPacketEchoes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '已转发 $count 次',
+      one: '已转发 1 次',
+      zero: '未听到转发节点',
+    );
+    return '恢复数据包：$_temp0';
+  }
+
+  @override
+  String get imageSend_preparingPreview => '正在准备预览…';
+
+  @override
+  String get imageSend_tryAnother => '试试其他版本';
+
+  @override
+  String get imageSend_versionsHint => '每个版本的还原方式略有不同。请选择最接近原照片的一个。';
+
+  @override
+  String imageSend_versionLabel(int number) {
+    return '版本 $number';
+  }
+
+  @override
+  String imageSend_versionPackets(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个数据包',
+      one: '1 个数据包',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get imageSend_modelNotDownloaded => '图像模型尚未下载。在设置中下载后才能发送图像。';
@@ -7148,13 +7316,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appSettings_routingSection => '路由';
 
   @override
-  String get appSettings_resetRoutingToDefault => '将路由算法重置为默认值';
+  String get appSettings_resetRoutingToDefault => '将路由设置重置为默认值';
 
   @override
-  String get appSettings_resetRoutingToDefaultSubtitle => '将路由算法设置恢复为出厂默认值';
+  String get appSettings_resetRoutingToDefaultSubtitle => '将本部分的路由设置恢复为默认值';
 
   @override
-  String get appSettings_routingResetToDefault => '路由算法设置已重置为默认值';
+  String get appSettings_routingResetToDefault => '路由设置已重置为默认值';
 
   @override
   String get appSettings_imageMessagesSection => '图片消息';
@@ -9620,4 +9788,526 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get chat_composerOffline => '连接到无线电后才能发送消息';
+
+  @override
+  String get modelDownload_notDownloaded => '未下载';
+
+  @override
+  String get modelDownload_downloading => '正在下载';
+
+  @override
+  String get modelDownload_active => '当前使用';
+
+  @override
+  String get modelDownload_failed => '下载失败';
+
+  @override
+  String get modelDownload_incomplete => '不完整';
+
+  @override
+  String get modelDownload_verifying => '正在校验下载';
+
+  @override
+  String get modelDownload_useModel => '使用此模型';
+
+  @override
+  String modelDownload_removeFailed(String error) {
+    return '无法移除模型：$error';
+  }
+
+  @override
+  String modelDownload_progress(String current, String total, String percent) {
+    return '$current / $total MB ($percent%)';
+  }
+
+  @override
+  String get chatCompression_title => '压缩';
+
+  @override
+  String chatCompression_label(String mode) {
+    return '压缩：$mode';
+  }
+
+  @override
+  String get chatCompression_off => '关闭';
+
+  @override
+  String get chatCompression_smaz => 'SMAZ';
+
+  @override
+  String get chatCompression_cyr2lat => 'Cyr2Lat';
+
+  @override
+  String get chatCompression_changeHint => '更改此聊天的压缩设置';
+
+  @override
+  String get chatCompression_sheetSubtitle => '适用于你在此聊天中发送的消息。保存在本机。';
+
+  @override
+  String get chatCompression_offDescription => '不压缩。按输入内容原样发送，所有应用都能读取，但不节省字节。';
+
+  @override
+  String get chatCompression_smazDescription =>
+      '针对短文本的无损压缩。接收方的应用必须支持 SMAZ，否则其他应用会显示无法阅读的“s:…”文本。仅在能缩小消息时才会使用，因此并非每条消息都会被压缩。';
+
+  @override
+  String get chatCompression_cyr2latDescription =>
+      '非无损。会把部分西里尔字母替换为外形相似的拉丁字母（А→A、З→3）以节省字节。无需解码，在任何应用中都能阅读，但实际字符会改变，包括你在此发送的消息。复制、搜索和技术性文本可能受到影响。效果取决于所选配置。';
+
+  @override
+  String get chatCompression_profile => 'Cyr2Lat 配置';
+
+  @override
+  String get chatCompression_noStorageId => '此频道从无线电同步完成之前，无法更改压缩设置。';
+
+  @override
+  String get chatCompression_saveFailed => '无法保存压缩设置。当前显示的是已保存的设置。';
+
+  @override
+  String get messageMeta_smazCompressed => '已 SMAZ 压缩';
+
+  @override
+  String get addContact_title => '添加联系人';
+
+  @override
+  String get addContact_infoBanner => '如果你知道想联系对象的公钥，无需等待对方广播，即可手动添加。';
+
+  @override
+  String get addContact_contactType => '联系人类型';
+
+  @override
+  String get addContact_name => '名称';
+
+  @override
+  String get addContact_nameRequired => '请输入名称';
+
+  @override
+  String get addContact_publicKeyHex => '公钥（十六进制）';
+
+  @override
+  String get addContact_publicKeyRequired => '请输入公钥';
+
+  @override
+  String get addContact_publicKeyInvalid => '公钥必须为 64 个十六进制字符（32 字节）';
+
+  @override
+  String get addContact_clipboardKeyLoaded => '已填入公钥。请选择联系人类型、输入名称，然后点按保存。';
+
+  @override
+  String get addContact_fromDiscovered => '从已发现的联系人添加';
+
+  @override
+  String get addContact_saveFailed => '添加联系人失败。';
+
+  @override
+  String get coordinateMap_title => '位置';
+
+  @override
+  String get coordinate_copyLocation => '复制位置';
+
+  @override
+  String get coordinate_openInMaps => '在地图中打开';
+
+  @override
+  String get coordinate_copied => '位置已复制';
+
+  @override
+  String get chess_menuGames => '国际象棋对局';
+
+  @override
+  String chess_menuGamesCount(int count) {
+    return '国际象棋对局 ($count)';
+  }
+
+  @override
+  String get chess_sheetTitle => '国际象棋';
+
+  @override
+  String get chess_sectionNewGame => '新对局';
+
+  @override
+  String get chess_sectionYourGames => '我的对局';
+
+  @override
+  String get chess_sectionInvites => '公开邀请';
+
+  @override
+  String get chess_sectionLive => '进行中的对局';
+
+  @override
+  String get chess_sectionFinished => '已结束';
+
+  @override
+  String get chess_newChallenge => '挑战某人';
+
+  @override
+  String get chess_newChallengeSubtitle => '从此频道最近发言的人中选择';
+
+  @override
+  String get chess_newOpenInvite => '发布公开邀请';
+
+  @override
+  String get chess_newOpenInviteSubtitle => '此频道中的任何人都可以接受';
+
+  @override
+  String get chess_emptyTitle => '还没有对局';
+
+  @override
+  String get chess_emptySubtitle => '挑战某人或发布公开邀请。频道中的任何人都可以观战。';
+
+  @override
+  String chess_vs(String white, String black) {
+    return '$white 对 $black';
+  }
+
+  @override
+  String get chess_unknownPlayer => '未知';
+
+  @override
+  String chess_rowChallenge(String inviter, String target) {
+    return '$inviter 向 $target 发起了挑战';
+  }
+
+  @override
+  String get chess_rowYourOpenInvite => '你的公开邀请';
+
+  @override
+  String chess_rowYourChallenge(String name) {
+    return '你向 $name 发起了挑战';
+  }
+
+  @override
+  String chess_rowInviteFrom(String name) {
+    return '与 $name 的对局';
+  }
+
+  @override
+  String get chess_rowStarting => '等待对局开始';
+
+  @override
+  String chess_rowMoveTurn(int number, String turn) {
+    return '第 $number 步 · $turn';
+  }
+
+  @override
+  String chess_rowOpenInvite(String name) {
+    return '$name 正在寻找对手';
+  }
+
+  @override
+  String chess_rowChallengedYou(String name) {
+    return '$name 向你发起了挑战';
+  }
+
+  @override
+  String chess_rowInviteDetails(String deadline) {
+    return '每步用时: $deadline';
+  }
+
+  @override
+  String get chess_accept => '接受';
+
+  @override
+  String get chess_decline => '拒绝';
+
+  @override
+  String get chess_remove => '移除';
+
+  @override
+  String get chess_cancelInvite => '取消邀请';
+
+  @override
+  String get chess_cancelInviteTitle => '取消此邀请？';
+
+  @override
+  String get chess_sendFailed => '无法发送。请检查无线电连接。';
+
+  @override
+  String chess_challengeSent(String name) {
+    return '已向 $name 发送挑战';
+  }
+
+  @override
+  String get chess_inviteSent => '公开邀请已发布';
+
+  @override
+  String get chess_pickOpponent => '选择挑战对象';
+
+  @override
+  String get chess_noRecentSenders => '此频道最近没有人发言。';
+
+  @override
+  String get chess_deadlineLabel => '每步用时';
+
+  @override
+  String get chess_deadlineNone => '不限时';
+
+  @override
+  String get chess_deadline15m => '15 分钟';
+
+  @override
+  String get chess_deadline1h => '1 小时';
+
+  @override
+  String get chess_deadline6h => '6 小时';
+
+  @override
+  String get chess_deadline1d => '1 天';
+
+  @override
+  String get chess_deadline3d => '3 天';
+
+  @override
+  String get chess_colourLabel => '你的颜色';
+
+  @override
+  String get chess_colourRandom => '随机';
+
+  @override
+  String get chess_colourWhite => '白方';
+
+  @override
+  String get chess_colourBlack => '黑方';
+
+  @override
+  String get chess_sendChallenge => '发送挑战';
+
+  @override
+  String get chess_postInvite => '发布邀请';
+
+  @override
+  String get chess_gameGone => '此对局已不可用。';
+
+  @override
+  String chess_playerYou(String name) {
+    return '$name (你)';
+  }
+
+  @override
+  String get chess_toMoveChip => '该走棋';
+
+  @override
+  String get chess_statusYourMove => '轮到你了';
+
+  @override
+  String chess_statusWaiting(String name) {
+    return '等待 $name';
+  }
+
+  @override
+  String chess_statusToMove(String name) {
+    return '轮到 $name';
+  }
+
+  @override
+  String chess_statusTimeLeft(String time) {
+    return '本步剩余 $time';
+  }
+
+  @override
+  String get chess_statusOverdue => '本步用时已到';
+
+  @override
+  String chess_statusDrawOffered(String name) {
+    return '$name 提议和棋';
+  }
+
+  @override
+  String get chess_statusUnknownPosition => '下一步走棋后将显示棋盘。';
+
+  @override
+  String get chess_statusUnverified => '尚未确认对局双方。请求更新以进行确认。';
+
+  @override
+  String get chess_statusPlayersUnchecked => '对局双方未确认：这部手机没有收到邀请。';
+
+  @override
+  String get chess_statusMoveUnconfirmed => '你的这一步可能没有发出。请点按“请求更新”重新发送。';
+
+  @override
+  String get chess_actionResign => '认输';
+
+  @override
+  String get chess_actionOfferDraw => '提议和棋';
+
+  @override
+  String get chess_actionAcceptDraw => '接受和棋';
+
+  @override
+  String get chess_actionClaimTimeout => '超时判胜';
+
+  @override
+  String get chess_actionNudge => '请求更新';
+
+  @override
+  String get chess_actionNudgeTooltip => '请对局双方重新发送最新一步';
+
+  @override
+  String get chess_resignConfirmTitle => '认输并结束此对局？';
+
+  @override
+  String get chess_resignConfirmBody => '对手将获胜。';
+
+  @override
+  String get chess_movesTitle => '棋谱';
+
+  @override
+  String get chess_noMovesYet => '还没有走棋';
+
+  @override
+  String get chess_movesMissed => '(缺失)';
+
+  @override
+  String get chess_promoteTitle => '升变为';
+
+  @override
+  String get chess_pieceQueen => '后';
+
+  @override
+  String get chess_pieceRook => '车';
+
+  @override
+  String get chess_pieceBishop => '象';
+
+  @override
+  String get chess_pieceKnight => '马';
+
+  @override
+  String get chess_pieceKing => '王';
+
+  @override
+  String get chess_piecePawn => '兵';
+
+  @override
+  String chess_squareWhitePiece(String square, String piece) {
+    return '$square：白$piece';
+  }
+
+  @override
+  String chess_squareBlackPiece(String square, String piece) {
+    return '$square：黑$piece';
+  }
+
+  @override
+  String get chess_resultDraw => '和棋';
+
+  @override
+  String chess_resultWon(String name) {
+    return '$name 获胜';
+  }
+
+  @override
+  String chess_resultWithReason(String result, String reason) {
+    return '$result · $reason';
+  }
+
+  @override
+  String get chess_endCheckmate => '将死';
+
+  @override
+  String get chess_endResignation => '认输';
+
+  @override
+  String get chess_endTimeout => '超时';
+
+  @override
+  String get chess_endDrawAgreed => '协议和棋';
+
+  @override
+  String get chess_endStalemate => '逼和';
+
+  @override
+  String get chess_endInsufficient => '子力不足无法将死';
+
+  @override
+  String get chess_endFiftyMoves => '五十步规则';
+
+  @override
+  String get chess_endRepetition => '重复局面';
+
+  @override
+  String get chess_endCancelled => '邀请已取消';
+
+  @override
+  String get chess_endDeclined => '挑战已被拒绝';
+
+  @override
+  String get chess_endExpired => '邀请已过期';
+
+  @override
+  String get chess_endTaken => '已被其他人抢先接受';
+
+  @override
+  String chess_timeMinutes(int minutes) {
+    return '$minutes 分钟';
+  }
+
+  @override
+  String chess_timeHours(int hours, int minutes) {
+    return '$hours 小时 $minutes 分钟';
+  }
+
+  @override
+  String chess_timeDays(int days, int hours) {
+    return '$days 天 $hours 小时';
+  }
+
+  @override
+  String get chess_notificationSender => '国际象棋';
+
+  @override
+  String chess_notifyChallenge(String name) {
+    return '$name 向你发起了对局挑战';
+  }
+
+  @override
+  String chess_notifyAccepted(String name) {
+    return '$name 接受了你的对局';
+  }
+
+  @override
+  String chess_notifyAcceptedYourMove(String name) {
+    return '$name 接受了你的对局。你执白，轮到你走棋。';
+  }
+
+  @override
+  String chess_notifyDeclined(String name) {
+    return '$name 拒绝了你的挑战';
+  }
+
+  @override
+  String get chess_notifyTaken => '其他人已抢先接受该对局';
+
+  @override
+  String get chess_notifyGameStartedYourMove => '对局已开始。你执白，轮到你走棋。';
+
+  @override
+  String chess_notifyYourMove(String name, String move) {
+    return '$name 走了 $move。轮到你了。';
+  }
+
+  @override
+  String chess_notifyGameOver(String name) {
+    return '你与 $name 的对局已结束';
+  }
+
+  @override
+  String chess_notifyResigned(String name) {
+    return '$name 认输了。你获胜。';
+  }
+
+  @override
+  String chess_notifyDrawOffered(String name) {
+    return '$name 提议和棋';
+  }
+
+  @override
+  String chess_notifyDrawAccepted(String name) {
+    return '$name 接受了和棋';
+  }
+
+  @override
+  String chess_notifyTimeout(String name) {
+    return '$name 申请超时判胜';
+  }
 }

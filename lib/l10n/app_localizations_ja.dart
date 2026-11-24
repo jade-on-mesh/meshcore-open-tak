@@ -683,6 +683,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get backupRestore_discoveredContactsDescription => '検出された連絡先と保存済みの詳細';
 
   @override
+  String get backupRestore_bookmarks => 'ブックマーク';
+
+  @override
   String get backupRestore_channels => 'チャンネル';
 
   @override
@@ -706,9 +709,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get backupRestore_missingModelsTitle => 'モデル未ダウンロード';
 
   @override
-  String backupRestore_missingModelsMessage(String models) {
-    return '復元された設定で選択されているモデルが、このデバイスにありません:\n$models\n\n今すぐダウンロードしますか？';
-  }
+  String get backupRestore_missingModelsMessage =>
+      '復元された設定で選択されているモデルが、このデバイスにありません。今すぐダウンロードしますか？';
 
   @override
   String get backupRestore_downloadModels => 'モデルをダウンロード';
@@ -1500,6 +1502,13 @@ class AppLocalizationsJa extends AppLocalizations {
       'チャンネルメッセージの地域を、ホップ数の下ではなく同じ行に表示します。';
 
   @override
+  String get appSettings_showCompressionIndicator => '圧縮インジケーター';
+
+  @override
+  String get appSettings_showCompressionIndicatorSubtitle =>
+      'SMAZで圧縮されたメッセージにアイコンを表示します。';
+
+  @override
   String get appSettings_notifications => '通知';
 
   @override
@@ -1680,10 +1689,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get appSettings_clearPathOnMaxRetrySubtitle =>
-      '5 回送信に失敗したら連絡先の経路をリセットします';
+      'すべての送信が失敗したら、連絡先の保存済み経路をリセットします';
 
   @override
-  String get appSettings_pathsWillBeCleared => '5 回失敗すると経路を消去します';
+  String get appSettings_pathsWillBeCleared => 'すべての送信が失敗すると経路を消去します';
 
   @override
   String get appSettings_pathsWillNotBeCleared => '経路は自動では消去されません';
@@ -1692,7 +1701,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get appSettings_autoRouteRotation => '自動経路切り替え';
 
   @override
-  String get appSettings_autoRouteRotationSubtitle => '最適な経路とフラッドモードを切り替えます';
+  String get appSettings_autoRouteRotationSubtitle =>
+      '直接の試行ごとに別の既知の経路を試します。その後の試行は Flood です。オフのときは連絡先の現在の経路を使います。';
 
   @override
   String get appSettings_autoRouteRotationEnabled => '自動経路切り替えが有効です';
@@ -1705,6 +1715,60 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get appSettings_maxMessageRetriesSubtitle => 'メッセージを失敗として扱うまでの再試行回数';
+
+  @override
+  String appSettings_directRetries(int count) {
+    return '直接の試行: $count';
+  }
+
+  @override
+  String get appSettings_directRetriesSubtitle =>
+      '既知の経路を試す回数です。自動経路切り替えがオフでも設定できます。';
+
+  @override
+  String appSettings_floodRetries(int count) {
+    return 'Flood の試行: $count';
+  }
+
+  @override
+  String get appSettings_floodRetriesSubtitle =>
+      'Flood する回数です。Flood は通信時間を多く使います。切り替えがオンのとき、直接の試行の後に行います。';
+
+  @override
+  String appSettings_loginAttempts(int count) {
+    return 'ログイン試行: $count';
+  }
+
+  @override
+  String get appSettings_loginAttemptsSubtitle =>
+      'リピータまたはルームサーバーへのログインをあきらめるまでの回数です。';
+
+  @override
+  String get appSettings_repeatersAndRooms => 'リピーターとルーム';
+
+  @override
+  String get appSettings_clockSyncAfterLogin => 'ログイン時にリピーターの時刻を同期';
+
+  @override
+  String get appSettings_clockSyncAfterLoginSubtitle =>
+      'リピーターへのログインに成功すると clock sync を送ります。各リピーターは「既定」「オン」「オフ」を選べます。';
+
+  @override
+  String get appSettings_loginPasswordAutofocus => 'パスワード欄にフォーカス';
+
+  @override
+  String get appSettings_loginPasswordAutofocusSubtitle =>
+      'リピーターまたはルームのログインを開いたとき、パスワードが空ならその欄にカーソルを置きます。オフでは欄をタップするまで画面全体が見えます。';
+
+  @override
+  String get appSettings_resetRepeaterRoomSettings => 'リピーターとルームの設定をリセット';
+
+  @override
+  String get appSettings_resetRepeaterRoomSettingsSubtitle =>
+      'このセクションの設定を戻します。各リピーターに保存した選択はそのままです。';
+
+  @override
+  String get appSettings_repeaterRoomSettingsReset => 'リピーターとルームの設定をリセットしました';
 
   @override
   String get appSettings_ipfsImageLinks => 'IPFSプロバイダー設定';
@@ -2076,6 +2140,24 @@ class AppLocalizationsJa extends AppLocalizations {
   String get contacts_noMembers => 'メンバーなし';
 
   @override
+  String contacts_groupCurrentMembers(int count) {
+    return '現在のメンバー（$count）';
+  }
+
+  @override
+  String get contacts_groupAddContacts => '連絡先を追加';
+
+  @override
+  String contacts_groupRemoveMember(String name) {
+    return '$nameをグループから削除';
+  }
+
+  @override
+  String contacts_groupAddMember(String name) {
+    return '$nameをグループに追加';
+  }
+
+  @override
   String get nav_nodes => 'Nodes';
 
   @override
@@ -2088,6 +2170,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get contacts_lastSeenNow => '最近';
+
+  @override
+  String get contacts_lastSeenNever => '未受信';
 
   @override
   String contacts_lastSeenMinsAgo(int minutes) {
@@ -2266,15 +2351,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String channels_editChannelTitle(int index) {
     return 'チャンネル $index の編集';
   }
-
-  @override
-  String get channels_smazCompression => 'SMAZ 圧縮';
-
-  @override
-  String get channels_cyr2latCompression => 'Cyr2Lat 圧縮';
-
-  @override
-  String get channels_cyr2latCompressionDscr => '送信時に一部のキリル文字をラテン文字に置き換えます。';
 
   @override
   String get channels_cyr2latSettingsHeading => 'Cyr2Lat 設定';
@@ -2580,6 +2656,30 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get chat_messageDeleted => 'メッセージは削除されました';
+
+  @override
+  String get chat_bookmark => 'ブックマーク';
+
+  @override
+  String get chat_removeBookmark => 'ブックマークを削除';
+
+  @override
+  String get chat_showBookmarks => 'ブックマークを表示';
+
+  @override
+  String get bookmarks_title => 'ブックマーク';
+
+  @override
+  String get bookmarks_empty => 'ブックマークしたメッセージはありません';
+
+  @override
+  String get bookmarks_channel => 'チャンネル';
+
+  @override
+  String get bookmarks_contact => '連絡先';
+
+  @override
+  String get bookmarks_remove => 'ブックマークを削除';
 
   @override
   String get chat_selectMessages => 'メッセージを選択';
@@ -3056,7 +3156,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get pathEditor_hexLabel => '16 進接頭辞';
 
   @override
-  String get pathEditor_hexHelper => 'ホップごとに 16 進数 2 文字をカンマ区切りで入力します';
+  String pathEditor_hexHelper(int count) {
+    return 'ホップごとに 16 進数 $count 文字をカンマ区切りで入力します';
+  }
 
   @override
   String pathEditor_invalidTokens(String tokens) {
@@ -3095,9 +3197,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get chat_publicKey => '公開鍵';
-
-  @override
-  String get chat_compressOutgoingMessages => '送信メッセージを圧縮する';
 
   @override
   String get chat_floodForced => 'フラッド（強制）';
@@ -3863,7 +3962,17 @@ class AppLocalizationsJa extends AppLocalizations {
   String get repeater_clockSyncAfterLogin => 'ログイン後に時刻を同期';
 
   @override
-  String get repeater_clockSyncAfterLoginSubtitle => 'ログイン成功時に自動で時刻同期を送信します';
+  String get repeater_clockSyncAfterLoginSubtitle =>
+      '「既定」はアプリ設定の「リピーターとルーム」に従います。「オン」と「オフ」はこのリピーターだけです。';
+
+  @override
+  String get repeater_clockSyncDefault => '既定';
+
+  @override
+  String get repeater_clockSyncOn => 'オン';
+
+  @override
+  String get repeater_clockSyncOff => 'オフ';
 
   @override
   String get repeater_statusTitle => '再送ステータス';
@@ -5969,6 +6078,19 @@ class AppLocalizationsJa extends AppLocalizations {
       'MeshCore Open が起動していません。起動してから、もう一度返信を送信してください。';
 
   @override
+  String get settings_exportBookmarks => 'ブックマークをMarkdownにエクスポート';
+
+  @override
+  String get settings_exportBookmarksSubtitle =>
+      'ブックマークしたメッセージをMarkdownファイルとして共有または保存します。';
+
+  @override
+  String get settings_exportBookmarksSuccess => 'ブックマークをエクスポートしました。';
+
+  @override
+  String get settings_exportBookmarksNoBookmarks => 'エクスポートするブックマークがありません。';
+
+  @override
   String get settings_gpxExportRepeaters => 'GPX へのエクスポート用リピータ/ルームサーバー';
 
   @override
@@ -6606,6 +6728,56 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get imageSend_reconstructionUnavailable => 'このデバイスでは復元結果をプレビューできません。';
+
+  @override
+  String receivedImage_packetEchoes(int number, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count回中継',
+      one: '1回中継',
+      zero: 'リピータの受信なし',
+    );
+    return 'パケット$number：$_temp0';
+  }
+
+  @override
+  String receivedImage_recoveryPacketEchoes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count回中継',
+      one: '1回中継',
+      zero: 'リピータの受信なし',
+    );
+    return '復元パケット：$_temp0';
+  }
+
+  @override
+  String get imageSend_preparingPreview => 'プレビューを準備中…';
+
+  @override
+  String get imageSend_tryAnother => '別のバージョンを試す';
+
+  @override
+  String get imageSend_versionsHint =>
+      '各バージョンは少しずつ異なる方法で復元されます。写真に最も近いものを選んでください。';
+
+  @override
+  String imageSend_versionLabel(int number) {
+    return 'バージョン$number';
+  }
+
+  @override
+  String imageSend_versionPackets(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countパケット',
+      one: '1パケット',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get imageSend_modelNotDownloaded =>
@@ -7293,15 +7465,14 @@ class AppLocalizationsJa extends AppLocalizations {
   String get appSettings_routingSection => 'ルーティング';
 
   @override
-  String get appSettings_resetRoutingToDefault => 'ルーティングアルゴリズムをデフォルトにリセット';
+  String get appSettings_resetRoutingToDefault => 'ルーティング設定をデフォルトにリセット';
 
   @override
   String get appSettings_resetRoutingToDefaultSubtitle =>
-      'ルーティングアルゴリズムの設定を工場出荷時のデフォルトに戻す';
+      'このセクションの経路設定を初期値に戻します';
 
   @override
-  String get appSettings_routingResetToDefault =>
-      'ルーティングアルゴリズムの設定がデフォルトにリセットされました';
+  String get appSettings_routingResetToDefault => 'ルーティング設定がデフォルトにリセットされました';
 
   @override
   String get appSettings_imageMessagesSection => '画像メッセージ';
@@ -9775,4 +9946,533 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get chat_composerOffline => 'メッセージを送信するには無線機に接続してください';
+
+  @override
+  String get modelDownload_notDownloaded => '未ダウンロード';
+
+  @override
+  String get modelDownload_downloading => 'ダウンロード中';
+
+  @override
+  String get modelDownload_active => '使用中';
+
+  @override
+  String get modelDownload_failed => 'ダウンロードできませんでした';
+
+  @override
+  String get modelDownload_incomplete => '未完了';
+
+  @override
+  String get modelDownload_verifying => 'ダウンロードを確認しています';
+
+  @override
+  String get modelDownload_useModel => 'このモデルを使う';
+
+  @override
+  String modelDownload_removeFailed(String error) {
+    return 'モデルを削除できませんでした: $error';
+  }
+
+  @override
+  String modelDownload_progress(String current, String total, String percent) {
+    return '$current / $total MB ($percent%)';
+  }
+
+  @override
+  String get chatCompression_title => '圧縮';
+
+  @override
+  String chatCompression_label(String mode) {
+    return '圧縮：$mode';
+  }
+
+  @override
+  String get chatCompression_off => 'オフ';
+
+  @override
+  String get chatCompression_smaz => 'SMAZ';
+
+  @override
+  String get chatCompression_cyr2lat => 'Cyr2Lat';
+
+  @override
+  String get chatCompression_changeHint => 'このチャットの圧縮設定を変更';
+
+  @override
+  String get chatCompression_sheetSubtitle =>
+      'このチャットで送信するメッセージに適用されます。このスマートフォンに保存されます。';
+
+  @override
+  String get chatCompression_offDescription =>
+      '圧縮しません。入力したとおりに送信され、どのアプリでも読めます。バイト数は節約できません。';
+
+  @override
+  String get chatCompression_smazDescription =>
+      '短いテキスト向けの可逆圧縮です。受信側のアプリがSMAZに対応している必要があり、非対応のアプリでは読めない「s:…」の文字列が表示されます。メッセージが小さくなる場合のみ使用されるため、すべてのメッセージが圧縮されるわけではありません。';
+
+  @override
+  String get chatCompression_cyr2latDescription =>
+      '可逆ではありません。一部のキリル文字を似たラテン文字（А→A、З→3）に置き換えてバイト数を節約します。デコード不要でどのアプリでも読めますが、ここで送信した自分のメッセージを含め、実際の文字が変わります。コピー、検索、技術的なテキストに影響する場合があります。結果は選択したプロファイルによって異なります。';
+
+  @override
+  String get chatCompression_profile => 'Cyr2Latプロファイル';
+
+  @override
+  String get chatCompression_noStorageId =>
+      'このチャンネルがラジオから同期されるまで、圧縮設定は変更できません。';
+
+  @override
+  String get chatCompression_saveFailed => '圧縮設定を保存できませんでした。保存済みの設定を表示しています。';
+
+  @override
+  String get messageMeta_smazCompressed => 'SMAZ圧縮済み';
+
+  @override
+  String get addContact_title => '連絡先を追加';
+
+  @override
+  String get addContact_infoBanner =>
+      '連絡したい相手の公開鍵がわかっている場合は、相手のアドバートを待たずに手動で追加できます。';
+
+  @override
+  String get addContact_contactType => '連絡先の種類';
+
+  @override
+  String get addContact_name => '名前';
+
+  @override
+  String get addContact_nameRequired => '名前を入力してください';
+
+  @override
+  String get addContact_publicKeyHex => '公開鍵（16進数）';
+
+  @override
+  String get addContact_publicKeyRequired => '公開鍵を入力してください';
+
+  @override
+  String get addContact_publicKeyInvalid => '公開鍵は16進数64文字（32バイト）である必要があります';
+
+  @override
+  String get addContact_clipboardKeyLoaded =>
+      '公開鍵を入力しました。連絡先の種類を選び、名前を入力して、保存をタップしてください。';
+
+  @override
+  String get addContact_fromDiscovered => '発見された連絡先から追加';
+
+  @override
+  String get addContact_saveFailed => '連絡先を追加できませんでした。';
+
+  @override
+  String get coordinateMap_title => '位置情報';
+
+  @override
+  String get coordinate_copyLocation => '位置情報をコピー';
+
+  @override
+  String get coordinate_openInMaps => 'マップで開く';
+
+  @override
+  String get coordinate_copied => '位置情報をコピーしました';
+
+  @override
+  String get chess_menuGames => 'チェスの対局';
+
+  @override
+  String chess_menuGamesCount(int count) {
+    return 'チェスの対局 ($count)';
+  }
+
+  @override
+  String get chess_sheetTitle => 'チェス';
+
+  @override
+  String get chess_sectionNewGame => '新しい対局';
+
+  @override
+  String get chess_sectionYourGames => 'あなたの対局';
+
+  @override
+  String get chess_sectionInvites => '募集中の対局';
+
+  @override
+  String get chess_sectionLive => '進行中の対局';
+
+  @override
+  String get chess_sectionFinished => '終了した対局';
+
+  @override
+  String get chess_newChallenge => '誰かに挑戦する';
+
+  @override
+  String get chess_newChallengeSubtitle => 'このチャンネルで最近発言した人から選ぶ';
+
+  @override
+  String get chess_newOpenInvite => '対戦相手を募集する';
+
+  @override
+  String get chess_newOpenInviteSubtitle => 'このチャンネルの誰でも参加できます';
+
+  @override
+  String get chess_emptyTitle => '対局はまだありません';
+
+  @override
+  String get chess_emptySubtitle => '誰かに挑戦するか、対戦相手を募集しましょう。チャンネルの誰でも観戦できます。';
+
+  @override
+  String chess_vs(String white, String black) {
+    return '$white 対 $black';
+  }
+
+  @override
+  String get chess_unknownPlayer => '不明';
+
+  @override
+  String chess_rowChallenge(String inviter, String target) {
+    return '$inviter が $target に挑戦しました';
+  }
+
+  @override
+  String get chess_rowYourOpenInvite => 'あなたの募集';
+
+  @override
+  String chess_rowYourChallenge(String name) {
+    return '$name に挑戦しました';
+  }
+
+  @override
+  String chess_rowInviteFrom(String name) {
+    return '$name との対局';
+  }
+
+  @override
+  String get chess_rowStarting => '対局の開始を待っています';
+
+  @override
+  String chess_rowMoveTurn(int number, String turn) {
+    return '$number 手目 · $turn';
+  }
+
+  @override
+  String chess_rowOpenInvite(String name) {
+    return '$name が対戦相手を探しています';
+  }
+
+  @override
+  String chess_rowChallengedYou(String name) {
+    return '$name から挑戦されました';
+  }
+
+  @override
+  String chess_rowInviteDetails(String deadline) {
+    return '1手の持ち時間: $deadline';
+  }
+
+  @override
+  String get chess_accept => '承諾';
+
+  @override
+  String get chess_decline => '辞退';
+
+  @override
+  String get chess_remove => '削除';
+
+  @override
+  String get chess_cancelInvite => '募集を取り消す';
+
+  @override
+  String get chess_cancelInviteTitle => 'この募集を取り消しますか？';
+
+  @override
+  String get chess_sendFailed => '送信できませんでした。ラジオの接続を確認してください。';
+
+  @override
+  String chess_challengeSent(String name) {
+    return '$name に挑戦を送信しました';
+  }
+
+  @override
+  String get chess_inviteSent => '対戦相手の募集を投稿しました';
+
+  @override
+  String get chess_pickOpponent => '挑戦する相手';
+
+  @override
+  String get chess_noRecentSenders => 'このチャンネルで最近発言した人はいません。';
+
+  @override
+  String get chess_deadlineLabel => '1手の持ち時間';
+
+  @override
+  String get chess_deadlineNone => '無制限';
+
+  @override
+  String get chess_deadline15m => '15分';
+
+  @override
+  String get chess_deadline1h => '1時間';
+
+  @override
+  String get chess_deadline6h => '6時間';
+
+  @override
+  String get chess_deadline1d => '1日';
+
+  @override
+  String get chess_deadline3d => '3日';
+
+  @override
+  String get chess_colourLabel => 'あなたの色';
+
+  @override
+  String get chess_colourRandom => 'ランダム';
+
+  @override
+  String get chess_colourWhite => '白';
+
+  @override
+  String get chess_colourBlack => '黒';
+
+  @override
+  String get chess_sendChallenge => '挑戦を送る';
+
+  @override
+  String get chess_postInvite => '募集を投稿';
+
+  @override
+  String get chess_gameGone => 'この対局はもう利用できません。';
+
+  @override
+  String chess_playerYou(String name) {
+    return '$name (あなた)';
+  }
+
+  @override
+  String get chess_toMoveChip => '手番';
+
+  @override
+  String get chess_statusYourMove => 'あなたの手番です';
+
+  @override
+  String chess_statusWaiting(String name) {
+    return '$name を待っています';
+  }
+
+  @override
+  String chess_statusToMove(String name) {
+    return '$name の手番';
+  }
+
+  @override
+  String chess_statusTimeLeft(String time) {
+    return 'この手の残り時間 $time';
+  }
+
+  @override
+  String get chess_statusOverdue => 'この手の持ち時間が切れました';
+
+  @override
+  String chess_statusDrawOffered(String name) {
+    return '$name が引き分けを提案しています';
+  }
+
+  @override
+  String get chess_statusUnknownPosition => '盤面は次の手で表示されます。';
+
+  @override
+  String get chess_statusUnverified => '対局者がまだ確認されていません。更新を依頼して確認してください。';
+
+  @override
+  String get chess_statusPlayersUnchecked =>
+      '対局者の確認ができていません: この端末は募集を受信していません。';
+
+  @override
+  String get chess_statusMoveUnconfirmed =>
+      'あなたの手が送信されていない可能性があります。「更新を依頼」をタップして再送してください。';
+
+  @override
+  String get chess_actionResign => '投了';
+
+  @override
+  String get chess_actionOfferDraw => '引き分けを提案';
+
+  @override
+  String get chess_actionAcceptDraw => '引き分けを承諾';
+
+  @override
+  String get chess_actionClaimTimeout => '時間切れによる勝ちを申請';
+
+  @override
+  String get chess_actionNudge => '更新を依頼';
+
+  @override
+  String get chess_actionNudgeTooltip => '対局者に最新の手の再送を依頼します';
+
+  @override
+  String get chess_resignConfirmTitle => 'この対局を投了しますか？';
+
+  @override
+  String get chess_resignConfirmBody => '相手の勝ちになります。';
+
+  @override
+  String get chess_movesTitle => '棋譜';
+
+  @override
+  String get chess_noMovesYet => 'まだ手がありません';
+
+  @override
+  String get chess_movesMissed => '(未受信)';
+
+  @override
+  String get chess_promoteTitle => 'プロモーション';
+
+  @override
+  String get chess_pieceQueen => 'クイーン';
+
+  @override
+  String get chess_pieceRook => 'ルーク';
+
+  @override
+  String get chess_pieceBishop => 'ビショップ';
+
+  @override
+  String get chess_pieceKnight => 'ナイト';
+
+  @override
+  String get chess_pieceKing => 'キング';
+
+  @override
+  String get chess_piecePawn => 'ポーン';
+
+  @override
+  String chess_squareWhitePiece(String square, String piece) {
+    return '$square: 白の$piece';
+  }
+
+  @override
+  String chess_squareBlackPiece(String square, String piece) {
+    return '$square: 黒の$piece';
+  }
+
+  @override
+  String get chess_resultDraw => '引き分け';
+
+  @override
+  String chess_resultWon(String name) {
+    return '$name の勝ち';
+  }
+
+  @override
+  String chess_resultWithReason(String result, String reason) {
+    return '$result · $reason';
+  }
+
+  @override
+  String get chess_endCheckmate => 'チェックメイト';
+
+  @override
+  String get chess_endResignation => '投了';
+
+  @override
+  String get chess_endTimeout => '時間切れ';
+
+  @override
+  String get chess_endDrawAgreed => '合意による引き分け';
+
+  @override
+  String get chess_endStalemate => 'ステイルメイト';
+
+  @override
+  String get chess_endInsufficient => 'チェックメイトに必要な駒が不足';
+
+  @override
+  String get chess_endFiftyMoves => '50手ルール';
+
+  @override
+  String get chess_endRepetition => '同一局面の繰り返し';
+
+  @override
+  String get chess_endCancelled => '募集は取り消されました';
+
+  @override
+  String get chess_endDeclined => '挑戦は辞退されました';
+
+  @override
+  String get chess_endExpired => '募集の期限が切れました';
+
+  @override
+  String get chess_endTaken => '他の人が先に承諾しました';
+
+  @override
+  String chess_timeMinutes(int minutes) {
+    return '$minutes 分';
+  }
+
+  @override
+  String chess_timeHours(int hours, int minutes) {
+    return '$hours 時間 $minutes 分';
+  }
+
+  @override
+  String chess_timeDays(int days, int hours) {
+    return '$days 日 $hours 時間';
+  }
+
+  @override
+  String get chess_notificationSender => 'チェス';
+
+  @override
+  String chess_notifyChallenge(String name) {
+    return '$name から対局を挑まれました';
+  }
+
+  @override
+  String chess_notifyAccepted(String name) {
+    return '$name が対局を承諾しました';
+  }
+
+  @override
+  String chess_notifyAcceptedYourMove(String name) {
+    return '$name が対局を承諾しました。あなたが白で、先手です。';
+  }
+
+  @override
+  String chess_notifyDeclined(String name) {
+    return '$name が挑戦を辞退しました';
+  }
+
+  @override
+  String get chess_notifyTaken => '他の人が先にその対局を承諾しました';
+
+  @override
+  String get chess_notifyGameStartedYourMove => '対局が始まりました。あなたが白で、先手です。';
+
+  @override
+  String chess_notifyYourMove(String name, String move) {
+    return '$name が $move を指しました。あなたの手番です。';
+  }
+
+  @override
+  String chess_notifyGameOver(String name) {
+    return '$name との対局が終了しました';
+  }
+
+  @override
+  String chess_notifyResigned(String name) {
+    return '$name が投了しました。あなたの勝ちです。';
+  }
+
+  @override
+  String chess_notifyDrawOffered(String name) {
+    return '$name が引き分けを提案しています';
+  }
+
+  @override
+  String chess_notifyDrawAccepted(String name) {
+    return '$name が引き分けを承諾しました';
+  }
+
+  @override
+  String chess_notifyTimeout(String name) {
+    return '$name が時間切れによる勝ちを申請しました';
+  }
 }

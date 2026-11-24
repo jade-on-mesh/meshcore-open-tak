@@ -23,6 +23,8 @@ import '../widgets/language_picker_sheet.dart';
 import '../widgets/mesh_nav_tile.dart';
 import '../widgets/mesh_ui.dart';
 import '../widgets/network_map_settings_section.dart';
+import '../models/send_attempt_plan.dart';
+import '../widgets/settings_reveal.dart';
 import '../widgets/sync_progress_overlay.dart';
 import '../widgets/translation_settings_section.dart';
 import '../helpers/snack_bar_builder.dart';
@@ -69,9 +71,9 @@ class AppSettingsScreen extends StatelessWidget {
 
               // NOTIFICATIONS
               SectionHeader(context.l10n.appSettings_notifications),
-              MeshCard(
+              const MeshCard(
                 padding: EdgeInsets.zero,
-                child: _settingsCard(_buildNotificationsContent),
+                child: NotificationsSettingsSection(),
               ),
 
               // MESSAGING
@@ -86,6 +88,13 @@ class AppSettingsScreen extends StatelessWidget {
               MeshCard(
                 padding: EdgeInsets.zero,
                 child: _settingsCard(_buildRoutingContent),
+              ),
+
+              // REPEATERS AND ROOMS
+              SectionHeader(context.l10n.appSettings_repeatersAndRooms),
+              MeshCard(
+                padding: EdgeInsets.zero,
+                child: _settingsCard(_buildRepeaterRoomContent),
               ),
 
               // IMAGE MESSAGES
@@ -313,184 +322,6 @@ class AppSettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildNotificationsContent(
-    BuildContext context,
-    AppSettingsService settingsService,
-  ) {
-    final notifEnabled = settingsService.settings.notificationsEnabled;
-    return Column(
-      children: [
-        SwitchListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 4,
-          ),
-          secondary: const Icon(Icons.notifications_outlined, size: 24),
-          title: Text(context.l10n.appSettings_enableNotifications),
-          subtitle: Text(context.l10n.appSettings_enableNotificationsSubtitle),
-          value: settingsService.settings.notificationsEnabled,
-          onChanged: (value) async {
-            if (value) {
-              final granted = await NotificationService().requestPermissions();
-              if (!granted) {
-                if (context.mounted) {
-                  showDismissibleSnackBar(
-                    context,
-                    content: Text(
-                      context.l10n.appSettings_notificationPermissionDenied,
-                    ),
-                    duration: const Duration(seconds: 2),
-                  );
-                }
-                return;
-              }
-            }
-            await settingsService.setNotificationsEnabled(value);
-            if (context.mounted) {
-              showDismissibleSnackBar(
-                context,
-                content: Text(
-                  value
-                      ? context.l10n.appSettings_notificationsEnabled
-                      : context.l10n.appSettings_notificationsDisabled,
-                ),
-                duration: const Duration(seconds: 2),
-              );
-            }
-          },
-        ),
-        const Divider(height: 1, indent: 16),
-        SwitchListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 4,
-          ),
-          secondary: Icon(
-            Icons.message_outlined,
-            size: 24,
-            color: notifEnabled ? null : Theme.of(context).disabledColor,
-          ),
-          title: Text(
-            context.l10n.appSettings_messageNotifications,
-            style: TextStyle(
-              color: notifEnabled ? null : Theme.of(context).disabledColor,
-            ),
-          ),
-          subtitle: Text(
-            context.l10n.appSettings_messageNotificationsSubtitle,
-            style: TextStyle(
-              color: notifEnabled ? null : Theme.of(context).disabledColor,
-            ),
-          ),
-          value: settingsService.settings.notifyOnNewMessage,
-          onChanged: notifEnabled
-              ? (value) => settingsService.setNotifyOnNewMessage(value)
-              : null,
-        ),
-        if (PlatformInfo.isAndroid) ...[
-          const Divider(height: 1, indent: 16),
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 4,
-            ),
-            leading: const Icon(Icons.battery_saver_outlined, size: 24),
-            title: Text(context.l10n.appSettings_batteryOptimization),
-            subtitle: Text(
-              context.l10n.appSettings_batteryOptimizationSubtitle,
-            ),
-            trailing: const Icon(Icons.open_in_new, size: 24),
-            onTap: BackgroundService.openBatteryOptimizationSettings,
-          ),
-        ],
-        const Divider(height: 1, indent: 16),
-        SwitchListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 4,
-          ),
-          secondary: Icon(
-            Icons.forum_outlined,
-            size: 24,
-            color: notifEnabled ? null : Theme.of(context).disabledColor,
-          ),
-          title: Text(
-            context.l10n.appSettings_channelMessageNotifications,
-            style: TextStyle(
-              color: notifEnabled ? null : Theme.of(context).disabledColor,
-            ),
-          ),
-          subtitle: Text(
-            context.l10n.appSettings_channelMessageNotificationsSubtitle,
-            style: TextStyle(
-              color: notifEnabled ? null : Theme.of(context).disabledColor,
-            ),
-          ),
-          value: settingsService.settings.notifyOnNewChannelMessage,
-          onChanged: notifEnabled
-              ? (value) => settingsService.setNotifyOnNewChannelMessage(value)
-              : null,
-        ),
-        const Divider(height: 1, indent: 16),
-        SwitchListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 4,
-          ),
-          secondary: Icon(
-            Icons.cell_tower,
-            size: 24,
-            color: notifEnabled ? null : Theme.of(context).disabledColor,
-          ),
-          title: Text(
-            context.l10n.appSettings_advertisementNotifications,
-            style: TextStyle(
-              color: notifEnabled ? null : Theme.of(context).disabledColor,
-            ),
-          ),
-          subtitle: Text(
-            context.l10n.appSettings_advertisementNotificationsSubtitle,
-            style: TextStyle(
-              color: notifEnabled ? null : Theme.of(context).disabledColor,
-            ),
-          ),
-          value: settingsService.settings.notifyOnNewAdvert,
-          onChanged: notifEnabled
-              ? (value) => settingsService.setNotifyOnNewAdvert(value)
-              : null,
-        ),
-        Builder(
-          builder: (context) {
-            final on =
-                notifEnabled && settingsService.settings.notifyOnNewAdvert;
-            final disabled = Theme.of(context).disabledColor;
-            return SwitchListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 4,
-              ),
-              secondary: Icon(
-                Icons.vibration,
-                size: 24,
-                color: on ? null : disabled,
-              ),
-              title: Text(
-                context.l10n.appSettings_advertAlerts,
-                style: TextStyle(color: on ? null : disabled),
-              ),
-              subtitle: Text(
-                context.l10n.appSettings_advertAlertsSubtitle,
-                style: TextStyle(color: on ? null : disabled),
-              ),
-              value: settingsService.settings.notifyAdvertAlerts,
-              onChanged: on ? settingsService.setNotifyAdvertAlerts : null,
-            );
-          },
-        ),
-      ],
-    );
-  }
-
   Widget _buildMessagingContent(
     BuildContext context,
     AppSettingsService settingsService,
@@ -500,29 +331,6 @@ class AppSettingsScreen extends StatelessWidget {
         // Photos and voice on Public and #public: off unless an emergency.
         const PublicMediaSwitch(
           contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        ),
-        const Divider(height: 1, indent: 16),
-        SwitchListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 4,
-          ),
-          secondary: const Icon(Icons.refresh_outlined, size: 24),
-          title: Text(context.l10n.appSettings_clearPathOnMaxRetry),
-          subtitle: Text(context.l10n.appSettings_clearPathOnMaxRetrySubtitle),
-          value: settingsService.settings.clearPathOnMaxRetry,
-          onChanged: (value) {
-            settingsService.setClearPathOnMaxRetry(value);
-            showDismissibleSnackBar(
-              context,
-              content: Text(
-                value
-                    ? context.l10n.appSettings_pathsWillBeCleared
-                    : context.l10n.appSettings_pathsWillNotBeCleared,
-              ),
-              duration: const Duration(seconds: 2),
-            );
-          },
         ),
         const Divider(height: 1, indent: 16),
         SwitchListTile(
@@ -566,20 +374,6 @@ class AppSettingsScreen extends StatelessWidget {
             horizontal: 16,
             vertical: 4,
           ),
-          secondary: const Icon(Icons.settings_remote_outlined, size: 24),
-          title: Text(context.l10n.appSettings_autoFetchRepeaterSettings),
-          subtitle: Text(
-            context.l10n.appSettings_autoFetchRepeaterSettingsSubtitle,
-          ),
-          value: settingsService.settings.autoFetchRepeaterSettings,
-          onChanged: settingsService.setAutoFetchRepeaterSettings,
-        ),
-        const Divider(height: 1, indent: 16),
-        SwitchListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 4,
-          ),
           secondary: const Icon(Icons.location_searching, size: 24),
           title: Text(context.l10n.appSettings_enableMessageTracing),
           subtitle: Text(context.l10n.appSettings_enableMessageTracingSubtitle),
@@ -612,6 +406,20 @@ class AppSettingsScreen extends StatelessWidget {
           value: settingsService.settings.showRepeaterPath,
           onChanged: settingsService.setShowRepeaterPath,
         ),
+        const Divider(height: 1, indent: 16),
+        SwitchListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
+          secondary: const Icon(Icons.compress, size: 24),
+          title: Text(context.l10n.appSettings_showCompressionIndicator),
+          subtitle: Text(
+            context.l10n.appSettings_showCompressionIndicatorSubtitle,
+          ),
+          value: settingsService.settings.showCompressionIndicator,
+          onChanged: settingsService.setShowCompressionIndicator,
+        ),
       ],
     );
   }
@@ -620,7 +428,8 @@ class AppSettingsScreen extends StatelessWidget {
     BuildContext context,
     AppSettingsService settingsService,
   ) {
-    final autoRouteEnabled = settingsService.settings.autoRouteRotationEnabled;
+    final settings = settingsService.settings;
+    final l10n = context.l10n;
     return Column(
       children: [
         SwitchListTile(
@@ -628,95 +437,166 @@ class AppSettingsScreen extends StatelessWidget {
             horizontal: 16,
             vertical: 4,
           ),
+          secondary: const Icon(Icons.refresh_outlined, size: 24),
+          title: Text(l10n.appSettings_clearPathOnMaxRetry),
+          subtitle: Text(l10n.appSettings_clearPathOnMaxRetrySubtitle),
+          value: settings.clearPathOnMaxRetry,
+          onChanged: (value) {
+            settingsService.setClearPathOnMaxRetry(value);
+            showDismissibleSnackBar(
+              context,
+              content: Text(
+                value
+                    ? l10n.appSettings_pathsWillBeCleared
+                    : l10n.appSettings_pathsWillNotBeCleared,
+              ),
+              duration: const Duration(seconds: 2),
+            );
+          },
+        ),
+        const Divider(height: 1, indent: 16),
+        SettingsValueSlider(
+          icon: Icons.route,
+          title: l10n.appSettings_directRetries(settings.directRetries),
+          subtitle: l10n.appSettings_directRetriesSubtitle,
+          value: settings.directRetries,
+          min: SendAttemptPlan.minDirectRetries,
+          max: SendAttemptPlan.maxDirectRetries,
+          onChanged: settingsService.setDirectRetries,
+        ),
+        const Divider(height: 1, indent: 16),
+        SettingsValueSlider(
+          icon: Icons.waves,
+          title: l10n.appSettings_floodRetries(settings.floodRetries),
+          subtitle: l10n.appSettings_floodRetriesSubtitle,
+          value: settings.floodRetries,
+          min: SendAttemptPlan.minFloodRetries,
+          max: SendAttemptPlan.maxFloodRetries,
+          onChanged: settingsService.setFloodRetries,
+        ),
+        const Divider(height: 1, indent: 16),
+        SwitchListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
           secondary: const Icon(Icons.alt_route, size: 24),
-          title: Text(context.l10n.appSettings_autoRouteRotation),
-          subtitle: Text(context.l10n.appSettings_autoRouteRotationSubtitle),
-          value: autoRouteEnabled,
+          title: Text(l10n.appSettings_autoRouteRotation),
+          subtitle: Text(l10n.appSettings_autoRouteRotationSubtitle),
+          value: settings.autoRouteRotationEnabled,
           onChanged: (value) {
             settingsService.setAutoRouteRotationEnabled(value);
             showDismissibleSnackBar(
               context,
               content: Text(
                 value
-                    ? context.l10n.appSettings_autoRouteRotationEnabled
-                    : context.l10n.appSettings_autoRouteRotationDisabled,
+                    ? l10n.appSettings_autoRouteRotationEnabled
+                    : l10n.appSettings_autoRouteRotationDisabled,
               ),
               duration: const Duration(seconds: 2),
             );
           },
         ),
-        // AnimatedSize sub-options for auto-route rotation
-        AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          alignment: Alignment.topCenter,
-          child: autoRouteEnabled
-              ? Container(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  padding: const EdgeInsets.only(left: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Divider(height: 1),
-                      ListTile(
-                        title: Text(context.l10n.appSettings_maxMessageRetries),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              context
-                                  .l10n
-                                  .appSettings_maxMessageRetriesSubtitle,
-                            ),
-                            Slider(
-                              value: settingsService.settings.maxMessageRetries
-                                  .toDouble(),
-                              min: 2,
-                              max: 10,
-                              divisions: 8,
-                              label: settingsService.settings.maxMessageRetries
-                                  .toString(),
-                              onChanged: (value) => settingsService
-                                  .setMaxMessageRetries(value.toInt()),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Divider(height: 1),
-                      ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 4,
-                        ),
-                        leading: const Icon(Icons.restart_alt, size: 24),
-                        title: Text(
-                          context.l10n.appSettings_resetRoutingToDefault,
-                        ),
-                        subtitle: Text(
-                          context
-                              .l10n
-                              .appSettings_resetRoutingToDefaultSubtitle,
-                        ),
-                        trailing: const Icon(
-                          Icons.keyboard_arrow_right,
-                          size: 18,
-                        ),
-                        onTap: () async {
-                          await settingsService.resetRoutingSettingsToDefault();
-                          if (context.mounted) {
-                            showDismissibleSnackBar(
-                              context,
-                              content: Text(
-                                context.l10n.appSettings_routingResetToDefault,
-                              ),
-                              duration: const Duration(seconds: 2),
-                            );
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                )
-              : const SizedBox.shrink(),
+        // MeshCore Open TAK leaves out upstream's "Resend channel messages
+        // until they travel far enough" (Keymind Cascade makes it unneeded).
+        const Divider(height: 1, indent: 16),
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
+          leading: const Icon(Icons.restart_alt, size: 24),
+          title: Text(l10n.appSettings_resetRoutingToDefault),
+          subtitle: Text(l10n.appSettings_resetRoutingToDefaultSubtitle),
+          trailing: const Icon(Icons.keyboard_arrow_right, size: 18),
+          onTap: () async {
+            await settingsService.resetRoutingSettingsToDefault();
+            if (context.mounted) {
+              showDismissibleSnackBar(
+                context,
+                content: Text(l10n.appSettings_routingResetToDefault),
+                duration: const Duration(seconds: 2),
+              );
+            }
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRepeaterRoomContent(
+    BuildContext context,
+    AppSettingsService settingsService,
+  ) {
+    final settings = settingsService.settings;
+    final l10n = context.l10n;
+    return Column(
+      children: [
+        SwitchListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
+          secondary: const Icon(Icons.schedule, size: 24),
+          title: Text(l10n.appSettings_clockSyncAfterLogin),
+          subtitle: Text(l10n.appSettings_clockSyncAfterLoginSubtitle),
+          value: settings.clockSyncAfterLogin,
+          onChanged: settingsService.setClockSyncAfterLogin,
+        ),
+        const Divider(height: 1, indent: 16),
+        SwitchListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
+          secondary: const Icon(Icons.password, size: 24),
+          title: Text(l10n.appSettings_loginPasswordAutofocus),
+          subtitle: Text(l10n.appSettings_loginPasswordAutofocusSubtitle),
+          value: settings.loginPasswordAutofocus,
+          onChanged: settingsService.setLoginPasswordAutofocus,
+        ),
+        const Divider(height: 1, indent: 16),
+        SettingsValueSlider(
+          icon: Icons.login,
+          title: l10n.appSettings_loginAttempts(settings.loginAttempts),
+          subtitle: l10n.appSettings_loginAttemptsSubtitle,
+          value: settings.loginAttempts,
+          min: SendAttemptPlan.minLoginAttempts,
+          max: SendAttemptPlan.maxLoginAttempts,
+          onChanged: settingsService.setLoginAttempts,
+        ),
+        const Divider(height: 1, indent: 16),
+        SwitchListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
+          secondary: const Icon(Icons.settings_remote_outlined, size: 24),
+          title: Text(l10n.appSettings_autoFetchRepeaterSettings),
+          subtitle: Text(l10n.appSettings_autoFetchRepeaterSettingsSubtitle),
+          value: settings.autoFetchRepeaterSettings,
+          onChanged: settingsService.setAutoFetchRepeaterSettings,
+        ),
+        const Divider(height: 1, indent: 16),
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
+          leading: const Icon(Icons.restart_alt, size: 24),
+          title: Text(l10n.appSettings_resetRepeaterRoomSettings),
+          subtitle: Text(l10n.appSettings_resetRepeaterRoomSettingsSubtitle),
+          trailing: const Icon(Icons.keyboard_arrow_right, size: 18),
+          onTap: () async {
+            await settingsService.resetRepeaterRoomSettingsToDefault();
+            if (context.mounted) {
+              showDismissibleSnackBar(
+                context,
+                content: Text(l10n.appSettings_repeaterRoomSettingsReset),
+                duration: const Duration(seconds: 2),
+              );
+            }
+          },
         ),
       ],
     );
@@ -756,15 +636,10 @@ class AppSettingsScreen extends StatelessWidget {
               : null,
         ),
         const Divider(height: 1, indent: 16),
-        ListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 4,
-          ),
-          leading: const Icon(Icons.link_outlined, size: 20),
-          title: Text(context.l10n.appSettings_ipfsImageLinks),
-          subtitle: Text(context.l10n.appSettings_ipfsImageLinksSubtitle),
-          trailing: const Icon(Icons.chevron_right, size: 18),
+        MeshNavTile(
+          icon: Icons.link_outlined,
+          title: context.l10n.appSettings_ipfsImageLinks,
+          subtitle: context.l10n.appSettings_ipfsImageLinksSubtitle,
           onTap: () => _showIpfsImageLinksDialog(context, settingsService),
         ),
         const Divider(height: 1, indent: 16),
@@ -869,7 +744,7 @@ class AppSettingsScreen extends StatelessWidget {
                 size: 24,
                 color: scheme.onSurfaceVariant,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1951,4 +1826,223 @@ class _ScrollIntoViewOnceState extends State<_ScrollIntoViewOnce> {
 
   @override
   Widget build(BuildContext context) => widget.child;
+}
+
+class NotificationsSettingsSection extends StatefulWidget {
+  final Future<bool> Function()? hasPermission;
+  final Future<bool> Function()? requestPermission;
+
+  const NotificationsSettingsSection({
+    super.key,
+    this.hasPermission,
+    this.requestPermission,
+  });
+
+  @override
+  State<NotificationsSettingsSection> createState() =>
+      _NotificationsSettingsSectionState();
+}
+
+class _NotificationsSettingsSectionState
+    extends State<NotificationsSettingsSection>
+    with WidgetsBindingObserver {
+  bool _hasNotificationPermission = false;
+  bool _permissionCheckComplete = false;
+  int _permissionCheckGeneration = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _refreshNotificationPermission(inInit: true);
+  }
+
+  @override
+  void didUpdateWidget(covariant NotificationsSettingsSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.hasPermission != oldWidget.hasPermission) {
+      _refreshNotificationPermission();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshNotificationPermission();
+    }
+  }
+
+  Future<bool> _checkPermission() {
+    final checker = widget.hasPermission;
+    if (checker != null) return checker();
+    return NotificationService().hasNotificationPermission();
+  }
+
+  Future<bool> _requestPermission() {
+    final requester = widget.requestPermission;
+    if (requester != null) return requester();
+    return NotificationService().requestPermissions();
+  }
+
+  void _refreshNotificationPermission({bool inInit = false}) {
+    final generation = ++_permissionCheckGeneration;
+    var completedSynchronously = false;
+    var syncResult = false;
+    var isSyncWindow = true;
+    _checkPermission().then((granted) {
+      if (generation != _permissionCheckGeneration) return;
+      if (isSyncWindow && inInit) {
+        completedSynchronously = true;
+        syncResult = granted;
+        return;
+      }
+      if (!mounted) return;
+      if (_permissionCheckComplete && _hasNotificationPermission == granted) {
+        return;
+      }
+      setState(() {
+        _hasNotificationPermission = granted;
+        _permissionCheckComplete = true;
+      });
+    });
+    isSyncWindow = false;
+    if (completedSynchronously) {
+      _hasNotificationPermission = syncResult;
+      _permissionCheckComplete = true;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settingsService = context.watch<AppSettingsService>();
+    final settings = settingsService.settings;
+    final l10n = context.l10n;
+    final effectiveEnabled =
+        settings.notificationsEnabled && _hasNotificationPermission;
+    final permissionDenied =
+        _permissionCheckComplete && !_hasNotificationPermission;
+    const tilePadding = EdgeInsets.symmetric(horizontal: 16, vertical: 4);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SwitchListTile(
+          contentPadding: tilePadding,
+          secondary: const Icon(Icons.notifications_outlined, size: 24),
+          title: Text(l10n.appSettings_enableNotifications),
+          subtitle: Text(
+            permissionDenied
+                ? l10n.appSettings_notificationPermissionDenied
+                : l10n.appSettings_enableNotificationsSubtitle,
+          ),
+          value: effectiveEnabled,
+          onChanged: (value) async {
+            _permissionCheckGeneration++;
+            if (value) {
+              final granted = await _requestPermission();
+              if (!granted) {
+                if (!context.mounted) return;
+                setState(() {
+                  _hasNotificationPermission = false;
+                  _permissionCheckComplete = true;
+                });
+                showDismissibleSnackBar(
+                  context,
+                  content: Text(l10n.appSettings_notificationPermissionDenied),
+                  duration: const Duration(seconds: 2),
+                );
+                return;
+              }
+              if (context.mounted) {
+                setState(() {
+                  _hasNotificationPermission = true;
+                  _permissionCheckComplete = true;
+                });
+              }
+            }
+            await settingsService.setNotificationsEnabled(value);
+            if (!context.mounted) return;
+            showDismissibleSnackBar(
+              context,
+              content: Text(
+                value
+                    ? l10n.appSettings_notificationsEnabled
+                    : l10n.appSettings_notificationsDisabled,
+              ),
+              duration: const Duration(seconds: 2),
+            );
+          },
+        ),
+        SettingsReveal(
+          visible: effectiveEnabled,
+          children: [
+            SwitchListTile(
+              contentPadding: tilePadding,
+              secondary: const Icon(Icons.message_outlined, size: 24),
+              title: Text(l10n.appSettings_messageNotifications),
+              subtitle: Text(l10n.appSettings_messageNotificationsSubtitle),
+              value: settings.notifyOnNewMessage,
+              onChanged: settingsService.setNotifyOnNewMessage,
+            ),
+            const Divider(height: 1, indent: 16),
+            SwitchListTile(
+              contentPadding: tilePadding,
+              secondary: const Icon(Icons.forum_outlined, size: 24),
+              title: Text(l10n.appSettings_channelMessageNotifications),
+              subtitle: Text(
+                l10n.appSettings_channelMessageNotificationsSubtitle,
+              ),
+              value: settings.notifyOnNewChannelMessage,
+              onChanged: settingsService.setNotifyOnNewChannelMessage,
+            ),
+            const Divider(height: 1, indent: 16),
+            SwitchListTile(
+              contentPadding: tilePadding,
+              secondary: const Icon(Icons.cell_tower, size: 24),
+              title: Text(l10n.appSettings_advertisementNotifications),
+              subtitle: Text(
+                l10n.appSettings_advertisementNotificationsSubtitle,
+              ),
+              value: settings.notifyOnNewAdvert,
+              onChanged: settingsService.setNotifyOnNewAdvert,
+            ),
+            // MeshCore Open TAK: sound and vibration for new-node alerts.
+            SwitchListTile(
+              contentPadding: tilePadding,
+              secondary: Icon(
+                Icons.vibration,
+                size: 24,
+                color: settings.notifyOnNewAdvert
+                    ? null
+                    : Theme.of(context).disabledColor,
+              ),
+              title: Text(l10n.appSettings_advertAlerts),
+              subtitle: Text(l10n.appSettings_advertAlertsSubtitle),
+              value: settings.notifyAdvertAlerts,
+              onChanged: settings.notifyOnNewAdvert
+                  ? settingsService.setNotifyAdvertAlerts
+                  : null,
+            ),
+            if (PlatformInfo.isAndroid) ...[
+              const Divider(height: 1, indent: 16),
+              ListTile(
+                contentPadding: tilePadding,
+                leading: const Icon(Icons.battery_saver_outlined, size: 24),
+                title: Text(l10n.appSettings_batteryOptimization),
+                subtitle: Text(l10n.appSettings_batteryOptimizationSubtitle),
+                trailing: const Icon(Icons.open_in_new, size: 24),
+                onTap: BackgroundService.openBatteryOptimizationSettings,
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
 }

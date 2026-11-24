@@ -705,6 +705,9 @@ class AppLocalizationsSv extends AppLocalizations {
       'Upptäckta kontakter och deras sparade uppgifter';
 
   @override
+  String get backupRestore_bookmarks => 'Bokmärken';
+
+  @override
   String get backupRestore_channels => 'Kanaler';
 
   @override
@@ -728,9 +731,8 @@ class AppLocalizationsSv extends AppLocalizations {
   String get backupRestore_missingModelsTitle => 'Modeller inte nedladdade';
 
   @override
-  String backupRestore_missingModelsMessage(String models) {
-    return 'De återställda inställningarna väljer modeller som inte finns på den här enheten:\n$models\n\nLadda ned dem nu?';
-  }
+  String get backupRestore_missingModelsMessage =>
+      'De återställda inställningarna väljer modeller som inte finns på den här enheten. Ladda ned dem nu?';
 
   @override
   String get backupRestore_downloadModels => 'Ladda ned modeller';
@@ -1548,6 +1550,13 @@ class AppLocalizationsSv extends AppLocalizations {
       'Visa ett kanalmeddelandes region på samma rad som dess hoppantal i stället för under det.';
 
   @override
+  String get appSettings_showCompressionIndicator => 'Komprimeringsindikator';
+
+  @override
+  String get appSettings_showCompressionIndicatorSubtitle =>
+      'Visa en ikon på meddelanden som komprimerats med SMAZ.';
+
+  @override
   String get appSettings_notifications => 'Notifieringar';
 
   @override
@@ -1731,11 +1740,11 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get appSettings_clearPathOnMaxRetrySubtitle =>
-      'Återställ kontaktens rutt efter 5 misslyckade sändningsförsök';
+      'Återställ kontaktens sparade rutt när alla sändningsförsök misslyckas';
 
   @override
   String get appSettings_pathsWillBeCleared =>
-      'Rutter rensas efter 5 misslyckade försök';
+      'Rutter rensas när alla sändningsförsök misslyckas';
 
   @override
   String get appSettings_pathsWillNotBeCleared =>
@@ -1746,7 +1755,7 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get appSettings_autoRouteRotationSubtitle =>
-      'Växla mellan de bästa rutterna och flood-läge';
+      'Vid varje direkt försök, prova en annan känd rutt. Senare försök är Flood. Av behåller kontaktens aktuella rutt.';
 
   @override
   String get appSettings_autoRouteRotationEnabled =>
@@ -1762,6 +1771,63 @@ class AppLocalizationsSv extends AppLocalizations {
   @override
   String get appSettings_maxMessageRetriesSubtitle =>
       'Antal försök att skicka om ett meddelande innan det markeras som misslyckat.';
+
+  @override
+  String appSettings_directRetries(int count) {
+    return 'Direkta försök: $count';
+  }
+
+  @override
+  String get appSettings_directRetriesSubtitle =>
+      'Hur många gånger en känd rutt provas. Finns kvar även när automatisk ruttrotation är av.';
+
+  @override
+  String appSettings_floodRetries(int count) {
+    return 'Flood-försök: $count';
+  }
+
+  @override
+  String get appSettings_floodRetriesSubtitle =>
+      'Hur många gånger Flood används. Flood tar mer sändningstid. Med rotation på kommer de efter de direkta försöken.';
+
+  @override
+  String appSettings_loginAttempts(int count) {
+    return 'Inloggningsförsök: $count';
+  }
+
+  @override
+  String get appSettings_loginAttemptsSubtitle =>
+      'Hur många gånger inloggning till en repeater eller room-server provas innan den ger upp.';
+
+  @override
+  String get appSettings_repeatersAndRooms => 'Repeatrar och rum';
+
+  @override
+  String get appSettings_clockSyncAfterLogin =>
+      'Synka repeaterklockan vid inloggning';
+
+  @override
+  String get appSettings_clockSyncAfterLoginSubtitle =>
+      'Efter en lyckad repeaterinloggning skickas clock sync. Varje repeater kan fortfarande välja Standard, På eller Av.';
+
+  @override
+  String get appSettings_loginPasswordAutofocus => 'Fokusera lösenordsfältet';
+
+  @override
+  String get appSettings_loginPasswordAutofocusSubtitle =>
+      'När en repeater- eller ruminloggning öppnas hamnar markören i lösenordsfältet om det är tomt. Av lämnar dialogrutan synlig tills du trycker på fältet.';
+
+  @override
+  String get appSettings_resetRepeaterRoomSettings =>
+      'Återställ repeater- och ruminställningar';
+
+  @override
+  String get appSettings_resetRepeaterRoomSettingsSubtitle =>
+      'Återställer inställningarna i det här avsnittet. Val som sparats på enskilda repeatrar blir kvar.';
+
+  @override
+  String get appSettings_repeaterRoomSettingsReset =>
+      'Repeater- och ruminställningar återställda';
 
   @override
   String get appSettings_ipfsImageLinks => 'Konfiguration av IPFS-leverantör';
@@ -2147,6 +2213,24 @@ class AppLocalizationsSv extends AppLocalizations {
   String get contacts_noMembers => 'Inga medlemmar';
 
   @override
+  String contacts_groupCurrentMembers(int count) {
+    return 'Nuvarande medlemmar ($count)';
+  }
+
+  @override
+  String get contacts_groupAddContacts => 'Lägg till kontakter';
+
+  @override
+  String contacts_groupRemoveMember(String name) {
+    return 'Ta bort $name från gruppen';
+  }
+
+  @override
+  String contacts_groupAddMember(String name) {
+    return 'Lägg till $name i gruppen';
+  }
+
+  @override
   String get nav_nodes => 'Nodes';
 
   @override
@@ -2159,6 +2243,9 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get contacts_lastSeenNow => 'nyss';
+
+  @override
+  String get contacts_lastSeenNever => 'inte hörd ännu';
 
   @override
   String contacts_lastSeenMinsAgo(int minutes) {
@@ -2338,16 +2425,6 @@ class AppLocalizationsSv extends AppLocalizations {
   String channels_editChannelTitle(int index) {
     return 'Redigera Kanal $index';
   }
-
-  @override
-  String get channels_smazCompression => 'SMAZ-komprimering';
-
-  @override
-  String get channels_cyr2latCompression => 'Cyr2Lat-komprimering';
-
-  @override
-  String get channels_cyr2latCompressionDscr =>
-      'Ersätter vissa kyrilliska tecken med latinska tecken när du skickar.';
 
   @override
   String get channels_cyr2latSettingsHeading => 'Inställningar för Cyr2Lat';
@@ -2666,6 +2743,30 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get chat_messageDeleted => 'Meddelandet raderat';
+
+  @override
+  String get chat_bookmark => 'Bokmärke';
+
+  @override
+  String get chat_removeBookmark => 'Ta bort bokmärke';
+
+  @override
+  String get chat_showBookmarks => 'Visa bokmärken';
+
+  @override
+  String get bookmarks_title => 'Bokmärken';
+
+  @override
+  String get bookmarks_empty => 'Inga bokmärkta meddelanden';
+
+  @override
+  String get bookmarks_channel => 'Kanal';
+
+  @override
+  String get bookmarks_contact => 'Kontakt';
+
+  @override
+  String get bookmarks_remove => 'Ta bort bokmärke';
 
   @override
   String get chat_selectMessages => 'Markera meddelanden';
@@ -3153,8 +3254,9 @@ class AppLocalizationsSv extends AppLocalizations {
   String get pathEditor_hexLabel => 'Hex-prefikser';
 
   @override
-  String get pathEditor_hexHelper =>
-      'Två hextecken per hopp, separerade med kommatecken';
+  String pathEditor_hexHelper(int count) {
+    return '$count hextecken per hopp, separerade med kommatecken';
+  }
 
   @override
   String pathEditor_invalidTokens(String tokens) {
@@ -3194,9 +3296,6 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get chat_publicKey => 'Publik nyckel';
-
-  @override
-  String get chat_compressOutgoingMessages => 'Komprimera utgående meddelanden';
 
   @override
   String get chat_floodForced => 'Flood (tvingad)';
@@ -3980,7 +4079,16 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get repeater_clockSyncAfterLoginSubtitle =>
-      'Automatiskt skicka \"klocksynkronisering\" efter en lyckad inloggning.';
+      'Standard följer Repeatrar och rum i appinställningarna. På och Av gäller bara den här repeatern.';
+
+  @override
+  String get repeater_clockSyncDefault => 'Standard';
+
+  @override
+  String get repeater_clockSyncOn => 'På';
+
+  @override
+  String get repeater_clockSyncOff => 'Av';
 
   @override
   String get repeater_statusTitle => 'Repeaterstatus';
@@ -6192,6 +6300,20 @@ class AppLocalizationsSv extends AppLocalizations {
       'MeshCore Open är inte igång. Öppna appen och skicka ditt svar igen.';
 
   @override
+  String get settings_exportBookmarks => 'Exportera bokmärken till Markdown';
+
+  @override
+  String get settings_exportBookmarksSubtitle =>
+      'Dela eller spara bokmärkta meddelanden som en Markdown-fil.';
+
+  @override
+  String get settings_exportBookmarksSuccess => 'Bokmärken exporterade.';
+
+  @override
+  String get settings_exportBookmarksNoBookmarks =>
+      'Inga bokmärken att exportera.';
+
+  @override
   String get settings_gpxExportRepeaters =>
       'Exportera repeatrar/rumsservrar till GPX';
 
@@ -6861,6 +6983,56 @@ class AppLocalizationsSv extends AppLocalizations {
   @override
   String get imageSend_reconstructionUnavailable =>
       'Enheten kan inte förhandsgranska rekonstruktionen.';
+
+  @override
+  String receivedImage_packetEchoes(int number, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'upprepat $count gånger',
+      one: 'upprepat en gång',
+      zero: 'ingen repeater hörd',
+    );
+    return 'Paket $number: $_temp0';
+  }
+
+  @override
+  String receivedImage_recoveryPacketEchoes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'upprepat $count gånger',
+      one: 'upprepat en gång',
+      zero: 'ingen repeater hörd',
+    );
+    return 'Återställningspaket: $_temp0';
+  }
+
+  @override
+  String get imageSend_preparingPreview => 'Förbereder förhandsvisning…';
+
+  @override
+  String get imageSend_tryAnother => 'Prova en annan version';
+
+  @override
+  String get imageSend_versionsHint =>
+      'Varje version rekonstrueras lite olika. Välj den som liknar ditt foto mest.';
+
+  @override
+  String imageSend_versionLabel(int number) {
+    return 'Version $number';
+  }
+
+  @override
+  String imageSend_versionPackets(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count paket',
+      one: '1 paket',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get imageSend_modelNotDownloaded =>
@@ -7565,15 +7737,15 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get appSettings_resetRoutingToDefault =>
-      'Återställ rutningsalgoritm till standard';
+      'Återställ rutningsinställningar till standard';
 
   @override
   String get appSettings_resetRoutingToDefaultSubtitle =>
-      'Återställ rutningsalgoritmins inställningar till fabriksstandard';
+      'Återställ routningsinställningarna i det här avsnittet till standardvärden';
 
   @override
   String get appSettings_routingResetToDefault =>
-      'Rutningsalgoritmins inställningar återställda till standard';
+      'Rutningsinställningar återställda till standard';
 
   @override
   String get appSettings_imageMessagesSection => 'Bildmeddelanden';
@@ -10066,4 +10238,544 @@ class AppLocalizationsSv extends AppLocalizations {
   @override
   String get chat_composerOffline =>
       'Anslut till en radio för att skicka meddelanden';
+
+  @override
+  String get modelDownload_notDownloaded => 'Inte nedladdad';
+
+  @override
+  String get modelDownload_downloading => 'Laddar ner';
+
+  @override
+  String get modelDownload_active => 'Aktiv';
+
+  @override
+  String get modelDownload_failed => 'Kunde inte ladda ner';
+
+  @override
+  String get modelDownload_incomplete => 'Ofullständig';
+
+  @override
+  String get modelDownload_verifying => 'Verifierar nedladdningen';
+
+  @override
+  String get modelDownload_useModel => 'Använd den här modellen';
+
+  @override
+  String modelDownload_removeFailed(String error) {
+    return 'Det gick inte att ta bort modellen: $error';
+  }
+
+  @override
+  String modelDownload_progress(String current, String total, String percent) {
+    return '$current / $total MB ($percent%)';
+  }
+
+  @override
+  String get chatCompression_title => 'Komprimering';
+
+  @override
+  String chatCompression_label(String mode) {
+    return 'Komprimering: $mode';
+  }
+
+  @override
+  String get chatCompression_off => 'Av';
+
+  @override
+  String get chatCompression_smaz => 'SMAZ';
+
+  @override
+  String get chatCompression_cyr2lat => 'Cyr2Lat';
+
+  @override
+  String get chatCompression_changeHint =>
+      'Ändra komprimering för den här chatten';
+
+  @override
+  String get chatCompression_sheetSubtitle =>
+      'Gäller meddelanden du skickar i den här chatten. Sparas på den här telefonen.';
+
+  @override
+  String get chatCompression_offDescription =>
+      'Ingen komprimering. Din text skickas exakt som du skrev den. Alla appar kan läsa den. Sparar inga byte.';
+
+  @override
+  String get chatCompression_smazDescription =>
+      'Förlustfri komprimering för kort text. Mottagarens app måste stödja SMAZ; andra appar visar oläsbar text som \"s:…\". Används bara när meddelandet blir mindre, så alla meddelanden komprimeras inte.';
+
+  @override
+  String get chatCompression_cyr2latDescription =>
+      'Inte förlustfri. Byter vissa kyrilliska bokstäver mot liknande latinska (А→A, З→3) för att spara byte. Läsbart i alla appar utan avkodning, men de exakta tecknen ändras, även i dina egna skickade meddelanden här. Kopiering, sökning och teknisk text kan påverkas. Resultatet beror på vald profil.';
+
+  @override
+  String get chatCompression_profile => 'Cyr2Lat-profil';
+
+  @override
+  String get chatCompression_noStorageId =>
+      'Komprimering kan inte ändras förrän den här kanalen har synkroniserats från radion.';
+
+  @override
+  String get chatCompression_saveFailed =>
+      'Det gick inte att spara komprimeringsinställningen. Den sparade inställningen visas.';
+
+  @override
+  String get messageMeta_smazCompressed => 'SMAZ-komprimerad';
+
+  @override
+  String get addContact_title => 'Lägg till kontakt';
+
+  @override
+  String get addContact_infoBanner =>
+      'Om du känner till den publika nyckeln för någon du vill kontakta kan du lägga till dem manuellt utan att vänta på att de skickar en advert.';
+
+  @override
+  String get addContact_contactType => 'Kontakttyp';
+
+  @override
+  String get addContact_name => 'Namn';
+
+  @override
+  String get addContact_nameRequired => 'Ange ett namn';
+
+  @override
+  String get addContact_publicKeyHex => 'Publik nyckel (hex)';
+
+  @override
+  String get addContact_publicKeyRequired => 'Ange en publik nyckel';
+
+  @override
+  String get addContact_publicKeyInvalid =>
+      'Den publika nyckeln måste vara 64 hex-tecken (32 byte)';
+
+  @override
+  String get addContact_clipboardKeyLoaded =>
+      'Publik nyckel ifylld. Välj en kontakttyp, ange ett namn och tryck på spara.';
+
+  @override
+  String get addContact_fromDiscovered => 'Lägg till från upptäckta kontakter';
+
+  @override
+  String get addContact_saveFailed => 'Det gick inte att lägga till kontakten.';
+
+  @override
+  String get coordinateMap_title => 'Plats';
+
+  @override
+  String get coordinate_copyLocation => 'Kopiera plats';
+
+  @override
+  String get coordinate_openInMaps => 'Öppna i kartor';
+
+  @override
+  String get coordinate_copied => 'Plats kopierad';
+
+  @override
+  String get chess_menuGames => 'Schackpartier';
+
+  @override
+  String chess_menuGamesCount(int count) {
+    return 'Schackpartier ($count)';
+  }
+
+  @override
+  String get chess_sheetTitle => 'Schack';
+
+  @override
+  String get chess_sectionNewGame => 'Nytt parti';
+
+  @override
+  String get chess_sectionYourGames => 'Dina partier';
+
+  @override
+  String get chess_sectionInvites => 'Öppna inbjudningar';
+
+  @override
+  String get chess_sectionLive => 'Pågående partier';
+
+  @override
+  String get chess_sectionFinished => 'Avslutade';
+
+  @override
+  String get chess_newChallenge => 'Utmana någon';
+
+  @override
+  String get chess_newChallengeSubtitle =>
+      'Välj någon som nyligen hörts på den här kanalen';
+
+  @override
+  String get chess_newOpenInvite => 'Skicka en öppen inbjudan';
+
+  @override
+  String get chess_newOpenInviteSubtitle =>
+      'Vem som helst på den här kanalen kan acceptera';
+
+  @override
+  String get chess_emptyTitle => 'Inga partier ännu';
+
+  @override
+  String get chess_emptySubtitle =>
+      'Utmana någon eller skicka en öppen inbjudan. Alla på kanalen kan titta på.';
+
+  @override
+  String chess_vs(String white, String black) {
+    return '$white mot $black';
+  }
+
+  @override
+  String get chess_unknownPlayer => 'Okänd';
+
+  @override
+  String chess_rowChallenge(String inviter, String target) {
+    return '$inviter utmanade $target';
+  }
+
+  @override
+  String get chess_rowYourOpenInvite => 'Din öppna inbjudan';
+
+  @override
+  String chess_rowYourChallenge(String name) {
+    return 'Du utmanade $name';
+  }
+
+  @override
+  String chess_rowInviteFrom(String name) {
+    return 'Parti med $name';
+  }
+
+  @override
+  String get chess_rowStarting => 'Väntar på att partiet ska starta';
+
+  @override
+  String chess_rowMoveTurn(int number, String turn) {
+    return 'Drag $number · $turn';
+  }
+
+  @override
+  String chess_rowOpenInvite(String name) {
+    return '$name söker ett parti';
+  }
+
+  @override
+  String chess_rowChallengedYou(String name) {
+    return '$name utmanade dig';
+  }
+
+  @override
+  String chess_rowInviteDetails(String deadline) {
+    return 'Tid per drag: $deadline';
+  }
+
+  @override
+  String get chess_accept => 'Acceptera';
+
+  @override
+  String get chess_decline => 'Avböj';
+
+  @override
+  String get chess_remove => 'Ta bort';
+
+  @override
+  String get chess_cancelInvite => 'Dra tillbaka inbjudan';
+
+  @override
+  String get chess_cancelInviteTitle => 'Dra tillbaka den här inbjudan?';
+
+  @override
+  String get chess_sendFailed =>
+      'Det gick inte att skicka. Kontrollera radioanslutningen.';
+
+  @override
+  String chess_challengeSent(String name) {
+    return 'Utmaning skickad till $name';
+  }
+
+  @override
+  String get chess_inviteSent => 'Öppen inbjudan skickad';
+
+  @override
+  String get chess_pickOpponent => 'Vem vill du utmana?';
+
+  @override
+  String get chess_noRecentSenders =>
+      'Ingen har skrivit på den här kanalen nyligen.';
+
+  @override
+  String get chess_deadlineLabel => 'Tid per drag';
+
+  @override
+  String get chess_deadlineNone => 'Ingen gräns';
+
+  @override
+  String get chess_deadline15m => '15 minuter';
+
+  @override
+  String get chess_deadline1h => '1 timme';
+
+  @override
+  String get chess_deadline6h => '6 timmar';
+
+  @override
+  String get chess_deadline1d => '1 dag';
+
+  @override
+  String get chess_deadline3d => '3 dagar';
+
+  @override
+  String get chess_colourLabel => 'Din färg';
+
+  @override
+  String get chess_colourRandom => 'Slumpmässig';
+
+  @override
+  String get chess_colourWhite => 'Vit';
+
+  @override
+  String get chess_colourBlack => 'Svart';
+
+  @override
+  String get chess_sendChallenge => 'Skicka utmaning';
+
+  @override
+  String get chess_postInvite => 'Skicka inbjudan';
+
+  @override
+  String get chess_gameGone => 'Det här partiet finns inte längre.';
+
+  @override
+  String chess_playerYou(String name) {
+    return '$name (du)';
+  }
+
+  @override
+  String get chess_toMoveChip => 'Vid draget';
+
+  @override
+  String get chess_statusYourMove => 'Din tur';
+
+  @override
+  String chess_statusWaiting(String name) {
+    return 'Väntar på $name';
+  }
+
+  @override
+  String chess_statusToMove(String name) {
+    return '$name är vid draget';
+  }
+
+  @override
+  String chess_statusTimeLeft(String time) {
+    return '$time kvar för det här draget';
+  }
+
+  @override
+  String get chess_statusOverdue => 'Tiden för det här draget har gått ut';
+
+  @override
+  String chess_statusDrawOffered(String name) {
+    return '$name erbjuder remi';
+  }
+
+  @override
+  String get chess_statusUnknownPosition => 'Brädet visas vid nästa drag.';
+
+  @override
+  String get chess_statusUnverified =>
+      'Spelarna är inte bekräftade ännu. Be om en uppdatering för att kontrollera dem.';
+
+  @override
+  String get chess_statusPlayersUnchecked =>
+      'Spelare ej bekräftade: den här telefonen hörde inte inbjudan.';
+
+  @override
+  String get chess_statusMoveUnconfirmed =>
+      'Ditt drag kanske inte gick iväg. Tryck på ”Be om uppdatering” för att skicka det igen.';
+
+  @override
+  String get chess_actionResign => 'Ge upp';
+
+  @override
+  String get chess_actionOfferDraw => 'Erbjud remi';
+
+  @override
+  String get chess_actionAcceptDraw => 'Acceptera remi';
+
+  @override
+  String get chess_actionClaimTimeout => 'Kräv vinst på tid';
+
+  @override
+  String get chess_actionNudge => 'Be om uppdatering';
+
+  @override
+  String get chess_actionNudgeTooltip =>
+      'Be spelarna skicka det senaste draget igen';
+
+  @override
+  String get chess_resignConfirmTitle => 'Ge upp partiet?';
+
+  @override
+  String get chess_resignConfirmBody => 'Din motståndare vinner.';
+
+  @override
+  String get chess_movesTitle => 'Drag';
+
+  @override
+  String get chess_noMovesYet => 'Inga drag ännu';
+
+  @override
+  String get chess_movesMissed => '(missat)';
+
+  @override
+  String get chess_promoteTitle => 'Förvandla till';
+
+  @override
+  String get chess_pieceQueen => 'Dam';
+
+  @override
+  String get chess_pieceRook => 'Torn';
+
+  @override
+  String get chess_pieceBishop => 'Löpare';
+
+  @override
+  String get chess_pieceKnight => 'Springare';
+
+  @override
+  String get chess_pieceKing => 'Kung';
+
+  @override
+  String get chess_piecePawn => 'Bonde';
+
+  @override
+  String chess_squareWhitePiece(String square, String piece) {
+    return '$square: $piece, vit';
+  }
+
+  @override
+  String chess_squareBlackPiece(String square, String piece) {
+    return '$square: $piece, svart';
+  }
+
+  @override
+  String get chess_resultDraw => 'Remi';
+
+  @override
+  String chess_resultWon(String name) {
+    return '$name vann';
+  }
+
+  @override
+  String chess_resultWithReason(String result, String reason) {
+    return '$result · $reason';
+  }
+
+  @override
+  String get chess_endCheckmate => 'Schackmatt';
+
+  @override
+  String get chess_endResignation => 'Uppgivning';
+
+  @override
+  String get chess_endTimeout => 'På tid';
+
+  @override
+  String get chess_endDrawAgreed => 'Remi överenskommen';
+
+  @override
+  String get chess_endStalemate => 'Patt';
+
+  @override
+  String get chess_endInsufficient => 'För få pjäser för matt';
+
+  @override
+  String get chess_endFiftyMoves => '50-dragsregeln';
+
+  @override
+  String get chess_endRepetition => 'Upprepning';
+
+  @override
+  String get chess_endCancelled => 'Inbjudan tillbakadragen';
+
+  @override
+  String get chess_endDeclined => 'Utmaning avböjd';
+
+  @override
+  String get chess_endExpired => 'Inbjudan har gått ut';
+
+  @override
+  String get chess_endTaken => 'Någon annan accepterade först';
+
+  @override
+  String chess_timeMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String chess_timeHours(int hours, int minutes) {
+    return '$hours h $minutes min';
+  }
+
+  @override
+  String chess_timeDays(int days, int hours) {
+    return '$days d $hours h';
+  }
+
+  @override
+  String get chess_notificationSender => 'Schack';
+
+  @override
+  String chess_notifyChallenge(String name) {
+    return '$name utmanade dig på ett parti';
+  }
+
+  @override
+  String chess_notifyAccepted(String name) {
+    return '$name accepterade ditt parti';
+  }
+
+  @override
+  String chess_notifyAcceptedYourMove(String name) {
+    return '$name accepterade ditt parti. Du spelar vit, och det är ditt drag.';
+  }
+
+  @override
+  String chess_notifyDeclined(String name) {
+    return '$name avböjde din utmaning';
+  }
+
+  @override
+  String get chess_notifyTaken => 'Någon annan accepterade partiet först';
+
+  @override
+  String get chess_notifyGameStartedYourMove =>
+      'Ditt parti har startat. Du spelar vit, och det är ditt drag.';
+
+  @override
+  String chess_notifyYourMove(String name, String move) {
+    return '$name spelade $move. Din tur.';
+  }
+
+  @override
+  String chess_notifyGameOver(String name) {
+    return 'Ditt parti med $name är slut';
+  }
+
+  @override
+  String chess_notifyResigned(String name) {
+    return '$name gav upp. Du vinner.';
+  }
+
+  @override
+  String chess_notifyDrawOffered(String name) {
+    return '$name erbjuder remi';
+  }
+
+  @override
+  String chess_notifyDrawAccepted(String name) {
+    return '$name accepterade remin';
+  }
+
+  @override
+  String chess_notifyTimeout(String name) {
+    return '$name krävde vinst på tid';
+  }
 }

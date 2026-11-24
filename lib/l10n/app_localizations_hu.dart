@@ -703,6 +703,9 @@ class AppLocalizationsHu extends AppLocalizations {
       'Felfedezett névjegyek és mentett adataik';
 
   @override
+  String get backupRestore_bookmarks => 'Könyvjelzők';
+
+  @override
   String get backupRestore_channels => 'Csatornák';
 
   @override
@@ -727,9 +730,8 @@ class AppLocalizationsHu extends AppLocalizations {
       'A modellek nincsenek letöltve';
 
   @override
-  String backupRestore_missingModelsMessage(String models) {
-    return 'A visszaállított beállítások olyan modelleket választanak, amelyek nem érhetők el ezen az eszközön:\n$models\n\nLetölti őket most?';
-  }
+  String get backupRestore_missingModelsMessage =>
+      'A visszaállított beállítások olyan modelleket választanak, amelyek nem érhetők el ezen az eszközön. Letölti őket most?';
 
   @override
   String get backupRestore_downloadModels => 'Modellek letöltése';
@@ -1560,6 +1562,13 @@ class AppLocalizationsHu extends AppLocalizations {
       'A csatornaüzenet régiója az ugrásszámmal azonos sorban jelenik meg, nem alatta.';
 
   @override
+  String get appSettings_showCompressionIndicator => 'Tömörítésjelző';
+
+  @override
+  String get appSettings_showCompressionIndicatorSubtitle =>
+      'Ikon megjelenítése a SMAZ-szal tömörített üzeneteken.';
+
+  @override
   String get appSettings_notifications => 'Értesítések';
 
   @override
@@ -1744,11 +1753,11 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get appSettings_clearPathOnMaxRetrySubtitle =>
-      'Állítsa vissza a kapcsolati elérési utat 5 sikertelen küldési kísérlet után';
+      'A kapcsolat mentett útvonalának visszaállítása, ha minden küldési próbálkozás sikertelen';
 
   @override
   String get appSettings_pathsWillBeCleared =>
-      'Az elérési utak 5 sikertelen újrapróbálkozás után törlődnek';
+      'Az útvonalak törlődnek, ha minden küldési próbálkozás sikertelen';
 
   @override
   String get appSettings_pathsWillNotBeCleared =>
@@ -1759,7 +1768,7 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get appSettings_autoRouteRotationSubtitle =>
-      'Váltson a legjobb útvonalak és a flood mód között';
+      'Minden közvetlen próbálkozásnál másik ismert útvonalat próbál. A későbbiek Flood. Kikapcsolva a kapcsolat jelenlegi útvonalát használja.';
 
   @override
   String get appSettings_autoRouteRotationEnabled =>
@@ -1776,6 +1785,63 @@ class AppLocalizationsHu extends AppLocalizations {
   @override
   String get appSettings_maxMessageRetriesSubtitle =>
       'Az üzenet sikertelenként való megjelölése előtti újrapróbálkozások száma';
+
+  @override
+  String appSettings_directRetries(int count) {
+    return 'Közvetlen próbálkozások: $count';
+  }
+
+  @override
+  String get appSettings_directRetriesSubtitle =>
+      'Hányszor próbáljon ismert útvonalat. Akkor is beállítható, ha az automatikus útvonalváltás ki van kapcsolva.';
+
+  @override
+  String appSettings_floodRetries(int count) {
+    return 'Flood próbálkozások: $count';
+  }
+
+  @override
+  String get appSettings_floodRetriesSubtitle =>
+      'Hányszor használjon Floodot. A Flood több adásidőt használ. Bekapcsolt váltásnál a közvetlen próbálkozások után jönnek.';
+
+  @override
+  String appSettings_loginAttempts(int count) {
+    return 'Bejelentkezési próbálkozások: $count';
+  }
+
+  @override
+  String get appSettings_loginAttemptsSubtitle =>
+      'Hányszor próbáljon bejelentkezni egy átjátszóra vagy room szerverre, mielőtt feladja.';
+
+  @override
+  String get appSettings_repeatersAndRooms => 'Átjátszók és szobák';
+
+  @override
+  String get appSettings_clockSyncAfterLogin =>
+      'Átjátszó órájának szinkronizálása belépéskor';
+
+  @override
+  String get appSettings_clockSyncAfterLoginSubtitle =>
+      'Sikeres átjátszó-belépés után clock sync megy ki. Minden átjátszó továbbra lehet Alapértelmezett, Be vagy Ki.';
+
+  @override
+  String get appSettings_loginPasswordAutofocus => 'Jelszómező fókuszba';
+
+  @override
+  String get appSettings_loginPasswordAutofocusSubtitle =>
+      'Átjátszó vagy szoba belépésének megnyitásakor a kurzor az üres jelszómezőbe kerül. Kikapcsolva a párbeszéd látható marad, amíg meg nem érinti a mezőt.';
+
+  @override
+  String get appSettings_resetRepeaterRoomSettings =>
+      'Átjátszó- és szobabeállítások visszaállítása';
+
+  @override
+  String get appSettings_resetRepeaterRoomSettingsSubtitle =>
+      'Visszaállítja a szakasz beállításait. Az egyes átjátszóknál mentett választás megmarad.';
+
+  @override
+  String get appSettings_repeaterRoomSettingsReset =>
+      'Átjátszó- és szobabeállítások visszaállítva';
 
   @override
   String get appSettings_ipfsImageLinks => 'IPFS-szolgáltató beállítása';
@@ -2163,6 +2229,24 @@ class AppLocalizationsHu extends AppLocalizations {
   String get contacts_noMembers => 'Nincsenek tagok';
 
   @override
+  String contacts_groupCurrentMembers(int count) {
+    return 'Jelenlegi tagok ($count)';
+  }
+
+  @override
+  String get contacts_groupAddContacts => 'Kapcsolatok hozzáadása';
+
+  @override
+  String contacts_groupRemoveMember(String name) {
+    return '$name eltávolítása a csoportból';
+  }
+
+  @override
+  String contacts_groupAddMember(String name) {
+    return '$name hozzáadása a csoporthoz';
+  }
+
+  @override
   String get nav_nodes => 'Nodes';
 
   @override
@@ -2175,6 +2259,9 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get contacts_lastSeenNow => 'nemrég';
+
+  @override
+  String get contacts_lastSeenNever => 'még nem hallották';
 
   @override
   String contacts_lastSeenMinsAgo(int minutes) {
@@ -2358,16 +2445,6 @@ class AppLocalizationsHu extends AppLocalizations {
   String channels_editChannelTitle(int index) {
     return 'Csatorna szerkesztése $index';
   }
-
-  @override
-  String get channels_smazCompression => 'SMAZ tömörítés';
-
-  @override
-  String get channels_cyr2latCompression => 'Cyr2Lat tömörítés';
-
-  @override
-  String get channels_cyr2latCompressionDscr =>
-      'Küldéskor egyes cirill karaktereket latin karakterekre cserél.';
 
   @override
   String get channels_cyr2latSettingsHeading => 'Cyr2Lat beállítás';
@@ -2686,6 +2763,30 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get chat_messageDeleted => 'Üzenet törölve';
+
+  @override
+  String get chat_bookmark => 'Könyvjelző';
+
+  @override
+  String get chat_removeBookmark => 'Könyvjelző eltávolítása';
+
+  @override
+  String get chat_showBookmarks => 'Könyvjelzők megjelenítése';
+
+  @override
+  String get bookmarks_title => 'Könyvjelzők';
+
+  @override
+  String get bookmarks_empty => 'Nincs könyvjelzős üzenet';
+
+  @override
+  String get bookmarks_channel => 'Csatorna';
+
+  @override
+  String get bookmarks_contact => 'Kapcsolat';
+
+  @override
+  String get bookmarks_remove => 'Könyvjelző eltávolítása';
 
   @override
   String get chat_selectMessages => 'Üzenetek kijelölése';
@@ -3173,8 +3274,9 @@ class AppLocalizationsHu extends AppLocalizations {
   String get pathEditor_hexLabel => 'Hexadecimális előtagok';
 
   @override
-  String get pathEditor_hexHelper =>
-      'Két hexadecimális karakter ugrásonként, vesszővel elválasztva';
+  String pathEditor_hexHelper(int count) {
+    return '$count hexadecimális karakter ugrásonként, vesszővel elválasztva';
+  }
 
   @override
   String pathEditor_invalidTokens(String tokens) {
@@ -3214,9 +3316,6 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get chat_publicKey => 'Nyilvános kulcs';
-
-  @override
-  String get chat_compressOutgoingMessages => 'A kimenő üzenetek tömörítése';
 
   @override
   String get chat_floodForced => 'Flood (kényszerített)';
@@ -4007,7 +4106,16 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get repeater_clockSyncAfterLoginSubtitle =>
-      '„Óraszinkronizálás” automatikus küldése sikeres bejelentkezés után';
+      'Az Alapértelmezett az alkalmazás Átjátszók és szobák beállítását követi. A Be és a Ki csak erre az átjátszóra vonatkozik.';
+
+  @override
+  String get repeater_clockSyncDefault => 'Alapért.';
+
+  @override
+  String get repeater_clockSyncOn => 'Be';
+
+  @override
+  String get repeater_clockSyncOff => 'Ki';
 
   @override
   String get repeater_statusTitle => 'Átjátszó állapota';
@@ -6238,6 +6346,21 @@ class AppLocalizationsHu extends AppLocalizations {
       'A MeshCore Open nem fut. Nyissa meg, és küldje el a választ újra.';
 
   @override
+  String get settings_exportBookmarks =>
+      'Könyvjelzők exportálása Markdown formátumba';
+
+  @override
+  String get settings_exportBookmarksSubtitle =>
+      'A könyvjelzős üzenetek megosztása vagy mentése Markdown fájlként.';
+
+  @override
+  String get settings_exportBookmarksSuccess => 'A könyvjelzők exportálva.';
+
+  @override
+  String get settings_exportBookmarksNoBookmarks =>
+      'Nincs exportálható könyvjelző.';
+
+  @override
   String get settings_gpxExportRepeaters =>
       'Ismétlők / szobaszerver exportálása GPX-be';
 
@@ -6906,6 +7029,56 @@ class AppLocalizationsHu extends AppLocalizations {
   @override
   String get imageSend_reconstructionUnavailable =>
       'Ezen az eszközön nem jeleníthető meg a rekonstrukció előnézete.';
+
+  @override
+  String receivedImage_packetEchoes(int number, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count-szor ismételték',
+      one: 'egyszer ismételték',
+      zero: 'egy átjátszó sem hallotta',
+    );
+    return '$number. csomag: $_temp0';
+  }
+
+  @override
+  String receivedImage_recoveryPacketEchoes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count-szor ismételték',
+      one: 'egyszer ismételték',
+      zero: 'egy átjátszó sem hallotta',
+    );
+    return 'Helyreállító csomag: $_temp0';
+  }
+
+  @override
+  String get imageSend_preparingPreview => 'Előnézet előkészítése…';
+
+  @override
+  String get imageSend_tryAnother => 'Másik változat kipróbálása';
+
+  @override
+  String get imageSend_versionsHint =>
+      'Minden változat kissé másként van rekonstruálva. Válassza azt, amelyik leginkább hasonlít a fényképére.';
+
+  @override
+  String imageSend_versionLabel(int number) {
+    return '$number. változat';
+  }
+
+  @override
+  String imageSend_versionPackets(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count csomag',
+      one: '1 csomag',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get imageSend_modelNotDownloaded =>
@@ -7613,15 +7786,15 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get appSettings_resetRoutingToDefault =>
-      'Útvonaltervezési algoritmus visszaállítása alapértelmezettre';
+      'Útválasztási beállítások visszaállítása alapértelmezettre';
 
   @override
   String get appSettings_resetRoutingToDefaultSubtitle =>
-      'Útvonaltervezési algoritmus beállításainak visszaállítása gyári alapértelmezett értékekre';
+      'A szakasz útvonalbeállításainak visszaállítása az alapértelmezett értékekre';
 
   @override
   String get appSettings_routingResetToDefault =>
-      'Útvonaltervezési algoritmus beállításai visszaállítva alapértelmezettre';
+      'Útválasztási beállítások visszaállítva alapértelmezettre';
 
   @override
   String get appSettings_imageMessagesSection => 'Képüzenetek';
@@ -10113,4 +10286,545 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get chat_composerOffline => 'Üzenetküldéshez csatlakozzon rádióhoz';
+
+  @override
+  String get modelDownload_notDownloaded => 'Nincs letöltve';
+
+  @override
+  String get modelDownload_downloading => 'Letöltés';
+
+  @override
+  String get modelDownload_active => 'Aktív';
+
+  @override
+  String get modelDownload_failed => 'A letöltés sikertelen';
+
+  @override
+  String get modelDownload_incomplete => 'Hiányos';
+
+  @override
+  String get modelDownload_verifying => 'A letöltés ellenőrzése';
+
+  @override
+  String get modelDownload_useModel => 'Ezt a modellt használja';
+
+  @override
+  String modelDownload_removeFailed(String error) {
+    return 'A modellt nem sikerült eltávolítani: $error';
+  }
+
+  @override
+  String modelDownload_progress(String current, String total, String percent) {
+    return '$current / $total MB ($percent%)';
+  }
+
+  @override
+  String get chatCompression_title => 'Tömörítés';
+
+  @override
+  String chatCompression_label(String mode) {
+    return 'Tömörítés: $mode';
+  }
+
+  @override
+  String get chatCompression_off => 'Ki';
+
+  @override
+  String get chatCompression_smaz => 'SMAZ';
+
+  @override
+  String get chatCompression_cyr2lat => 'Cyr2Lat';
+
+  @override
+  String get chatCompression_changeHint =>
+      'Tömörítés módosítása ebben a csevegésben';
+
+  @override
+  String get chatCompression_sheetSubtitle =>
+      'Az ebben a csevegésben küldött üzenetekre vonatkozik. Ezen a telefonon van mentve.';
+
+  @override
+  String get chatCompression_offDescription =>
+      'Nincs tömörítés. A szöveg pontosan úgy megy el, ahogy beírta. Minden alkalmazás el tudja olvasni. Nem takarít meg bájtokat.';
+
+  @override
+  String get chatCompression_smazDescription =>
+      'Veszteségmentes tömörítés rövid szövegekhez. A címzett alkalmazásának támogatnia kell a SMAZ-ot, más alkalmazások olvashatatlan „s:…” szöveget mutatnak. Csak akkor használja, ha kisebb lesz tőle az üzenet, így nem minden üzenet tömörített.';
+
+  @override
+  String get chatCompression_cyr2latDescription =>
+      'Nem veszteségmentes. Néhány cirill betűt hasonlóan kinéző latinra cserél (А→A, З→3) a bájtok megtakarítására. Dekódolás nélkül olvasható bármely alkalmazásban, de a pontos karakterek megváltoznak, az itt elküldött saját üzeneteit is beleértve. Hatással lehet a másolásra, a keresésre és a műszaki szövegekre. Az eredmény a választott profiltól függ.';
+
+  @override
+  String get chatCompression_profile => 'Cyr2Lat profil';
+
+  @override
+  String get chatCompression_noStorageId =>
+      'A tömörítés nem módosítható, amíg ez a csatorna nem szinkronizált a rádióról.';
+
+  @override
+  String get chatCompression_saveFailed =>
+      'A tömörítési beállítást nem sikerült menteni. A mentett beállítás látható.';
+
+  @override
+  String get messageMeta_smazCompressed => 'SMAZ-szal tömörítve';
+
+  @override
+  String get addContact_title => 'Kapcsolat hozzáadása';
+
+  @override
+  String get addContact_infoBanner =>
+      'Ha ismeri annak a nyilvános kulcsát, akivel kapcsolatba szeretne lépni, kézzel is hozzáadhatja, anélkül hogy meg kellene várnia a hirdetését.';
+
+  @override
+  String get addContact_contactType => 'Kapcsolat típusa';
+
+  @override
+  String get addContact_name => 'Név';
+
+  @override
+  String get addContact_nameRequired => 'Adjon meg egy nevet';
+
+  @override
+  String get addContact_publicKeyHex => 'Nyilvános kulcs (hex)';
+
+  @override
+  String get addContact_publicKeyRequired => 'Adjon meg egy nyilvános kulcsot';
+
+  @override
+  String get addContact_publicKeyInvalid =>
+      'A nyilvános kulcsnak 64 hexadecimális karakterből (32 bájt) kell állnia';
+
+  @override
+  String get addContact_clipboardKeyLoaded =>
+      'A nyilvános kulcs kitöltve. Válasszon kapcsolattípust, adjon meg egy nevet, és koppintson a Mentés gombra.';
+
+  @override
+  String get addContact_fromDiscovered =>
+      'Hozzáadás a felfedezett kapcsolatok közül';
+
+  @override
+  String get addContact_saveFailed => 'A kapcsolat hozzáadása nem sikerült.';
+
+  @override
+  String get coordinateMap_title => 'Hely';
+
+  @override
+  String get coordinate_copyLocation => 'Hely másolása';
+
+  @override
+  String get coordinate_openInMaps => 'Megnyitás a térképeken';
+
+  @override
+  String get coordinate_copied => 'Hely másolva';
+
+  @override
+  String get chess_menuGames => 'Sakkjátszmák';
+
+  @override
+  String chess_menuGamesCount(int count) {
+    return 'Sakkjátszmák ($count)';
+  }
+
+  @override
+  String get chess_sheetTitle => 'Sakk';
+
+  @override
+  String get chess_sectionNewGame => 'Új játszma';
+
+  @override
+  String get chess_sectionYourGames => 'Játszmáid';
+
+  @override
+  String get chess_sectionInvites => 'Nyitott felkérések';
+
+  @override
+  String get chess_sectionLive => 'Élő játszmák';
+
+  @override
+  String get chess_sectionFinished => 'Befejezett';
+
+  @override
+  String get chess_newChallenge => 'Kihívás valakinek';
+
+  @override
+  String get chess_newChallengeSubtitle =>
+      'Válassz valakit, akit nemrég hallottál ezen a csatornán';
+
+  @override
+  String get chess_newOpenInvite => 'Nyitott felkérés közzététele';
+
+  @override
+  String get chess_newOpenInviteSubtitle =>
+      'Bárki elfogadhatja ezen a csatornán';
+
+  @override
+  String get chess_emptyTitle => 'Még nincs játszma';
+
+  @override
+  String get chess_emptySubtitle =>
+      'Hívj ki valakit, vagy tegyél közzé nyitott felkérést. A csatornán bárki nézheti.';
+
+  @override
+  String chess_vs(String white, String black) {
+    return '$white – $black';
+  }
+
+  @override
+  String get chess_unknownPlayer => 'Ismeretlen';
+
+  @override
+  String chess_rowChallenge(String inviter, String target) {
+    return '$inviter kihívta: $target';
+  }
+
+  @override
+  String get chess_rowYourOpenInvite => 'Nyitott felkérésed';
+
+  @override
+  String chess_rowYourChallenge(String name) {
+    return 'Kihívtad: $name';
+  }
+
+  @override
+  String chess_rowInviteFrom(String name) {
+    return 'Játszma vele: $name';
+  }
+
+  @override
+  String get chess_rowStarting => 'Várakozás a játszma kezdetére';
+
+  @override
+  String chess_rowMoveTurn(int number, String turn) {
+    return '$number. lépés · $turn';
+  }
+
+  @override
+  String chess_rowOpenInvite(String name) {
+    return '$name ellenfelet keres';
+  }
+
+  @override
+  String chess_rowChallengedYou(String name) {
+    return '$name kihívott téged';
+  }
+
+  @override
+  String chess_rowInviteDetails(String deadline) {
+    return 'Idő lépésenként: $deadline';
+  }
+
+  @override
+  String get chess_accept => 'Elfogadás';
+
+  @override
+  String get chess_decline => 'Elutasítás';
+
+  @override
+  String get chess_remove => 'Eltávolítás';
+
+  @override
+  String get chess_cancelInvite => 'Felkérés visszavonása';
+
+  @override
+  String get chess_cancelInviteTitle => 'Visszavonod ezt a felkérést?';
+
+  @override
+  String get chess_sendFailed =>
+      'A küldés nem sikerült. Ellenőrizd a rádiókapcsolatot.';
+
+  @override
+  String chess_challengeSent(String name) {
+    return 'Kihívás elküldve: $name';
+  }
+
+  @override
+  String get chess_inviteSent => 'Nyitott felkérés közzétéve';
+
+  @override
+  String get chess_pickOpponent => 'Kit hívsz ki?';
+
+  @override
+  String get chess_noRecentSenders => 'Ezen a csatornán nemrég senki sem írt.';
+
+  @override
+  String get chess_deadlineLabel => 'Idő lépésenként';
+
+  @override
+  String get chess_deadlineNone => 'Nincs korlát';
+
+  @override
+  String get chess_deadline15m => '15 perc';
+
+  @override
+  String get chess_deadline1h => '1 óra';
+
+  @override
+  String get chess_deadline6h => '6 óra';
+
+  @override
+  String get chess_deadline1d => '1 nap';
+
+  @override
+  String get chess_deadline3d => '3 nap';
+
+  @override
+  String get chess_colourLabel => 'Színed';
+
+  @override
+  String get chess_colourRandom => 'Véletlen';
+
+  @override
+  String get chess_colourWhite => 'Világos';
+
+  @override
+  String get chess_colourBlack => 'Sötét';
+
+  @override
+  String get chess_sendChallenge => 'Kihívás küldése';
+
+  @override
+  String get chess_postInvite => 'Felkérés közzététele';
+
+  @override
+  String get chess_gameGone => 'Ez a játszma már nem elérhető.';
+
+  @override
+  String chess_playerYou(String name) {
+    return '$name (te)';
+  }
+
+  @override
+  String get chess_toMoveChip => 'Lépésen van';
+
+  @override
+  String get chess_statusYourMove => 'Te lépsz';
+
+  @override
+  String chess_statusWaiting(String name) {
+    return 'Várakozás rá: $name';
+  }
+
+  @override
+  String chess_statusToMove(String name) {
+    return '$name lép';
+  }
+
+  @override
+  String chess_statusTimeLeft(String time) {
+    return 'Erre a lépésre még $time van hátra';
+  }
+
+  @override
+  String get chess_statusOverdue => 'Az erre a lépésre szánt idő lejárt';
+
+  @override
+  String chess_statusDrawOffered(String name) {
+    return '$name döntetlent ajánl';
+  }
+
+  @override
+  String get chess_statusUnknownPosition =>
+      'A tábla a következő lépéssel jelenik meg.';
+
+  @override
+  String get chess_statusUnverified =>
+      'A játékosok még nincsenek megerősítve. Kérj frissítést az ellenőrzésükhöz.';
+
+  @override
+  String get chess_statusPlayersUnchecked =>
+      'A játékosok nincsenek megerősítve: ez a telefon nem hallotta a felkérést.';
+
+  @override
+  String get chess_statusMoveUnconfirmed =>
+      'Előfordulhat, hogy a lépésed nem ment el. Koppints a „Frissítés kérése” gombra az újraküldéshez.';
+
+  @override
+  String get chess_actionResign => 'Feladás';
+
+  @override
+  String get chess_actionOfferDraw => 'Döntetlen ajánlása';
+
+  @override
+  String get chess_actionAcceptDraw => 'Döntetlen elfogadása';
+
+  @override
+  String get chess_actionClaimTimeout => 'Nyerés követelése időtúllépés miatt';
+
+  @override
+  String get chess_actionNudge => 'Frissítés kérése';
+
+  @override
+  String get chess_actionNudgeTooltip =>
+      'Kérd meg a játékosokat, hogy küldjék el újra a legutóbbi lépést';
+
+  @override
+  String get chess_resignConfirmTitle => 'Feladod ezt a játszmát?';
+
+  @override
+  String get chess_resignConfirmBody => 'Az ellenfeled nyer.';
+
+  @override
+  String get chess_movesTitle => 'Lépések';
+
+  @override
+  String get chess_noMovesYet => 'Még nincs lépés';
+
+  @override
+  String get chess_movesMissed => '(kimaradt)';
+
+  @override
+  String get chess_promoteTitle => 'Átváltozás';
+
+  @override
+  String get chess_pieceQueen => 'Vezér';
+
+  @override
+  String get chess_pieceRook => 'Bástya';
+
+  @override
+  String get chess_pieceBishop => 'Futó';
+
+  @override
+  String get chess_pieceKnight => 'Huszár';
+
+  @override
+  String get chess_pieceKing => 'Király';
+
+  @override
+  String get chess_piecePawn => 'Gyalog';
+
+  @override
+  String chess_squareWhitePiece(String square, String piece) {
+    return '$square: $piece, világos';
+  }
+
+  @override
+  String chess_squareBlackPiece(String square, String piece) {
+    return '$square: $piece, sötét';
+  }
+
+  @override
+  String get chess_resultDraw => 'Döntetlen';
+
+  @override
+  String chess_resultWon(String name) {
+    return '$name nyert';
+  }
+
+  @override
+  String chess_resultWithReason(String result, String reason) {
+    return '$result · $reason';
+  }
+
+  @override
+  String get chess_endCheckmate => 'Matt';
+
+  @override
+  String get chess_endResignation => 'Feladás';
+
+  @override
+  String get chess_endTimeout => 'Időtúllépés';
+
+  @override
+  String get chess_endDrawAgreed => 'Megegyezéses döntetlen';
+
+  @override
+  String get chess_endStalemate => 'Patt';
+
+  @override
+  String get chess_endInsufficient => 'Nincs elég figura a mattadáshoz';
+
+  @override
+  String get chess_endFiftyMoves => 'Ötvenlépéses szabály';
+
+  @override
+  String get chess_endRepetition => 'Állásismétlés';
+
+  @override
+  String get chess_endCancelled => 'Felkérés visszavonva';
+
+  @override
+  String get chess_endDeclined => 'Kihívás elutasítva';
+
+  @override
+  String get chess_endExpired => 'A felkérés lejárt';
+
+  @override
+  String get chess_endTaken => 'Valaki más előbb elfogadta';
+
+  @override
+  String chess_timeMinutes(int minutes) {
+    return '$minutes perc';
+  }
+
+  @override
+  String chess_timeHours(int hours, int minutes) {
+    return '$hours ó $minutes perc';
+  }
+
+  @override
+  String chess_timeDays(int days, int hours) {
+    return '$days n $hours ó';
+  }
+
+  @override
+  String get chess_notificationSender => 'Sakk';
+
+  @override
+  String chess_notifyChallenge(String name) {
+    return '$name kihívott egy játszmára';
+  }
+
+  @override
+  String chess_notifyAccepted(String name) {
+    return '$name elfogadta a játszmádat';
+  }
+
+  @override
+  String chess_notifyAcceptedYourMove(String name) {
+    return '$name elfogadta a játszmádat. Világossal játszol, te lépsz.';
+  }
+
+  @override
+  String chess_notifyDeclined(String name) {
+    return '$name elutasította a kihívásodat';
+  }
+
+  @override
+  String get chess_notifyTaken => 'Valaki más előbb elfogadta ezt a játszmát';
+
+  @override
+  String get chess_notifyGameStartedYourMove =>
+      'A játszmád elindult. Világossal játszol, te lépsz.';
+
+  @override
+  String chess_notifyYourMove(String name, String move) {
+    return '$name lépett: $move. Te jössz.';
+  }
+
+  @override
+  String chess_notifyGameOver(String name) {
+    return 'A $name elleni játszmád véget ért';
+  }
+
+  @override
+  String chess_notifyResigned(String name) {
+    return '$name feladta. Te nyertél.';
+  }
+
+  @override
+  String chess_notifyDrawOffered(String name) {
+    return '$name döntetlent ajánl';
+  }
+
+  @override
+  String chess_notifyDrawAccepted(String name) {
+    return '$name elfogadta a döntetlent';
+  }
+
+  @override
+  String chess_notifyTimeout(String name) {
+    return '$name időtúllépés miatt nyerést követelt';
+  }
 }
