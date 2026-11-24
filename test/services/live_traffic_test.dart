@@ -221,7 +221,11 @@ void main() {
   test('trace hash sizes follow the firmware', () {
     List<int> sizes(int flags, int routeLen) => [
       for (final h in liveTrafficTraceRoute(
-        Uint8List.fromList([...List.filled(8, 0), flags, ...List.filled(routeLen, 1)]),
+        Uint8List.fromList([
+          ...List.filled(8, 0),
+          flags,
+          ...List.filled(routeLen, 1),
+        ]),
       ))
         h.length,
     ];

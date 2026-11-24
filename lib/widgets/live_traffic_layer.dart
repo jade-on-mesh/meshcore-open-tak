@@ -241,10 +241,7 @@ class _LiveTrafficLayerState extends State<LiveTrafficLayer>
       }
     }
 
-    if (_hops.isEmpty &&
-        _fades.isEmpty &&
-        _pulses.isEmpty &&
-        _ghosts.isEmpty) {
+    if (_hops.isEmpty && _fades.isEmpty && _pulses.isEmpty && _ghosts.isEmpty) {
       _ticker.stop();
     }
     _frame.value++;
@@ -401,7 +398,11 @@ class _LiveTrafficPainter extends CustomPainter {
         h.opacity,
         dashed: h.dashed,
       );
-      canvas.drawCircle(head, 3.5, Paint()..color = _a(Colors.white, h.opacity));
+      canvas.drawCircle(
+        head,
+        3.5,
+        Paint()..color = _a(Colors.white, h.opacity),
+      );
       canvas.drawCircle(
         head,
         3.5,

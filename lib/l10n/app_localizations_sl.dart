@@ -5871,7 +5871,8 @@ class AppLocalizationsSl extends AppLocalizations {
   String get liveTraffic_title => 'Live traffic';
 
   @override
-  String get liveTraffic_subtitle => 'Show packets your radio hears moving along the repeaters they came through';
+  String get liveTraffic_subtitle =>
+      'Show packets your radio hears moving along the repeaters they came through';
 
   @override
   String get liveTraffic_show => 'Show live traffic';
@@ -5880,22 +5881,26 @@ class AppLocalizationsSl extends AppLocalizations {
   String get liveTraffic_hide => 'Hide live traffic';
 
   @override
-  String get liveTraffic_onHint => 'Live traffic on: packets your radio hears run along their path, coloured by type.';
+  String get liveTraffic_onHint =>
+      'Live traffic on: packets your radio hears run along their path, coloured by type.';
 
   @override
   String get liveTraffic_colours => 'Colours';
 
   @override
-  String get liveTraffic_coloursSubtitle => 'What each live traffic colour means';
+  String get liveTraffic_coloursSubtitle =>
+      'What each live traffic colour means';
 
   @override
   String get liveTraffic_legendTitle => 'Live traffic colours';
 
   @override
-  String get liveTraffic_legendHint => 'Each packet your radio hears runs from repeater to repeater toward you, and each point it passes pulses. Repeaters with no location on the map are left out.';
+  String get liveTraffic_legendHint =>
+      'Each packet your radio hears runs from repeater to repeater toward you, and each point it passes pulses. Repeaters with no location on the map are left out.';
 
   @override
-  String get liveTraffic_legendGhost => 'Grey dashes: a repeater placed between known ones, or a trace hop not reached yet';
+  String get liveTraffic_legendGhost =>
+      'Grey dashes: a repeater placed between known ones, or a trace hop not reached yet';
 
   @override
   String get liveTraffic_typeAdvert => 'Advert';
