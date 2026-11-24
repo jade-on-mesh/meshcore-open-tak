@@ -9583,6 +9583,8 @@ class MeshCoreConnector extends ChangeNotifier {
       () => _sendFrameAndWaitForCommandAck(frame),
       region: _channelSendScope(channelIndex),
     );
+  }
+
   // ---- repeater echoes of our own image chunks -------------------------------
   //
   // GRP_DATA is never acknowledged. What we can observe is a repeater
