@@ -88,7 +88,6 @@ void main() {
   // Upstream's Image Messages reveal test is left out: MeshCore Open TAK has
   // no image-messages switch (AI sketch HD is the only AI sketch).
 
-
   for (final scale in [1.3, 2.0]) {
     testWidgets(
       'AppSettingsScreen with Image Messages and Translation expanded fits 320dp at ${scale}x',
