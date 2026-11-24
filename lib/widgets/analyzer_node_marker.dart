@@ -64,13 +64,14 @@ AnalyzerRole analyzerRoleFor(int contactType) => switch (contactType) {
   _ => AnalyzerRole.unknown,
 };
 
-/// CoreScope's default role colours (roles.js, the Wong palette); the same
-/// in light and dark themes, each with a white outline.
+/// The role colours of CascadiaMesh's analyzer (analyzer.cascadiamesh.org,
+/// its theme's `nodeColors`); the same in light and dark themes, each with a
+/// white outline.
 Color analyzerRoleColor(AnalyzerRole role) => switch (role) {
-  AnalyzerRole.repeater => const Color(0xFFD55E00),
-  AnalyzerRole.companion => const Color(0xFF56B4E9),
-  AnalyzerRole.room => const Color(0xFF009E73),
-  AnalyzerRole.sensor => const Color(0xFFF0E442),
+  AnalyzerRole.repeater => const Color(0xFF0080C0),
+  AnalyzerRole.companion => const Color(0xFF9F0000),
+  AnalyzerRole.room => const Color(0xFF16A34A),
+  AnalyzerRole.sensor => const Color(0xFFD97706),
   AnalyzerRole.unknown => const Color(0xFF6B7280),
 };
 

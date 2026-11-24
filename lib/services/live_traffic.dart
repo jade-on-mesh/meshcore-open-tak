@@ -127,6 +127,25 @@ class LiveTrafficFrameReader {
   }
 }
 
+/// Which live traffic the map shows: everything, or (under the map's
+/// MediaMesh filter) MediaMesh traffic, with main-mesh traffic hidden or
+/// faint.
+class LiveTrafficFilter {
+  /// Only packets heard on radio2 at full strength.
+  final bool mediaMeshOnly;
+
+  /// With [mediaMeshOnly]: how strongly the rest is drawn (0 hides it).
+  final double othersOpacity;
+
+  const LiveTrafficFilter({this.mediaMeshOnly = false, this.othersOpacity = 0});
+
+  static const LiveTrafficFilter all = LiveTrafficFilter();
+
+  /// How strongly [route] is drawn: 1, [othersOpacity] or 0 (not at all).
+  double alphaFor(LiveTrafficRoute route) =>
+      !mediaMeshOnly || route.mediaMesh ? 1 : othersOpacity;
+}
+
 /// One packet from the companion's RX log.
 class LiveTrafficPacket {
   final int routeType;

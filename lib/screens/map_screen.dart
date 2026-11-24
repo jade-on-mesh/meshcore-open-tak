@@ -54,6 +54,7 @@ import '../widgets/set_my_location_dialog.dart';
 import '../helpers/guessed_location_estimator.dart';
 import '../helpers/marker_message.dart';
 import '../services/live_traffic.dart';
+import '../services/mediamesh_heard.dart';
 import '../widgets/analyzer_node_marker.dart';
 import '../widgets/live_traffic_layer.dart';
 import '../helpers/snack_bar_builder.dart';
@@ -335,6 +336,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _dropHold?.cancel();
     _online.removeListener(_onOnlineChanged);
     MediaMeshRepeaters.instance.removeListener(_onMediaMeshChanged);
+    MediaMeshHeard.instance.removeListener(_onMediaMeshChanged);
     AnalyzerMarkerSettings.instance.removeListener(_onMediaMeshChanged);
     _online.dispose();
     _scheduleCameraSave();
@@ -446,13 +448,53 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     );
   }
 
+  /// Bumped when what's known about MediaMesh nodes (or the marker style)
+  /// changes, so cached markers are rebuilt.
+  int _mediaMeshRevision = 0;
+
   void _onMediaMeshChanged() {
-    if (mounted) setState(() {});
+    if (mounted) setState(() => _mediaMeshRevision++);
   }
 
+  /// A repeater that reported radio2, or any node heard sending on it.
   bool _isMediaMesh(Contact c) =>
-      c.type == advTypeRepeater &&
-      MediaMeshRepeaters.instance.isMediaMesh(c.publicKeyHex);
+      (c.type == advTypeRepeater &&
+          MediaMeshRepeaters.instance.isMediaMesh(c.publicKeyHex)) ||
+      MediaMeshHeard.instance.heard(c.publicKeyHex);
+
+  /// With the MediaMesh filter on, and both the Repeaters and Companions
+  /// switches on too: the other repeaters and companions (and other traffic)
+  /// show at 15 %.
+  bool get _mediaMeshShowsOthers {
+    final s = context.read<AppSettingsService>().settings;
+    return s.mapShowRepeaters && s.mapShowChatNodes;
+  }
+
+  /// The MediaMesh filter: MediaMesh repeaters and companions whatever the
+  /// type switches say, the other repeaters and companions only when
+  /// [_mediaMeshShowsOthers]. Rooms, sensors and the rest are hidden.
+  bool _passesMediaMeshFilter(Contact c) {
+    if (c.type != advTypeRepeater && c.type != advTypeChat) return false;
+    return _isMediaMesh(c) || _mediaMeshShowsOthers;
+  }
+
+  /// The opacity for non-MediaMesh things under the MediaMesh filter.
+  static const double _mediaMeshOthersOpacity = 0.15;
+
+  /// Drawn at 15 %: a repeater or companion that isn't MediaMesh, shown
+  /// under the MediaMesh filter.
+  bool _dimmedByMediaMesh(Contact c) =>
+      _onlyMediaMesh && !_isBuildingPathTrace && !_isMediaMesh(c);
+
+  /// What the live traffic layer shows under the current filters.
+  LiveTrafficFilter get _liveTrafficFilter => !_onlyMediaMesh
+      ? LiveTrafficFilter.all
+      : _mediaMeshShowsOthers
+      ? const LiveTrafficFilter(
+          mediaMeshOnly: true,
+          othersOpacity: _mediaMeshOthersOpacity,
+        )
+      : const LiveTrafficFilter(mediaMeshOnly: true);
 
   @override
   void initState() {
@@ -462,6 +504,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     _loadRemovedMarkers();
     _online.addListener(_onOnlineChanged);
     MediaMeshRepeaters.instance.addListener(_onMediaMeshChanged);
+    MediaMeshHeard.instance.addListener(_onMediaMeshChanged);
     AnalyzerMarkerSettings.instance.addListener(_onMediaMeshChanged);
     _ageTimer = Timer.periodic(const Duration(seconds: 60), (_) {
       if (mounted) setState(() {});
@@ -771,7 +814,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             filteredByTime.where((c) => _ageOf(c) == _NodeAge.stale).toList(),
         };
         final filteredByMediaMesh = _onlyMediaMesh
-            ? filteredByFreshness.where(_isMediaMesh).toList()
+            ? filteredByFreshness.where(_passesMediaMeshFilter).toList()
             : filteredByFreshness;
 
         // Filter by key prefix
@@ -1284,7 +1327,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           listenable: LiveTrafficSettings.instance,
                           builder: (context, _) =>
                               LiveTrafficSettings.instance.enabled
-                              ? const LiveTrafficLayer()
+                              ? LiveTrafficLayer(filter: _liveTrafficFilter)
                               : const SizedBox.shrink(),
                         ),
                     ],
@@ -1438,6 +1481,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       isBuildingPathTrace: _isBuildingPathTrace,
       clusterNodes: settings.mapClusterNodes,
       analyzerMarkers: AnalyzerMarkerSettings.instance.enabled,
+      onlyMediaMesh: _onlyMediaMesh,
+      mediaMeshRevision: _mediaMeshRevision,
       // Node labels bake in the overlay colors, so a light/dark or theme
       // switch must rebuild them.
       colorScheme: Theme.of(context).colorScheme,
@@ -1698,6 +1743,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         continue;
       }
 
+      // The MediaMesh filter decides on its own (_passesMediaMeshFilter):
+      // MediaMesh repeaters and companions whatever the type switches say.
+      if (_onlyMediaMesh && !_isBuildingPathTrace) {
+        if (_passesMediaMeshFilter(contact)) filtered.add(contact);
+        continue;
+      }
+
       // Apply node type filters. The overlaps toggle is purely a visual
       // highlight (applied in _buildNodeMarkers) and no longer affects which
       // nodes are shown.
@@ -1905,80 +1957,88 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final size = analyzer
         ? max(analyzerSize + 20, 36.0)
         : (selected ? 46.0 : (dot ? 22.0 : 40.0));
+    // Heard sending on radio2, or a repeater that says it sends: a filled
+    // badge; a repeater that only listens: a hollow one.
+    final analyzerMediaMesh = !mediaMesh
+        ? AnalyzerMediaMesh.none
+        : MediaMeshHeard.instance.heard(contact.publicKeyHex) ||
+              (MediaMeshRepeaters.instance
+                      .infoFor(contact.publicKeyHex)
+                      ?.sends ??
+                  false)
+        ? AnalyzerMediaMesh.sends
+        : AnalyzerMediaMesh.listens;
+    final dimmed = !selected && _dimmedByMediaMesh(contact);
     return Marker(
       point: LatLng(contact.latitude!, contact.longitude!),
       width: size,
       height: size,
-      child: Semantics(
-        button: true,
-        selected: selected,
-        label: context.l10n.map_nodeMarkerSemantics(
-          contact.name,
-          contact.typeLabel(context.l10n),
-          _ageLabel(age),
-        ),
-        excludeSemantics: true,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onLongPress: () {
-            if (_isBuildingPathTrace) showNodeInfoSheet(context, contact);
-          },
-          onSecondaryTap: () {
-            if (_isBuildingPathTrace) showNodeInfoSheet(context, contact);
-          },
-          onTap: () => _isBuildingPathTrace
-              ? _addToPath(context, contact)
-              : _selectNode(contact),
-          child: Center(
-            child: analyzer
-                ? SizedBox.expand(
-                    child: AnalyzerNodeMarker(
-                      role: role,
-                      size: analyzerSize,
-                      mediaMesh: !mediaMesh
-                          ? AnalyzerMediaMesh.none
-                          : (MediaMeshRepeaters.instance
-                                    .infoFor(contact.publicKeyHex)
-                                    ?.sends ??
-                                false)
-                          ? AnalyzerMediaMesh.sends
-                          : AnalyzerMediaMesh.listens,
-                      stale: stale,
-                      selected: selected,
-                    ),
-                  )
-                : dot && !selected
-                ? Container(
-                    width: 15,
-                    height: 15,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: baseColor,
-                      border: Border.all(
-                        color: mediaMesh
-                            ? MapPalette.mediaMesh
-                            : MapPalette.markerOutline,
-                        width: mediaMesh ? 3 : 2,
+      child: Opacity(
+        opacity: dimmed ? _mediaMeshOthersOpacity : 1,
+        child: Semantics(
+          button: true,
+          selected: selected,
+          label: context.l10n.map_nodeMarkerSemantics(
+            contact.name,
+            contact.typeLabel(context.l10n),
+            _ageLabel(age),
+          ),
+          excludeSemantics: true,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onLongPress: () {
+              if (_isBuildingPathTrace) showNodeInfoSheet(context, contact);
+            },
+            onSecondaryTap: () {
+              if (_isBuildingPathTrace) showNodeInfoSheet(context, contact);
+            },
+            onTap: () => _isBuildingPathTrace
+                ? _addToPath(context, contact)
+                : _selectNode(contact),
+            child: Center(
+              child: analyzer
+                  ? SizedBox.expand(
+                      child: AnalyzerNodeMarker(
+                        role: role,
+                        size: analyzerSize,
+                        mediaMesh: analyzerMediaMesh,
+                        stale: stale,
+                        selected: selected,
                       ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: MapPalette.markerShadow,
-                          blurRadius: 6,
-                          offset: Offset(0, 2),
+                    )
+                  : dot && !selected
+                  ? Container(
+                      width: 15,
+                      height: 15,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: baseColor,
+                        border: Border.all(
+                          color: mediaMesh
+                              ? MapPalette.mediaMesh
+                              : MapPalette.markerOutline,
+                          width: mediaMesh ? 3 : 2,
                         ),
-                      ],
+                        boxShadow: const [
+                          BoxShadow(
+                            color: MapPalette.markerShadow,
+                            blurRadius: 6,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _buildNodeMarkerWidget(
+                      color: baseColor,
+                      icon: mapNodeTypeIcon(contact.type),
+                      slot: mapMarkerSlotForNodeType(contact.type),
+                      selected: selected,
+                      stale: stale,
+                      online: online,
+                      batteryLow: batteryLow,
+                      mediaMesh: mediaMesh,
                     ),
-                  )
-                : _buildNodeMarkerWidget(
-                    color: baseColor,
-                    icon: mapNodeTypeIcon(contact.type),
-                    slot: mapMarkerSlotForNodeType(contact.type),
-                    selected: selected,
-                    stale: stale,
-                    online: online,
-                    batteryLow: batteryLow,
-                    mediaMesh: mediaMesh,
-                  ),
+            ),
           ),
         ),
       ),
@@ -4779,6 +4839,8 @@ class _NodeMarkersCacheKey {
   final bool isBuildingPathTrace;
   final bool clusterNodes;
   final bool analyzerMarkers;
+  final bool onlyMediaMesh;
+  final int mediaMeshRevision;
   final ColorScheme colorScheme;
 
   const _NodeMarkersCacheKey({
@@ -4803,6 +4865,8 @@ class _NodeMarkersCacheKey {
     required this.isBuildingPathTrace,
     required this.clusterNodes,
     required this.analyzerMarkers,
+    required this.onlyMediaMesh,
+    required this.mediaMeshRevision,
     required this.colorScheme,
   });
 
@@ -4830,6 +4894,8 @@ class _NodeMarkersCacheKey {
         isBuildingPathTrace == other.isBuildingPathTrace &&
         clusterNodes == other.clusterNodes &&
         analyzerMarkers == other.analyzerMarkers &&
+        onlyMediaMesh == other.onlyMediaMesh &&
+        mediaMeshRevision == other.mediaMeshRevision &&
         colorScheme == other.colorScheme;
   }
 
@@ -4856,6 +4922,8 @@ class _NodeMarkersCacheKey {
     isBuildingPathTrace,
     clusterNodes,
     analyzerMarkers,
+    onlyMediaMesh,
+    mediaMeshRevision,
     colorScheme,
   ]);
 }
