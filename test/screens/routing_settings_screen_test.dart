@@ -362,7 +362,8 @@ void main() {
             // (the fork's chat style picker) must not be picked.
             scrollable: find
                 .byWidgetPredicate(
-                  (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+                  (w) =>
+                      w is Scrollable && w.axisDirection == AxisDirection.down,
                 )
                 .first,
           );
