@@ -2232,6 +2232,17 @@ class AppLocalizationsPt extends AppLocalizations {
   String get contacts_noMembers => 'Nenhum membro';
 
   @override
+  String get nav_nodes => 'Nodes';
+
+  @override
+  String contacts_searchNodes(int number, String str) {
+    return 'Search $number$str Nodes...';
+  }
+
+  @override
+  String get contacts_noNodesFound => 'No nodes found';
+
+  @override
   String contacts_groupCurrentMembers(int count) {
     return 'Membros atuais ($count)';
   }
@@ -2248,17 +2259,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String contacts_groupAddMember(String name) {
     return 'Adicionar $name ao grupo';
   }
-
-  @override
-  String get nav_nodes => 'Nodes';
-
-  @override
-  String contacts_searchNodes(int number, String str) {
-    return 'Search $number$str Nodes...';
-  }
-
-  @override
-  String get contacts_noNodesFound => 'No nodes found';
 
   @override
   String get contacts_lastSeenNow => 'Recente';
@@ -2720,6 +2720,9 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get chat_resend => 'Reenviar';
+
+  @override
   String chat_replyTo(String name) {
     return 'Responder a $name';
   }
@@ -2949,9 +2952,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get chat_reply => 'Responder';
-
-  @override
-  String get chat_resend => 'Reenviar';
 
   @override
   String get chat_replyPhoto => 'Photo';
@@ -10288,9 +10288,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get modelDownload_notDownloaded => 'Não baixado';
 
   @override
-  String get appTitle => 'MeshCore Open TAK';
-
-  @override
   String get modelDownload_downloading => 'Baixando';
 
   @override
@@ -10668,10 +10665,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get chess_movesTitle => 'Lances';
 
   @override
-  String get scanner_bluetoothWebUnsupported =>
-      'O Bluetooth não está disponível no browser. Ligue por USB.';
-
-  @override
   String get chess_noMovesYet => 'Nenhum lance ainda';
 
   @override
@@ -10838,7 +10831,7 @@ class AppLocalizationsPtPt extends AppLocalizationsPt {
   AppLocalizationsPtPt() : super('pt_PT');
 
   @override
-  String get appTitle => 'MeshCore Open';
+  String get appTitle => 'MeshCore Open TAK';
 
   @override
   String get nav_contacts => 'Contactos';
@@ -11190,20 +11183,6 @@ class AppLocalizationsPtPt extends AppLocalizationsPt {
 
   @override
   String get scanner_enableBluetooth => 'Ativar Bluetooth';
-
-  @override
-  String get scanner_getNodeTitle => 'Precisa de um novo nó?';
-
-  @override
-  String get scanner_getNodeBody =>
-      'Tamanho de carteira, corre MeshCore, GPS dual-band, à prova de água, bateria para 5 dias.';
-
-  @override
-  String get scanner_getNodeAction => 'Obtenha um aqui';
-
-  @override
-  String get scanner_getNodeDisclosure =>
-      'Ligação de afiliado: cada compra apoia o MeshCore Open.';
 
   @override
   String get scanner_bluetoothWebUnsupported =>
@@ -13146,6 +13125,9 @@ class AppLocalizationsPtPt extends AppLocalizationsPt {
   String chat_replyingTo(String name) {
     return 'A responder a $name';
   }
+
+  @override
+  String get chat_resend => 'Reenviar';
 
   @override
   String chat_replyTo(String name) {

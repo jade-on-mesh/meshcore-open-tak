@@ -2140,6 +2140,17 @@ class AppLocalizationsJa extends AppLocalizations {
   String get contacts_noMembers => 'メンバーなし';
 
   @override
+  String get nav_nodes => 'Nodes';
+
+  @override
+  String contacts_searchNodes(int number, String str) {
+    return 'Search $number$str Nodes...';
+  }
+
+  @override
+  String get contacts_noNodesFound => 'No nodes found';
+
+  @override
   String contacts_groupCurrentMembers(int count) {
     return '現在のメンバー（$count）';
   }
@@ -2156,17 +2167,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String contacts_groupAddMember(String name) {
     return '$nameをグループに追加';
   }
-
-  @override
-  String get nav_nodes => 'Nodes';
-
-  @override
-  String contacts_searchNodes(int number, String str) {
-    return 'Search $number$str Nodes...';
-  }
-
-  @override
-  String get contacts_noNodesFound => 'No nodes found';
 
   @override
   String get contacts_lastSeenNow => '最近';
@@ -2612,7 +2612,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get chat_resend => 'Resend';
+  String get chat_resend => '再送信';
 
   @override
   String chat_replyTo(String name) {

@@ -2226,6 +2226,17 @@ class AppLocalizationsCs extends AppLocalizations {
   String get contacts_noMembers => 'Žádní členové';
 
   @override
+  String get nav_nodes => 'Nodes';
+
+  @override
+  String contacts_searchNodes(int number, String str) {
+    return 'Search $number$str Nodes...';
+  }
+
+  @override
+  String get contacts_noNodesFound => 'No nodes found';
+
+  @override
   String contacts_groupCurrentMembers(int count) {
     return 'Současní členové ($count)';
   }
@@ -2242,17 +2253,6 @@ class AppLocalizationsCs extends AppLocalizations {
   String contacts_groupAddMember(String name) {
     return 'Přidat $name do skupiny';
   }
-
-  @override
-  String get nav_nodes => 'Nodes';
-
-  @override
-  String contacts_searchNodes(int number, String str) {
-    return 'Search $number$str Nodes...';
-  }
-
-  @override
-  String get contacts_noNodesFound => 'No nodes found';
 
   @override
   String get contacts_lastSeenNow => 'nedávno';
@@ -2711,7 +2711,7 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
-  String get chat_resend => 'Resend';
+  String get chat_resend => 'Odeslat znovu';
 
   @override
   String chat_replyTo(String name) {

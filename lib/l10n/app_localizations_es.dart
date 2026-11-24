@@ -2232,6 +2232,17 @@ class AppLocalizationsEs extends AppLocalizations {
   String get contacts_noMembers => 'No miembros';
 
   @override
+  String get nav_nodes => 'Nodes';
+
+  @override
+  String contacts_searchNodes(int number, String str) {
+    return 'Search $number$str Nodes...';
+  }
+
+  @override
+  String get contacts_noNodesFound => 'No nodes found';
+
+  @override
   String contacts_groupCurrentMembers(int count) {
     return 'Miembros actuales ($count)';
   }
@@ -2248,17 +2259,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String contacts_groupAddMember(String name) {
     return 'Añadir a $name al grupo';
   }
-
-  @override
-  String get nav_nodes => 'Nodes';
-
-  @override
-  String contacts_searchNodes(int number, String str) {
-    return 'Search $number$str Nodes...';
-  }
-
-  @override
-  String get contacts_noNodesFound => 'No nodes found';
 
   @override
   String get contacts_lastSeenNow => 'Reciente';
@@ -2722,7 +2722,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get chat_resend => 'Resend';
+  String get chat_resend => 'Reenviar';
 
   @override
   String chat_replyTo(String name) {

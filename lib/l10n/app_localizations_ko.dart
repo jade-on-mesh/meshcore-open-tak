@@ -2143,6 +2143,17 @@ class AppLocalizationsKo extends AppLocalizations {
   String get contacts_noMembers => '회원 없음';
 
   @override
+  String get nav_nodes => 'Nodes';
+
+  @override
+  String contacts_searchNodes(int number, String str) {
+    return 'Search $number$str Nodes...';
+  }
+
+  @override
+  String get contacts_noNodesFound => 'No nodes found';
+
+  @override
   String contacts_groupCurrentMembers(int count) {
     return '현재 멤버($count)';
   }
@@ -2159,17 +2170,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String contacts_groupAddMember(String name) {
     return '그룹에 $name 추가';
   }
-
-  @override
-  String get nav_nodes => 'Nodes';
-
-  @override
-  String contacts_searchNodes(int number, String str) {
-    return 'Search $number$str Nodes...';
-  }
-
-  @override
-  String get contacts_noNodesFound => 'No nodes found';
 
   @override
   String get contacts_lastSeenNow => '최근';
@@ -2615,7 +2615,7 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get chat_resend => 'Resend';
+  String get chat_resend => '다시 보내기';
 
   @override
   String chat_replyTo(String name) {
