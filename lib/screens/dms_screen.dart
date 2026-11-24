@@ -27,7 +27,11 @@ class DmConversation {
   final int unread;
   final Message? last;
 
-  const DmConversation({required this.contact, required this.unread, this.last});
+  const DmConversation({
+    required this.contact,
+    required this.unread,
+    this.last,
+  });
 
   /// When it last moved: the newest message's local arrival time, else when
   /// a message was last noted for the contact.
@@ -87,7 +91,8 @@ class _DmsScreenState extends State<DmsScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ChatScreen(contact: contact, initialUnreadCount: unread),
+        builder: (_) =>
+            ChatScreen(contact: contact, initialUnreadCount: unread),
       ),
     );
   }
@@ -268,7 +273,9 @@ class _DmsScreenState extends State<DmsScreen> {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 16,
-                          fontWeight: unread ? FontWeight.w700 : FontWeight.w600,
+                          fontWeight: unread
+                              ? FontWeight.w700
+                              : FontWeight.w600,
                           color: scheme.onSurface,
                         ),
                       ),
@@ -278,7 +285,9 @@ class _DmsScreenState extends State<DmsScreen> {
                       _relativeTime(l10n, c.lastAt),
                       style: MeshTheme.mono(
                         fontSize: 12,
-                        color: unread ? scheme.primary : scheme.onSurfaceVariant,
+                        color: unread
+                            ? scheme.primary
+                            : scheme.onSurfaceVariant,
                       ),
                     ),
                   ],
