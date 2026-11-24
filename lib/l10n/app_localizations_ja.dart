@@ -187,7 +187,8 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get modelDownload_subtitle => 'On Wi-Fi, in the background. You can keep using the app.';
+  String get modelDownload_subtitle =>
+      'On Wi-Fi, in the background. You can keep using the app.';
 
   @override
   String get modelDownload_upscaler => 'photo upscaler';
