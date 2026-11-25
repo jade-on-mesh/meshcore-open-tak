@@ -5,9 +5,8 @@ import '../l10n/l10n.dart';
 import '../widgets/mesh_ui.dart';
 import 'voice_wire.dart';
 
-String _clip(String text, int max) => text.characters.length > max
-    ? '${text.characters.take(max)}…'
-    : text;
+String _clip(String text, int max) =>
+    text.characters.length > max ? '${text.characters.take(max)}…' : text;
 
 /// The header of a message's long-press sheet. A photo, video or voice
 /// message shows its kind and caption instead of the VOX envelope it travels
