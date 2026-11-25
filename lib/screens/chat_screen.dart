@@ -944,24 +944,24 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       builder: (context, settingsService, _) => ListenableBuilder(
         listenable: ChatCompressionStrip.instance,
         builder: (context, _) {
-        // Hidden unless App Settings › Messaging turns it on, or this chat
-        // already compresses.
-        if (!ChatCompressionStrip.instance.showFor(
-          connector.contactCompressionMode(keyHex),
-        )) {
-          return const SizedBox.shrink();
-        }
-        return ChatCompressionSelector(
-          mode: connector.contactCompressionMode(keyHex),
-          enabled: true,
-          profiles: settingsService.settings.cyr2latProfiles,
-          profileId: connector.getContactCyr2LatProfileId(keyHex),
-          defaultProfileId: settingsService.settings.selectedCyr2latProfileId,
-          onModeChanged: (mode) =>
-              connector.setContactCompressionMode(keyHex, mode),
-          onProfileChanged: (id) =>
-              connector.setContactCyr2LatProfileId(keyHex, id),
-        );
+          // Hidden unless App Settings › Messaging turns it on, or this chat
+          // already compresses.
+          if (!ChatCompressionStrip.instance.showFor(
+            connector.contactCompressionMode(keyHex),
+          )) {
+            return const SizedBox.shrink();
+          }
+          return ChatCompressionSelector(
+            mode: connector.contactCompressionMode(keyHex),
+            enabled: true,
+            profiles: settingsService.settings.cyr2latProfiles,
+            profileId: connector.getContactCyr2LatProfileId(keyHex),
+            defaultProfileId: settingsService.settings.selectedCyr2latProfileId,
+            onModeChanged: (mode) =>
+                connector.setContactCompressionMode(keyHex, mode),
+            onProfileChanged: (id) =>
+                connector.setContactCyr2LatProfileId(keyHex, id),
+          );
         },
       ),
     );

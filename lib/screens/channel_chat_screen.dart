@@ -4053,28 +4053,28 @@ class _ChannelChatScreenState extends State<ChannelChatScreen>
       builder: (context, connector, settingsService, _) => ListenableBuilder(
         listenable: ChatCompressionStrip.instance,
         builder: (context, _) {
-        // Hidden unless App Settings › Messaging turns it on, or this channel
-        // already compresses.
-        if (!ChatCompressionStrip.instance.showFor(
-          connector.channelCompressionMode(slot),
-        )) {
-          return const SizedBox.shrink();
-        }
-        final hasStorageId = connector.channelIdForSlot(slot) != null;
-        return ChatCompressionSelector(
-          mode: connector.channelCompressionMode(slot),
-          enabled: hasStorageId,
-          disabledReason: hasStorageId
-              ? null
-              : context.l10n.chatCompression_noStorageId,
-          profiles: settingsService.settings.cyr2latProfiles,
-          profileId: connector.getChannelCyr2LatProfileId(slot),
-          defaultProfileId: settingsService.settings.selectedCyr2latProfileId,
-          onModeChanged: (mode) =>
-              connector.setChannelCompressionMode(slot, mode),
-          onProfileChanged: (id) =>
-              connector.setChannelCyr2LatProfileId(slot, id),
-        );
+          // Hidden unless App Settings › Messaging turns it on, or this channel
+          // already compresses.
+          if (!ChatCompressionStrip.instance.showFor(
+            connector.channelCompressionMode(slot),
+          )) {
+            return const SizedBox.shrink();
+          }
+          final hasStorageId = connector.channelIdForSlot(slot) != null;
+          return ChatCompressionSelector(
+            mode: connector.channelCompressionMode(slot),
+            enabled: hasStorageId,
+            disabledReason: hasStorageId
+                ? null
+                : context.l10n.chatCompression_noStorageId,
+            profiles: settingsService.settings.cyr2latProfiles,
+            profileId: connector.getChannelCyr2LatProfileId(slot),
+            defaultProfileId: settingsService.settings.selectedCyr2latProfileId,
+            onModeChanged: (mode) =>
+                connector.setChannelCompressionMode(slot, mode),
+            onProfileChanged: (id) =>
+                connector.setChannelCyr2LatProfileId(slot, id),
+          );
         },
       ),
     );
