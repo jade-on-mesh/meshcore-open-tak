@@ -91,8 +91,20 @@ class _GifMessageState extends State<GifMessage> {
   }
 
   void _unsubscribe() {
-    if (_imageStream != null && _listener != null) {
-      _imageStream!.removeListener(_listener!);
+    final stream = _imageStream;
+    final listener = _listener;
+    if (stream == null || listener == null) return;
+    stream.removeListener(listener);
+    if (_isLoading) {
+      // Still loading: an error arriving with no listener would be reported
+      // as an uncaught image error (a GIF scrolled away or a chat closed
+      // before it loaded, and a flaky widget test). Take it, then let go.
+      late final ImageStreamListener guard;
+      guard = ImageStreamListener(
+        (_, _) => stream.removeListener(guard),
+        onError: (_, _) => stream.removeListener(guard),
+      );
+      stream.addListener(guard);
     }
   }
 
