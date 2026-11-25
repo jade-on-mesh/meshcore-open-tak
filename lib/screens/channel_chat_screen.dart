@@ -114,6 +114,7 @@ import '../vox/voice_message_bubble.dart';
 import '../vox/voice_record_sheet.dart';
 import '../vox/voice_service.dart';
 import '../vox/voice_wire.dart';
+import '../vox/vox_sheet_header.dart';
 import '../vox/vox_rx_path.dart' show VoxPathRadio, VoxRxPath;
 import '../team/message_reach_screen.dart';
 import '../vox/walkie_service.dart';
@@ -4491,11 +4492,10 @@ class _ChannelChatScreenState extends State<ChannelChatScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              BottomSheetHeader(
-                title: message.displayText.characters.length > 40
-                    ? '${message.displayText.characters.take(40)}…'
-                    : message.displayText,
-                subtitle: message.senderName.isNotEmpty
+              messageSheetHeader(
+                context,
+                text: message.displayText,
+                sender: message.senderName.isNotEmpty
                     ? message.senderName
                     : null,
               ),
