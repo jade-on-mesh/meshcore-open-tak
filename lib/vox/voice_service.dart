@@ -596,6 +596,8 @@ class VoxVoiceService extends ChangeNotifier {
       _dataAudio = prefs.getBool(_kDataAudio) ?? false;
       _fastMediaMesh = prefs.getBool(_kFastMediaMesh) ?? true;
       _adaptiveSpacing = prefs.getBool(_kAdaptiveSpacing) ?? true;
+      _sendQueue = prefs.getBool(_kSendQueue) ?? true;
+      _errorCorrection = prefs.getBool(_kErrorCorrection) ?? true;
       for (final e in prefs.getStringList(_kPaceSaved) ?? const <String>[]) {
         final at = e.indexOf(':');
         final ch = at > 0 ? int.tryParse(e.substring(0, at)) : null;
@@ -710,19 +712,29 @@ class VoxVoiceService extends ChangeNotifier {
 
   /// Runs [run] after the answers before it. [size] says how many packets it
   /// will send, asked when it's picked (a burst gathers more while it waits).
-  void _enqueueServe(int Function() size, Future<void> Function() run) {
-    if (!_adaptiveTiming) {
+  /// [voice]: a voice clip's answer, which the send queue puts first.
+  void _enqueueServe(
+    int Function() size,
+    Future<void> Function() run, {
+    bool voice = false,
+  }) {
+    if (!_adaptiveTiming && !_sendQueue) {
       _serveChain = _serveChain.then((_) => run()).catchError((_) {});
       return;
     }
-    _serveQueue.add(_ServeTask(size, run));
+    _serveQueue.add(_ServeTask(size, run, voice: voice));
     if (_servePumping) return;
     _servePumping = true;
     _serveChain = _serveChain
         .then((_) async {
           try {
             while (_serveQueue.isNotEmpty) {
-              final i = voxPickServe([for (final t in _serveQueue) t.size()]);
+              final i = voxPickServe(
+                [for (final t in _serveQueue) t.size()],
+                voice: [for (final t in _serveQueue) t.voice],
+                voiceFirst: _sendQueue,
+                smallFirst: _adaptiveTiming,
+              );
               final t = _serveQueue.removeAt(i);
               try {
                 await t.run();
@@ -1290,7 +1302,7 @@ class VoxVoiceService extends ChangeNotifier {
       () => _ChannelBurst(sid, channel),
     );
     burst.pending.addAll(List<int>.generate(total, (i) => i));
-    burst.addParity(total, image: _modes[sid]!.isMedia);
+    if (_errorCorrection) burst.addParity(total, image: _modes[sid]!.isMedia);
     burst.pushing = true;
     _pushedAt[sid] = DateTime.now();
     _pushedAt.removeWhere(
@@ -1307,6 +1319,7 @@ class VoxVoiceService extends ChangeNotifier {
     _enqueueServe(
       () => burst.pending.length + burst.repairs,
       () => _runChannelBurst(key, burst),
+      voice: _isVoiceClip(burst.sid),
     );
   }
 
@@ -1712,7 +1725,7 @@ class VoxVoiceService extends ChangeNotifier {
           final ok = await _connector.sendChannelDataBlobs(
             [
               req
-                  .forChannel(fountain: _fastMediaMesh)
+                  .forChannel(fountain: _fountainOn)
                   .encode(salt: clip.salts.next()),
             ],
             channelIndex: clip.channelIndex!,
@@ -2462,6 +2475,55 @@ class VoxVoiceService extends ChangeNotifier {
   /// flooded answers start at, and may learn down to, a tighter spacing
   /// (VoxFloodPace.fast). Off: as before, for comparing.
   bool get fastMediaMesh => _fastMediaMesh;
+
+  static const _kSendQueue = 'vox_send_queue';
+  bool _sendQueue = true;
+
+  /// Send queue: photos, video and voice this phone sends go out one answer
+  /// at a time with voice first (voxPickServe), and each packet waits for
+  /// radio2 to go quiet first (listen before talk, voxLbtHold). Off: answers
+  /// go in the order asked (smaller first with adaptive spacing) and packets
+  /// don't wait for quiet; the radio's own wait still applies.
+  bool get sendQueue => _sendQueue;
+
+  Future<void> setSendQueue(bool v) async {
+    _sendQueue = v;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kSendQueue, v);
+    } catch (_) {}
+  }
+
+  static const _kErrorCorrection = 'vox_error_correction';
+  bool _errorCorrection = true;
+
+  /// Error correction: a whole clip's answers end with parity packets
+  /// (vox_fec.dart) and, with Fast MediaMesh, gaps are mended with rateless
+  /// repair packets (vox_fountain.dart) that serve every listener at once.
+  /// Off: neither is sent or asked for; missing packets are asked for and
+  /// sent again one by one. Parity and repair packets others send are still
+  /// used either way.
+  bool get errorCorrection => _errorCorrection;
+
+  Future<void> setErrorCorrection(bool v) async {
+    _errorCorrection = v;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kErrorCorrection, v);
+    } catch (_) {}
+  }
+
+  /// A voice clip (not a photo or video), for the send queue's order.
+  bool _isVoiceClip(String sid) {
+    final mode = _modes[sid];
+    return mode != null && !mode.isMedia;
+  }
+
+  /// Rateless repair packets, asked for and sent: error correction with
+  /// Fast MediaMesh.
+  bool get _fountainOn => _fastMediaMesh && _errorCorrection;
 
   static const _kAdaptiveSpacing = 'vox_adaptive_spacing';
   bool _adaptiveSpacing = true;
@@ -3631,7 +3693,7 @@ class VoxVoiceService extends ChangeNotifier {
         _savePace(channel, pace);
       }
     }
-    final lossPct = _fastMediaMesh ? _paceFor(channel).lossPct : 0;
+    final lossPct = _fountainOn ? _paceFor(channel).lossPct : 0;
     final held = _heldPackets(req.sessionId);
     if (held == null) return;
     final total = held.total;
@@ -3651,7 +3713,7 @@ class VoxVoiceService extends ChangeNotifier {
     // only mend once there are as many as it lacks.
     final listed = req.missingIndices;
     final capped =
-        _fastMediaMesh &&
+        _fountainOn &&
         listed != null &&
         listed.length >= voxFountainListCap &&
         listed.last < total - 1;
@@ -3665,7 +3727,7 @@ class VoxVoiceService extends ChangeNotifier {
     // whole clip, and only with this phone's fast repair on. Data packets
     // going out anyway (to a listener that can't use repair packets) count
     // towards them (_ChannelBurst.repairs).
-    final fountain = _fastMediaMesh && req.fountainOk && held.whole;
+    final fountain = _fountainOn && req.fountainOk && held.whole;
     // A thumbnail probe (only the first voxThumbPackets) gets those packets
     // as data, not repair packets, even when it says it rebuilds from repair
     // packets, as older apps' probes did: it holds little of the photo, so
@@ -3685,7 +3747,7 @@ class VoxVoiceService extends ChangeNotifier {
     }
     // Everything asked for: the parity goes too, so whatever it misses of
     // this pass mends itself (fast repair: repair packets instead).
-    if (listed == null && held.whole && !fountain) {
+    if (_errorCorrection && listed == null && held.whole && !fountain) {
       burst.addParity(total, image: held.image);
     }
     burst.sendTwice.addAll(twice);
@@ -3705,6 +3767,7 @@ class VoxVoiceService extends ChangeNotifier {
     _enqueueServe(
       () => burst.pending.length + burst.repairs,
       () => _runChannelBurst(key, burst),
+      voice: _isVoiceClip(burst.sid),
     );
   }
 
@@ -3723,6 +3786,7 @@ class VoxVoiceService extends ChangeNotifier {
   /// been quiet a packet's airtime and a random bit, or after 20 s of waiting.
   /// Returns how long it held the packet back, in ms (for the log).
   Future<int> _radio2Quiet(String sid) async {
+    if (!_sendQueue) return 0; // the send queue's listen before talk is off
     final start = DateTime.now();
     final quiet = voxLbtQuietMs(
       _packetAir().inMilliseconds,
@@ -3960,6 +4024,7 @@ class VoxVoiceService extends ChangeNotifier {
 
   /// Up to 1.5 s for 300 ms without a packet heard (either radio).
   Future<void> _waitBriefQuiet() async {
+    if (!_sendQueue) return;
     final until = DateTime.now().add(const Duration(milliseconds: 1500));
     while (DateTime.now().isBefore(until)) {
       if (DateTime.now().difference(_connector.lastRadioRxTime) >=
@@ -4090,6 +4155,7 @@ class VoxVoiceService extends ChangeNotifier {
     _enqueueServe(
       () => req.missingIndices?.length ?? voxMaxPackets,
       () => _serve(req, viaChannel, waitForRoute, key, gen, askedAt),
+      voice: _isVoiceClip(req.sessionId),
     );
   }
 
@@ -4307,7 +4373,7 @@ class VoxVoiceService extends ChangeNotifier {
       );
     }
     // The whole clip asked for: its parity follows.
-    final parity = wanted == null && held.whole
+    final parity = _errorCorrection && wanted == null && held.whole
         ? voxFecEncode(req.sessionId, [
             for (var i = 0; i < held.total; i++) held.packets[i]!,
           ], image: held.image)
@@ -5307,9 +5373,10 @@ class _ChannelBurst {
 
 /// An answer waiting its turn (VoxVoiceService._enqueueServe).
 class _ServeTask {
-  _ServeTask(this.size, this.run);
+  _ServeTask(this.size, this.run, {this.voice = false});
   final int Function() size;
   final Future<void> Function() run;
+  final bool voice;
 }
 
 /// What a listener that rebuilds from repair packets lacked when it asked,

@@ -364,4 +364,45 @@ void main() {
     expect(voxPickServe([222, 40, 17]), 1);
     expect(voxPickServe([255]), 0);
   });
+
+  test('the send queue puts voice first, then small, then in order', () {
+    // A 200-packet photo, then a 30-packet voice clip, then a small repair.
+    const sizes = [200, 30, 10];
+    const voice = [false, true, false];
+    expect(
+      voxPickServe(sizes, voice: voice, voiceFirst: true, smallFirst: true),
+      1,
+    );
+    // Off: small first, as before.
+    expect(voxPickServe(sizes, voice: voice, smallFirst: true), 1);
+    expect(voxPickServe([200, 50, 10], voice: const [false, true, false]), 2);
+    expect(
+      voxPickServe(
+        [200, 50, 10],
+        voice: const [false, true, false],
+        voiceFirst: true,
+      ),
+      1,
+    );
+    // Two voice clips: the smaller first only with adaptive spacing.
+    expect(
+      voxPickServe(
+        [60, 50, 12],
+        voice: const [true, true, true],
+        voiceFirst: true,
+        smallFirst: false,
+      ),
+      0,
+    );
+    expect(
+      voxPickServe(
+        [60, 50, 12],
+        voice: const [true, true, true],
+        voiceFirst: true,
+      ),
+      2,
+    );
+    // Neither: the first that came.
+    expect(voxPickServe([200, 10], smallFirst: false), 0);
+  });
 }
