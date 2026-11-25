@@ -569,13 +569,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vox_sendQueueTitle => 'Send queue';
 
   @override
-  String get vox_sendQueueSubtitle => 'Photos, video and voice go out one at a time, voice first, and each packet waits for MediaMesh to go quiet. Switch off if transfers seem slower than they should.';
+  String get vox_sendQueueSubtitle =>
+      'Photos, video and voice go out one at a time, voice first, and each packet waits for MediaMesh to go quiet. Switch off if transfers seem slower than they should.';
 
   @override
   String get vox_errorCorrectionTitle => 'Error correction';
 
   @override
-  String get vox_errorCorrectionSubtitle => 'Extra packets after each transfer so listeners rebuild what they missed without asking again, and (with Fast MediaMesh) repair packets that mend everyone\'s gaps at once. Older apps and standalones still get every photo and clip. Switch off to ask again for each missing packet instead.';
+  String get vox_errorCorrectionSubtitle =>
+      'Extra packets after each transfer so listeners rebuild what they missed without asking again, and (with Fast MediaMesh) repair packets that mend everyone\'s gaps at once. Older apps and standalones still get every photo and clip. Switch off to ask again for each missing packet instead.';
 
   @override
   String get vox_fastMediaMeshTitle => 'Fast MediaMesh';

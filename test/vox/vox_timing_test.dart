@@ -375,10 +375,7 @@ void main() {
     );
     // Off: small first, as before.
     expect(voxPickServe(sizes, voice: voice, smallFirst: true), 1);
-    expect(
-      voxPickServe([200, 50, 10], voice: const [false, true, false]),
-      2,
-    );
+    expect(voxPickServe([200, 50, 10], voice: const [false, true, false]), 2);
     expect(
       voxPickServe(
         [200, 50, 10],
