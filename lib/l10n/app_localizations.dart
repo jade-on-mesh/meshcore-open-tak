@@ -1093,6 +1093,30 @@ abstract class AppLocalizations {
   /// **'Data Audio'**
   String get vox_dataAudioTitle;
 
+  /// No description provided for @vox_sendQueueTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Send queue'**
+  String get vox_sendQueueTitle;
+
+  /// No description provided for @vox_sendQueueSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos, video and voice go out one at a time, voice first, and each packet waits for MediaMesh to go quiet. Switch off if transfers seem slower than they should.'**
+  String get vox_sendQueueSubtitle;
+
+  /// No description provided for @vox_errorCorrectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Error correction'**
+  String get vox_errorCorrectionTitle;
+
+  /// No description provided for @vox_errorCorrectionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra packets after each transfer so listeners rebuild what they missed without asking again, and (with Fast MediaMesh) repair packets that mend everyone\'s gaps at once. Older apps and standalones still get every photo and clip. Switch off to ask again for each missing packet instead.'**
+  String get vox_errorCorrectionSubtitle;
+
   /// No description provided for @vox_fastMediaMeshTitle.
   ///
   /// In en, this message translates to:

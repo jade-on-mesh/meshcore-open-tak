@@ -601,6 +601,30 @@ class _MediaMeshSettingsScreenState extends State<MediaMeshSettingsScreen> {
                                 : null,
                           ),
                         ),
+                        // One transfer at a time, voice first, waiting for a
+                        // quiet MediaMesh (voxPickServe, voxLbtHold).
+                        ListenableBuilder(
+                          listenable: voice,
+                          builder: (context, _) => SwitchListTile(
+                            secondary: const Icon(Icons.queue),
+                            title: Text(l10n.vox_sendQueueTitle),
+                            subtitle: Text(l10n.vox_sendQueueSubtitle),
+                            value: voice.sendQueue,
+                            onChanged: voice.setSendQueue,
+                          ),
+                        ),
+                        // Parity and repair packets (vox_fec.dart,
+                        // vox_fountain.dart).
+                        ListenableBuilder(
+                          listenable: voice,
+                          builder: (context, _) => SwitchListTile(
+                            secondary: const Icon(Icons.healing),
+                            title: Text(l10n.vox_errorCorrectionTitle),
+                            subtitle: Text(l10n.vox_errorCorrectionSubtitle),
+                            value: voice.errorCorrection,
+                            onChanged: voice.setErrorCorrection,
+                          ),
+                        ),
                         // Photo and voice transfers through chosen repeaters.
                         VoxForcedRouteTile(service: voice),
                         _header(_Section.voice, l10n.mediaMesh_voiceQuality),

@@ -241,6 +241,18 @@ Switch it off for the spacing of the 2026-11-18 field test (a 3-part SuperMax in
 
 **Rolling back.** Switch Fast MediaMesh off, on one phone or standalone or on all of them, and transfers work exactly as they did before. That covers the requests, the answers and the spacing. Phones and standalones with it on and off still work together. To take it out of the app altogether, revert the pull request that added it (and its Wadamesh TAK counterpart).
 
+## Send queue and error correction
+
+Two switches in **Settings → MediaMesh Settings**, under Speed & Routing, both on by default. Wadamesh TAK standalones have the same two (**Settings → MediaMesh**). Either can be switched off on its own, on one phone or standalone or on all of them; phones and standalones with them on and off still work together.
+
+**Send queue.** What this phone sends goes out one answer at a time. Voice clips go first: a few seconds of speech doesn't wait minutes behind a photo or a video. Among the rest, a small answer (40 packets or fewer) goes first with adaptive spacing on, else first come, first served. Each packet also waits for MediaMesh to go quiet: once a packet from someone else was heard on radio2 lately, it waits one packet's airtime and a random bit more, at most 20 s. The random bit is so two senders that both waited don't then collide. Off: answers go in the order they were asked for, still one at a time (smaller first with adaptive spacing), and packets don't wait for quiet. The radio's own wait for a quiet channel still applies.
+
+**Error correction.** A clip's packets are followed by parity packets: a few per 20 packets, about a tenth for photos and more for voice. A listener that lost up to that many rebuilds them itself, without asking again. With Fast MediaMesh on too, gaps are mended with repair packets: any listener missing *m* packets rebuilds them from any *m* (or a few more) repair packets, so one answer serves every listener at once. Repair packets are sized from the loss listeners report.
+
+Off: neither is sent or asked for. Missing packets are asked for and sent again one by one, as before both existed. Parity and repair packets that others send are still used either way.
+
+Older apps and standalones ignore parity and repair packets, and still get every packet itself.
+
 ## Transfer test
 
 The voice diagnostics sheet (ⓘ) has **Transfer test**: pick a contact or a channel and 3, 5 or 10 photos. The app sends a small test photo (Standard detail), waits for it to arrive, then sends the next, and shows:

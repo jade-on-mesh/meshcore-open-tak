@@ -270,12 +270,31 @@ Duration voxGapAfterSend(Duration gap, Duration spent) {
 const int voxSmallAnswerPackets = 40;
 
 /// Which of the answers waiting (their sizes, in the order they came) goes
-/// next: the first small one, else the first.
-int voxPickServe(List<int> sizes) {
-  for (var i = 0; i < sizes.length; i++) {
-    if (sizes[i] <= voxSmallAnswerPackets) return i;
+/// next. With [voiceFirst] (the send queue), voice clips' answers ([voice])
+/// go before photos' and videos': a few seconds of speech shouldn't wait
+/// minutes behind a photo. Then, with [smallFirst] (adaptive spacing), the
+/// first small one (a repair, a few missing packets); else the first.
+/// Mirrored in Wadamesh (VoxServe::tick).
+int voxPickServe(
+  List<int> sizes, {
+  List<bool>? voice,
+  bool voiceFirst = false,
+  bool smallFirst = true,
+}) {
+  var from = List<int>.generate(sizes.length, (i) => i);
+  if (voiceFirst && voice != null) {
+    final voices = [
+      for (final i in from)
+        if (i < voice.length && voice[i]) i,
+    ];
+    if (voices.isNotEmpty) from = voices;
   }
-  return 0;
+  if (smallFirst) {
+    for (final i in from) {
+      if (sizes[i] <= voxSmallAnswerPackets) return i;
+    }
+  }
+  return from.isEmpty ? 0 : from.first;
 }
 
 /// Adaptive spacing: the tightest an answer's gap may learn (1.6 airtimes
