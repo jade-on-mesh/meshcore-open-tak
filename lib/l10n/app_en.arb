@@ -232,6 +232,8 @@
   "vox_sendQueueTitle": "Send queue",
   "vox_sendQueueSubtitle": "Photos, video and voice go out one at a time, voice first, and each packet waits for MediaMesh to go quiet. Switch off if transfers seem slower than they should.",
   "vox_errorCorrectionTitle": "Error correction",
+  "vox_extraParityTitle": "Extra parity",
+  "vox_extraParitySubtitle": "Channel posts end with enough repair packets for the loss listeners report, and photos and voice sent over a long direct route get more parity, so fewer listeners have to ask again. Uses a little more airtime. Needs Error correction.",
   "vox_errorCorrectionSubtitle": "Extra packets after each transfer so listeners rebuild what they missed without asking again, and (with Fast MediaMesh) repair packets that mend everyone's gaps at once. Older apps and standalones still get every photo and clip. Switch off to ask again for each missing packet instead.",
   "vox_fastMediaMeshTitle": "Fast MediaMesh",
   "vox_fastMediaMeshSubtitle": "Repair packets that mend every listener's gaps at once, and closer packet spacing through repeaters. Switch off to go back to the way transfers worked before.",

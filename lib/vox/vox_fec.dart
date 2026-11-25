@@ -42,17 +42,62 @@ int voxFecParityCount(int k, {required bool image}) {
   return k >= 8 ? 3 : (k >= 4 ? 2 : 1);
 }
 
-/// All parity packets for a clip, after all its data (in all-at-once sends).
-int voxFecTotalParity(int total, {required bool image}) {
-  var n = 0;
-  for (var lo = 0; lo < total; lo += voxFecBlock) {
-    n += voxFecParityCount(
-      (total - lo) < voxFecBlock ? total - lo : voxFecBlock,
-      image: image,
-    );
-  }
-  return n;
+/// The most parity packets a block can have (the info byte's 3 bits).
+const int voxFecMaxPerBlock = 8;
+
+/// The most parity packets a clip gets with extra parity: what a Wadamesh
+/// TAK standalone keeps (VoxFetch kMaxParity). More would be sent for
+/// nothing.
+const int voxFecMaxExtraClipParity = 40;
+
+/// Extra parity: parity packets for a block of [k] expected to lose
+/// [lossPct]% on the way: enough for 1.3 times the packets it should lose,
+/// and one more, never fewer than [voxFecParityCount], at most 8. With no
+/// loss expected, the usual count.
+int voxFecParityCountAt(int k, {required bool image, int lossPct = 0}) {
+  final base = voxFecParityCount(k, image: image);
+  if (k <= 1 || lossPct <= 0) return base;
+  final loss = lossPct > 40 ? 40 : lossPct;
+  final sized = (k * loss * 13 + 999) ~/ 1000 + 1;
+  final m = sized > base ? sized : base;
+  return m > voxFecMaxPerBlock ? voxFecMaxPerBlock : m;
 }
+
+/// Each block's parity count for a [total]-packet clip: [voxFecParityCountAt],
+/// with what goes beyond the usual counts kept within
+/// [voxFecMaxExtraClipParity] for the whole clip (earlier blocks first).
+List<int> voxFecBlockCounts(int total, {required bool image, int lossPct = 0}) {
+  final base = <int>[];
+  final want = <int>[];
+  for (var lo = 0; lo < total; lo += voxFecBlock) {
+    final k = (total - lo) < voxFecBlock ? total - lo : voxFecBlock;
+    base.add(voxFecParityCount(k, image: image));
+    want.add(voxFecParityCountAt(k, image: image, lossPct: lossPct));
+  }
+  final baseTotal = base.fold<int>(0, (a, b) => a + b);
+  var budget = voxFecMaxExtraClipParity - baseTotal;
+  final out = <int>[];
+  for (var b = 0; b < base.length; b++) {
+    var extra = want[b] - base[b];
+    if (extra > budget) extra = budget < 0 ? 0 : budget;
+    budget -= extra;
+    out.add(base[b] + extra);
+  }
+  return out;
+}
+
+/// All parity packets for a clip, after all its data (in all-at-once sends).
+/// [lossPct]: extra parity, sized for that loss (voxFecParityCountAt).
+int voxFecTotalParity(int total, {required bool image, int lossPct = 0}) =>
+    voxFecBlockCounts(
+      total,
+      image: image,
+      lossPct: lossPct,
+    ).fold<int>(0, (a, b) => a + b);
+
+/// Extra parity on a direct answer: the loss to size it for, from the
+/// route's length (no loss reports come back on one): 5% a hop, at most 30%.
+int voxFecHopLossPct(int hops) => hops <= 0 ? 0 : (hops * 5 > 30 ? 30 : hops * 5);
 
 // ---------------------------------------------------------------- GF(256)
 
@@ -101,6 +146,7 @@ List<Uint8List> voxFecEncode(
   String sid,
   List<Uint8List> packets, {
   required bool image,
+  int lossPct = 0,
 }) {
   final n = packets.length;
   if (n < 2) return const [];
@@ -111,10 +157,11 @@ List<Uint8List> voxFecEncode(
   final lastLen = packets.last.length;
   final psid = voxSessionIdToBytes(voxFecParitySid(sid));
   final out = <Uint8List>[];
+  final counts = voxFecBlockCounts(n, image: image, lossPct: lossPct);
   for (var b = 0; b * voxFecBlock < n; b++) {
     final lo = b * voxFecBlock;
     final hi = (lo + voxFecBlock) < n ? lo + voxFecBlock : n;
-    final m = voxFecParityCount(hi - lo, image: image);
+    final m = counts[b];
     for (var j = 0; j < m; j++) {
       final pkt = Uint8List(VoxVoicePacket.headerLength + 1 + p);
       pkt[0] = voxVoicePacketMagic;

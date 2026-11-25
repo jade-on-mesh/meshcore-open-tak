@@ -131,4 +131,73 @@ void main() {
     expect(voxFecParityCount(20, image: true), 2);
     expect(voxFecTotalParity(230, image: true), 24);
   });
+
+  test('extra parity: sized for the loss, at most 8 a block, 40 a clip', () {
+    // No loss expected: the usual counts.
+    expect(voxFecParityCountAt(20, image: true), 2);
+    expect(voxFecParityCountAt(20, image: true, lossPct: 0), 2);
+    // 1.3 times the packets 20 should lose, and one more.
+    expect(voxFecParityCountAt(20, image: true, lossPct: 5), 3);
+    expect(voxFecParityCountAt(20, image: true, lossPct: 10), 4);
+    expect(voxFecParityCountAt(20, image: true, lossPct: 20), 7);
+    expect(voxFecParityCountAt(20, image: true, lossPct: 30), 8);
+    // Never below the usual (voice gets more), never above 8.
+    expect(voxFecParityCountAt(11, image: false, lossPct: 5), 3);
+    expect(voxFecParityCountAt(20, image: false, lossPct: 90), 8);
+    expect(voxFecParityCountAt(1, image: false, lossPct: 30), 0);
+    // A big photo: what goes beyond the usual 24 stops at 40 in all.
+    expect(voxFecTotalParity(230, image: true, lossPct: 20), 40);
+    expect(voxFecBlockCounts(230, image: true, lossPct: 20).take(4), [
+      7,
+      7,
+      7,
+      3,
+    ]);
+    // A small one gets all of it.
+    expect(voxFecTotalParity(40, image: true, lossPct: 20), 14);
+  });
+
+  test('extra parity mends the losses it was sized for', () {
+    final c = cases.last;
+    final pk = c.packets();
+    final par = voxFecEncode(c.sidHex, pk, image: c.image, lossPct: 20);
+    expect(par.length, voxFecTotalParity(c.n, image: c.image, lossPct: 20));
+    final pmap = <int, Uint8List>{
+      for (final p in par)
+        VoxVoicePacket.tryParse(p)!.index: VoxVoicePacket.tryParse(
+          p,
+        )!.codecData,
+    };
+    final counts = voxFecBlockCounts(c.n, image: c.image, lossPct: 20);
+    final rng = Random(11);
+    for (var trial = 0; trial < 100; trial++) {
+      final lost = <int>{};
+      for (var b = 0; b * voxFecBlock < c.n; b++) {
+        final lo = b * voxFecBlock;
+        final hi = min(c.n, lo + voxFecBlock);
+        final pool = [for (var i = lo; i < hi; i++) i]..shuffle(rng);
+        lost.addAll(pool.take(rng.nextInt(min(counts[b], hi - lo) + 1)));
+      }
+      final present = {
+        for (var i = 0; i < c.n; i++)
+          if (!lost.contains(i)) i: pk[i],
+      };
+      final got = voxFecRebuild(total: c.n, present: present, parity: pmap);
+      expect(got.keys.toSet(), lost);
+      for (final i in lost) {
+        expect(got[i], pk[i], reason: 'packet $i');
+      }
+    }
+    // The usual parity packets come first in each block, unchanged.
+    final usual = voxFecEncode(c.sidHex, pk, image: c.image);
+    final usualSet = usual.map(_hex).toSet();
+    expect(par.map(_hex).where(usualSet.contains).length, usual.length);
+  });
+
+  test('extra parity on a direct route: 5% a hop, at most 30%', () {
+    expect(voxFecHopLossPct(0), 0);
+    expect(voxFecHopLossPct(1), 5);
+    expect(voxFecHopLossPct(3), 15);
+    expect(voxFecHopLossPct(9), 30);
+  });
 }

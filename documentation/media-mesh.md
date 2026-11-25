@@ -253,6 +253,14 @@ Off: neither is sent or asked for. Missing packets are asked for and sent again 
 
 Older apps and standalones ignore parity and repair packets, and still get every packet itself.
 
+**Extra parity.** On by default; needs Error correction. Wadamesh TAK standalones have it too, for the answers they send.
+
+- **Channel posts (pushes).** With Fast MediaMesh, the push ends with repair packets sized for the loss this channel's listeners last reported. Before, it ended with the usual parity only, which mends one or two packets in 20. The usual parity still goes first, for older listeners; the repair packets cover the rest of the loss. For a 226-packet photo on a channel losing 20%, that's 41 repair packets after the 24 parity. With no loss reported, it's the usual parity and a few more. Without Fast MediaMesh, the parity itself is sized for that loss.
+- **Whole clips answered direct.** No loss reports come back on a direct route, so the parity is sized from its length: 5% loss a hop, at most 30%. A block of 20 gets 1.3 times the packets it should lose, and one more: 3 at one hop, 5 at three, 8 (the most) from five. That's never fewer than usual, and at most 40 parity packets per clip (what a standalone keeps).
+- **Whole clips answered on a channel without repair packets:** parity sized for the channel's reported loss.
+
+Off: the usual few parity packets. Listeners need nothing new: the extra packets are ordinary parity and repair packets, which every app and standalone with error correction already uses.
+
 ## Transfer test
 
 The voice diagnostics sheet (ⓘ) has **Transfer test**: pick a contact or a channel and 3, 5 or 10 photos. The app sends a small test photo (Standard detail), waits for it to arrive, then sends the next, and shows:

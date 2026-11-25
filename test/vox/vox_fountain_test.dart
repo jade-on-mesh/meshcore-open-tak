@@ -205,4 +205,16 @@ void main() {
     expect(fast.gapMs(3), voxFloodFastBaseGapMs(air));
     expect(voxFloodFastBaseGapMs(air), greaterThan(2 * air));
   });
+
+  test('a push gets repair packets for the loss, less its parity', () {
+    // 226 packets at 20% loss: the pass's share (65) less 24 parity.
+    expect(voxPushRepairs(total: 226, lossPct: 20, parity: 24), 41);
+    // No loss reported: the first pass's tenth, less the parity.
+    expect(
+      voxPushRepairs(total: 226, lossPct: 0, parity: 24),
+      voxFountainFirstPass(226) - 24,
+    );
+    // Parity already covers it: none.
+    expect(voxPushRepairs(total: 10, lossPct: 0, parity: 3), 0);
+  });
 }

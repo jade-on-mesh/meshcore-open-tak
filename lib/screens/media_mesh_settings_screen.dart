@@ -625,6 +625,20 @@ class _MediaMeshSettingsScreenState extends State<MediaMeshSettingsScreen> {
                             onChanged: voice.setErrorCorrection,
                           ),
                         ),
+                        // More parity and repair packets, sized for the
+                        // loss (needs error correction).
+                        ListenableBuilder(
+                          listenable: voice,
+                          builder: (context, _) => SwitchListTile(
+                            secondary: const Icon(Icons.add_circle_outline),
+                            title: Text(l10n.vox_extraParityTitle),
+                            subtitle: Text(l10n.vox_extraParitySubtitle),
+                            value: voice.errorCorrection && voice.extraParity,
+                            onChanged: voice.errorCorrection
+                                ? voice.setExtraParity
+                                : null,
+                          ),
+                        ),
                         // Photo and voice transfers through chosen repeaters.
                         VoxForcedRouteTile(service: voice),
                         _header(_Section.voice, l10n.mediaMesh_voiceQuality),

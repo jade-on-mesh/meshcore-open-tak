@@ -580,6 +580,12 @@ class AppLocalizationsUk extends AppLocalizations {
   String get vox_errorCorrectionTitle => 'Error correction';
 
   @override
+  String get vox_extraParityTitle => 'Extra parity';
+
+  @override
+  String get vox_extraParitySubtitle => 'Channel posts end with enough repair packets for the loss listeners report, and photos and voice sent over a long direct route get more parity, so fewer listeners have to ask again. Uses a little more airtime. Needs Error correction.';
+
+  @override
   String get vox_errorCorrectionSubtitle =>
       'Extra packets after each transfer so listeners rebuild what they missed without asking again, and (with Fast MediaMesh) repair packets that mend everyone\'s gaps at once. Older apps and standalones still get every photo and clip. Switch off to ask again for each missing packet instead.';
 
