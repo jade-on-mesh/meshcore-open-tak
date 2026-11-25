@@ -96,6 +96,7 @@ import '../vox/walkie_service.dart';
 import '../vox/walkie_sheet.dart';
 import '../vox/voice_service.dart';
 import '../vox/voice_wire.dart';
+import '../vox/vox_sheet_header.dart';
 import '../services/chat_background_service.dart';
 import '../widgets/chat_background.dart';
 import '../widgets/holiday_animations.dart';
@@ -2040,11 +2041,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              BottomSheetHeader(
-                title: message.displayText.characters.length > 40
-                    ? '${message.displayText.characters.take(40)}…'
-                    : message.displayText,
-              ),
+              messageSheetHeader(context, text: message.displayText),
               // Can't react to your own messages
               if (!message.isOutgoing)
                 ListTile(
