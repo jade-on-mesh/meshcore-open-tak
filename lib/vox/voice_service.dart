@@ -598,6 +598,7 @@ class VoxVoiceService extends ChangeNotifier {
       _adaptiveSpacing = prefs.getBool(_kAdaptiveSpacing) ?? true;
       _sendQueue = prefs.getBool(_kSendQueue) ?? true;
       _errorCorrection = prefs.getBool(_kErrorCorrection) ?? true;
+      _extraParity = prefs.getBool(_kExtraParity) ?? true;
       for (final e in prefs.getStringList(_kPaceSaved) ?? const <String>[]) {
         final at = e.indexOf(':');
         final ch = at > 0 ? int.tryParse(e.substring(0, at)) : null;
@@ -1302,7 +1303,24 @@ class VoxVoiceService extends ChangeNotifier {
       () => _ChannelBurst(sid, channel),
     );
     burst.pending.addAll(List<int>.generate(total, (i) => i));
-    if (_errorCorrection) burst.addParity(total, image: _modes[sid]!.isMedia);
+    final image = _modes[sid]!.isMedia;
+    // Extra parity: sized for the loss this channel's listeners report.
+    // With repair packets (Fast MediaMesh), the usual parity for older
+    // listeners and repair packets for the rest of that loss; without,
+    // more parity.
+    final extra = _errorCorrection && _extraParity;
+    final loss = extra ? _paceFor(channel).lossPct : 0;
+    if (_errorCorrection) {
+      burst.addParity(total, image: image, lossPct: _fountainOn ? 0 : loss);
+    }
+    if (extra && _fountainOn) {
+      burst.lossPct = loss;
+      burst.pushRepairs = voxPushRepairs(
+        total: total,
+        lossPct: loss,
+        parity: voxFecTotalParity(total, image: image),
+      );
+    }
     burst.pushing = true;
     _pushedAt[sid] = DateTime.now();
     _pushedAt.removeWhere(
@@ -2519,6 +2537,25 @@ class VoxVoiceService extends ChangeNotifier {
   bool _isVoiceClip(String sid) {
     final mode = _modes[sid];
     return mode != null && !mode.isMedia;
+  }
+
+  static const _kExtraParity = 'vox_extra_parity';
+  bool _extraParity = true;
+
+  /// Extra parity (with error correction): a channel push ends with repair
+  /// packets sized for the loss the channel's listeners report (Fast
+  /// MediaMesh; parity sized for it without), and a whole clip answered
+  /// direct gets parity sized for its route's length
+  /// (voxFecParityCountAt). Off: the usual few parity packets.
+  bool get extraParity => _extraParity;
+
+  Future<void> setExtraParity(bool v) async {
+    _extraParity = v;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kExtraParity, v);
+    } catch (_) {}
   }
 
   /// Rateless repair packets, asked for and sent: error correction with
@@ -3748,7 +3785,11 @@ class VoxVoiceService extends ChangeNotifier {
     // Everything asked for: the parity goes too, so whatever it misses of
     // this pass mends itself (fast repair: repair packets instead).
     if (_errorCorrection && listed == null && held.whole && !fountain) {
-      burst.addParity(total, image: held.image);
+      burst.addParity(
+        total,
+        image: held.image,
+        lossPct: _extraParity ? _paceFor(channel).lossPct : 0,
+      );
     }
     burst.sendTwice.addAll(twice);
     burst.saltOk = burst.saltOk && req.saltOk;
@@ -3905,9 +3946,12 @@ class VoxVoiceService extends ChangeNotifier {
           repairsSent++;
         } else if (index >= _ChannelBurst.parityBase) {
           if (!held.whole) continue;
-          parity ??= voxFecEncode(burst.sid, [
-            for (var i = 0; i < held.total; i++) held.packets[i]!,
-          ], image: held.image);
+          parity ??= voxFecEncode(
+            burst.sid,
+            [for (var i = 0; i < held.total; i++) held.packets[i]!],
+            image: held.image,
+            lossPct: burst.parityLossPct,
+          );
           final k = index - _ChannelBurst.parityBase;
           if (k >= parity.length) continue;
           payload = parity[k];
@@ -4372,12 +4416,21 @@ class VoxVoiceService extends ChangeNotifier {
         req.sessionId,
       );
     }
-    // The whole clip asked for: its parity follows.
-    final parity = _errorCorrection && wanted == null && held.whole
-        ? voxFecEncode(req.sessionId, [
-            for (var i = 0; i < held.total; i++) held.packets[i]!,
-          ], image: held.image)
+    // The whole clip asked for: its parity follows. Extra parity: sized for
+    // the loss the channel reports, or a direct route's length.
+    final heldNow = held;
+    List<Uint8List> parityFor(int lossPct) =>
+        _errorCorrection && wanted == null && heldNow.whole
+        ? voxFecEncode(
+            req.sessionId,
+            [for (var i = 0; i < heldNow.total; i++) heldNow.packets[i]!],
+            image: heldNow.image,
+            lossPct: _extraParity ? lossPct : 0,
+          )
         : const <Uint8List>[];
+    var parity = parityFor(
+      viaChannel != null ? _paceFor(viaChannel).lossPct : 0,
+    );
 
     if (viaChannel != null) {
       _logEvent(
@@ -4435,6 +4488,9 @@ class VoxVoiceService extends ChangeNotifier {
       return;
     }
     final gap = _packetGap(flood: false, hops: route.hops);
+    if (_extraParity && route.hops > 0) {
+      parity = parityFor(voxFecHopLossPct(route.hops));
+    }
     _logEvent(
       'serving ${packets.length} packets to ${req.requesterKey6} via ${route.toHex()}'
       ', ${gap.inMilliseconds}ms apart'
@@ -5360,11 +5416,21 @@ class _ChannelBurst {
       );
       if (d > due) due = d;
     }
-    return due;
+    final push = pushRepairs - repairsSent;
+    return push > due ? push : due;
   }
 
-  void addParity(int total, {required bool image}) {
-    final n = voxFecTotalParity(total, image: image);
+  /// Extra parity: the loss the parity is sized for (the most any request
+  /// added asked for), used when it's made.
+  int parityLossPct = 0;
+
+  /// Extra parity on a push: repair packets after the data and parity, for
+  /// the loss listeners report (voxPushRepairs).
+  int pushRepairs = 0;
+
+  void addParity(int total, {required bool image, int lossPct = 0}) {
+    if (lossPct > parityLossPct) parityLossPct = lossPct;
+    final n = voxFecTotalParity(total, image: image, lossPct: parityLossPct);
     for (var k = 0; k < n; k++) {
       pending.add(parityBase + k);
     }

@@ -57,6 +57,19 @@ int voxFountainNeededAt(int missing, int lossPct) {
   return voxFountainNeeded((missing * 100 + keep - 1) ~/ keep);
 }
 
+/// Extra parity on a channel push of [total] packets: repair packets after
+/// its data and [parity] packets, so a listener losing [lossPct]% (the
+/// channel's listeners' latest) mends itself without asking: the pass's
+/// share (voxFountainPassShare) less the parity, which mends as much.
+int voxPushRepairs({
+  required int total,
+  required int lossPct,
+  required int parity,
+}) {
+  final share = voxFountainPassShare(total, lossPct) - parity;
+  return share > 0 ? share : 0;
+}
+
 /// Repair packets after a pass of [count] data packets of which [lossPct]%
 /// are lost on the way: enough to mend what the worst-placed listener lost
 /// without asking again (each request round through repeaters costs a minute

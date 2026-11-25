@@ -1111,6 +1111,18 @@ abstract class AppLocalizations {
   /// **'Error correction'**
   String get vox_errorCorrectionTitle;
 
+  /// No description provided for @vox_extraParityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra parity'**
+  String get vox_extraParityTitle;
+
+  /// No description provided for @vox_extraParitySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Channel posts end with enough repair packets for the loss listeners report, and photos and voice sent over a long direct route get more parity, so fewer listeners have to ask again. Uses a little more airtime. Needs Error correction.'**
+  String get vox_extraParitySubtitle;
+
   /// No description provided for @vox_errorCorrectionSubtitle.
   ///
   /// In en, this message translates to:
