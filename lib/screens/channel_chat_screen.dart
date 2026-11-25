@@ -94,6 +94,7 @@ import '../theme/mesh_theme.dart';
 import '../theme/otp_bubble_colors.dart';
 import '../widgets/future_timestamp_indicator.dart';
 import '../widgets/mesh_ui.dart';
+import '../widgets/edit_message_dialog.dart';
 import '../widgets/share_contact_sheet.dart';
 import '../widgets/shared_contact_card.dart';
 import 'app_settings_screen.dart';
@@ -2324,6 +2325,11 @@ class _ChannelChatScreenState extends State<ChannelChatScreen>
                                     formatChatTime(context, message.timestamp),
                                     style: timeStyle,
                                   ),
+                                if (message.isEdited)
+                                  Text(
+                                    context.l10n.chat_edited,
+                                    style: timeStyle,
+                                  ),
                                 if (message.hasFutureTimestamp)
                                   FutureTimestampIndicator(
                                     size: 16 * textScale,
@@ -2413,6 +2419,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen>
                   ? _displayRegion(message.region!)
                   : null,
               textScale: textScale,
+              edited: message.isEdited,
               // Mine: "Heard N Repeats" once repeats are heard, as the
               // MeshCore app; until then the time and the send's status.
               heardRepeats: isOutgoing ? message.repeatCount : null,
@@ -4310,6 +4317,33 @@ class _ChannelChatScreenState extends State<ChannelChatScreen>
   /// time (its reply mention included; an OTP message is encrypted again
   /// from its plaintext). A failed one is taken out first, as a DM's retry
   /// does, so it isn't shown twice.
+  Future<void> _editMessage(ChannelMessage message) async {
+    final connector = context.read<MeshCoreConnector>();
+    final newText = await showEditMessageDialog(
+      context,
+      text: message.text,
+      check: (draft) => connector.checkChannelEdit(message, draft),
+    );
+    if (newText == null || !mounted) return;
+    if (!ensureRadioConnected(context)) return;
+    var sent = false;
+    try {
+      sent = await connector.editChannelMessage(
+        widget.channel,
+        message,
+        newText,
+      );
+    } catch (_) {
+      sent = false;
+    }
+    if (!sent && mounted) {
+      showDismissibleSnackBar(
+        context,
+        content: Text(context.l10n.chat_editFailed),
+      );
+    }
+  }
+
   Future<void> _resendMessage(ChannelMessage message) {
     return _sendGuard.runExclusive(() async {
       if (!ensureRadioConnected(context)) return;
@@ -4518,6 +4552,18 @@ class _ChannelChatScreenState extends State<ChannelChatScreen>
                   onTap: () {
                     Navigator.pop(sheetContext);
                     unawaited(_resendMessage(message));
+                  },
+                ),
+              if (context.read<MeshCoreConnector>().canEditChannelMessage(
+                message,
+              ))
+                ListTile(
+                  enabled: !readOnly,
+                  leading: const Icon(Icons.edit_outlined),
+                  title: Text(context.l10n.chat_edit),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    unawaited(_editMessage(message));
                   },
                 ),
               if (message.isOutgoing)
@@ -5099,7 +5145,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen>
         ReactionHelper.encodeReactionMC1(
           emoji: emoji,
           timestampSecs: message.timestamp.millisecondsSinceEpoch ~/ 1000,
-          text: message.text,
+          text: message.sentText,
           senderName: message.senderName,
         ),
       );

@@ -5929,6 +5929,42 @@ abstract class AppLocalizations {
   /// **'Direct (forced)'**
   String get chat_directForced;
 
+  /// No description provided for @chat_edit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get chat_edit;
+
+  /// No description provided for @chat_editTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit message'**
+  String get chat_editTitle;
+
+  /// No description provided for @chat_editHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the change is sent. Apps without editing show it as a correction.'**
+  String get chat_editHint;
+
+  /// No description provided for @chat_editTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'This change is too long to send as an edit.'**
+  String get chat_editTooLong;
+
+  /// No description provided for @chat_editFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send the edit.'**
+  String get chat_editFailed;
+
+  /// No description provided for @chat_edited.
+  ///
+  /// In en, this message translates to:
+  /// **'(edited)'**
+  String get chat_edited;
+
   /// No description provided for @chat_hopsForced.
   ///
   /// In en, this message translates to:

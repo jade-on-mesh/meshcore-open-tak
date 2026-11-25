@@ -158,6 +158,18 @@ Add emoji reactions to incoming messages (not your own):
 5. Pending reactions show at 50% opacity with a spinner
 6. Failed reactions show a red retry icon (tap to retry)
 
+## Editing a Sent Message
+
+For 15 minutes after sending, a message of yours can be corrected: long-press it and choose **Edit** (under Reply and Resend in a channel). Fix the text and tap **Save**. Your bubble changes at once, and the message shows **(edited)** under it here and for everyone whose app supports edits.
+
+- Only the change travels, with a word of context each side, so an edit costs about as much airtime as a short reply. In a DM it is acknowledged and retried like a reaction; in a channel it floods once, like a reaction.
+- Apps without edits (older versions, other MeshCore clients, older standalones) show the edit as its own short message, for example `✎ …at 6 tonight` with a code line under it.
+- A receiver that missed an earlier edit, or never got the message, also shows the edit as a message instead of applying it to the wrong text.
+- Plain text only: photos, voice and video messages, GIFs, reactions, contact cards, OTP-encrypted messages and room server chats can't be edited, nor can a DM that is still sending.
+- A receiver ignores edits that arrive more than 20 minutes after the message (by the sender's clock), so old history can't be rewritten.
+
+Wire format: two lines, `✎ <words>` and `e:<hash>:<check>:<offset>:<length>`. `<hash>` is the message's reaction hash (timestamp, sender and its first five characters as first sent), `<check>` two hex digits of the text the edit applies to, and `<words>` replaces `<length>` UTF-16 units at `<offset>`; a leading or trailing `…` marks text left out and is not part of the replacement. Reactions to an edited message still use the text it was first sent with.
+
 ## Context Actions (Long-Press / Right-Click)
 
 | Action | Availability | Description |
@@ -169,6 +181,7 @@ Add emoji reactions to incoming messages (not your own):
 | Mark as Unread | Incoming messages only | Marks this message and all subsequent incoming messages as unread |
 | Delete | All messages | Removes locally (not from mesh) |
 | Retry | Failed outgoing messages | Re-sends the message |
+| Edit | Your own plain-text messages, up to 15 minutes after sending | Corrects the text; see [Editing a Sent Message](#editing-a-sent-message) |
 | Open chat with sender | Room server chats | Opens 1:1 chat with the message sender |
 
 In channel chats the menu also offers **Mark as spam**, **Filter this sender** and **Filter messages like this…**; see [Message filter](message-filter.md). Direct messages are never filtered.

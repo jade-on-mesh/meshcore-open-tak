@@ -77,6 +77,13 @@ class ChannelMessage {
   /// Extra context for [filterReason], e.g. the matching rule pattern.
   final String? filterDetail;
 
+  /// The text as first sent, once the message has been edited; edits and
+  /// reactions keep finding it by this. Null when never edited.
+  final String? firstText;
+
+  /// When the last edit was applied here; null when never edited.
+  final DateTime? editedAt;
+
   ChannelMessage({
     this.senderKey,
     required this.senderName,
@@ -111,6 +118,8 @@ class ChannelMessage {
     this.chunkTotal,
     this.filterReason,
     this.filterDetail,
+    this.firstText,
+    this.editedAt,
   }) : messageId =
            messageId ??
            '${timestamp.millisecondsSinceEpoch}_${senderName.hashCode}_${text.hashCode}',
@@ -181,6 +190,8 @@ class ChannelMessage {
     String? filterReason,
     String? filterDetail,
     bool clearFilter = false,
+    String? firstText,
+    DateTime? editedAt,
   }) {
     return ChannelMessage(
       senderKey: senderKey,
@@ -226,8 +237,16 @@ class ChannelMessage {
       chunkTotal: chunkTotal ?? this.chunkTotal,
       filterReason: clearFilter ? null : (filterReason ?? this.filterReason),
       filterDetail: clearFilter ? null : (filterDetail ?? this.filterDetail),
+      firstText: firstText ?? this.firstText,
+      editedAt: editedAt ?? this.editedAt,
     );
   }
+
+  /// Whether the message has been edited.
+  bool get isEdited => editedAt != null;
+
+  /// The text the message was first sent with (see [firstText]).
+  String get sentText => firstText ?? text;
 
   static ChannelMessage? fromFrame(Uint8List frame) {
     // CHANNEL_MSG_RECV format varies by version:
@@ -420,7 +439,7 @@ class ChannelMessage {
     return ReactionHelper.computeReactionHash(
       timestamp.millisecondsSinceEpoch ~/ 1000,
       senderName,
-      text,
+      sentText,
     );
   }
 

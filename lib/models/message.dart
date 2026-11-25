@@ -89,6 +89,13 @@ class Message {
   final int? chunkIndex;
   final int? chunkTotal;
 
+  /// The text as first sent, once the message has been edited; edits and
+  /// reactions keep finding it by this. Null when never edited.
+  final String? firstText;
+
+  /// When the last edit was applied here; null when never edited.
+  final DateTime? editedAt;
+
   Message({
     required this.senderKey,
     required this.text,
@@ -120,6 +127,8 @@ class Message {
     Map<String, MessageStatus>? reactionStatuses,
     this.chunkIndex,
     this.chunkTotal,
+    this.firstText,
+    this.editedAt,
   }) : messageId =
            messageId ??
            '${timestamp.millisecondsSinceEpoch}_${pubKeyToHex(senderKey)}_${text.hashCode}',
@@ -162,6 +171,8 @@ class Message {
     Uint8List? fourByteRoomContactKey,
     int? chunkIndex,
     int? chunkTotal,
+    String? firstText,
+    DateTime? editedAt,
   }) {
     return Message(
       senderKey: senderKey,
@@ -207,8 +218,16 @@ class Message {
           fourByteRoomContactKey ?? this.fourByteRoomContactKey,
       chunkIndex: chunkIndex ?? this.chunkIndex,
       chunkTotal: chunkTotal ?? this.chunkTotal,
+      firstText: firstText ?? this.firstText,
+      editedAt: editedAt ?? this.editedAt,
     );
   }
+
+  /// Whether the message has been edited.
+  bool get isEdited => editedAt != null;
+
+  /// The text the message was first sent with (see [firstText]).
+  String get sentText => firstText ?? text;
 
   static Message? fromFrame(Uint8List frame, Uint8List selfPubKey) {
     if (frame.length < msgTextOffset + 1) return null;
