@@ -203,6 +203,23 @@ bool voxLbtHold({
     sinceHeardMs < quietMs &&
     waitedMs < voxLbtMaxWaitMs;
 
+/// Repair packets are sized for at most this loss (percent): more than that
+/// is a listener on a poor link of its own, better served by asking again
+/// than by sizing every answer for it (2026-11-24: answers sized for 40%
+/// flooded the channel). Mirrored in Wadamesh (VoxFountain.h kMaxLossPct).
+const int voxLossCapPct = 25;
+
+/// A post's extra parity: listeners' reports in the last half hour count,
+/// at most this loss (percent).
+const int voxPushLossWindowMs = 30 * 60 * 1000;
+const int voxPushLossCapPct = 20;
+
+/// A clip's holder that isn't its author waits this long (plus up to
+/// [voxHolderSpreadMs]) before answering a request on a channel, and then
+/// only if the author hasn't answered meanwhile: one answer, not two.
+const int voxHolderWaitMs = 2500;
+const int voxHolderSpreadMs = 2000;
+
 /// Fetch requests one transfer may make: a photo of hundreds of packets over
 /// many hops loses some on most passes, so the budget grows with its size
 /// (49 for a 234-packet Super Sharp). Mirrored in Wadamesh (VoxFetch.h
@@ -354,6 +371,33 @@ class VoxFloodPace {
   /// first report on each answer that saw less brings it a quarter down.
   int lossPct = 0;
 
+  /// Each listener's latest loss (percent) on our answers, and when it
+  /// reported it: repair packets for a listener are sized for its own loss
+  /// ([lossFor]), and a post's extra parity for what several report
+  /// ([pushLossPct]).
+  final Map<String, ({int pct, int atMs})> _lossBy = {};
+
+  /// The loss to size [who]'s repair packets for: its own latest report,
+  /// else the channel's, at most [voxLossCapPct].
+  int lossFor(String who) {
+    final own = _lossBy[who];
+    return min(own?.pct ?? lossPct, voxLossCapPct);
+  }
+
+  /// Extra parity on a post: the loss listeners reported in the last
+  /// [voxPushLossWindowMs], the second-worst of them, at most
+  /// [voxPushLossCapPct]; none with fewer than two reports. One listener on
+  /// a poor link of its own doesn't size every post.
+  int pushLossPct({int? nowMs}) {
+    final now = nowMs ?? DateTime.now().millisecondsSinceEpoch;
+    final recent = [
+      for (final e in _lossBy.values)
+        if (now - e.atMs <= voxPushLossWindowMs) e.pct,
+    ]..sort((a, b) => b.compareTo(a));
+    if (recent.length < 2) return 0;
+    return min(recent[1], voxPushLossCapPct);
+  }
+
   /// Fast MediaMesh: start at [voxFloodFastBaseGapMs] and learn
   /// down to it, not the base gap. The losses that follow an answer still
   /// slow it (by half, up to the slow gap), and repair packets mend what a
@@ -464,6 +508,14 @@ class VoxFloodPace {
     final lost = sent.where(missing.contains).length;
     final moved = _adaptiveOn && _adapt(answer, lost, who, nowMs);
     final pct = min(lost * 100 ~/ sent.length, 40);
+    if (who != null) {
+      _lossBy.remove(who);
+      _lossBy[who] = (
+        pct: pct,
+        atMs: nowMs ?? DateTime.now().millisecondsSinceEpoch,
+      );
+      if (_lossBy.length > 64) _lossBy.remove(_lossBy.keys.first);
+    }
     if (pct > lossPct) {
       lossPct = pct;
     } else if (!answer._lossSeen) {

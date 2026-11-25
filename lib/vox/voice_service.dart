@@ -1309,7 +1309,9 @@ class VoxVoiceService extends ChangeNotifier {
     // listeners and repair packets for the rest of that loss; without,
     // more parity.
     final extra = _errorCorrection && _extraParity;
-    final loss = extra ? _paceFor(channel).lossPct : 0;
+    // Only loss several listeners reported lately, at most 20%
+    // (VoxFloodPace.pushLossPct): one far listener doesn't size every post.
+    final loss = extra ? _paceFor(channel).pushLossPct() : 0;
     if (_errorCorrection) {
       burst.addParity(total, image: image, lossPct: _fountainOn ? 0 : loss);
     }
@@ -3730,7 +3732,12 @@ class VoxVoiceService extends ChangeNotifier {
         _savePace(channel, pace);
       }
     }
-    final lossPct = _fountainOn ? _paceFor(channel).lossPct : 0;
+    // Repair packets are sized for this listener's own loss (its reports on
+    // our answers), else the channel's, at most voxFountainMaxLossPct: one
+    // far listener no longer sizes everyone's answers.
+    final lossPct = _fountainOn
+        ? _paceFor(channel).lossFor(req.requesterKey6)
+        : 0;
     final held = _heldPackets(req.sessionId);
     if (held == null) return;
     final total = held.total;
@@ -3741,7 +3748,7 @@ class VoxVoiceService extends ChangeNotifier {
       () => _ChannelBurst(req.sessionId, channel),
     );
     burst.askedAt ??= DateTime.now();
-    burst.lossPct = lossPct;
+    if (lossPct > burst.lossPct) burst.lossPct = lossPct;
     var wanted = req.missingIndices ?? List<int>.generate(total, (i) => i);
     // Fast MediaMesh: a list as long as a request holds may stop short of
     // all the listener lacks (it names the first 124). It gets the rest
@@ -3764,7 +3771,12 @@ class VoxVoiceService extends ChangeNotifier {
     // whole clip, and only with this phone's fast repair on. Data packets
     // going out anyway (to a listener that can't use repair packets) count
     // towards them (_ChannelBurst.repairs).
-    final fountain = _fountainOn && req.fountainOk && held.whole;
+    // Only the clip's author answers with repair packets: two holders each
+    // sending a full set for the same request doubled the airtime
+    // (2026-11-24, 2 x 33 for one listener). Others send data packets they
+    // hold, after the author's turn (_runChannelBurst).
+    final own = _ownClips.contains(req.sessionId);
+    final fountain = own && _fountainOn && req.fountainOk && held.whole;
     // A thumbnail probe (only the first voxThumbPackets) gets those packets
     // as data, not repair packets, even when it says it rebuilds from repair
     // packets, as older apps' probes did: it holds little of the photo, so
@@ -3775,7 +3787,11 @@ class VoxVoiceService extends ChangeNotifier {
         listed.isNotEmpty &&
         listed.every((i) => i >= 0 && i < voxThumbPackets);
     if (fountain && !thumbAsk) {
-      burst.need(req.requesterKey6, wanted.where((i) => i >= 0 && i < total));
+      burst.need(
+        req.requesterKey6,
+        wanted.where((i) => i >= 0 && i < total),
+        lossPct: lossPct,
+      );
     }
     if (!fountain || listed == null || capped || thumbAsk) {
       burst.pending.addAll(
@@ -3788,7 +3804,7 @@ class VoxVoiceService extends ChangeNotifier {
       burst.addParity(
         total,
         image: held.image,
-        lossPct: _extraParity ? _paceFor(channel).lossPct : 0,
+        lossPct: _extraParity ? _paceFor(channel).lossFor(req.requesterKey6) : 0,
       );
     }
     burst.sendTwice.addAll(twice);
@@ -3875,13 +3891,28 @@ class VoxVoiceService extends ChangeNotifier {
       // lost. A 4-hop MediaMesh photo lost the first packets of every answer
       // (#1 never arrived in 14 asks) with only the 0.5-1 s gather.
       final pace = _paceFor(burst.channel);
+      final own = _ownClips.contains(burst.sid);
       if (!burst.pushing) {
         await Future<void>.delayed(
           Duration(
             milliseconds:
-                150 + _rng.nextInt(250) + pace.settleMs(burst.maxHops),
+                150 +
+                _rng.nextInt(250) +
+                pace.settleMs(burst.maxHops) +
+                // Not the author: its turn first (voxHolderWaitMs).
+                (own ? 0 : voxHolderWaitMs + _rng.nextInt(voxHolderSpreadMs)),
           ),
         );
+        // The author (or another holder) is answering: leave it to them.
+        final heard = _transferHeard(burst.sid);
+        final asked = burst.askedAt;
+        if (!own && heard != null && asked != null && heard.isAfter(asked)) {
+          _logEvent(
+            'its author or another holder is answering: leaving it to them',
+            burst.sid,
+          );
+          return;
+        }
       }
       final held = _heldPackets(burst.sid);
       if (held == null) return;
@@ -4429,7 +4460,7 @@ class VoxVoiceService extends ChangeNotifier {
           )
         : const <Uint8List>[];
     var parity = parityFor(
-      viaChannel != null ? _paceFor(viaChannel).lossPct : 0,
+      viaChannel != null ? _paceFor(viaChannel).lossFor(req.requesterKey6) : 0,
     );
 
     if (viaChannel != null) {
@@ -5386,8 +5417,9 @@ class _ChannelBurst {
 
   /// A listener that rebuilds from repair packets lacks [missing] (its
   /// latest request replaces its last).
-  void need(String who, Iterable<int> missing) {
-    needs[who] = _FountainNeed(missing.toSet(), repairsSent);
+  void need(String who, Iterable<int> missing, {int lossPct = 0}) {
+    needs[who] = _FountainNeed(missing.toSet(), repairsSent, lossPct);
+    if (lossPct > this.lossPct) this.lossPct = lossPct;
   }
 
   /// Data packet [index] went out (or another node sent it).
@@ -5412,7 +5444,7 @@ class _ChannelBurst {
         uncovered: n.missing.length - covered,
         covered: covered,
         sentSince: repairsSent - n.repairsAt,
-        lossPct: lossPct,
+        lossPct: n.lossPct,
       );
       if (d > due) due = d;
     }
@@ -5449,10 +5481,13 @@ class _ServeTask {
 /// which of those have gone out as data since, and the burst's repair count
 /// then.
 class _FountainNeed {
-  _FountainNeed(this.missing, this.repairsAt);
+  _FountainNeed(this.missing, this.repairsAt, this.lossPct);
   final Set<int> missing;
   final Set<int> sent = {};
   final int repairsAt;
+
+  /// The loss its repair packets are sized for (its own, else the channel's).
+  final int lossPct;
 }
 
 /// The packets of a clip this phone can send: all of them, or some of an
