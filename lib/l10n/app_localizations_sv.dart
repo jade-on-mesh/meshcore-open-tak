@@ -580,7 +580,8 @@ class AppLocalizationsSv extends AppLocalizations {
   String get vox_extraParityTitle => 'Extra parity';
 
   @override
-  String get vox_extraParitySubtitle => 'Channel posts end with enough repair packets for the loss listeners report, and photos and voice sent over a long direct route get more parity, so fewer listeners have to ask again. Uses a little more airtime. Needs Error correction.';
+  String get vox_extraParitySubtitle =>
+      'Channel posts end with enough repair packets for the loss listeners report, and photos and voice sent over a long direct route get more parity, so fewer listeners have to ask again. Uses a little more airtime. Needs Error correction.';
 
   @override
   String get vox_errorCorrectionSubtitle =>

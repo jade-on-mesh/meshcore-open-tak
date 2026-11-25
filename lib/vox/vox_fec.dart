@@ -97,7 +97,8 @@ int voxFecTotalParity(int total, {required bool image, int lossPct = 0}) =>
 
 /// Extra parity on a direct answer: the loss to size it for, from the
 /// route's length (no loss reports come back on one): 5% a hop, at most 30%.
-int voxFecHopLossPct(int hops) => hops <= 0 ? 0 : (hops * 5 > 30 ? 30 : hops * 5);
+int voxFecHopLossPct(int hops) =>
+    hops <= 0 ? 0 : (hops * 5 > 30 ? 30 : hops * 5);
 
 // ---------------------------------------------------------------- GF(256)
 
