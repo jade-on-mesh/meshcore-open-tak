@@ -24,7 +24,7 @@ From the Contacts screen, tap any Chat-type contact to open the ChatScreen.
 
 ### Compression Strip
 
-Below the app bar, above the messages, a strip shows **Compression: Off**, **SMAZ** or **Cyr2Lat** for this contact. Tap it to choose a mode in one sheet that explains each: SMAZ is lossless but needs a SMAZ-aware app on the other end and is only used when it makes a message smaller; Cyr2Lat swaps some Cyrillic letters for lookalike Latin ones, stays readable everywhere, but changes the exact characters, using the chosen Cyr2Lat profile. The setting is saved on the phone and can be changed offline. Channel chats show the same strip. See [Compression](additional-features.md#compression-smaz-and-cyr2lat).
+Hidden by default in MeshCore Open TAK: turn on **App Settings › Messaging › Compression in chats** to show it (a chat that already uses compression always shows it). Below the app bar, above the messages, a strip shows **Compression: Off**, **SMAZ** or **Cyr2Lat** for this contact. Tap it to choose a mode in one sheet that explains each: SMAZ is lossless but needs a SMAZ-aware app on the other end and is only used when it makes a message smaller; Cyr2Lat swaps some Cyrillic letters for lookalike Latin ones, stays readable everywhere, but changes the exact characters, using the chosen Cyr2Lat profile. The setting is saved on the phone and can be changed offline. Channel chats show the same strip. See [Compression](additional-features.md#compression-smaz-and-cyr2lat).
 
 ### Message List
 

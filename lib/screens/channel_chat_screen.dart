@@ -39,6 +39,7 @@ import '../models/bookmarked_message.dart';
 import '../models/image_codec_support.dart' show aeicRatePointForUi;
 import '../models/message_filter.dart';
 import '../models/otp_theme.dart';
+import '../services/chat_compression_strip.dart';
 import '../services/app_settings_service.dart' show AppSettingsService;
 import '../services/chat_text_scale_service.dart';
 import '../services/contact_photos.dart';
@@ -4049,23 +4050,33 @@ class _ChannelChatScreenState extends State<ChannelChatScreen>
   Widget _buildCompressionSelector() {
     final slot = widget.channel.index;
     return Consumer2<MeshCoreConnector, AppSettingsService>(
-      builder: (context, connector, settingsService, _) {
-        final hasStorageId = connector.channelIdForSlot(slot) != null;
-        return ChatCompressionSelector(
-          mode: connector.channelCompressionMode(slot),
-          enabled: hasStorageId,
-          disabledReason: hasStorageId
-              ? null
-              : context.l10n.chatCompression_noStorageId,
-          profiles: settingsService.settings.cyr2latProfiles,
-          profileId: connector.getChannelCyr2LatProfileId(slot),
-          defaultProfileId: settingsService.settings.selectedCyr2latProfileId,
-          onModeChanged: (mode) =>
-              connector.setChannelCompressionMode(slot, mode),
-          onProfileChanged: (id) =>
-              connector.setChannelCyr2LatProfileId(slot, id),
-        );
-      },
+      builder: (context, connector, settingsService, _) => ListenableBuilder(
+        listenable: ChatCompressionStrip.instance,
+        builder: (context, _) {
+          // Hidden unless App Settings › Messaging turns it on, or this channel
+          // already compresses.
+          if (!ChatCompressionStrip.instance.showFor(
+            connector.channelCompressionMode(slot),
+          )) {
+            return const SizedBox.shrink();
+          }
+          final hasStorageId = connector.channelIdForSlot(slot) != null;
+          return ChatCompressionSelector(
+            mode: connector.channelCompressionMode(slot),
+            enabled: hasStorageId,
+            disabledReason: hasStorageId
+                ? null
+                : context.l10n.chatCompression_noStorageId,
+            profiles: settingsService.settings.cyr2latProfiles,
+            profileId: connector.getChannelCyr2LatProfileId(slot),
+            defaultProfileId: settingsService.settings.selectedCyr2latProfileId,
+            onModeChanged: (mode) =>
+                connector.setChannelCompressionMode(slot, mode),
+            onProfileChanged: (id) =>
+                connector.setChannelCyr2LatProfileId(slot, id),
+          );
+        },
+      ),
     );
   }
 

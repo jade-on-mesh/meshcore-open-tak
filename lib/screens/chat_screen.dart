@@ -38,6 +38,7 @@ import '../models/contact.dart';
 import '../l10n/contact_localization.dart';
 import '../models/message.dart';
 import '../models/otp_theme.dart';
+import '../services/chat_compression_strip.dart';
 import '../services/app_settings_service.dart';
 import '../services/chat_text_scale_service.dart';
 import '../services/image_chunk_transport.dart';
@@ -940,19 +941,29 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   Widget _buildCompressionSelector(MeshCoreConnector connector) {
     final keyHex = widget.contact.publicKeyHex;
     return Consumer<AppSettingsService>(
-      builder: (context, settingsService, _) {
-        return ChatCompressionSelector(
-          mode: connector.contactCompressionMode(keyHex),
-          enabled: true,
-          profiles: settingsService.settings.cyr2latProfiles,
-          profileId: connector.getContactCyr2LatProfileId(keyHex),
-          defaultProfileId: settingsService.settings.selectedCyr2latProfileId,
-          onModeChanged: (mode) =>
-              connector.setContactCompressionMode(keyHex, mode),
-          onProfileChanged: (id) =>
-              connector.setContactCyr2LatProfileId(keyHex, id),
-        );
-      },
+      builder: (context, settingsService, _) => ListenableBuilder(
+        listenable: ChatCompressionStrip.instance,
+        builder: (context, _) {
+          // Hidden unless App Settings › Messaging turns it on, or this chat
+          // already compresses.
+          if (!ChatCompressionStrip.instance.showFor(
+            connector.contactCompressionMode(keyHex),
+          )) {
+            return const SizedBox.shrink();
+          }
+          return ChatCompressionSelector(
+            mode: connector.contactCompressionMode(keyHex),
+            enabled: true,
+            profiles: settingsService.settings.cyr2latProfiles,
+            profileId: connector.getContactCyr2LatProfileId(keyHex),
+            defaultProfileId: settingsService.settings.selectedCyr2latProfileId,
+            onModeChanged: (mode) =>
+                connector.setContactCompressionMode(keyHex, mode),
+            onProfileChanged: (id) =>
+                connector.setContactCyr2LatProfileId(keyHex, id),
+          );
+        },
+      ),
     );
   }
 

@@ -61,7 +61,7 @@ A list of nodes heard passively over the air but not yet added as contacts. Each
 ## Compression (SMAZ and Cyr2Lat)
 
 ### Where to Find It
-Every open direct-message and channel chat shows **Compression: Off**, **Compression: SMAZ** or **Compression: Cyr2Lat** in a strip just below the app bar, above the messages. Tap it to open one sheet with the three choices and what each does. The choice applies to that contact or channel only and is saved on the phone, so it can be changed while the radio is offline. A channel that has not synced from the radio yet has no saved identity, so the strip is disabled and says why.
+The strip is hidden unless **App Settings › Messaging › Compression in chats** is on, or the chat already uses SMAZ or Cyr2Lat (so it can be turned off); few people use compression and the strip confused people. When shown, every open direct-message and channel chat shows **Compression: Off**, **Compression: SMAZ** or **Compression: Cyr2Lat** in a strip just below the app bar, above the messages. Tap it to open one sheet with the three choices and what each does. The choice applies to that contact or channel only and is saved on the phone, so it can be changed while the radio is offline. A channel that has not synced from the radio yet has no saved identity, so the strip is disabled and says why.
 
 Only one mode is active per chat. Choosing SMAZ turns Cyr2Lat off and the other way round. Off and SMAZ close the sheet once saved; Cyr2Lat keeps it open to show its profile picker. If saving fails, the sheet says so and keeps showing the saved choice.
 
