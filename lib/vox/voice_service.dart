@@ -3804,7 +3804,9 @@ class VoxVoiceService extends ChangeNotifier {
       burst.addParity(
         total,
         image: held.image,
-        lossPct: _extraParity ? _paceFor(channel).lossFor(req.requesterKey6) : 0,
+        lossPct: _extraParity
+            ? _paceFor(channel).lossFor(req.requesterKey6)
+            : 0,
       );
     }
     burst.sendTwice.addAll(twice);
