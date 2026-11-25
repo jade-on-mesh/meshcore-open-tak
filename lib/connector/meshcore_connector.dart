@@ -2162,14 +2162,31 @@ class MeshCoreConnector extends ChangeNotifier {
 
   int _unreadTotalWhere(bool Function(int type) keep) {
     if (!_unreadStateLoaded || _contactUnreadCount.isEmpty) return 0;
-    final types = {for (final c in _contacts) c.publicKeyHex: c.type};
+    final types = {for (final c in contacts) c.publicKeyHex: c.type};
     var total = 0;
     _contactUnreadCount.forEach((key, count) {
-      final type = types[key] ?? advTypeChat;
-      if (type == advTypeRepeater) return; // as the overall total
+      // Only chats the DMs and Nodes lists can show: an unread count left by
+      // a contact the radio no longer holds has no row to open and clear it.
+      final type = types[key];
+      if (type == null || type == advTypeRepeater) return;
       if (keep(type)) total += count;
     });
     return total;
+  }
+
+  /// After a full contact sync: forgets unread counts of contacts the radio
+  /// no longer holds (removed elsewhere, or overwritten when its list was
+  /// full). Nothing lists them, so they'd keep a badge up forever.
+  void _dropUnreadOfRemovedContacts() {
+    if (_contacts.isEmpty || _contactUnreadCount.isEmpty) return;
+    final held = {for (final c in _contacts) c.publicKeyHex};
+    final before = _contactUnreadCount.length;
+    _contactUnreadCount.removeWhere((key, _) => !held.contains(key));
+    if (_contactUnreadCount.length == before) return;
+    _recalculateCachedContactsUnreadTotal();
+    _unreadStore.saveContactUnreadCount(
+      Map<String, int>.from(_contactUnreadCount),
+    );
   }
 
   int getTotalChannelsUnreadCount() {
@@ -10996,6 +11013,7 @@ class MeshCoreConnector extends ChangeNotifier {
           _knownContactKeys
             ..clear()
             ..addAll(_contacts.map((c) => c.publicKeyHex));
+          _dropUnreadOfRemovedContacts();
         }
         _preserveContactsOnRefresh = false;
         _telemetryFixesDuringSync.clear();
