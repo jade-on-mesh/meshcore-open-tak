@@ -3026,6 +3026,8 @@
     }
   },
   "community_updateSecret": "Update Secret",
+  "compressionStrip_title": "Compression in chats",
+  "compressionStrip_subtitle": "Show the Compression bar (SMAZ, Cyr2Lat) at the top of each chat. A chat already using compression always shows it, so it can be turned off",
   "connectSheet_bluetoothOff": "Bluetooth is off. Turn it on to connect to {name}.",
   "@connectSheet_bluetoothOff": {"placeholders": {"name": {"type": "String"}}},
   "community_secretUpdated": "Secret updated for \"{name}\"",

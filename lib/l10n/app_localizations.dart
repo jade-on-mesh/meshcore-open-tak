@@ -9917,6 +9917,18 @@ abstract class AppLocalizations {
   /// **'Update Secret'**
   String get community_updateSecret;
 
+  /// No description provided for @compressionStrip_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Compression in chats'**
+  String get compressionStrip_title;
+
+  /// No description provided for @compressionStrip_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the Compression bar (SMAZ, Cyr2Lat) at the top of each chat. A chat already using compression always shows it, so it can be turned off'**
+  String get compressionStrip_subtitle;
+
   /// No description provided for @connectSheet_bluetoothOff.
   ///
   /// In en, this message translates to:

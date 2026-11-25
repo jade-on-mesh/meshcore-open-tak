@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../connector/meshcore_connector.dart';
 import '../l10n/l10n.dart';
 import '../models/app_settings.dart';
+import '../services/chat_compression_strip.dart';
 import '../services/live_traffic.dart';
 import '../widgets/analyzer_node_marker.dart';
 import '../widgets/live_traffic_layer.dart';
@@ -426,6 +427,21 @@ class AppSettingsScreen extends StatelessWidget {
           ),
           value: settingsService.settings.showCompressionIndicator,
           onChanged: settingsService.setShowCompressionIndicator,
+        ),
+        const Divider(height: 1, indent: 16),
+        ListenableBuilder(
+          listenable: ChatCompressionStrip.instance,
+          builder: (context, _) => SwitchListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 4,
+            ),
+            secondary: const Icon(Icons.compress, size: 24),
+            title: Text(context.l10n.compressionStrip_title),
+            subtitle: Text(context.l10n.compressionStrip_subtitle),
+            value: ChatCompressionStrip.instance.show,
+            onChanged: ChatCompressionStrip.instance.setShow,
+          ),
         ),
       ],
     );

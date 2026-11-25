@@ -151,6 +151,7 @@ Individual channels can be muted from the channel chat bell icon, the channel li
 - **Enable Message Tracing**: Shows path trace overlays and extra metadata on messages
 - **Region next to hop count** (default off): Shows a channel message's region chip on the same line as its hop count instead of below it
 - **Repeaters under hop count** (default off): Lists the repeaters a channel message, voice clip or photo came through under its hop count
+- **Compression in chats** (default off): Shows the Compression strip (SMAZ / Cyr2Lat) at the top of each chat. A chat already using compression shows it regardless
 - **Compression indicator** (default off): Shows an icon on direct and channel messages that were compressed with SMAZ
 
 ### Routing

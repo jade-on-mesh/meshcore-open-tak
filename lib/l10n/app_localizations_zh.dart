@@ -5466,6 +5466,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get community_updateSecret => '更新密钥';
 
   @override
+  String get compressionStrip_title => 'Compression in chats';
+
+  @override
+  String get compressionStrip_subtitle => 'Show the Compression bar (SMAZ, Cyr2Lat) at the top of each chat. A chat already using compression always shows it, so it can be turned off';
+
+  @override
   String connectSheet_bluetoothOff(String name) {
     return 'Bluetooth is off. Turn it on to connect to $name.';
   }

@@ -23,6 +23,7 @@ import 'package:meshcore_open/screens/contacts_screen.dart';
 import 'package:meshcore_open/services/app_debug_log_service.dart';
 import 'package:meshcore_open/services/app_settings_service.dart';
 import 'package:meshcore_open/services/ble_debug_log_service.dart';
+import 'package:meshcore_open/services/chat_compression_strip.dart';
 import 'package:meshcore_open/services/chat_text_scale_service.dart';
 import 'package:meshcore_open/services/image_codec_service.dart';
 import 'package:meshcore_open/services/map_tile_cache_service.dart';
@@ -353,6 +354,55 @@ void main() {
   });
 
   group('compression selector', () {
+    // Hidden by default (App Settings › Messaging › Compression in chats).
+    setUp(() => ChatCompressionStrip.instance.debugSetShow(true));
+    tearDown(() => ChatCompressionStrip.instance.debugSetShow(false));
+
+    testWidgets('hidden unless turned on or the chat compresses', (
+      tester,
+    ) async {
+      ChatCompressionStrip.instance.debugSetShow(false);
+      final connector = await _offlineConnector(tester);
+      final alice = connector.contacts.single;
+      await tester.pumpWidget(
+        await _app(tester, connector, ChatScreen(contact: alice)),
+      );
+      await _settle(tester);
+      expect(find.byType(ChatCompressionSelector), findsNothing);
+
+      // A chat that already compresses shows it, so it can be turned off.
+      await tester.runAsync(
+        () => connector.setContactCompressionMode(
+          alice.publicKeyHex,
+          ChatCompressionMode.smaz,
+        ),
+      );
+      // Connector notifications are debounced on a real timer.
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)),
+      );
+      await _settle(tester);
+      expect(find.byType(ChatCompressionSelector), findsOneWidget);
+
+      await tester.runAsync(
+        () => connector.setContactCompressionMode(
+          alice.publicKeyHex,
+          ChatCompressionMode.off,
+        ),
+      );
+      // Connector notifications are debounced on a real timer.
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)),
+      );
+      await _settle(tester);
+      expect(find.byType(ChatCompressionSelector), findsNothing);
+
+      ChatCompressionStrip.instance.debugSetShow(true);
+      await _settle(tester);
+      expect(find.byType(ChatCompressionSelector), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+
     Future<void> choose(WidgetTester tester, String mode) async {
       await tester.tap(find.byType(ChatCompressionSelector));
       await _settle(tester);

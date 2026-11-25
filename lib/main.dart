@@ -15,6 +15,7 @@ import 'screens/chrome_required_screen.dart';
 import 'team/drone_detector.dart';
 import 'team/map_highlights.dart';
 import 'services/alert_words_service.dart';
+import 'services/chat_compression_strip.dart';
 import 'services/live_traffic.dart';
 import 'services/mediamesh_heard.dart';
 import 'widgets/analyzer_node_marker.dart';
@@ -156,6 +157,10 @@ void main() async {
   await _startupStep(
     'alertWords.load',
     () => AlertWordsService.instance.load(),
+  );
+  await _startupStep(
+    'compressionStrip.load',
+    () => ChatCompressionStrip.instance.load(),
   );
   await _startupStep(
     'liveTraffic.load',
