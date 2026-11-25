@@ -179,6 +179,9 @@ class ChannelMessageStore {
       'reactions': msg.reactions,
       if (msg.filterReason != null) 'filterReason': msg.filterReason,
       if (msg.filterDetail != null) 'filterDetail': msg.filterDetail,
+      if (msg.firstText != null) 'firstText': msg.firstText,
+      if (msg.editedAt != null)
+        'editedAt': msg.editedAt!.millisecondsSinceEpoch,
       // `text` is stored decoded; legacy records without this flag may still
       // hold a Smaz payload.
       'plainText': true,
@@ -276,6 +279,10 @@ class ChannelMessageStore {
           {},
       filterReason: json['filterReason'] as String?,
       filterDetail: json['filterDetail'] as String?,
+      firstText: json['firstText'] as String?,
+      editedAt: json['editedAt'] is int
+          ? DateTime.fromMillisecondsSinceEpoch(json['editedAt'] as int)
+          : null,
     );
   }
 

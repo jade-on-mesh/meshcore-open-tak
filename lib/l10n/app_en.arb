@@ -1674,6 +1674,12 @@
   "chat_publicKey": "Public Key",
   "chat_floodForced": "Flood (forced)",
   "chat_directForced": "Direct (forced)",
+  "chat_edit": "Edit",
+  "chat_editTitle": "Edit message",
+  "chat_editHint": "Only the change is sent. Apps without editing show it as a correction.",
+  "chat_editTooLong": "This change is too long to send as an edit.",
+  "chat_editFailed": "Couldn't send the edit.",
+  "chat_edited": "(edited)",
   "chat_hopsForced": "{count} hops (forced)",
   "@chat_hopsForced": {
     "placeholders": {

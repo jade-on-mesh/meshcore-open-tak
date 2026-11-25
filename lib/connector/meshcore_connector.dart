@@ -24,6 +24,9 @@ import '../models/path_selection.dart';
 import '../models/send_attempt_plan.dart';
 import '../models/translation_support.dart';
 import '../helpers/reaction_helper.dart';
+import '../helpers/contact_share_message.dart';
+import '../helpers/edit_helper.dart';
+import '../helpers/gif_helper.dart';
 import '../helpers/cyr2lat.dart';
 import '../helpers/smaz.dart';
 import '../storage/otp_pad_store.dart';
@@ -12125,11 +12128,14 @@ class MeshCoreConnector extends ChangeNotifier {
           final last = existing.last;
           if (!last.isOutgoing &&
               last.timestamp.millisecondsSinceEpoch == incomingTimestamp &&
-              last.text == message.text) {
+              last.sentText == message.text) {
             return;
           }
         }
       }
+      // A correction to a message we have: applied in place, no new bubble,
+      // unread count or notification.
+      if (_applyIncomingContactEdit(message)) return;
       _addMessage(message.senderKeyHex, message);
       _maybeIncrementContactUnread(message);
       notifyListeners();
@@ -12707,6 +12713,9 @@ class MeshCoreConnector extends ChangeNotifier {
         pathBytes: incoming.pathBytes,
         pathHashWidth: incoming.pathHashWidth,
       );
+      // A correction to a message we have: applied in place, no new bubble,
+      // unread count or notification.
+      if (_applyIncomingChannelEdit(incoming.channelIndex!, incoming)) return;
       // Filtered after dedup, so mesh repeats of one message are evaluated
       // (and counted by the duplicate tracker) once.
       final stored = _addChannelMessage(
@@ -12883,6 +12892,7 @@ class MeshCoreConnector extends ChangeNotifier {
             pathBytes: incoming.pathBytes,
             pathHashWidth: incoming.pathHashWidth,
           );
+          if (_applyIncomingChannelEdit(slot, incoming)) return;
           final filterChannelId = messageFilterChannelId(channel);
           // Filtered after dedup, so mesh repeats of one message are
           // evaluated (and counted by the duplicate tracker) once.
@@ -13351,6 +13361,9 @@ class MeshCoreConnector extends ChangeNotifier {
   }
 
   void _addMessage(String pubKeyHex, Message message) {
+    // Our own edits are applied to the message they correct when sent; the
+    // retry service hands their wire text back here, and it is no bubble.
+    if (message.isOutgoing && MessageEdit.looks(message.text)) return;
     _conversations.putIfAbsent(pubKeyHex, () => []);
     final messages = _conversations[pubKeyHex]!;
 
@@ -13414,6 +13427,295 @@ class MeshCoreConnector extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ===================== Message edits =====================
+  // A sent message can be corrected for [messageEditWindow]. Only the
+  // changed words travel (see MessageEdit); a receiver that finds the
+  // message applies them and shows "(edited)", and one that doesn't shows
+  // the edit as an ordinary message, exactly as an app without edits does.
+  // Nothing here changes how other messages are sent or received.
+
+  final Map<String, Set<String>> _processedContactEdits = {};
+  final Map<int, Set<String>> _processedChannelEdits = {};
+
+  /// Whether [text] is plain words that can be edited, rather than a
+  /// reaction, photo, voice clip, GIF, image or contact card.
+  static bool isEditableText(String text) =>
+      text.trim().isNotEmpty &&
+      ReactionHelper.parseReaction(text) == null &&
+      !MessageEdit.looks(text) &&
+      !VoxVoiceEnvelope.looksLikeEnvelope(text) &&
+      GifHelper.parseGif(text) == null &&
+      ReceivedImageRef.parse(text) == null &&
+      parseContactShare(text) == null;
+
+  bool _withinEditWindow(DateTime sentAt) =>
+      DateTime.now().difference(sentAt) <= messageEditWindow;
+
+  /// Whether we can still edit [message], sent to [contact].
+  bool canEditContactMessage(Contact contact, Message message) =>
+      message.isOutgoing &&
+      !message.isCli &&
+      contact.type == advTypeChat &&
+      !isContactOtpEnabled(contact.publicKeyHex) &&
+      message.otpPlaintext == null &&
+      message.originalText == null &&
+      (message.status == MessageStatus.sent ||
+          message.status == MessageStatus.delivered) &&
+      isEditableText(message.text) &&
+      _withinEditWindow(message.timestamp);
+
+  /// Whether we can still edit [message], sent on a channel.
+  bool canEditChannelMessage(ChannelMessage message) =>
+      message.isOutgoing &&
+      message.channelIndex != null &&
+      !isChannelOtpEnabled(message.channelIndex!) &&
+      message.otpPlaintext == null &&
+      message.originalText == null &&
+      message.status != ChannelMessageStatus.pending &&
+      isEditableText(message.text) &&
+      _withinEditWindow(message.timestamp);
+
+  String _contactEditHash(Message message) =>
+      ReactionHelper.computeReactionHash(
+        message.timestamp.millisecondsSinceEpoch ~/ 1000,
+        null,
+        message.sentText,
+      );
+
+  String _channelEditHash(ChannelMessage message) =>
+      ReactionHelper.computeReactionHash(
+        message.timestamp.millisecondsSinceEpoch ~/ 1000,
+        message.senderName,
+        message.sentText,
+      );
+
+  /// The wire text that turns [before] into [after], or null when nothing
+  /// changed or it would not fit in one message of [maxBytes].
+  static String? editWireText({
+    required String targetHash,
+    required String before,
+    required String after,
+    required int maxBytes,
+  }) {
+    final edit = MessageEdit.between(
+      targetHash: targetHash,
+      before: before,
+      after: after,
+    );
+    if (edit == null) return null;
+    final wire = edit.encode(before.length);
+    return utf8.encode(wire).length <= maxBytes ? wire : null;
+  }
+
+  /// Why an edit can't be sent: null when it can.
+  EditRefusal? checkContactEdit(Message message, String newText) {
+    if (newText.trim().isEmpty || newText == message.text) {
+      return EditRefusal.unchanged;
+    }
+    return editWireText(
+              targetHash: _contactEditHash(message),
+              before: message.text,
+              after: newText,
+              maxBytes: maxTextPayloadBytesAfterFullLengthAttempts,
+            ) ==
+            null
+        ? EditRefusal.tooLong
+        : null;
+  }
+
+  /// Why an edit can't be sent on a channel: null when it can.
+  EditRefusal? checkChannelEdit(ChannelMessage message, String newText) {
+    if (newText.trim().isEmpty || newText == message.text) {
+      return EditRefusal.unchanged;
+    }
+    return editWireText(
+              targetHash: _channelEditHash(message),
+              before: message.text,
+              after: newText,
+              maxBytes: maxChannelMessageBytes(_selfName),
+            ) ==
+            null
+        ? EditRefusal.tooLong
+        : null;
+  }
+
+  /// Corrects [message], sent to [contact], to [newText]: shown here at once,
+  /// sent as an acknowledged DM like a reaction. Returns false when nothing
+  /// was sent.
+  Future<bool> editContactMessage(
+    Contact contact,
+    Message message,
+    String newText,
+  ) async {
+    if (!isConnected || !canEditContactMessage(contact, message)) return false;
+    final wire = editWireText(
+      targetHash: _contactEditHash(message),
+      before: message.text,
+      after: newText,
+      maxBytes: maxTextPayloadBytesAfterFullLengthAttempts,
+    );
+    if (wire == null) return false;
+    final key = contact.publicKeyHex;
+    final messages = _conversations[key];
+    final index =
+        messages?.indexWhere((m) => m.messageId == message.messageId) ?? -1;
+    if (index < 0) return false;
+    messages![index] = _edited(messages[index], newText);
+    _messageStore.saveMessages(key, messages);
+    notifyListeners();
+    if (_retryService != null) {
+      // _addMessage keeps outgoing edits out of the chat.
+      unawaited(
+        _retryService!.sendMessageWithRetry(contact: contact, text: wire),
+      );
+    } else {
+      final outbound = prepareContactOutboundText(contact, wire);
+      await sendFrame(buildSendTextMsgFrame(contact.publicKey, outbound));
+    }
+    return true;
+  }
+
+  /// Corrects [message], sent on [channel], to [newText]: shown here at once,
+  /// then flooded like a reaction. Returns false when nothing was sent.
+  Future<bool> editChannelMessage(
+    Channel channel,
+    ChannelMessage message,
+    String newText,
+  ) async {
+    if (!isConnected || !canEditChannelMessage(message)) return false;
+    final wire = editWireText(
+      targetHash: _channelEditHash(message),
+      before: message.text,
+      after: newText,
+      maxBytes: maxChannelMessageBytes(_selfName),
+    );
+    if (wire == null) return false;
+    final slot = _canonicalSlot(channel.index);
+    final messages = _channelMessages[slot];
+    final index =
+        messages?.indexWhere((m) => m.messageId == message.messageId) ?? -1;
+    if (index < 0) return false;
+    final edit = MessageEdit.parse(wire)!;
+    (_processedChannelEdits[slot] ??= {}).add(
+      edit.identifier(message.senderName),
+    );
+    messages![index] = _editedChannel(messages[index], newText);
+    await _saveChannelMessages(slot, messages);
+    notifyListeners();
+    final queueId = _nextReactionSendQueueId();
+    _pendingChannelSentQueue.add(queueId);
+    try {
+      await _runScopedChannelSend(() async {
+        await _waitForRadioQuiet(lastInboundRxTime: _lastChannelMsgRxTime);
+        await _sendFrameAndWaitForCommandAck(
+          buildSendChannelTextMsgFrame(channel.index, wire),
+          channelSendQueueId: queueId,
+        );
+      }, region: _channelSendScope(channel.index));
+    } catch (_) {
+      _pendingChannelSentQueue.remove(queueId);
+      rethrow;
+    }
+    return true;
+  }
+
+  Message _edited(Message message, String newText) => message.copyWith(
+    text: newText,
+    firstText: message.sentText,
+    editedAt: DateTime.now(),
+    translatedText: null,
+    translatedLanguageCode: null,
+    translationStatus: MessageTranslationStatus.none,
+  );
+
+  ChannelMessage _editedChannel(ChannelMessage message, String newText) =>
+      message.copyWith(
+        text: newText,
+        firstText: message.sentText,
+        editedAt: DateTime.now(),
+        translatedText: null,
+        translatedLanguageCode: null,
+        translationStatus: MessageTranslationStatus.none,
+      );
+
+  /// Applies an incoming DM edit from [message]'s sender. True when it was
+  /// an edit this chat has dealt with (applied, or a repeat of one); false
+  /// lets it through as an ordinary message.
+  bool _applyIncomingContactEdit(Message message) {
+    if (message.isOutgoing || message.isCli) return false;
+    final edit = MessageEdit.parse(message.text);
+    if (edit == null) return false;
+    final key = message.senderKeyHex;
+    final contact = getContactByPubKeyHex(key);
+    if (contact != null && contact.type != advTypeChat) return false;
+    final seen = _processedContactEdits[key] ??= {};
+    final id = edit.identifier(null);
+    if (seen.contains(id)) return true;
+    final messages = _conversations[key];
+    if (messages == null) return false;
+    for (var i = messages.length - 1; i >= 0; i--) {
+      final target = messages[i];
+      if (target.isOutgoing || _contactEditHash(target) != edit.targetHash) {
+        continue;
+      }
+      if (!_editArrivedInTime(target.timestamp, message.timestamp)) {
+        return false;
+      }
+      final applied = edit.applyTo(target.text);
+      if (applied == null) {
+        if (!edit.alreadyIn(target.text)) return false;
+      } else {
+        messages[i] = _edited(target, applied);
+        _scheduleConversationSave(key);
+      }
+      seen.add(id);
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  /// Applies an incoming channel edit; see [_applyIncomingContactEdit].
+  bool _applyIncomingChannelEdit(int slot, ChannelMessage message) {
+    if (message.isOutgoing) return false;
+    final edit = MessageEdit.parse(message.text);
+    if (edit == null) return false;
+    final channelIndex = _canonicalSlot(slot);
+    final seen = _processedChannelEdits[channelIndex] ??= {};
+    final id = edit.identifier(message.senderName);
+    if (seen.contains(id)) return true;
+    final messages = _channelMessages[channelIndex];
+    if (messages == null) return false;
+    for (var i = messages.length - 1; i >= 0; i--) {
+      final target = messages[i];
+      if (target.senderName != message.senderName ||
+          _channelEditHash(target) != edit.targetHash) {
+        continue;
+      }
+      if (!_editArrivedInTime(target.timestamp, message.timestamp)) {
+        return false;
+      }
+      final applied = edit.applyTo(target.text);
+      if (applied == null) {
+        if (!edit.alreadyIn(target.text)) return false;
+      } else {
+        messages[i] = _editedChannel(target, applied);
+        _scheduleChannelSave(channelIndex);
+      }
+      seen.add(id);
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  /// By the sender's clock, an edit comes within the accept window of the
+  /// message it changes, so old history can't be rewritten.
+  static bool _editArrivedInTime(DateTime sentAt, DateTime editAt) {
+    final gap = editAt.difference(sentAt);
+    return !gap.isNegative && gap <= messageEditAcceptWindow;
+  }
+
   bool _processContactReaction(
     List<Message> messages,
     ReactionInfo reactionInfo,
@@ -13430,7 +13732,7 @@ class MeshCoreConnector extends ChangeNotifier {
       getTimestampSecs: (msg) => msg.timestamp.millisecondsSinceEpoch ~/ 1000,
       getSenderName: (msg) =>
           _resolveContactSenderName(msg, contact, isRoomServer == true),
-      getMessageText: (msg) => msg.text,
+      getMessageText: (msg) => msg.sentText,
       getReactions: (msg) => msg.reactions,
       updateMessage: (i, reactions) {
         messages[i] = messages[i].copyWith(reactions: reactions);
@@ -13453,7 +13755,7 @@ class MeshCoreConnector extends ChangeNotifier {
       getTimestampSecs: (msg) => msg.timestamp.millisecondsSinceEpoch ~/ 1000,
       getSenderName: (msg) =>
           _resolveContactSenderName(msg, contact, isRoomServer),
-      getMessageText: (msg) => msg.text,
+      getMessageText: (msg) => msg.sentText,
       getReactions: (msg) => msg.reactions,
       updateMessage: (i, reactions) {
         messages[i] = messages[i].copyWith(reactions: reactions);
@@ -13476,7 +13778,7 @@ class MeshCoreConnector extends ChangeNotifier {
       final msgHash = ReactionHelper.computeReactionHash(
         timestampSecs,
         _resolveContactSenderName(msg, contact, isRoomServer == true),
-        msg.text,
+        msg.sentText,
       );
       if (msgHash == reactionInfo.targetHash) {
         final statuses = Map<String, MessageStatus>.from(msg.reactionStatuses);
@@ -13848,7 +14150,7 @@ class MeshCoreConnector extends ChangeNotifier {
       shouldSkip: (_) => false,
       getTimestampSecs: (msg) => msg.timestamp.millisecondsSinceEpoch ~/ 1000,
       getSenderName: (msg) => msg.senderName,
-      getMessageText: (msg) => msg.text,
+      getMessageText: (msg) => msg.sentText,
       getReactions: (msg) => msg.reactions,
       updateMessage: (i, reactions) {
         messages[i] = messages[i].copyWith(reactions: reactions);
@@ -13918,7 +14220,7 @@ class MeshCoreConnector extends ChangeNotifier {
       return incoming.senderName == (_selfName ?? 'Me');
     }
     return existing.senderName == incoming.senderName &&
-        existing.text == incoming.text;
+        existing.sentText == incoming.text;
   }
 
   bool _shouldDropSelfChannelMessage(

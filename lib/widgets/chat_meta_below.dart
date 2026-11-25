@@ -34,6 +34,9 @@ class ChatMetaBelow extends StatelessWidget {
   /// After the text: a message of mine's status icon, say.
   final Widget? trailing;
 
+  /// The message was edited: `(edited)` ends the line.
+  final bool edited;
+
   const ChatMetaBelow({
     super.key,
     required this.time,
@@ -44,6 +47,7 @@ class ChatMetaBelow extends StatelessWidget {
     this.padding = EdgeInsets.zero,
     this.heardRepeats,
     this.trailing,
+    this.edited = false,
   });
 
   /// The line's text.
@@ -54,10 +58,14 @@ class ChatMetaBelow extends StatelessWidget {
     int? hashBytes,
     String? region,
     int? heardRepeats,
+    bool edited = false,
   }) {
     final l10n = context.l10n;
     final r = heardRepeats;
-    if (r != null && r > 0) return l10n.chat_metaHeardRepeats(r);
+    if (r != null && r > 0) {
+      final heard = l10n.chat_metaHeardRepeats(r);
+      return edited ? '$heard ${l10n.chat_edited}' : heard;
+    }
     final h = hops;
     // "5:38AM", as the MeshCore app writes it; "22/Oct 5:38AM" on an earlier
     // day.
@@ -75,7 +83,8 @@ class ChatMetaBelow extends StatelessWidget {
       if (h != null && h > 0 && hashBytes != null && hashBytes > 0)
         l10n.chat_metaHashBytes(hashBytes),
       if (region != null && region.isNotEmpty) region,
-    ].join(' • ');
+    ].join(' • ') +
+        (edited ? ' ${l10n.chat_edited}' : '');
   }
 
   @override
@@ -99,6 +108,7 @@ class ChatMetaBelow extends StatelessWidget {
                 hashBytes: hashBytes,
                 region: region,
                 heardRepeats: heardRepeats,
+                edited: edited,
               ),
               style: TextStyle(
                 fontSize: 13 * textScale,

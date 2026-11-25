@@ -3427,6 +3427,24 @@ class AppLocalizationsHu extends AppLocalizations {
   String get chat_directForced => 'Közvetlen (kényszerített)';
 
   @override
+  String get chat_edit => 'Edit';
+
+  @override
+  String get chat_editTitle => 'Edit message';
+
+  @override
+  String get chat_editHint => 'Only the change is sent. Apps without editing show it as a correction.';
+
+  @override
+  String get chat_editTooLong => 'This change is too long to send as an edit.';
+
+  @override
+  String get chat_editFailed => 'Couldn\'t send the edit.';
+
+  @override
+  String get chat_edited => '(edited)';
+
+  @override
   String chat_hopsForced(int count) {
     return '$count ugrás (kényszerített)';
   }

@@ -81,6 +81,7 @@ import '../theme/chat_look.dart';
 import '../theme/mesh_theme.dart';
 import '../widgets/future_timestamp_indicator.dart';
 import '../widgets/mesh_ui.dart';
+import '../widgets/edit_message_dialog.dart';
 import '../widgets/share_contact_sheet.dart';
 import '../widgets/shared_contact_card.dart';
 import 'telemetry_screen.dart';
@@ -2023,7 +2024,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   void _showMessageActions(Message message, Contact contact) {
-    final readOnly = isRadioReadOnly(context.read<MeshCoreConnector>());
+    final connector = context.read<MeshCoreConnector>();
+    final readOnly = isRadioReadOnly(connector);
+    final canEdit = connector.canEditContactMessage(
+      _resolveContact(connector),
+      message,
+    );
     final translationService = context.read<TranslationService>();
     final canTranslateMessage =
         translationService.canTranslateIncoming(
@@ -2045,6 +2051,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     ? '${message.displayText.characters.take(40)}…'
                     : message.displayText,
               ),
+              if (canEdit)
+                ListTile(
+                  enabled: !readOnly,
+                  leading: const Icon(Icons.edit_outlined),
+                  title: Text(context.l10n.chat_edit),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    unawaited(_editMessage(message));
+                  },
+                ),
               // Can't react to your own messages
               if (!message.isOutgoing)
                 ListTile(
@@ -2222,6 +2238,28 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     );
   }
 
+  Future<void> _editMessage(Message message) async {
+    final connector = context.read<MeshCoreConnector>();
+    final newText = await showEditMessageDialog(
+      context,
+      text: message.text,
+      check: (draft) => connector.checkContactEdit(message, draft),
+    );
+    if (newText == null || !mounted) return;
+    if (!ensureRadioConnected(context)) return;
+    final sent = await connector.editContactMessage(
+      _resolveContact(connector),
+      message,
+      newText,
+    );
+    if (!sent && mounted) {
+      showDismissibleSnackBar(
+        context,
+        content: Text(context.l10n.chat_editFailed),
+      );
+    }
+  }
+
   void _sendReaction(Message message, Contact senderContact, String emoji) {
     if (!ensureRadioConnected(context)) return;
     final connector = context.read<MeshCoreConnector>();
@@ -2242,7 +2280,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         ReactionHelper.encodeReactionMC1(
           emoji: emoji,
           timestampSecs: timestampSecs,
-          text: message.text,
+          text: message.sentText,
           senderName: senderName,
         ),
       );
@@ -2251,7 +2289,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     final hash = ReactionHelper.computeReactionHash(
       timestampSecs,
       senderName,
-      message.text,
+      message.sentText,
     );
     final reactionText = ReactionHelper.encodeReaction(hash, emojiIndex);
     connector.sendMessage(_resolveContact(connector), reactionText);
@@ -2786,6 +2824,11 @@ class _MessageBubble extends StatelessWidget {
                                     formatChatTime(context, message.timestamp),
                                     style: timeStyle,
                                   ),
+                                if (message.isEdited)
+                                  Text(
+                                    context.l10n.chat_edited,
+                                    style: timeStyle,
+                                  ),
                                 if (message.hasFutureTimestamp)
                                   FutureTimestampIndicator(
                                     size: 16 * textScale,
@@ -2891,6 +2934,7 @@ class _MessageBubble extends StatelessWidget {
                   ? message.pathBytes.length ~/ message.pathLength!
                   : null,
               textScale: textScale,
+              edited: message.isEdited,
               padding: EdgeInsets.only(
                 top: 4,
                 left: layoutOutgoing || noAvatarOneToOne

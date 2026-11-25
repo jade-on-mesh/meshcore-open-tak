@@ -225,6 +225,9 @@ class MessageStore {
         (key, value) => MapEntry(key, value.index),
       ),
       'fourByteRoomContactKey': base64Encode(msg.fourByteRoomContactKey),
+      if (msg.firstText != null) 'firstText': msg.firstText,
+      if (msg.editedAt != null)
+        'editedAt': msg.editedAt!.millisecondsSinceEpoch,
       // `text` is stored decoded; legacy records without this flag may still
       // hold a Smaz payload.
       'plainText': true,
@@ -320,6 +323,10 @@ class MessageStore {
           ? Uint8List.fromList(
               base64Decode(json['fourByteRoomContactKey'] as String),
             )
+          : null,
+      firstText: json['firstText'] as String?,
+      editedAt: json['editedAt'] is int
+          ? DateTime.fromMillisecondsSinceEpoch(json['editedAt'] as int)
           : null,
     );
   }
