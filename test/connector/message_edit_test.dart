@@ -113,7 +113,12 @@ void main() {
   test('an edit for a message we never got shows as a correction', () async {
     await _connect();
     final ts = _nowSecs();
-    final wire = _editWire('Ana', ts, 'meet at the park', 'meet at the old park');
+    final wire = _editWire(
+      'Ana',
+      ts,
+      'meet at the park',
+      'meet at the old park',
+    );
     _receive(2, 'Ana', wire, ts + 10);
     await _waitFor(() => _messages(2).any((m) => m.text == wire));
   });

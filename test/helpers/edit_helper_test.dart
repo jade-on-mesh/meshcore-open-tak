@@ -7,7 +7,10 @@ MessageEdit _edit(String before, String after) =>
 void main() {
   group('between', () {
     test('sends the changed word with a word of context each side', () {
-      final e = _edit('ok see you at 5 tonight bye', 'ok see you at 6 tonight bye');
+      final e = _edit(
+        'ok see you at 5 tonight bye',
+        'ok see you at 6 tonight bye',
+      );
       expect(e.offset, 11);
       expect(e.deleteLength, 12);
       expect(e.replacement, 'at 6 tonight');

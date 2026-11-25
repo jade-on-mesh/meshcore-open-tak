@@ -78,12 +78,12 @@ class ChatMetaBelow extends StatelessWidget {
       clock = '${DateFormat('dd/MMM', locale).format(time.toLocal())} $clock';
     }
     return [
-      clock,
-      if (h != null) h == 0 ? l10n.chat_direct : l10n.chat_metaHops(h),
-      if (h != null && h > 0 && hashBytes != null && hashBytes > 0)
-        l10n.chat_metaHashBytes(hashBytes),
-      if (region != null && region.isNotEmpty) region,
-    ].join(' • ') +
+          clock,
+          if (h != null) h == 0 ? l10n.chat_direct : l10n.chat_metaHops(h),
+          if (h != null && h > 0 && hashBytes != null && hashBytes > 0)
+            l10n.chat_metaHashBytes(hashBytes),
+          if (region != null && region.isNotEmpty) region,
+        ].join(' • ') +
         (edited ? ' ${l10n.chat_edited}' : '');
   }
 

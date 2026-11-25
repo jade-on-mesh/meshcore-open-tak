@@ -3437,7 +3437,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get chat_editTitle => 'Edit message';
 
   @override
-  String get chat_editHint => 'Only the change is sent. Apps without editing show it as a correction.';
+  String get chat_editHint =>
+      'Only the change is sent. Apps without editing show it as a correction.';
 
   @override
   String get chat_editTooLong => 'This change is too long to send as an edit.';
