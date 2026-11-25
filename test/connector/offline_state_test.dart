@@ -21,6 +21,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 final _radioKey = Uint8List.fromList(List<int>.generate(32, (i) => 0xA0 + i));
 final _radioHex = pubKeyToHex(_radioKey);
 final _aliceKey = Uint8List.fromList(List<int>.generate(32, (i) => 0x10 + i));
+final _aliceHex = pubKeyToHex(_aliceKey);
 final _psk = Uint8List.fromList(List<int>.generate(16, (i) => 0x40 + i));
 
 Future<void> _waitFor(bool Function() condition, {int seconds = 8}) async {
@@ -124,6 +125,23 @@ void main() {
     await _seedRadio();
     ChannelMessageStore().forgetArchive();
     MessageStore().forgetArchive();
+  });
+
+  test('the DMs badge only counts chats the DMs list can show', () async {
+    // Unread left by a contact the radio no longer holds: no row to clear it.
+    final orphanHex = pubKeyToHex(
+      Uint8List.fromList(List<int>.generate(32, (i) => 0x70 + i)),
+    );
+    final unread = UnreadStore()..setPublicKeyHex = _radioHex;
+    unread.saveContactUnreadCount({_aliceHex: 2, orphanHex: 2});
+    await unread.flush();
+
+    final connector = _newConnector();
+    await connector.restoreLastRadio();
+
+    expect(connector.getUnreadCountForContactKey(orphanHex), 2);
+    expect(connector.getTotalPeopleUnreadCount(), 2, reason: 'Alice only');
+    expect(connector.getTotalNodesUnreadCount(), 0);
   });
 
   test('restoreLastRadio shows the saved radio while disconnected', () async {
