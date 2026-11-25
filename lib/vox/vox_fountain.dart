@@ -43,8 +43,10 @@ int voxFountainNeeded(int missing) =>
 int voxFountainFirstPass(int total) => total < 2 ? 0 : (total + 9) ~/ 10 + 1;
 
 /// The most loss the repair packets are sized for (percent): a listener
-/// losing more is on a poor link of its own, and asks again.
-const int voxFountainMaxLossPct = 40;
+/// losing more is on a poor link of its own, and asks again. Was 40, which
+/// sized answers for the worst listener heard and flooded the channel
+/// (2026-11-24). Mirrored in Wadamesh (VoxFountain.h kMaxLossPct).
+const int voxFountainMaxLossPct = 25;
 
 int _lossOf(int lossPct) => lossPct.clamp(0, voxFountainMaxLossPct);
 

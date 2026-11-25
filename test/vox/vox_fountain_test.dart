@@ -166,6 +166,34 @@ void main() {
     },
   );
 
+  test('repair packets sized for each listener, at most 25%', () {
+    final p = VoxFloodPace(338, fast: true);
+    final a = VoxFloodAnswer(List.generate(100, (i) => i));
+    // A far listener loses 40%, a near one 5%.
+    p.feedback(a, {for (var i = 0; i < 40; i++) i}, who: 'far', nowMs: 0);
+    p.feedback(a, {for (var i = 0; i < 5; i++) i}, who: 'near', nowMs: 0);
+    expect(p.lossPct, 40); // the channel's worst, as before
+    expect(p.lossFor('far'), 25); // capped
+    expect(p.lossFor('near'), 5); // its own, not the channel's
+    expect(p.lossFor('new'), 25); // none yet: the channel's, capped
+    expect(voxFountainPassShare(100, 90), voxFountainPassShare(100, 25));
+  });
+
+  test('a post sizes extra parity for loss several listeners report', () {
+    final p = VoxFloodPace(338, fast: true);
+    final a = VoxFloodAnswer(List.generate(100, (i) => i));
+    p.feedback(a, {for (var i = 0; i < 40; i++) i}, who: 'far', nowMs: 0);
+    // One listener: nothing.
+    expect(p.pushLossPct(nowMs: 1000), 0);
+    p.feedback(a, {for (var i = 0; i < 12; i++) i}, who: 'mid', nowMs: 0);
+    // Two: the second-worst.
+    expect(p.pushLossPct(nowMs: 1000), 12);
+    p.feedback(a, {for (var i = 0; i < 30; i++) i}, who: 'other', nowMs: 0);
+    expect(p.pushLossPct(nowMs: 1000), 20); // 30, capped at 20
+    // Half an hour on, they no longer count.
+    expect(p.pushLossPct(nowMs: voxPushLossWindowMs + 1), 0);
+  });
+
   test('the same transfer: its parity, repair packets and other parts', () {
     const sid = '1a2b3c4d';
     expect(voxSameTransfer(sid, sid), isTrue);
