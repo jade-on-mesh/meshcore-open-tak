@@ -40,6 +40,14 @@ void main() {
     });
   });
 
+  test('matches the standalones\' test vector', () {
+    // wadamesh-tak test/test_message_edit.cpp decodes this exact text.
+    expect(
+      _edit('see you at 5 tonight', 'see you at 6 tonight').encode(20),
+      '✎ …at 6 tonight\ne:3fa1:62:8:12',
+    );
+  });
+
   group('round trip', () {
     const cases = [
       ('see you at 5 tonight', 'see you at 6 tonight'),

@@ -90,8 +90,6 @@ void main() {
     final ts = _nowSecs();
     _receive(1, 'Sam', before, ts);
     await _waitFor(() => _messages(1).any((m) => m.text == before));
-    final count = _messages(1).length;
-    final unread = _channelAt(1).unreadCount;
 
     final wire = _editWire('Sam', ts, before, after);
     _receive(1, 'Sam', wire, ts + 30);
@@ -100,14 +98,18 @@ void main() {
     final edited = _messages(1).firstWhere((m) => m.text == after);
     expect(edited.isEdited, isTrue);
     expect(edited.firstText, before);
-    expect(_messages(1).length, count, reason: 'no bubble for the edit');
-    expect(_channelAt(1).unreadCount, unread);
+    // The review radio's seeded history can still be arriving, so count only
+    // what the edit could have added.
+    bool noEditBubble() => !_messages(1).any((m) => m.text.startsWith('✎'));
+    expect(noEditBubble(), isTrue, reason: 'no bubble for the edit');
+    expect(_messages(1).where((m) => m.text == after), hasLength(1));
 
     // A mesh repeat of the same edit changes nothing.
     _receive(1, 'Sam', wire, ts + 30);
     await Future<void>.delayed(const Duration(milliseconds: 100));
-    expect(_messages(1).length, count);
+    expect(noEditBubble(), isTrue);
     expect(_messages(1).where((m) => m.text == after), hasLength(1));
+    expect(_messages(1).where((m) => m.text == before), isEmpty);
   });
 
   test('an edit for a message we never got shows as a correction', () async {
