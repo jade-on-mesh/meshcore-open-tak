@@ -705,12 +705,14 @@ class _PulseDotState extends State<PulseDot>
 class BottomSheetHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
+  final Widget? leading;
   final Widget? trailing;
 
   const BottomSheetHeader({
     super.key,
     required this.title,
     this.subtitle,
+    this.leading,
     this.trailing,
   });
 
@@ -732,6 +734,7 @@ class BottomSheetHeader extends StatelessWidget {
           ),
           Row(
             children: [
+              if (leading != null) ...[leading!, const SizedBox(width: 12)],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
