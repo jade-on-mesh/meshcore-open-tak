@@ -547,7 +547,11 @@ class _ReceivedImageMessageState extends State<ReceivedImageMessage> {
                     // fill, not contain: the pixels ARE the stretched square,
                     // so mapping them onto the original aspect box is exactly
                     // the inverse of what the sender did.
-                    child: Image.memory(png, fit: BoxFit.fill),
+                    child: Image.memory(
+                      png,
+                      fit: BoxFit.fill,
+                      errorBuilder: _undecodable,
+                    ),
                   ),
                   if (entry.synthesized)
                     const Positioned(
@@ -710,7 +714,11 @@ class _ReceivedImageViewer extends StatelessWidget {
                       // inverse of the sender's stretch, as in the bubble.
                       child: AspectRatio(
                         aspectRatio: aspectRatio ?? 1,
-                        child: Image.memory(png, fit: BoxFit.fill),
+                        child: Image.memory(
+                          png,
+                          fit: BoxFit.fill,
+                          errorBuilder: _undecodable,
+                        ),
                       ),
                     ),
                     if (synthesized)
@@ -735,3 +743,17 @@ class _ReceivedImageViewer extends StatelessWidget {
     );
   }
 }
+
+/// Stands in for a stored image whose bytes won't decode (a damaged file, or a
+/// bitstream the codec couldn't turn into pixels): an icon in the image's box,
+/// rather than an image error reported for every rebuild.
+Widget _undecodable(BuildContext context, Object error, StackTrace? stack) =>
+    ColoredBox(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Center(
+        child: Icon(
+          Icons.broken_image_outlined,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
