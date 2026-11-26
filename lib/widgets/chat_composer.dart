@@ -292,11 +292,36 @@ class ChatComposer extends StatelessWidget {
       padding: EdgeInsets.zero,
       onPressed: onTap,
     );
+    // Discord's send button: a blurple rounded square.
+    Widget discordSend() => Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 3),
+      child: IconButton.filled(
+        icon: const Icon(Icons.send, size: 20, color: Colors.white),
+        tooltip: sendTooltip,
+        style: IconButton.styleFrom(
+          backgroundColor: discordBlurple,
+          minimumSize: const Size.square(36),
+          maximumSize: const Size.square(36),
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        onPressed: () {
+          HapticFeedback.lightImpact();
+          onSend();
+        },
+      ),
+    );
     final field = ValueListenableBuilder<TextEditingValue>(
       valueListenable: controller,
       builder: (context, value, _) {
         final gifId = GifHelper.parseGif(value.text);
-        if (gifId != null) return _buildGifPreview(context, gifId, scheme);
+        // The send button lives in the field, which the GIF takes the
+        // place of: it goes beside the GIF (a phone has no Enter key).
+        if (gifId != null) {
+          return _buildGifPreview(context, gifId, scheme, send: discordSend());
+        }
         final hasText = value.text.trim().isNotEmpty;
         final idle = idleTrailing;
         // As Discord's app: with text typed, the GIF button and the mic make
@@ -340,31 +365,7 @@ class ChatComposer extends StatelessWidget {
                   ),
                 ),
                 if (hasText)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 4, bottom: 3),
-                    child: IconButton.filled(
-                      icon: const Icon(
-                        Icons.send,
-                        size: 20,
-                        color: Colors.white,
-                      ),
-                      tooltip: sendTooltip,
-                      style: IconButton.styleFrom(
-                        backgroundColor: discordBlurple,
-                        minimumSize: const Size.square(36),
-                        maximumSize: const Size.square(36),
-                        padding: EdgeInsets.zero,
-                        // Discord's send button: a rounded square.
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: () {
-                        HapticFeedback.lightImpact();
-                        onSend();
-                      },
-                    ),
-                  )
+                  discordSend()
                 else if (idle != null)
                   Theme(
                     // The mic in the field's grey, at the other icons' size.
@@ -486,7 +487,16 @@ class ChatComposer extends StatelessWidget {
       valueListenable: controller,
       builder: (context, value, _) {
         final gifId = GifHelper.parseGif(value.text);
-        if (gifId != null) return _buildGifPreview(context, gifId, scheme);
+        if (gifId != null) {
+          // A send button inside the field goes with it: keep one beside
+          // the GIF (a phone has no Enter key).
+          return _buildGifPreview(
+            context,
+            gifId,
+            scheme,
+            send: look.sendInside ? send(true) : null,
+          );
+        }
         final hasText = value.text.trim().isNotEmpty;
         final idle = idleTrailing;
         Widget? inside;
@@ -572,11 +582,14 @@ class ChatComposer extends StatelessWidget {
     };
   }
 
+  /// A picked GIF in place of the text field, with an X to remove it, and
+  /// [send] beside it when the style's send button lived in the field.
   Widget _buildGifPreview(
     BuildContext context,
     String gifId,
-    ColorScheme scheme,
-  ) {
+    ColorScheme scheme, {
+    Widget? send,
+  }) {
     return Focus(
       autofocus: true,
       onKeyEvent: (node, event) {
@@ -610,6 +623,7 @@ class ChatComposer extends StatelessWidget {
               focusNode.requestFocus();
             },
           ),
+          if (send != null) send,
         ],
       ),
     );
