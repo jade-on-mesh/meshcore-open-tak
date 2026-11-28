@@ -10,8 +10,7 @@ import '../models/contact.dart';
 import 'image_message_bubble.dart' show voxRgbToUiImage;
 import 'video_codec.dart';
 import 'video_player.dart';
-import 'voice_message_bubble.dart'
-    show showVoxVoiceLog, VoxCaption;
+import 'voice_message_bubble.dart' show showVoxVoiceLog, VoxCaption;
 import 'voice_service.dart';
 import 'voice_wire.dart';
 

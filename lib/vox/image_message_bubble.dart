@@ -9,8 +9,7 @@ import 'package:provider/provider.dart';
 
 import '../models/contact.dart';
 import 'av1_ffi.dart';
-import 'voice_message_bubble.dart'
-    show showVoxVoiceLog, VoxCaption;
+import 'voice_message_bubble.dart' show showVoxVoiceLog, VoxCaption;
 import 'voice_service.dart';
 import 'voice_wire.dart';
 import 'vox_upscale.dart';
