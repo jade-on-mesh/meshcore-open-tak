@@ -12,7 +12,6 @@ import '../connector/meshcore_connector.dart';
 import '../l10n/l10n.dart';
 import '../models/channel.dart';
 import '../models/contact.dart';
-import '../services/app_settings_service.dart';
 import '../services/chat_text_scale_service.dart';
 import 'image_message_bubble.dart';
 import 'mimi.dart';
@@ -377,21 +376,6 @@ class _VoxVoiceMessageContentState extends State<VoxVoiceMessageContent> {
                     )
                   else
                     Text(subtitle, style: TextStyle(color: meta, fontSize: 12)),
-                  if (!widget.isOutgoing &&
-                      st.status == VoxClipStatus.complete &&
-                      st.via != null)
-                    VoxReceivedViaLabel(
-                      via: st.via!,
-                      color: meta,
-                      // The repeater's hash is routing detail: only with
-                      // "Repeaters under hop count" on.
-                      repeater:
-                          context.select<AppSettingsService, bool>(
-                            (a) => a.settings.showRepeaterPath,
-                          )
-                          ? st.viaRepeater
-                          : null,
-                    ),
                 ],
               ),
             ),
@@ -1237,54 +1221,6 @@ class VoxCaption extends StatelessWidget {
       child: Text(
         text,
         style: TextStyle(color: color, fontSize: 14 * scale),
-      ),
-    );
-  }
-}
-
-/// "Received via MediaMesh" under a downloaded photo or voice clip: which radio
-/// profile its packets came over (Wadamesh with MediaMesh on reports it).
-class VoxReceivedViaLabel extends StatelessWidget {
-  final VoxReceivedVia via;
-  final Color color;
-
-  /// The MediaMesh repeater its last radio2 packet came through ("1ffb").
-  final String? repeater;
-  const VoxReceivedViaLabel({
-    super.key,
-    required this.via,
-    required this.color,
-    this.repeater,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final label = switch (via) {
-      VoxReceivedVia.mediaMesh => l10n.vox_receivedViaMediaMesh,
-      VoxReceivedVia.mainMesh => l10n.vox_receivedViaMainMesh,
-      VoxReceivedVia.both => l10n.vox_receivedViaBoth,
-    };
-    final text = repeater != null && via != VoxReceivedVia.mainMesh
-        ? '$label ($repeater)'
-        : label;
-    return Padding(
-      padding: const EdgeInsets.only(top: 2),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            via == VoxReceivedVia.mainMesh
-                ? Icons.hub_outlined
-                : Icons.perm_media_outlined,
-            size: 12,
-            color: color,
-          ),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(text, style: TextStyle(color: color, fontSize: 11)),
-          ),
-        ],
       ),
     );
   }
