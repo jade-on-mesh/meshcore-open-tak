@@ -7,12 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/contact.dart';
-import '../services/app_settings_service.dart';
 import 'image_message_bubble.dart' show voxRgbToUiImage;
 import 'video_codec.dart';
 import 'video_player.dart';
-import 'voice_message_bubble.dart'
-    show showVoxVoiceLog, VoxCaption, VoxReceivedViaLabel;
+import 'voice_message_bubble.dart' show showVoxVoiceLog, VoxCaption;
 import 'voice_service.dart';
 import 'voice_wire.dart';
 
@@ -341,20 +339,6 @@ class _VoxVideoMessageContentState extends State<VoxVideoMessageContent> {
             ),
           ],
         ),
-        if (!widget.isOutgoing &&
-            st.status == VoxClipStatus.complete &&
-            !_failed &&
-            st.via != null)
-          VoxReceivedViaLabel(
-            via: st.via!,
-            color: meta,
-            repeater:
-                context.select<AppSettingsService, bool>(
-                  (a) => a.settings.showRepeaterPath,
-                )
-                ? st.viaRepeater
-                : null,
-          ),
       ],
     );
   }
